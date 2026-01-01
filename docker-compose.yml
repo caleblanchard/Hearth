@@ -1,0 +1,102 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  hearth-db:
+    image: postgres:16-alpine
+    container_name: hearth-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hearth_user
+      POSTGRES_PASSWORD: hearth_password
+      POSTGRES_DB: hearth_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - hearth-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hearth_user -d hearth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hearth-network
+
+  # Next.js Application (Development)
+  hearth-app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: hearth-app-dev
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://hearth_user:hearth_password@hearth-db:5432/hearth_db?schema=public
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=this-is-a-development-secret-please-change-in-production-min-32-chars
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      hearth-db:
+        condition: service_healthy
+    networks:
+      - hearth-network
+    command: npm run dev
+
+  # Prisma Studio (Database GUI)
+  hearth-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: hearth-studio
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://hearth_user:hearth_password@hearth-db:5432/hearth_db?schema=public
+    ports:
+      - "5555:5555"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      hearth-db:
+        condition: service_healthy
+    networks:
+      - hearth-network
+    command: npx prisma studio --port 5555 --hostname 0.0.0.0
+    profiles:
+      - tools
+
+  # Redis Cache (Future - optional for now)
+  hearth-cache:
+    image: redis:7-alpine
+    container_name: hearth-cache
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - hearth-redis-data:/data
+    networks:
+      - hearth-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    profiles:
+      - cache
+
+volumes:
+  hearth-postgres-data:
+    name: hearth-postgres-data
+  hearth-redis-data:
+    name: hearth-redis-data
+
+networks:
+  hearth-network:
+    name: hearth-network
+    driver: bridge

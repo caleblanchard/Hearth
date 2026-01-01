@@ -1,0 +1,122 @@
+'use client';
+
+import { useSession, signOut } from 'next-auth/react';
+import { useRouter, usePathname } from 'next/navigation';
+import {
+  HomeIcon,
+  CheckCircleIcon,
+  GiftIcon,
+  ClockIcon,
+  ShoppingCartIcon,
+  ListBulletIcon,
+  CheckBadgeIcon,
+  UsersIcon,
+  CalendarDaysIcon,
+} from '@heroicons/react/24/outline';
+
+export default function DashboardNav() {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const navItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: HomeIcon },
+    { name: 'Chores', path: '/dashboard/chores', icon: CheckCircleIcon },
+    { name: 'Rewards', path: '/dashboard/rewards', icon: GiftIcon },
+    { name: 'Screen Time', path: '/dashboard/screentime', icon: ClockIcon },
+    { name: 'Calendar', path: '/dashboard/calendar', icon: CalendarDaysIcon },
+    { name: 'Shopping', path: '/dashboard/shopping', icon: ShoppingCartIcon },
+    { name: 'To-Do', path: '/dashboard/todos', icon: ListBulletIcon },
+  ];
+
+  // Add parent-only items
+  if (session?.user?.role === 'PARENT') {
+    navItems.push({ name: 'Approvals', path: '/dashboard/approvals', icon: CheckBadgeIcon });
+    navItems.push({ name: 'Family', path: '/dashboard/family', icon: UsersIcon });
+  }
+
+  const handleSignOut = async () => {
+    const callbackUrl = `${window.location.origin}/auth/signin`;
+    await signOut({ callbackUrl });
+  };
+
+  return (
+    <nav className="bg-white dark:bg-gray-800 shadow-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo/Brand */}
+          <div className="flex-shrink-0">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+            >
+              Hearth
+            </button>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="hidden md:flex items-center space-x-1">
+            {navItems.map((item) => {
+              const isActive = pathname === item.path;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => router.push(item.path)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* User Info & Sign Out */}
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              <span className="font-medium">{session?.user?.name}</span>
+              {session?.user?.role && (
+                <span className="ml-2 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
+                  {session.user.role}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        <div className="md:hidden pb-3 pt-2 space-y-1">
+          {navItems.map((item) => {
+            const isActive = pathname === item.path;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.path}
+                onClick={() => router.push(item.path)}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                  isActive
+                    ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                {item.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </nav>
+  );
+}
