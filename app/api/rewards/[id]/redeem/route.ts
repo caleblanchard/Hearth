@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getCurrentPeriodKey, checkBudgetStatus } from '@/lib/budget-tracker';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -120,7 +121,7 @@ export async function POST(
         }
       }
     } catch (error) {
-      console.error('Budget check error:', error);
+      logger.warn('Budget check error', { error, rewardId, userId: session.user.id });
       // Don't block redemption if budget check fails
     }
 
@@ -217,7 +218,10 @@ export async function POST(
         });
       } catch (notificationError) {
         // Log error but don't fail the redemption
-        console.error('Failed to create notifications for reward redemption:', notificationError);
+        logger.error('Failed to create notifications for reward redemption', notificationError, {
+          redemptionId: result.redemption.id,
+          parentCount: parents.length,
+        });
       }
     }
 
@@ -229,7 +233,7 @@ export async function POST(
       budgetWarning: budgetWarning || undefined,
     });
   } catch (error) {
-    console.error('Redeem reward error:', error);
+    logger.error('Redeem reward error', error, { rewardId: params.id, userId: session?.user?.id });
     return NextResponse.json(
       { error: 'Failed to redeem reward' },
       { status: 500 }

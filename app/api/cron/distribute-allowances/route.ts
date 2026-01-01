@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { shouldProcessAllowance } from '@/lib/allowance-scheduler'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   try {
     // Verify cron secret
     const expectedSecret = process.env.CRON_SECRET
     if (!expectedSecret) {
-      console.error('CRON_SECRET environment variable is not set')
+      logger.error('CRON_SECRET environment variable is not set')
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
           })
 
           if (!balance) {
-            console.error(`No balance found for member ${schedule.memberId}`)
+            logger.warn('No balance found for member', { memberId: schedule.memberId, scheduleId: schedule.id })
             errors++
             throw new Error(`No balance found for member ${schedule.memberId}`)
           }
@@ -137,7 +138,7 @@ export async function GET(request: NextRequest) {
       timestamp: currentDate.toISOString(),
     })
   } catch (error) {
-    console.error('Distribute allowances cron error:', error)
+    logger.error('Distribute allowances cron error', error)
     // Don't expose internal error details to client
     return NextResponse.json(
       {

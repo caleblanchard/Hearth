@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -152,7 +153,10 @@ export async function POST(
           });
         } catch (notificationError) {
           // Log error but don't fail the chore completion
-          console.error('Failed to create notifications for chore completion:', notificationError);
+          logger.error('Failed to create notifications for chore completion', notificationError, {
+            choreInstanceId,
+            parentCount: parents.length,
+          });
         }
       }
     } else if (choreInstance.choreSchedule.choreDefinition.creditValue > 0) {
@@ -181,7 +185,7 @@ export async function POST(
         : 'Chore completed and credits awarded!',
     });
   } catch (error) {
-    console.error('Chore completion error:', error);
+    logger.error('Chore completion error', error, { choreInstanceId: params.id });
     return NextResponse.json(
       { error: 'Failed to complete chore' },
       { status: 500 }

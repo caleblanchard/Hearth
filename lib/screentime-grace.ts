@@ -7,6 +7,30 @@ import {
 
 /**
  * Check if user is eligible for grace period
+ * 
+ * Determines if a member can request additional screen time through the grace period
+ * feature. Checks:
+ * - Current balance must be below the low balance warning threshold
+ * - Daily grace limit must not be exceeded
+ * - Weekly grace limit must not be exceeded
+ * 
+ * @param memberId - The ID of the family member to check
+ * @param settings - The grace period settings for the member
+ * @returns Object containing:
+ *   - eligible: Whether the member can request grace time
+ *   - reason: Explanation if not eligible
+ *   - remainingDaily: Number of daily grace requests remaining
+ *   - remainingWeekly: Number of weekly grace requests remaining
+ * 
+ * @example
+ * ```typescript
+ * const eligibility = await checkGraceEligibility(memberId, settings);
+ * if (eligibility.eligible) {
+ *   // Allow grace period request
+ * } else {
+ *   // Show reason: eligibility.reason
+ * }
+ * ```
  */
 export async function checkGraceEligibility(
   memberId: string,
@@ -124,6 +148,23 @@ export async function countGraceUses(
 
 /**
  * Process grace period repayment during weekly reset
+ * 
+ * This function handles the repayment of borrowed screen time grace periods based on
+ * the member's grace repayment mode setting:
+ * - FORGIVE: Marks all pending grace logs as forgiven (no deduction)
+ * - DEDUCT_NEXT_WEEK: Deducts the total borrowed minutes from the current balance
+ * - EARN_BACK: Tracks as pending for future integration with chore completion
+ * 
+ * @param memberId - The ID of the family member whose grace periods should be processed
+ * @returns Object containing:
+ *   - totalRepaid: Total minutes repaid (0 for FORGIVE mode)
+ *   - logsProcessed: Number of grace period logs processed
+ * 
+ * @example
+ * ```typescript
+ * const result = await processGraceRepayment(memberId);
+ * console.log(`Processed ${result.logsProcessed} logs, repaid ${result.totalRepaid} minutes`);
+ * ```
  */
 export async function processGraceRepayment(
   memberId: string

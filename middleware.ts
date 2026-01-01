@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { apiRateLimiter, authRateLimiter, cronRateLimiter, getClientIdentifier } from '@/lib/rate-limit';
+import { MAX_REQUEST_SIZE_BYTES } from '@/lib/constants';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -13,6 +14,23 @@ export async function middleware(request: NextRequest) {
     pathname.includes('.')
   ) {
     return NextResponse.next();
+  }
+
+  // Validate request size for API routes
+  if (pathname.startsWith('/api')) {
+    const contentLength = request.headers.get('content-length');
+    if (contentLength) {
+      const size = parseInt(contentLength, 10);
+      if (!isNaN(size) && size > MAX_REQUEST_SIZE_BYTES) {
+        return NextResponse.json(
+          {
+            error: 'Request too large',
+            message: `Request body exceeds maximum size of ${MAX_REQUEST_SIZE_BYTES / (1024 * 1024)}MB`,
+          },
+          { status: 413 }
+        );
+      }
+    }
   }
 
   // Apply different rate limits based on endpoint type

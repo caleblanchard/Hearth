@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(
   request: Request,
@@ -61,7 +62,7 @@ export async function GET(
 
     return NextResponse.json({ chore });
   } catch (error) {
-    console.error('Error fetching chore:', error);
+    logger.error('Error fetching chore', error, { choreId: params.id });
     return NextResponse.json({ error: 'Failed to fetch chore' }, { status: 500 });
   }
 }
@@ -184,7 +185,7 @@ export async function PATCH(
       message: 'Chore updated successfully',
     });
   } catch (error) {
-    console.error('Error updating chore:', error);
+    logger.error('Error updating chore', error, { choreId: params.id });
     return NextResponse.json({ error: 'Failed to update chore' }, { status: 500 });
   }
 }
@@ -233,7 +234,7 @@ export async function DELETE(
       message: 'Chore deactivated successfully',
     });
   } catch (error) {
-    console.error('Error deleting chore:', error);
+    logger.error('Error deleting chore', error, { choreId: params.id });
     return NextResponse.json({ error: 'Failed to delete chore' }, { status: 500 });
   }
 }

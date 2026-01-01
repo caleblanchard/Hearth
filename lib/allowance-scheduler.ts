@@ -3,6 +3,27 @@ import type { AllowanceSchedule } from '@/app/generated/prisma'
 
 /**
  * Calculate the next allowance date based on frequency and schedule parameters
+ * 
+ * This function calculates when the next allowance should be distributed based on:
+ * - Frequency type (DAILY, WEEKLY, BIWEEKLY, MONTHLY)
+ * - Day of week (for WEEKLY/BIWEEKLY: 0=Sunday, 6=Saturday)
+ * - Day of month (for MONTHLY: 1-31)
+ * 
+ * @param frequency - The frequency of the allowance (DAILY, WEEKLY, BIWEEKLY, MONTHLY)
+ * @param fromDate - The reference date to calculate from
+ * @param dayOfWeek - Required for WEEKLY/BIWEEKLY (0-6, where 0 is Sunday)
+ * @param dayOfMonth - Required for MONTHLY (1-31)
+ * @returns The next date when the allowance should be distributed
+ * @throws Error if required parameters are missing or invalid
+ * 
+ * @example
+ * ```typescript
+ * // Next weekly allowance (every Monday)
+ * const nextDate = getNextAllowanceDate(Frequency.WEEKLY, new Date(), 1);
+ * 
+ * // Next monthly allowance (15th of each month)
+ * const nextDate = getNextAllowanceDate(Frequency.MONTHLY, new Date(), null, 15);
+ * ```
  */
 export function getNextAllowanceDate(
   frequency: Frequency,
@@ -105,6 +126,24 @@ export function getNextAllowanceDate(
 
 /**
  * Determine if an allowance should be processed on the given date
+ * 
+ * This function checks multiple conditions:
+ * - Schedule must be active and not paused
+ * - Current date must be within the schedule's start/end date range
+ * - Schedule must not have been processed today already
+ * - Current date must match the schedule's frequency pattern (daily, weekly, biweekly, monthly)
+ * 
+ * @param schedule - The allowance schedule to check
+ * @param currentDate - The date to check against (typically today's date)
+ * @returns true if the allowance should be processed, false otherwise
+ * 
+ * @example
+ * ```typescript
+ * const shouldProcess = shouldProcessAllowance(schedule, new Date());
+ * if (shouldProcess) {
+ *   // Process the allowance
+ * }
+ * ```
  */
 export function shouldProcessAllowance(
   schedule: AllowanceSchedule,
