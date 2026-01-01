@@ -132,24 +132,23 @@ export async function POST(
         },
       });
 
-      await Promise.all(
-        parents.map((parent) =>
-          prisma.notification.create({
-            data: {
-              userId: parent.id,
-              type: 'CHORE_COMPLETED',
-              title: 'Chore completed',
-              message: `${session.user.name} completed: ${choreInstance.choreSchedule.choreDefinition.name}`,
-              actionUrl: '/dashboard/approvals',
-              metadata: {
-                choreInstanceId,
-                choreName: choreInstance.choreSchedule.choreDefinition.name,
-                completedBy: session.user.name,
-              },
-            },
-          })
-        )
-      );
+      // Use createMany to avoid N+1 query problem
+      if (parents.length > 0) {
+        await prisma.notification.createMany({
+          data: parents.map((parent) => ({
+            userId: parent.id,
+            type: 'CHORE_COMPLETED',
+            title: 'Chore completed',
+            message: `${session.user.name} completed: ${choreInstance.choreSchedule.choreDefinition.name}`,
+            actionUrl: '/dashboard/approvals',
+            metadata: {
+              choreInstanceId,
+              choreName: choreInstance.choreSchedule.choreDefinition.name,
+              completedBy: session.user.name,
+            } as any,
+          })),
+        });
+      }
     } else if (choreInstance.choreSchedule.choreDefinition.creditValue > 0) {
       // Notify child that they earned credits
       await prisma.notification.create({

@@ -42,74 +42,89 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Process each schedule
-    for (const schedule of schedules) {
-      try {
-        // Check if this schedule should be processed today
-        if (!shouldProcessAllowance(schedule, currentDate)) {
-          skipped++
-          continue
-        }
+    // Process schedules in parallel batches for better performance
+    const BATCH_SIZE = 20
+    const batches: typeof schedules[] = []
+    
+    for (let i = 0; i < schedules.length; i += BATCH_SIZE) {
+      batches.push(schedules.slice(i, i + BATCH_SIZE))
+    }
 
-        // Get current balance
-        const balance = await prisma.creditBalance.findUnique({
-          where: { memberId: schedule.memberId },
-        })
+    // Process each batch in parallel
+    for (const batch of batches) {
+      const results = await Promise.allSettled(
+        batch.map(async (schedule) => {
+          // Check if this schedule should be processed today
+          if (!shouldProcessAllowance(schedule, currentDate)) {
+            skipped++
+            return { status: 'skipped' }
+          }
 
-        if (!balance) {
-          console.error(`No balance found for member ${schedule.memberId}`)
-          errors++
-          continue
-        }
-
-        // Process allowance in a transaction
-        await prisma.$transaction(async (tx) => {
-          const newBalance = balance.currentBalance + schedule.amount
-          const newLifetimeEarned = balance.lifetimeEarned + schedule.amount
-
-          // Update balance
-          await tx.creditBalance.update({
+          // Get current balance
+          const balance = await prisma.creditBalance.findUnique({
             where: { memberId: schedule.memberId },
-            data: {
-              currentBalance: newBalance,
-              lifetimeEarned: newLifetimeEarned,
-            },
           })
 
-          // Create transaction record
-          await tx.creditTransaction.create({
-            data: {
-              memberId: schedule.memberId,
-              type: 'BONUS',
-              amount: schedule.amount,
-              balanceAfter: newBalance,
-              reason: `Allowance (${schedule.frequency})`,
-              category: 'OTHER',
-            },
+          if (!balance) {
+            console.error(`No balance found for member ${schedule.memberId}`)
+            errors++
+            throw new Error(`No balance found for member ${schedule.memberId}`)
+          }
+
+          // Process allowance in a transaction
+          await prisma.$transaction(async (tx) => {
+            const newBalance = balance.currentBalance + schedule.amount
+            const newLifetimeEarned = balance.lifetimeEarned + schedule.amount
+
+            // Update balance
+            await tx.creditBalance.update({
+              where: { memberId: schedule.memberId },
+              data: {
+                currentBalance: newBalance,
+                lifetimeEarned: newLifetimeEarned,
+              },
+            })
+
+            // Create transaction record
+            await tx.creditTransaction.create({
+              data: {
+                memberId: schedule.memberId,
+                type: 'BONUS',
+                amount: schedule.amount,
+                balanceAfter: newBalance,
+                reason: `Allowance (${schedule.frequency})`,
+                category: 'OTHER',
+              },
+            })
+
+            // Update schedule's lastProcessedAt
+            await tx.allowanceSchedule.update({
+              where: { id: schedule.id },
+              data: { lastProcessedAt: currentDate },
+            })
+
+            // Create notification
+            await tx.notification.create({
+              data: {
+                userId: schedule.memberId,
+                type: 'CREDITS_EARNED',
+                title: 'Allowance Received',
+                message: `You received ${schedule.amount} credits from your ${schedule.frequency.toLowerCase()} allowance!`,
+                isRead: false,
+              },
+            })
           })
 
-          // Update schedule's lastProcessedAt
-          await tx.allowanceSchedule.update({
-            where: { id: schedule.id },
-            data: { lastProcessedAt: currentDate },
-          })
-
-          // Create notification
-          await tx.notification.create({
-            data: {
-              userId: schedule.memberId,
-              type: 'CREDITS_EARNED',
-              title: 'Allowance Received',
-              message: `You received ${schedule.amount} credits from your ${schedule.frequency.toLowerCase()} allowance!`,
-              isRead: false,
-            },
-          })
+          processed++
+          return { status: 'processed' }
         })
+      )
 
-        processed++
-      } catch (error) {
-        console.error(`Error processing schedule ${schedule.id}:`, error)
-        errors++
+      // Count errors from this batch
+      for (const result of results) {
+        if (result.status === 'rejected') {
+          errors++
+        }
       }
     }
 

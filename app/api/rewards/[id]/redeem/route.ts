@@ -196,25 +196,24 @@ export async function POST(
       },
     });
 
-    await Promise.all(
-      parents.map((parent) =>
-        prisma.notification.create({
-          data: {
-            userId: parent.id,
-            type: 'REWARD_REQUESTED',
-            title: 'Reward requested',
-            message: `${session.user.name} wants to redeem: ${reward.name} (${reward.costCredits} credits)`,
-            actionUrl: '/dashboard/approvals',
-            metadata: {
-              redemptionId: result.redemption.id,
-              rewardName: reward.name,
-              costCredits: reward.costCredits,
-              requestedBy: session.user.name,
-            },
-          },
-        })
-      )
-    );
+    // Use createMany to avoid N+1 query problem
+    if (parents.length > 0) {
+      await prisma.notification.createMany({
+        data: parents.map((parent) => ({
+          userId: parent.id,
+          type: 'REWARD_REQUESTED',
+          title: 'Reward requested',
+          message: `${session.user.name} wants to redeem: ${reward.name} (${reward.costCredits} credits)`,
+          actionUrl: '/dashboard/approvals',
+          metadata: {
+            redemptionId: result.redemption.id,
+            rewardName: reward.name,
+            costCredits: reward.costCredits,
+            requestedBy: session.user.name,
+          } as any,
+        })),
+      });
+    }
 
     return NextResponse.json({
       success: true,

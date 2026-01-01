@@ -51,6 +51,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate adjustment amount - prevent negative balances
+    if (amountMinutes < 0 && Math.abs(amountMinutes) > balance.currentBalanceMinutes) {
+      return NextResponse.json(
+        {
+          error: 'Insufficient balance',
+          message: `Cannot remove ${Math.abs(amountMinutes)} minutes. Current balance: ${balance.currentBalanceMinutes} minutes.`,
+        },
+        { status: 400 }
+      );
+    }
+
     const newBalance = Math.max(0, balance.currentBalanceMinutes + amountMinutes);
 
     // Update balance

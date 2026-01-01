@@ -16,8 +16,11 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
-    const page = parseInt(searchParams.get('page') || '1', 10)
-    const limit = parseInt(searchParams.get('limit') || '50', 10)
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+    const limit = Math.min(
+      Math.max(1, parseInt(searchParams.get('limit') || '50', 10)),
+      100  // Maximum limit
+    )
 
     // Build where clause
     const where: any = {
@@ -30,7 +33,18 @@ export async function GET(request: NextRequest) {
     if (session.user.role === 'CHILD') {
       where.memberId = session.user.id
     } else if (memberId) {
-      // Parents can filter by specific member
+      // Parents can filter by specific member - verify family membership
+      const member = await prisma.familyMember.findUnique({
+        where: { id: memberId },
+        select: { familyId: true },
+      })
+
+      if (!member || member.familyId !== session.user.familyId) {
+        return NextResponse.json(
+          { error: 'Invalid member or member does not belong to your family' },
+          { status: 403 }
+        )
+      }
       where.memberId = memberId
     }
 

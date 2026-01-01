@@ -16,8 +16,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
     const pinnedOnly = searchParams.get('pinned') === 'true';
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
+    const limit = Math.min(
+      Math.max(1, parseInt(searchParams.get('limit') || '50', 10)),
+      100  // Maximum limit
+    );
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
 
     // Build query filters
     const where: any = {
