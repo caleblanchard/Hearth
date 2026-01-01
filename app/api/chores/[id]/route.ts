@@ -105,14 +105,19 @@ export async function PATCH(
     const updates: any = {};
 
     if (name !== undefined) {
-      if (!name.trim() || name.length > 100) {
+      const sanitizedName = name?.trim();
+      if (!sanitizedName || sanitizedName.length > 100) {
         return NextResponse.json({ error: 'Name must be 1-100 characters' }, { status: 400 });
       }
-      updates.name = name.trim();
+      updates.name = sanitizedName;
     }
 
     if (description !== undefined) {
-      updates.description = description?.trim() || null;
+      const sanitizedDescription = description?.trim();
+      updates.description = sanitizedDescription && sanitizedDescription.length > 0 ? sanitizedDescription : null;
+      if (sanitizedDescription && sanitizedDescription.length > 1000) {
+        return NextResponse.json({ error: 'Description must be 1000 characters or less' }, { status: 400 });
+      }
     }
 
     if (creditValue !== undefined) {

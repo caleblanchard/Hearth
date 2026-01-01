@@ -197,22 +197,28 @@ export async function POST(
     });
 
     // Use createMany to avoid N+1 query problem
+    // Notifications are non-critical, so failures don't block the redemption
     if (parents.length > 0) {
-      await prisma.notification.createMany({
-        data: parents.map((parent) => ({
-          userId: parent.id,
-          type: 'REWARD_REQUESTED',
-          title: 'Reward requested',
-          message: `${session.user.name} wants to redeem: ${reward.name} (${reward.costCredits} credits)`,
-          actionUrl: '/dashboard/approvals',
-          metadata: {
-            redemptionId: result.redemption.id,
-            rewardName: reward.name,
-            costCredits: reward.costCredits,
-            requestedBy: session.user.name,
-          } as any,
-        })),
-      });
+      try {
+        await prisma.notification.createMany({
+          data: parents.map((parent) => ({
+            userId: parent.id,
+            type: 'REWARD_REQUESTED',
+            title: 'Reward requested',
+            message: `${session.user.name} wants to redeem: ${reward.name} (${reward.costCredits} credits)`,
+            actionUrl: '/dashboard/approvals',
+            metadata: {
+              redemptionId: result.redemption.id,
+              rewardName: reward.name,
+              costCredits: reward.costCredits,
+              requestedBy: session.user.name,
+            } as any,
+          })),
+        });
+      } catch (notificationError) {
+        // Log error but don't fail the redemption
+        console.error('Failed to create notifications for reward redemption:', notificationError);
+      }
     }
 
     return NextResponse.json({

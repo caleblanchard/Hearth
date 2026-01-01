@@ -188,7 +188,7 @@ export async function processGraceRepayment(
     const transaction = await prisma.screenTimeTransaction.create({
       data: {
         memberId,
-        type: 'GRACE_REPAID' as any,
+        type: 'GRACE_REPAID',
         amountMinutes: -totalMinutes,
         balanceAfter: balance.currentBalanceMinutes - totalMinutes,
         reason: 'Grace period repayment',

@@ -58,6 +58,28 @@ export async function GET(request: NextRequest) {
     }
 
     if (startDate || endDate) {
+      // Validate date range
+      if (startDate && endDate) {
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+        
+        if (start > end) {
+          return NextResponse.json(
+            { error: 'Start date must be before end date' },
+            { status: 400 }
+          )
+        }
+        
+        // Limit date range to 1 year
+        const maxRange = 365 * 24 * 60 * 60 * 1000 // TODO: Import from constants
+        if (end.getTime() - start.getTime() > maxRange) {
+          return NextResponse.json(
+            { error: 'Date range cannot exceed 1 year' },
+            { status: 400 }
+          )
+        }
+      }
+      
       where.createdAt = {}
       if (startDate) {
         where.createdAt.gte = new Date(startDate)

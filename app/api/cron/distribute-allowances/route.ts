@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Process schedules in parallel batches for better performance
-    const BATCH_SIZE = 20
+    const BATCH_SIZE = 20 // TODO: Move to constants
     const batches: typeof schedules[] = []
     
     for (let i = 0; i < schedules.length; i += BATCH_SIZE) {
@@ -138,10 +138,10 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Distribute allowances cron error:', error)
+    // Don't expose internal error details to client
     return NextResponse.json(
       {
         error: 'Failed to distribute allowances',
-        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

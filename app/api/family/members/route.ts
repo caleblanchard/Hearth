@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { hash } from 'bcrypt';
+import { BCRYPT_ROUNDS } from '@/lib/constants';
 
 export async function POST(request: Request) {
   try {
@@ -48,9 +49,9 @@ export async function POST(request: Request) {
     let pinHash = null;
 
     if (role === 'PARENT' && password) {
-      passwordHash = await hash(password, 12);
+      passwordHash = await hash(password, BCRYPT_ROUNDS);
     } else if (role === 'CHILD' && pin) {
-      pinHash = await hash(pin, 12);
+      pinHash = await hash(pin, BCRYPT_ROUNDS);
     }
 
     // Create the family member

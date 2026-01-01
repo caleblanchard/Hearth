@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { hash } from 'bcrypt';
+import { BCRYPT_ROUNDS } from '@/lib/constants';
 
 export async function PATCH(
   request: Request,
@@ -54,10 +55,10 @@ export async function PATCH(
 
     // Hash new password or PIN if provided
     if (password && member.role === 'PARENT') {
-      updateData.passwordHash = await hash(password, 12);
+      updateData.passwordHash = await hash(password, BCRYPT_ROUNDS);
     }
     if (pin && member.role === 'CHILD') {
-      updateData.pin = await hash(pin, 12);
+      updateData.pin = await hash(pin, BCRYPT_ROUNDS);
     }
 
     const updatedMember = await prisma.familyMember.update({
