@@ -98,7 +98,7 @@ describe('POST /api/screentime/grace/request', () => {
       currentBalanceMinutes: 20,
     });
 
-    prismaMock.member.findUnique.mockResolvedValue({
+    prismaMock.familyMember.findUnique.mockResolvedValue({
       id: session.user.id,
       name: session.user.name,
       email: session.user.email,
@@ -178,7 +178,7 @@ describe('POST /api/screentime/grace/request', () => {
       relatedTransactionId: null,
     });
 
-    prismaMock.member.findUnique.mockResolvedValue({
+    prismaMock.familyMember.findUnique.mockResolvedValue({
       id: session.user.id,
       name: session.user.name,
       email: session.user.email,
@@ -189,7 +189,7 @@ describe('POST /api/screentime/grace/request', () => {
       userId: 'user-1',
     });
 
-    prismaMock.member.findMany.mockResolvedValue([
+    prismaMock.familyMember.findMany.mockResolvedValue([
       {
         id: 'parent-1',
         name: 'Test Parent',

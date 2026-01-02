@@ -9,15 +9,20 @@ import {
   ChartBarIcon,
   ArrowTrendingUpIcon,
   DevicePhoneMobileIcon,
+  TvIcon,
+  DeviceTabletIcon,
+  ComputerDesktopIcon,
+  Squares2X2Icon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 
 const DEVICE_TYPES = [
-  { value: 'TV', label: 'TV', icon: '📺' },
-  { value: 'TABLET', label: 'Tablet', icon: '📱' },
-  { value: 'PHONE', label: 'Phone', icon: '📞' },
-  { value: 'COMPUTER', label: 'Computer', icon: '💻' },
-  { value: 'GAMING', label: 'Gaming', icon: '🎮' },
-  { value: 'OTHER', label: 'Other', icon: '📟' },
+  { value: 'TV', label: 'TV', Icon: TvIcon },
+  { value: 'TABLET', label: 'Tablet', Icon: DeviceTabletIcon },
+  { value: 'PHONE', label: 'Phone', Icon: DevicePhoneMobileIcon },
+  { value: 'COMPUTER', label: 'Computer', Icon: ComputerDesktopIcon },
+  { value: 'GAMING', label: 'Gaming', Icon: Squares2X2Icon },
+  { value: 'OTHER', label: 'Other', Icon: CpuChipIcon },
 ];
 
 const QUICK_TIMES = [15, 30, 60, 120];
@@ -360,22 +365,27 @@ export default function ScreenTimePage() {
             Select Device Type
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {DEVICE_TYPES.map((device) => (
-              <button
-                key={device.value}
-                onClick={() => setSelectedDevice(device.value)}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  selectedDevice === device.value
-                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-indigo-400'
-                }`}
-              >
-                <div className="text-3xl mb-2">{device.icon}</div>
-                <div className="text-sm font-medium text-gray-900 dark:text-white">
-                  {device.label}
-                </div>
-              </button>
-            ))}
+            {DEVICE_TYPES.map((device) => {
+              const DeviceIcon = device.Icon;
+              return (
+                <button
+                  key={device.value}
+                  onClick={() => setSelectedDevice(device.value)}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    selectedDevice === device.value
+                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-indigo-400'
+                  }`}
+                >
+                  <div className="mb-2 flex justify-center">
+                    <DeviceIcon className="h-8 w-8 text-gray-600 dark:text-gray-400" />
+                  </div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    {device.label}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -431,6 +441,7 @@ export default function ScreenTimePage() {
             <div className="space-y-3">
               {stats.deviceBreakdown.map((item) => {
                 const deviceInfo = DEVICE_TYPES.find(d => d.value === item.device) || DEVICE_TYPES[DEVICE_TYPES.length - 1];
+                const DeviceIcon = deviceInfo.Icon;
                 const percentage = stats.summary.totalMinutes > 0
                   ? ((item.minutes / stats.summary.totalMinutes) * 100).toFixed(1)
                   : 0;
@@ -439,7 +450,7 @@ export default function ScreenTimePage() {
                   <div key={item.device}>
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl">{deviceInfo.icon}</span>
+                        <DeviceIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
                           {deviceInfo.label}
                         </span>
@@ -502,6 +513,7 @@ export default function ScreenTimePage() {
                     const deviceInfo = transaction.deviceType
                       ? DEVICE_TYPES.find(d => d.value === transaction.deviceType)
                       : null;
+                    const DeviceIcon = deviceInfo?.Icon;
 
                     return (
                       <tr key={transaction.id}>
@@ -522,7 +534,12 @@ export default function ScreenTimePage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                          {deviceInfo ? `${deviceInfo.icon} ${deviceInfo.label}` : '-'}
+                          {deviceInfo && DeviceIcon ? (
+                            <div className="flex items-center gap-2">
+                              <DeviceIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                              {deviceInfo.label}
+                            </div>
+                          ) : '-'}
                         </td>
                         <td className={`px-4 py-3 text-sm text-right font-medium ${
                           transaction.amountMinutes < 0

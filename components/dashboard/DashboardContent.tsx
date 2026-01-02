@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { MapPinIcon } from '@heroicons/react/24/outline';
+import TransportWidget from '@/components/dashboard/widgets/TransportWidget';
+import MedicationWidget from '@/components/dashboard/widgets/MedicationWidget';
+import MaintenanceWidget from '@/components/dashboard/widgets/MaintenanceWidget';
+import InventoryWidget from '@/components/dashboard/widgets/InventoryWidget';
+import WeatherWidget from '@/components/dashboard/widgets/WeatherWidget';
 
 interface DashboardData {
   chores: Array<{
@@ -351,6 +356,31 @@ export default function DashboardContent() {
             No events scheduled.
           </p>
         )}
+      </div>
+
+      {/* Transport Widget - spans 2 columns on large screens */}
+      <div className="md:col-span-2 lg:col-span-2">
+        <TransportWidget memberId={session?.user?.id} />
+      </div>
+
+      {/* Weather Widget */}
+      <div className="md:col-span-1 lg:col-span-1">
+        <WeatherWidget />
+      </div>
+
+      {/* Medication Widget */}
+      <div className="md:col-span-1 lg:col-span-1">
+        <MedicationWidget memberId={session?.user?.id} />
+      </div>
+
+      {/* Maintenance Widget */}
+      <div className="md:col-span-1 lg:col-span-1">
+        <MaintenanceWidget />
+      </div>
+
+      {/* Inventory Widget */}
+      <div className="md:col-span-1 lg:col-span-1">
+        <InventoryWidget />
       </div>
     </div>
   );

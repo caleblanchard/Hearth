@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { onScreenTimeUpdated } from '@/lib/rules-engine/hooks';
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,6 +72,14 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // Trigger rules engine evaluation (async, fire-and-forget)
+    try {
+      await onScreenTimeUpdated(memberId, session.user.familyId, newBalance);
+    } catch (error) {
+      console.error('Rules engine hook error:', error);
+      // Don't fail the logging if rules engine fails
+    }
 
     return NextResponse.json({
       success: true,

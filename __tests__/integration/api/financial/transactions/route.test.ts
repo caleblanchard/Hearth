@@ -71,6 +71,11 @@ describe('/api/financial/transactions', () => {
     const session = mockParentSession()
     auth.mockResolvedValue(session)
 
+    prismaMock.familyMember.findUnique.mockResolvedValue({
+      id: 'child-1',
+      familyId: session.user.familyId,
+    } as any)
+    prismaMock.creditTransaction.count.mockResolvedValue(1)
     prismaMock.creditTransaction.findMany.mockResolvedValue([mockTransactions[0]] as any)
 
     const request = new NextRequest(
@@ -78,6 +83,10 @@ describe('/api/financial/transactions', () => {
     )
     const response = await GET(request)
 
+    expect(prismaMock.familyMember.findUnique).toHaveBeenCalledWith({
+      where: { id: 'child-1' },
+      select: { familyId: true },
+    })
     expect(prismaMock.creditTransaction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -187,6 +196,11 @@ describe('/api/financial/transactions', () => {
     const session = mockParentSession()
     auth.mockResolvedValue(session)
 
+    prismaMock.familyMember.findUnique.mockResolvedValue({
+      id: 'child-1',
+      familyId: session.user.familyId,
+    } as any)
+    prismaMock.creditTransaction.count.mockResolvedValue(2)
     prismaMock.creditTransaction.findMany.mockResolvedValue(mockTransactions as any)
 
     const request = new NextRequest(
@@ -194,6 +208,10 @@ describe('/api/financial/transactions', () => {
     )
     await GET(request)
 
+    expect(prismaMock.familyMember.findUnique).toHaveBeenCalledWith({
+      where: { id: 'child-1' },
+      select: { familyId: true },
+    })
     expect(prismaMock.creditTransaction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({

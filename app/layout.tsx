@@ -6,10 +6,41 @@ export const metadata: Metadata = {
   title: 'Hearth - Household ERP',
   description: 'A family-first household management system',
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  openGraph: {
+    title: 'Hearth - Household ERP',
+    description: 'A family-first household management system',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Hearth - Household ERP',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Hearth - Household ERP',
+    description: 'A family-first household management system',
+    images: ['/og-image.png'],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Hearth',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
   },
 };
 

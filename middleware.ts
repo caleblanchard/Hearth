@@ -9,10 +9,14 @@ export async function middleware(request: NextRequest) {
   // Skip rate limiting for static files and Next.js internals
   if (
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/auth') ||
     pathname.startsWith('/static') ||
     pathname.includes('.')
   ) {
+    return NextResponse.next();
+  }
+
+  // Skip rate limiting for session checks (read-only, called frequently)
+  if (pathname === '/api/auth/session' || pathname === '/api/auth/csrf') {
     return NextResponse.next();
   }
 

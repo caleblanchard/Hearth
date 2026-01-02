@@ -84,7 +84,7 @@ describe('GET /api/screentime/grace/history', () => {
     const childId = 'child-1';
 
     // Mock member check
-    prismaMock.member.findUnique.mockResolvedValue({
+    prismaMock.familyMember.findUnique.mockResolvedValue({
       id: childId,
       name: 'Test Child',
       email: null,
@@ -225,7 +225,7 @@ describe('GET /api/screentime/grace/history', () => {
     const otherFamilyChildId = 'other-family-child';
 
     // Mock member from different family
-    prismaMock.member.findUnique.mockResolvedValue({
+    prismaMock.familyMember.findUnique.mockResolvedValue({
       id: otherFamilyChildId,
       name: 'Other Family Child',
       email: null,

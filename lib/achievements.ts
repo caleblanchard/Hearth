@@ -1,4 +1,5 @@
 import prisma from './prisma';
+import { onChoreStreak } from './rules-engine/hooks';
 
 export interface AchievementDefinition {
   key: string;
@@ -249,7 +250,11 @@ export async function checkAndAwardAchievement(
 }
 
 // Update streak
-export async function updateStreak(userId: string, type: 'DAILY_CHORES' | 'WEEKLY_CHORES' | 'PERFECT_WEEK' | 'REWARD_SAVER') {
+export async function updateStreak(
+  userId: string,
+  type: 'DAILY_CHORES' | 'WEEKLY_CHORES' | 'PERFECT_WEEK' | 'REWARD_SAVER',
+  familyId?: string
+) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -273,6 +278,18 @@ export async function updateStreak(userId: string, type: 'DAILY_CHORES' | 'WEEKL
         isActive: true,
       },
     });
+
+    // Trigger rules engine hook for streak update
+    if (familyId && type === 'DAILY_CHORES') {
+      try {
+        await onChoreStreak(userId, familyId, {
+          currentStreak: streak.currentCount,
+          longestStreak: streak.longestCount,
+        });
+      } catch (error) {
+        console.error('Rules engine streak hook error:', error);
+      }
+    }
   } else {
     const lastDate = streak.lastActivityDate ? new Date(streak.lastActivityDate) : null;
     if (lastDate) {
@@ -300,6 +317,18 @@ export async function updateStreak(userId: string, type: 'DAILY_CHORES' | 'WEEKL
           if (newCount >= 30) await checkAndAwardAchievement(userId, 'streak_30', newCount);
           if (newCount >= 100) await checkAndAwardAchievement(userId, 'streak_100', newCount);
         }
+
+        // Trigger rules engine hook for streak update
+        if (familyId && type === 'DAILY_CHORES') {
+          try {
+            await onChoreStreak(userId, familyId, {
+              currentStreak: newCount,
+              longestStreak: streak.longestCount,
+            });
+          } catch (error) {
+            console.error('Rules engine streak hook error:', error);
+          }
+        }
       } else {
         // Streak broken
         streak = await prisma.streak.update({
@@ -309,6 +338,18 @@ export async function updateStreak(userId: string, type: 'DAILY_CHORES' | 'WEEKL
             lastActivityDate: today,
           },
         });
+
+        // Trigger rules engine hook for streak reset
+        if (familyId && type === 'DAILY_CHORES') {
+          try {
+            await onChoreStreak(userId, familyId, {
+              currentStreak: 1,
+              longestStreak: streak.longestCount,
+            });
+          } catch (error) {
+            console.error('Rules engine streak hook error:', error);
+          }
+        }
       }
     }
   }

@@ -52,12 +52,15 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { name, timezone, settings } = body;
+    const { name, timezone, settings, location, latitude, longitude } = body;
 
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (timezone !== undefined) updateData.timezone = timezone;
     if (settings !== undefined) updateData.settings = settings;
+    if (location !== undefined) updateData.location = location;
+    if (latitude !== undefined) updateData.latitude = latitude;
+    if (longitude !== undefined) updateData.longitude = longitude;
 
     const updatedFamily = await prisma.family.update({
       where: { id: session.user.familyId },

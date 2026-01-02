@@ -12,6 +12,8 @@ import {
   CheckBadgeIcon,
   UsersIcon,
   CalendarDaysIcon,
+  HeartIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 
 export default function DashboardNav() {
@@ -27,6 +29,8 @@ export default function DashboardNav() {
     { name: 'Calendar', path: '/dashboard/calendar', icon: CalendarDaysIcon },
     { name: 'Shopping', path: '/dashboard/shopping', icon: ShoppingCartIcon },
     { name: 'To-Do', path: '/dashboard/todos', icon: ListBulletIcon },
+    { name: 'Health', path: '/dashboard/health', icon: BeakerIcon },
+    { name: 'Pets', path: '/dashboard/pets', icon: HeartIcon },
   ];
 
   // Add parent-only items

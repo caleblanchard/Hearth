@@ -87,7 +87,7 @@ describe('POST /api/screentime/grace/approve', () => {
 
     prismaMock.gracePeriodLog.findUnique.mockResolvedValue(processedLog);
 
-    prismaMock.member.findUnique.mockResolvedValue({
+    prismaMock.familyMember.findUnique.mockResolvedValue({
       id: 'child-1',
       name: 'Test Child',
       email: null,
@@ -151,7 +151,7 @@ describe('POST /api/screentime/grace/approve', () => {
 
     prismaMock.gracePeriodLog.findUnique.mockResolvedValue(pendingLog);
 
-    prismaMock.member.findUnique.mockResolvedValue({
+    prismaMock.familyMember.findUnique.mockResolvedValue({
       id: 'child-1',
       name: 'Test Child',
       email: null,
@@ -247,7 +247,7 @@ describe('POST /api/screentime/grace/approve', () => {
 
     prismaMock.gracePeriodLog.findUnique.mockResolvedValue(pendingLog);
 
-    prismaMock.member.findUnique.mockResolvedValue({
+    prismaMock.familyMember.findUnique.mockResolvedValue({
       id: 'child-1',
       name: 'Test Child',
       email: null,
@@ -308,7 +308,7 @@ describe('POST /api/screentime/grace/approve', () => {
     expect(prismaMock.notification.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          memberId: 'child-1',
+          userId: 'child-1',
           title: expect.stringContaining('denied'),
         }),
       })
@@ -334,7 +334,7 @@ describe('POST /api/screentime/grace/approve', () => {
     prismaMock.gracePeriodLog.findUnique.mockResolvedValue(pendingLog);
 
     // Child is in different family
-    prismaMock.member.findUnique.mockResolvedValue({
+    prismaMock.familyMember.findUnique.mockResolvedValue({
       id: 'child-1',
       name: 'Test Child',
       email: null,

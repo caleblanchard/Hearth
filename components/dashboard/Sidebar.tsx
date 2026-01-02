@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
@@ -24,12 +24,21 @@ import {
   CurrencyDollarIcon,
   BanknotesIcon,
   ReceiptPercentIcon,
+  ComputerDesktopIcon,
+  HeartIcon,
+  BeakerIcon,
+  CakeIcon,
+  Cog6ToothIcon,
+  ArchiveBoxIcon,
+  TruckIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
   name: string;
   path: string;
   icon: any;
+  moduleId?: string; // Optional module ID for filtering
 }
 
 interface NavGroup {
@@ -46,6 +55,31 @@ export default function Sidebar() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set(['Tasks & Activities', 'Family Management', 'Settings'])
   );
+  const [enabledModules, setEnabledModules] = useState<Set<string>>(new Set());
+
+  // Fetch enabled modules
+  useEffect(() => {
+    async function fetchEnabledModules() {
+      try {
+        const res = await fetch('/api/settings/modules/enabled');
+        if (res.ok) {
+          const data = await res.json();
+          setEnabledModules(new Set(data.enabledModules));
+        }
+      } catch (error) {
+        console.error('Error fetching enabled modules:', error);
+        // On error, assume all modules are enabled
+        setEnabledModules(new Set([
+          'CHORES', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS',
+          'ROUTINES', 'MEAL_PLANNING', 'HEALTH', 'PETS', 'LEADERBOARD', 'FINANCIAL',
+          'INVENTORY', 'MAINTENANCE', 'TRANSPORT', 'DOCUMENTS'
+        ]));
+      }
+    }
+    if (session?.user) {
+      fetchEnabledModules();
+    }
+  }, [session]);
 
   const toggleGroup = (groupName: string) => {
     const newExpanded = new Set(expandedGroups);
@@ -65,22 +99,29 @@ export default function Sidebar() {
     {
       name: 'Tasks & Activities',
       items: [
-        { name: 'Chores', path: '/dashboard/chores', icon: CheckCircleIcon },
-        { name: 'To-Do', path: '/dashboard/todos', icon: ListBulletIcon },
-        { name: 'Shopping', path: '/dashboard/shopping', icon: ShoppingCartIcon },
+        { name: 'Chores', path: '/dashboard/chores', icon: CheckCircleIcon, moduleId: 'CHORES' },
+        { name: 'To-Do', path: '/dashboard/todos', icon: ListBulletIcon, moduleId: 'TODOS' },
+        { name: 'Shopping', path: '/dashboard/shopping', icon: ShoppingCartIcon, moduleId: 'SHOPPING' },
       ],
     },
     {
       name: 'Family Management',
       items: [
-        { name: 'Rewards', path: '/dashboard/rewards', icon: GiftIcon },
-        { name: 'Screen Time', path: '/dashboard/screentime', icon: ClockIcon },
-        { name: 'Financial', path: '/dashboard/financial', icon: ChartBarIcon },
-        { name: 'Transactions', path: '/dashboard/financial/transactions', icon: ReceiptPercentIcon },
-        { name: 'Savings Goals', path: '/dashboard/financial/savings', icon: BanknotesIcon },
-        { name: 'Budgets', path: '/dashboard/financial/budgets', icon: BanknotesIcon },
-        { name: 'Calendar', path: '/dashboard/calendar', icon: CalendarDaysIcon },
-        { name: 'Leaderboard', path: '/dashboard/leaderboard', icon: TrophyIcon },
+        { name: 'Rewards', path: '/dashboard/rewards', icon: GiftIcon, moduleId: 'CREDITS' },
+        { name: 'Screen Time', path: '/dashboard/screentime', icon: ClockIcon, moduleId: 'SCREEN_TIME' },
+        { name: 'Financial', path: '/dashboard/financial', icon: ChartBarIcon, moduleId: 'FINANCIAL' },
+        { name: 'Transactions', path: '/dashboard/financial/transactions', icon: ReceiptPercentIcon, moduleId: 'FINANCIAL' },
+        { name: 'Savings Goals', path: '/dashboard/financial/savings', icon: BanknotesIcon, moduleId: 'FINANCIAL' },
+        { name: 'Budgets', path: '/dashboard/financial/budgets', icon: BanknotesIcon, moduleId: 'FINANCIAL' },
+        { name: 'Calendar', path: '/dashboard/calendar', icon: CalendarDaysIcon, moduleId: 'CALENDAR' },
+        { name: 'Meals', path: '/dashboard/meals', icon: CakeIcon, moduleId: 'MEAL_PLANNING' },
+        { name: 'Health', path: '/dashboard/health', icon: BeakerIcon, moduleId: 'HEALTH' },
+        { name: 'Pets', path: '/dashboard/pets', icon: HeartIcon, moduleId: 'PETS' },
+        { name: 'Inventory', path: '/dashboard/inventory', icon: ArchiveBoxIcon, moduleId: 'INVENTORY' },
+        { name: 'Maintenance', path: '/dashboard/maintenance', icon: WrenchScrewdriverIcon, moduleId: 'MAINTENANCE' },
+        { name: 'Transportation', path: '/dashboard/transport', icon: TruckIcon, moduleId: 'TRANSPORT' },
+        { name: 'Documents', path: '/dashboard/documents', icon: DocumentTextIcon, moduleId: 'DOCUMENTS' },
+        { name: 'Leaderboard', path: '/dashboard/leaderboard', icon: TrophyIcon, moduleId: 'LEADERBOARD' },
         { name: 'Profile', path: '/dashboard/profile', icon: UserCircleIcon },
       ],
     },
@@ -89,8 +130,16 @@ export default function Sidebar() {
   // Add parent-only settings group
   if (session?.user?.role === 'PARENT') {
     navGroups.push({
+      name: 'Kiosk',
+      items: [
+        { name: 'Kiosk Mode', path: '/kiosk', icon: ComputerDesktopIcon },
+        { name: 'Kiosk Settings', path: '/dashboard/settings/kiosk', icon: WrenchScrewdriverIcon },
+      ],
+    });
+    navGroups.push({
       name: 'Settings',
       items: [
+        { name: 'Module Settings', path: '/dashboard/settings/modules', icon: Cog6ToothIcon },
         { name: 'Reports', path: '/dashboard/reports', icon: ChartBarIcon },
         { name: 'Approvals', path: '/dashboard/approvals', icon: CheckBadgeIcon },
         { name: 'Manage Chores', path: '/dashboard/chores/manage', icon: WrenchScrewdriverIcon },
@@ -129,11 +178,22 @@ export default function Sidebar() {
     const isExpanded = expandedGroups.has(group.name);
     const isMainGroup = group.name === 'Main';
 
+    // Filter items based on enabled modules
+    const filteredItems = group.items.filter((item) => {
+      // If no moduleId, always show (like Dashboard, Profile, Family)
+      if (!item.moduleId) return true;
+      // Check if module is enabled
+      return enabledModules.has(item.moduleId);
+    });
+
+    // Don't render empty groups
+    if (filteredItems.length === 0) return null;
+
     if (isMainGroup) {
       // Main group items are always visible, no grouping
       return (
         <div key={group.name} className="space-y-1">
-          {group.items.map(renderNavItem)}
+          {filteredItems.map(renderNavItem)}
         </div>
       );
     }
@@ -154,7 +214,7 @@ export default function Sidebar() {
           </button>
         )}
         {(!isOpen || isExpanded) && (
-          <div className="space-y-1">{group.items.map(renderNavItem)}</div>
+          <div className="space-y-1">{filteredItems.map(renderNavItem)}</div>
         )}
       </div>
     );
@@ -164,10 +224,23 @@ export default function Sidebar() {
     <div className="flex flex-col h-full">
       {/* Sidebar Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        {isOpen && (
-          <h1 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-            Hearth
-          </h1>
+        {isOpen ? (
+          <div className="flex items-center gap-2">
+            <img 
+              src="/logo-icon.png" 
+              alt="Hearth" 
+              className="h-8 w-8"
+            />
+            <h1 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+              Hearth
+            </h1>
+          </div>
+        ) : (
+          <img 
+            src="/logo-icon.png" 
+            alt="Hearth" 
+            className="h-8 w-8 mx-auto"
+          />
         )}
         <button
           onClick={() => setIsOpen(!isOpen)}

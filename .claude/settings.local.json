@@ -16,7 +16,14 @@
       "Bash(grep:*)",
       "Bash(npm test:*)",
       "Bash(ls:*)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(node -e:*)",
+      "Bash(CHOKIDAR_USEPOLLING=1 npm test:*)",
+      "Bash(node_modules/.bin/jest __tests__/integration/api/documents --watchAll=false --no-watchman)",
+      "Bash(node_modules/.bin/jest:*)",
+      "Bash(WEATHER_API_KEY=test-api-key node_modules/.bin/jest:*)",
+      "Bash(xargs:*)",
+      "Bash(done)"
     ]
   }
 }

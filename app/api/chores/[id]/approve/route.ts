@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { checkAndAwardAchievement, updateStreak } from '@/lib/achievements';
+import { onChoreCompleted } from '@/lib/rules-engine/hooks';
 
 export async function POST(
   _request: NextRequest,
@@ -159,10 +160,25 @@ export async function POST(
       }
 
       // Update daily streak
-      await updateStreak(choreInstance.assignedToId, 'DAILY_CHORES');
+      await updateStreak(choreInstance.assignedToId, 'DAILY_CHORES', session.user.familyId);
     } catch (error) {
       console.error('Achievement check error:', error);
       // Don't fail the approval if achievement check fails
+    }
+
+    // Trigger rules engine evaluation (async, fire-and-forget)
+    try {
+      await onChoreCompleted(
+        {
+          id: updatedChore.id,
+          assignedToId: updatedChore.assignedToId,
+          choreDefinitionId: choreInstance.choreSchedule.choreDefinitionId,
+        },
+        session.user.familyId
+      );
+    } catch (error) {
+      console.error('Rules engine hook error:', error);
+      // Don't fail the approval if rules engine fails
     }
 
     return NextResponse.json({

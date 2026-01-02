@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { AlertModal, ConfirmModal } from '@/components/ui/Modal';
+import GraceSettingsPanel from '@/components/screentime/GraceSettingsPanel';
 import {
   ClockIcon,
   ChartBarIcon,
@@ -11,6 +12,8 @@ import {
   MinusIcon,
   UserIcon,
   ArrowPathIcon,
+  Cog6ToothIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 interface FamilyMember {
@@ -30,6 +33,7 @@ export default function ManageScreenTimePage() {
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
+  const [graceSettingsMember, setGraceSettingsMember] = useState<FamilyMember | null>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
   const [adjustmentReason, setAdjustmentReason] = useState('');
   const [adjusting, setAdjusting] = useState(false);
@@ -220,13 +224,22 @@ export default function ManageScreenTimePage() {
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => setSelectedMember(member)}
-                    className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <ArrowPathIcon className="h-5 w-5" />
-                    Adjust Balance
-                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setSelectedMember(member)}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <ArrowPathIcon className="h-5 w-5" />
+                      Adjust
+                    </button>
+                    <button
+                      onClick={() => setGraceSettingsMember(member)}
+                      className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Cog6ToothIcon className="h-5 w-5" />
+                      Grace
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -308,6 +321,36 @@ export default function ManageScreenTimePage() {
                     Cancel
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Grace Settings Modal */}
+        {graceSettingsMember && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-2xl w-full my-8">
+              <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    Grace Settings - {graceSettingsMember.name}
+                  </h2>
+                  <button
+                    onClick={() => setGraceSettingsMember(null)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                <GraceSettingsPanel
+                  memberId={graceSettingsMember.id}
+                  memberName={graceSettingsMember.name}
+                  onSettingsSaved={() => {
+                    setTimeout(() => setGraceSettingsMember(null), 2000);
+                  }}
+                />
               </div>
             </div>
           </div>

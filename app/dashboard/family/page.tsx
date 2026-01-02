@@ -32,6 +32,9 @@ interface Family {
   id: string;
   name: string;
   timezone: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
   settings: {
     currency: string;
     weekStartDay: string;
@@ -51,6 +54,9 @@ export default function FamilyPage() {
     timezone: 'America/New_York',
     currency: 'USD',
     weekStartDay: 'SUNDAY',
+    location: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
 
   const [addMemberModal, setAddMemberModal] = useState(false);
@@ -92,6 +98,9 @@ export default function FamilyPage() {
           timezone: data.family.timezone,
           currency: data.family.settings.currency,
           weekStartDay: data.family.settings.weekStartDay,
+          location: data.family.location || '',
+          latitude: data.family.latitude || null,
+          longitude: data.family.longitude || null,
         });
       }
     } catch (error) {
@@ -118,6 +127,9 @@ export default function FamilyPage() {
             currency: familySettings.currency,
             weekStartDay: familySettings.weekStartDay,
           },
+          location: familySettings.location || null,
+          latitude: familySettings.latitude || null,
+          longitude: familySettings.longitude || null,
         }),
       });
 
@@ -488,6 +500,74 @@ export default function FamilyPage() {
                   </select>
                 </div>
               </div>
+              
+              {/* Location Settings for Weather */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Location (for Weather Widget)
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Location Name (City, State or Address)
+                    </label>
+                    <input
+                      type="text"
+                      value={familySettings.location}
+                      onChange={(e) => setFamilySettings({ ...familySettings, location: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                      placeholder="e.g., New York, NY"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Latitude
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={familySettings.latitude ?? ''}
+                        onChange={(e) => setFamilySettings({ 
+                          ...familySettings, 
+                          latitude: e.target.value ? parseFloat(e.target.value) : null 
+                        })}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                        placeholder="e.g., 40.7128"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Longitude
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={familySettings.longitude ?? ''}
+                        onChange={(e) => setFamilySettings({ 
+                          ...familySettings, 
+                          longitude: e.target.value ? parseFloat(e.target.value) : null 
+                        })}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                        placeholder="e.g., -74.0060"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Enter your location coordinates for accurate weather data. You can find coordinates using{' '}
+                    <a 
+                      href="https://www.latlong.net/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      latlong.net
+                    </a>
+                    {' '}or search for your city.
+                  </p>
+                </div>
+              </div>
+
               <div className="flex gap-3">
                 <button
                   onClick={handleSaveSettings}
@@ -504,6 +584,9 @@ export default function FamilyPage() {
                       timezone: family.timezone,
                       currency: family.settings.currency,
                       weekStartDay: family.settings.weekStartDay,
+                      location: family.location || '',
+                      latitude: family.latitude || null,
+                      longitude: family.longitude || null,
                     });
                   }}
                   className="px-6 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white font-semibold rounded-lg transition-colors"
@@ -530,6 +613,12 @@ export default function FamilyPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Week Starts On</p>
                 <p className="text-lg font-medium text-gray-900 dark:text-white">{family.settings.weekStartDay}</p>
               </div>
+              {family.location && (
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Location</p>
+                  <p className="text-lg font-medium text-gray-900 dark:text-white">{family.location}</p>
+                </div>
+              )}
             </div>
           )}
         </div>

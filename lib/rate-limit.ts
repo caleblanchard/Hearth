@@ -10,7 +10,7 @@ interface RateLimitEntry {
   resetTime: number;
 }
 
-class RateLimiter {
+export class RateLimiter {
   private store: Map<string, RateLimitEntry> = new Map();
   private cleanupInterval: NodeJS.Timeout;
   public readonly maxRequests: number;
@@ -99,7 +99,7 @@ class RateLimiter {
 
 // Create rate limiters for different endpoints
 export const apiRateLimiter = new RateLimiter(60000, 100); // 100 requests per minute
-export const authRateLimiter = new RateLimiter(60000, 5); // 5 requests per minute for auth
+export const authRateLimiter = new RateLimiter(60000, 50); // 50 requests per minute for auth (signin/signout)
 export const cronRateLimiter = new RateLimiter(60000, 10); // 10 requests per minute for cron
 
 /**

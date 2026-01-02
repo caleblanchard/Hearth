@@ -78,7 +78,7 @@ describe('/api/screentime/grace/settings', () => {
       };
 
       // Mock member check
-      prismaMock.member.findUnique.mockResolvedValue({
+      prismaMock.familyMember.findUnique.mockResolvedValue({
         id: childId,
         name: 'Test Child',
         email: null,
@@ -108,7 +108,7 @@ describe('/api/screentime/grace/settings', () => {
       const otherChildId = 'other-child';
 
       // Mock member check
-      prismaMock.member.findUnique.mockResolvedValue({
+      prismaMock.familyMember.findUnique.mockResolvedValue({
         id: otherChildId,
         name: 'Other Child',
         email: null,
@@ -165,7 +165,7 @@ describe('/api/screentime/grace/settings', () => {
       const otherFamilyChildId = 'other-family-child';
 
       // Mock member from different family
-      prismaMock.member.findUnique.mockResolvedValue({
+      prismaMock.familyMember.findUnique.mockResolvedValue({
         id: otherFamilyChildId,
         name: 'Other Family Child',
         email: null,
@@ -221,7 +221,7 @@ describe('/api/screentime/grace/settings', () => {
       const session = mockParentSession();
       auth.mockResolvedValue(session);
 
-      prismaMock.member.findUnique.mockResolvedValue({
+      prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
         name: 'Test Child',
         email: null,
@@ -255,7 +255,7 @@ describe('/api/screentime/grace/settings', () => {
       const session = mockParentSession();
       auth.mockResolvedValue(session);
 
-      prismaMock.member.findUnique.mockResolvedValue({
+      prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
         name: 'Test Child',
         email: null,
@@ -302,7 +302,7 @@ describe('/api/screentime/grace/settings', () => {
         updatedAt: new Date(),
       };
 
-      prismaMock.member.findUnique.mockResolvedValue({
+      prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
         name: 'Test Child',
         email: null,
@@ -339,7 +339,7 @@ describe('/api/screentime/grace/settings', () => {
       const session = mockParentSession();
       auth.mockResolvedValue(session);
 
-      prismaMock.member.findUnique.mockResolvedValue({
+      prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
         name: 'Test Child',
         email: null,

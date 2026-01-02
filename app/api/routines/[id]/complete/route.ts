@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { onRoutineCompleted } from '@/lib/rules-engine/hooks';
 
 export async function POST(
   request: NextRequest,
@@ -100,6 +101,23 @@ export async function POST(
           },
         },
       });
+
+      // Trigger rules engine evaluation (async, fire-and-forget)
+      try {
+        await onRoutineCompleted(
+          {
+            id: completion.id,
+            routineId: completion.routineId,
+            memberId: completion.memberId,
+            completedAt: completion.date,
+          },
+          session.user.familyId,
+          routine.type
+        );
+      } catch (error) {
+        console.error('Rules engine hook error:', error);
+        // Don't fail the completion if rules engine fails
+      }
 
       return NextResponse.json(
         {

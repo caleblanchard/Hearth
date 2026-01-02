@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
-import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 const CATEGORIES = [
   { value: 'PRIVILEGE', label: 'Privilege' },
@@ -333,9 +333,19 @@ export default function ManageRewardsPage() {
                   setShowAddForm(true);
                 }
               }}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
             >
-              {showAddForm ? '✕ Cancel' : '+ Add Reward'}
+              {showAddForm ? (
+                <>
+                  <XMarkIcon className="h-5 w-5" />
+                  Cancel
+                </>
+              ) : (
+                <>
+                  <PlusIcon className="h-5 w-5" />
+                  Add Reward
+                </>
+              )}
             </button>
           </div>
         </div>

@@ -61,6 +61,7 @@ describe('GET /api/screentime/grace/status', () => {
     prismaMock.screenTimeGraceSettings.findUnique.mockResolvedValue(settings);
     prismaMock.screenTimeBalance.findUnique.mockResolvedValue(balance);
     prismaMock.gracePeriodLog.count.mockResolvedValue(0); // No uses today or this week
+    prismaMock.gracePeriodLog.findMany.mockResolvedValue([]); // No borrowed minutes
 
     const request = new Request('http://localhost/api/screentime/grace/status');
     const response = await GET(request as NextRequest);
@@ -108,6 +109,7 @@ describe('GET /api/screentime/grace/status', () => {
     prismaMock.gracePeriodLog.count
       .mockResolvedValueOnce(1) // Today
       .mockResolvedValueOnce(3); // This week
+    prismaMock.gracePeriodLog.findMany.mockResolvedValue([]); // No borrowed minutes
 
     const request = new Request('http://localhost/api/screentime/grace/status');
     const response = await GET(request as NextRequest);
@@ -148,6 +150,7 @@ describe('GET /api/screentime/grace/status', () => {
     prismaMock.screenTimeGraceSettings.findUnique.mockResolvedValue(settings);
     prismaMock.screenTimeBalance.findUnique.mockResolvedValue(balance);
     prismaMock.gracePeriodLog.count.mockResolvedValue(0);
+    prismaMock.gracePeriodLog.findMany.mockResolvedValue([]); // No borrowed minutes
 
     const request = new Request('http://localhost/api/screentime/grace/status');
     const response = await GET(request as NextRequest);
@@ -165,7 +168,7 @@ describe('GET /api/screentime/grace/status', () => {
     const childId = 'child-1';
 
     // Mock member check
-    prismaMock.member.findUnique.mockResolvedValue({
+    prismaMock.familyMember.findUnique.mockResolvedValue({
       id: childId,
       name: 'Test Child',
       email: null,
@@ -202,6 +205,7 @@ describe('GET /api/screentime/grace/status', () => {
     prismaMock.screenTimeGraceSettings.findUnique.mockResolvedValue(settings);
     prismaMock.screenTimeBalance.findUnique.mockResolvedValue(balance);
     prismaMock.gracePeriodLog.count.mockResolvedValue(0);
+    prismaMock.gracePeriodLog.findMany.mockResolvedValue([]); // No borrowed minutes
 
     const request = new Request(
       `http://localhost/api/screentime/grace/status?memberId=${childId}`
@@ -221,7 +225,7 @@ describe('GET /api/screentime/grace/status', () => {
     const otherFamilyChildId = 'other-family-child';
 
     // Mock member from different family
-    prismaMock.member.findUnique.mockResolvedValue({
+    prismaMock.familyMember.findUnique.mockResolvedValue({
       id: otherFamilyChildId,
       name: 'Other Family Child',
       email: null,

@@ -18,6 +18,9 @@ model Family {
   id        String   @id @default(uuid())
   name      String
   timezone  String   @default("America/New_York")
+  location  String?  // City, State or address for display
+  latitude  Float?   // For weather API
+  longitude Float?   // For weather API
   settings  Json?    @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -36,6 +39,20 @@ model Family {
   leaderboardEntries     LeaderboardEntry[]
   routines               Routine[]
   communicationPosts     CommunicationPost[]
+  mealPlans              MealPlan[]
+  leftovers              Leftover[]
+  recipes                Recipe[]
+  pets                   Pet[]
+  inventoryItems         InventoryItem[]
+  maintenanceItems       MaintenanceItem[]
+  transportSchedules     TransportSchedule[]
+  transportLocations     TransportLocation[]
+  transportDrivers       TransportDriver[]
+  carpoolGroups          CarpoolGroup[]
+  documents              Document[]
+  kioskSessions          KioskSession[]
+  kioskSettings          KioskSettings?
+  automationRules        AutomationRule[]
 
   @@map("families")
 }
@@ -103,6 +120,20 @@ model FamilyMember {
   routineCompletions                RoutineCompletion[]
   postsAuthored                     CommunicationPost[]   @relation("PostAuthor")
   postReactions                     PostReaction[]
+  leftoversCreated                  Leftover[]
+  recipesCreated                    Recipe[]
+  recipeRatings                     RecipeRating[]
+  petFeedings                       PetFeeding[]
+  maintenanceCompletions            MaintenanceCompletion[]
+  transportSchedules                TransportSchedule[]
+  documentsUploaded                 Document[]
+  documentAccessLogs                DocumentAccessLog[]
+  medicationSafety                  MedicationSafety[]
+  kioskSessionsAsMember             KioskSession[]
+  healthEvents                      HealthEvent[]
+  temperatureLogs                   TemperatureLog[]
+  medicalProfile                    MedicalProfile?
+  automationRulesCreated            AutomationRule[]
 
   @@index([familyId])
   @@index([email])
@@ -131,12 +162,15 @@ enum ModuleId {
   PETS
   MAINTENANCE
   DOCUMENTS
+  FINANCIAL
+  LEADERBOARD
+  RULES_ENGINE
 }
 
 model ModuleConfiguration {
   id         String    @id @default(uuid())
   familyId   String
-  moduleId   ModuleId  @unique
+  moduleId   ModuleId
   isEnabled  Boolean   @default(true)
   enabledAt  DateTime?
   disabledAt DateTime?
@@ -147,7 +181,7 @@ model ModuleConfiguration {
   // Relations
   family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
-  @@index([familyId, moduleId])
+  @@unique([familyId, moduleId])
   @@map("module_configurations")
 }
 
@@ -773,6 +807,49 @@ model GuestSession {
 }
 
 // ============================================
+// KIOSK MODE
+// ============================================
+
+model KioskSession {
+  id                String    @id @default(uuid())
+  familyId          String
+  deviceId          String    @unique
+  sessionToken      String    @unique @default(uuid())
+  isActive          Boolean   @default(true)
+  currentMemberId   String?
+  lastActivityAt    DateTime  @default(now())
+  autoLockMinutes   Int       @default(15)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  family            Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  currentMember     FamilyMember? @relation(fields: [currentMemberId], references: [id], onDelete: SetNull)
+
+  @@index([familyId])
+  @@index([deviceId])
+  @@index([sessionToken])
+  @@map("kiosk_sessions")
+}
+
+model KioskSettings {
+  id                  String   @id @default(uuid())
+  familyId            String   @unique
+  isEnabled           Boolean  @default(true)
+  autoLockMinutes     Int      @default(15)
+  enabledWidgets      String[]
+  allowGuestView      Boolean  @default(true)
+  requirePinForSwitch Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  family              Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@map("kiosk_settings")
+}
+
+// ============================================
 // FILE STORAGE
 // ============================================
 
@@ -864,10 +941,106 @@ enum AuditAction {
   POST_PINNED
   POST_UNPINNED
 
+  // Meal Planning
+  MEAL_PLAN_CREATED
+  MEAL_ENTRY_ADDED
+  MEAL_ENTRY_UPDATED
+  MEAL_ENTRY_DELETED
+
+  // Leftovers
+  LEFTOVER_LOGGED
+  LEFTOVER_MARKED_USED
+  LEFTOVER_MARKED_TOSSED
+
+  // Recipes
+  RECIPE_CREATED
+  RECIPE_UPDATED
+  RECIPE_DELETED
+  RECIPE_RATED
+
+  // Pets
+  PET_ADDED
+  PET_UPDATED
+  PET_DELETED
+  PET_FED
+  PET_MEDICATION_GIVEN
+  PET_VET_VISIT_LOGGED
+  PET_WEIGHT_LOGGED
+
+  // Inventory
+  INVENTORY_ITEM_ADDED
+  INVENTORY_ITEM_UPDATED
+  INVENTORY_ITEM_DELETED
+  INVENTORY_QUANTITY_ADJUSTED
+  INVENTORY_ITEM_RESTOCKED
+
+  // Maintenance
+  MAINTENANCE_ITEM_CREATED
+  MAINTENANCE_ITEM_UPDATED
+  MAINTENANCE_ITEM_DELETED
+  MAINTENANCE_TASK_COMPLETED
+
+  // Guest Access
+  GUEST_INVITE_CREATED
+  GUEST_INVITE_REVOKED
+  GUEST_SESSION_STARTED
+  GUEST_SESSION_ENDED
+  GUEST_ACCESS_DENIED
+
+  // Kiosk Mode
+  KIOSK_SESSION_STARTED
+  KIOSK_SESSION_ENDED
+  KIOSK_MEMBER_SWITCHED
+  KIOSK_AUTO_LOCKED
+  KIOSK_SETTINGS_UPDATED
+
+  // Transportation & Carpool
+  TRANSPORT_SCHEDULE_CREATED
+  TRANSPORT_SCHEDULE_UPDATED
+  TRANSPORT_SCHEDULE_DELETED
+  TRANSPORT_LOCATION_ADDED
+  TRANSPORT_DRIVER_ADDED
+  CARPOOL_GROUP_CREATED
+  CARPOOL_MEMBER_ADDED
+  TRANSPORT_CONFIRMED
+
+  // Document Vault
+  DOCUMENT_UPLOADED
+  DOCUMENT_UPDATED
+  DOCUMENT_DELETED
+  DOCUMENT_ACCESSED
+  DOCUMENT_SHARED
+  DOCUMENT_SHARE_ACCESSED
+
+  // Medication Safety
+  MEDICATION_SAFETY_CREATED
+  MEDICATION_DOSE_LOGGED
+  MEDICATION_DOSE_OVERRIDE
+  MEDICATION_SAFETY_UPDATED
+  MEDICATION_SAFETY_DELETED
+
+  // Health & Wellbeing
+  HEALTH_EVENT_CREATED
+  HEALTH_EVENT_UPDATED
+  HEALTH_EVENT_ENDED
+  HEALTH_SYMPTOM_LOGGED
+  HEALTH_MEDICATION_GIVEN
+  TEMPERATURE_LOGGED
+  MEDICAL_PROFILE_UPDATED
+
   // Shopping
   SHOPPING_ITEM_ADDED
   SHOPPING_ITEM_UPDATED
   SHOPPING_ITEM_DELETED
+
+  // Rules Engine
+  RULE_CREATED
+  RULE_UPDATED
+  RULE_DELETED
+  RULE_ENABLED
+  RULE_DISABLED
+  RULE_EXECUTED
+  RULE_TEST_RUN
 
   // Settings
   SETTINGS_CHANGED
@@ -1254,4 +1427,839 @@ enum PostType {
   KUDOS
   NOTE
   PHOTO
+}
+
+// ============================================================
+// Meal Planning Module
+// ============================================================
+
+model MealPlan {
+  id        String          @id @default(uuid())
+  familyId  String
+  weekStart DateTime        // Monday of the week
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  family Family          @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  meals  MealPlanEntry[]
+
+  @@unique([familyId, weekStart])
+  @@index([familyId])
+  @@index([weekStart])
+  @@map("meal_plans")
+}
+
+model MealPlanEntry {
+  id         String    @id @default(uuid())
+  mealPlanId String
+  date       DateTime  // Specific day
+  mealType   MealType
+  recipeId   String?   // Future: link to Recipe model
+  customName String?   // If not using a recipe
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  @@index([mealPlanId])
+  @@index([date])
+  @@map("meal_plan_entries")
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+// ============================================
+// LEFTOVERS TRACKING
+// ============================================
+
+model Leftover {
+  id              String   @id @default(uuid())
+  familyId        String
+  name            String
+  mealPlanEntryId String?  // Link to original meal if applicable
+  quantity        String?  // "Half a lasagna", "2 servings"
+  storedAt        DateTime @default(now())
+  expiresAt       DateTime // Auto-calculated based on default (3 days) + manual override
+  usedAt          DateTime?
+  tossedAt        DateTime?
+  notes           String?
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  family  Family       @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  creator FamilyMember @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([expiresAt])
+  @@index([familyId, usedAt, tossedAt]) // For active leftovers query
+  @@map("leftovers")
+}
+
+// ============================================
+// RECIPE MANAGEMENT
+// ============================================
+
+model Recipe {
+  id              String   @id @default(uuid())
+  familyId        String
+  name            String
+  description     String?
+  prepTimeMinutes Int?
+  cookTimeMinutes Int?
+  servings        Int      @default(4)
+  difficulty      Difficulty @default(MEDIUM)
+  imageUrl        String?
+  sourceUrl       String?  // If imported from web
+  instructions    String   // JSON array of steps
+  notes           String?
+  isFavorite      Boolean  @default(false)
+  category        RecipeCategory?
+  dietaryTags     DietaryTag[]
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  family      Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  creator     FamilyMember       @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  ingredients RecipeIngredient[]
+  ratings     RecipeRating[]
+
+  @@index([familyId])
+  @@index([category])
+  @@index([isFavorite])
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id        String  @id @default(uuid())
+  recipeId  String
+  name      String
+  quantity  Float
+  unit      String  // cups, tbsp, lbs, oz, etc.
+  notes     String? // "diced", "room temperature"
+  sortOrder Int     @default(0)
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+  @@map("recipe_ingredients")
+}
+
+model RecipeRating {
+  id        String   @id @default(uuid())
+  recipeId  String
+  memberId  String
+  rating    Int      // 1-5 stars
+  notes     String?
+  createdAt DateTime @default(now())
+
+  recipe Recipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  member FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, memberId]) // One rating per member per recipe
+  @@index([recipeId])
+  @@map("recipe_ratings")
+}
+
+enum RecipeCategory {
+  BREAKFAST
+  LUNCH
+  DINNER
+  DESSERT
+  SNACK
+  SIDE
+  APPETIZER
+  DRINK
+}
+
+enum DietaryTag {
+  VEGETARIAN
+  VEGAN
+  GLUTEN_FREE
+  DAIRY_FREE
+  NUT_FREE
+  EGG_FREE
+  SOY_FREE
+  LOW_CARB
+  KETO
+  PALEO
+}
+
+// ============================================
+// PET CARE MODULE
+// ============================================
+
+model Pet {
+  id          String          @id @default(uuid())
+  familyId    String
+  name        String
+  species     PetSpecies
+  breed       String?
+  birthday    DateTime?
+  imageUrl    String?
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relations
+  family      Family          @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  feedings    PetFeeding[]
+  medications PetMedication[]
+  vetVisits   PetVetVisit[]
+  weights     PetWeight[]
+
+  @@index([familyId])
+  @@map("pets")
+}
+
+model PetFeeding {
+  id        String       @id @default(uuid())
+  petId     String
+  fedAt     DateTime     @default(now())
+  fedBy     String
+  foodType  String?
+  amount    String?
+  notes     String?
+  createdAt DateTime     @default(now())
+
+  // Relations
+  pet    Pet          @relation(fields: [petId], references: [id], onDelete: Cascade)
+  member FamilyMember @relation(fields: [fedBy], references: [id], onDelete: Cascade)
+
+  @@index([petId])
+  @@index([fedAt])
+  @@map("pet_feedings")
+}
+
+model PetMedication {
+  id               String    @id @default(uuid())
+  petId            String
+  medicationName   String
+  dosage           String
+  frequency        String    // "Daily", "Twice daily", "As needed"
+  minIntervalHours Int?      // For countdown timer
+  lastGivenAt      DateTime?
+  lastGivenBy      String?
+  nextDoseAt       DateTime? // Calculated field
+  notes            String?
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  pet  Pet                 @relation(fields: [petId], references: [id], onDelete: Cascade)
+  doses PetMedicationDose[]
+
+  @@index([petId])
+  @@index([nextDoseAt])
+  @@map("pet_medications")
+}
+
+model PetMedicationDose {
+  id               String         @id @default(uuid())
+  medicationId     String
+  givenAt          DateTime       @default(now())
+  givenBy          String
+  dosage           String
+  notes            String?
+  createdAt        DateTime       @default(now())
+
+  // Relations
+  medication PetMedication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@index([medicationId])
+  @@index([givenAt])
+  @@map("pet_medication_doses")
+}
+
+model PetVetVisit {
+  id         String    @id @default(uuid())
+  petId      String
+  visitDate  DateTime
+  reason     String
+  diagnosis  String?
+  treatment  String?
+  cost       Float?
+  nextVisit  DateTime?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relations
+  pet Pet @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId])
+  @@index([visitDate])
+  @@map("pet_vet_visits")
+}
+
+model PetWeight {
+  id         String   @id @default(uuid())
+  petId      String
+  weight     Float
+  unit       String   // lbs or kg
+  recordedAt DateTime @default(now())
+  notes      String?
+
+  // Relations
+  pet Pet @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId])
+  @@index([recordedAt])
+  @@map("pet_weights")
+}
+
+enum PetSpecies {
+  DOG
+  CAT
+  BIRD
+  FISH
+  HAMSTER
+  RABBIT
+  GUINEA_PIG
+  REPTILE
+  OTHER
+}
+
+// ============================================
+// HOUSEHOLD INVENTORY MODULE
+// ============================================
+
+model InventoryItem {
+  id                String            @id @default(uuid())
+  familyId          String
+  name              String
+  category          InventoryCategory
+  location          InventoryLocation
+  currentQuantity   Float             @default(0)
+  unit              String            // count, oz, lbs, liters, etc.
+  lowStockThreshold Float?
+  expiresAt         DateTime?
+  barcode           String?
+  notes             String?
+  lastRestockedAt   DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([category])
+  @@index([expiresAt])
+  @@index([currentQuantity])
+  @@map("inventory_items")
+}
+
+enum InventoryCategory {
+  FOOD_PANTRY
+  FOOD_FRIDGE
+  FOOD_FREEZER
+  CLEANING
+  TOILETRIES
+  PAPER_GOODS
+  MEDICINE
+  PET_SUPPLIES
+  OTHER
+}
+
+enum InventoryLocation {
+  PANTRY
+  FRIDGE
+  FREEZER
+  BATHROOM
+  GARAGE
+  LAUNDRY_ROOM
+  KITCHEN_CABINET
+  OTHER
+}
+
+// ============================================
+// HOUSEHOLD MAINTENANCE MODULE
+// ============================================
+
+model MaintenanceItem {
+  id              String                  @id @default(uuid())
+  familyId        String
+  name            String
+  description     String?
+  category        MaintenanceCategory
+  frequency       String // "Every 3 months", "Annual", "As needed"
+  season          Season? // For seasonal tasks
+  lastCompletedAt DateTime?
+  nextDueAt       DateTime?
+  estimatedCost   Float?
+  notes           String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  // Relations
+  family      Family                  @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  completions MaintenanceCompletion[]
+
+  @@index([familyId])
+  @@index([nextDueAt])
+  @@index([category])
+  @@map("maintenance_items")
+}
+
+model MaintenanceCompletion {
+  id                String          @id @default(uuid())
+  maintenanceItemId String
+  completedAt       DateTime        @default(now())
+  completedBy       String
+  cost              Float?
+  serviceProvider   String?
+  notes             String?
+  photoUrls         String[] // Array of photo URLs
+
+  // Relations
+  item   MaintenanceItem @relation(fields: [maintenanceItemId], references: [id], onDelete: Cascade)
+  member FamilyMember    @relation(fields: [completedBy], references: [id], onDelete: Cascade)
+
+  @@index([maintenanceItemId])
+  @@index([completedAt])
+  @@map("maintenance_completions")
+}
+
+enum MaintenanceCategory {
+  HVAC
+  PLUMBING
+  ELECTRICAL
+  EXTERIOR
+  INTERIOR
+  LAWN_GARDEN
+  APPLIANCES
+  SAFETY
+  SEASONAL
+  OTHER
+}
+
+enum Season {
+  SPRING
+  SUMMER
+  FALL
+  WINTER
+}
+
+// ============================================
+// TRANSPORTATION & CARPOOL MODULE
+// ============================================
+
+model TransportSchedule {
+  id          String    @id @default(uuid())
+  familyId    String
+  memberId    String
+  dayOfWeek   Int       // 0-6 (Sunday-Saturday)
+  time        String    // HH:MM format (24-hour)
+  type        TransportType
+  locationId  String?
+  driverId    String?
+  carpoolId   String?
+  notes       String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  family    Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  member    FamilyMember        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  location  TransportLocation?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  driver    TransportDriver?    @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  carpool   CarpoolGroup?       @relation(fields: [carpoolId], references: [id], onDelete: SetNull)
+
+  @@index([familyId])
+  @@index([memberId])
+  @@index([dayOfWeek])
+  @@map("transport_schedules")
+}
+
+model TransportLocation {
+  id        String              @id @default(uuid())
+  familyId  String
+  name      String
+  address   String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  // Relations
+  family    Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  schedules TransportSchedule[]
+
+  @@index([familyId])
+  @@map("transport_locations")
+}
+
+model TransportDriver {
+  id           String              @id @default(uuid())
+  familyId     String
+  name         String
+  phone        String?
+  relationship String?             // "Mom", "Dad", "Grandma", "Carpool Parent"
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  // Relations
+  family    Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  schedules TransportSchedule[]
+
+  @@index([familyId])
+  @@map("transport_drivers")
+}
+
+model CarpoolGroup {
+  id        String              @id @default(uuid())
+  familyId  String
+  name      String
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  // Relations
+  family    Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  members   CarpoolMember[]
+  schedules TransportSchedule[]
+
+  @@index([familyId])
+  @@map("carpool_groups")
+}
+
+model CarpoolMember {
+  id        String       @id @default(uuid())
+  carpoolId String
+  name      String
+  phone     String?
+  email     String?
+  createdAt DateTime     @default(now())
+
+  // Relations
+  carpool CarpoolGroup @relation(fields: [carpoolId], references: [id], onDelete: Cascade)
+
+  @@index([carpoolId])
+  @@map("carpool_members")
+}
+
+enum TransportType {
+  PICKUP
+  DROPOFF
+}
+
+// ============================================
+// DOCUMENT VAULT MODULE
+// ============================================
+
+model Document {
+  id             String                @id @default(uuid())
+  familyId       String
+  name           String
+  category       DocumentCategory
+  fileUrl        String                // S3/MinIO URL or local path
+  fileSize       Int                   // Bytes
+  mimeType       String
+  documentNumber String?               // Masked in UI (show last 4 only)
+  issuedDate     DateTime?
+  expiresAt      DateTime?
+  tags           String[]              // Array of tags for search
+  notes          String?
+  uploadedBy     String
+  accessList     String[]              // Array of member IDs who can view
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  // Relations
+  family      Family                  @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  uploader    FamilyMember            @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  versions    DocumentVersion[]
+  shareLinks  DocumentShareLink[]
+  accessLogs  DocumentAccessLog[]
+
+  @@index([familyId])
+  @@index([category])
+  @@index([expiresAt])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id         String   @id @default(uuid())
+  documentId String
+  version    Int
+  fileUrl    String
+  uploadedBy String
+  uploadedAt DateTime @default(now())
+  notes      String?
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("document_versions")
+}
+
+model DocumentShareLink {
+  id          String    @id @default(uuid())
+  documentId  String
+  token       String    @unique
+  expiresAt   DateTime
+  password    String?   // Hashed
+  accessCount Int       @default(0)
+  maxAccess   Int?      // Limit number of accesses
+  createdBy   String
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([token])
+  @@map("document_share_links")
+}
+
+model DocumentAccessLog {
+  id         String       @id @default(uuid())
+  documentId String
+  accessedBy String
+  accessedAt DateTime     @default(now())
+  ipAddress  String?
+
+  // Relations
+  document Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  member   FamilyMember @relation(fields: [accessedBy], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([accessedBy])
+  @@map("document_access_logs")
+}
+
+enum DocumentCategory {
+  IDENTITY    // Passports, birth certificates, SSN cards
+  MEDICAL     // Insurance cards, vaccination records
+  FINANCIAL   // Bank statements, tax documents
+  HOUSEHOLD   // Warranties, manuals, receipts
+  EDUCATION   // Report cards, transcripts, diplomas
+  LEGAL       // Wills, powers of attorney, contracts
+  PETS        // Vet records, licenses
+  OTHER
+}
+
+// ============================================
+// MEDICATION SAFETY INTERLOCK MODULE
+// ============================================
+
+model MedicationSafety {
+  id                  String             @id @default(uuid())
+  memberId            String
+  medicationName      String
+  activeIngredient    String?            // For cross-medication checking
+  minIntervalHours    Int                // Minimum hours between doses
+  maxDosesPerDay      Int?               // Daily limit
+  lastDoseAt          DateTime?
+  nextDoseAvailableAt DateTime?          // Calculated field
+  notifyWhenReady     Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  // Relations
+  member FamilyMember      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  doses  MedicationDose[]
+
+  @@index([memberId])
+  @@index([nextDoseAvailableAt])
+  @@map("medication_safety")
+}
+
+model MedicationDose {
+  id                   String           @id @default(uuid())
+  medicationSafetyId   String
+  givenAt              DateTime         @default(now())
+  givenBy              String
+  dosage               String
+  notes                String?
+  wasOverride          Boolean          @default(false)
+  overrideReason       String?
+  overrideApprovedBy   String?
+
+  // Relations
+  medicationSafety MedicationSafety @relation(fields: [medicationSafetyId], references: [id], onDelete: Cascade)
+
+  @@index([medicationSafetyId])
+  @@index([givenAt])
+  @@map("medication_doses")
+}
+
+// ============================================
+// HEALTH & WELLBEING MODULE
+// ============================================
+
+model HealthEvent {
+  id          String          @id @default(uuid())
+  memberId    String
+  eventType   HealthEventType
+  startedAt   DateTime        @default(now())
+  endedAt     DateTime?
+  severity    Int?            // 1-10 scale
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relations
+  member      FamilyMember    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  symptoms    HealthSymptom[]
+  medications HealthMedication[]
+
+  @@index([memberId])
+  @@index([startedAt])
+  @@index([eventType])
+  @@map("health_events")
+}
+
+model HealthSymptom {
+  id             String       @id @default(uuid())
+  healthEventId  String
+  symptomType    SymptomType
+  severity       Int          // 1-10
+  notes          String?
+  recordedAt     DateTime     @default(now())
+
+  // Relations
+  healthEvent HealthEvent @relation(fields: [healthEventId], references: [id], onDelete: Cascade)
+
+  @@index([healthEventId])
+  @@index([recordedAt])
+  @@map("health_symptoms")
+}
+
+model HealthMedication {
+  id             String      @id @default(uuid())
+  healthEventId  String
+  medicationName String
+  dosage         String
+  givenAt        DateTime
+  givenBy        String
+  nextDoseAt     DateTime?   // For countdown timer
+  notes          String?
+
+  // Relations
+  healthEvent HealthEvent @relation(fields: [healthEventId], references: [id], onDelete: Cascade)
+
+  @@index([healthEventId])
+  @@index([givenAt])
+  @@index([nextDoseAt])
+  @@map("health_medications")
+}
+
+model TemperatureLog {
+  id          String       @id @default(uuid())
+  memberId    String
+  temperature Float        // In Fahrenheit
+  method      TempMethod   // ORAL, RECTAL, ARMPIT, EAR, FOREHEAD
+  recordedAt  DateTime     @default(now())
+  notes       String?
+
+  // Relations
+  member FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([recordedAt])
+  @@map("temperature_logs")
+}
+
+model MedicalProfile {
+  id          String       @id @default(uuid())
+  memberId    String       @unique
+  bloodType   String?
+  allergies   String[]     // Array of allergy strings
+  conditions  String[]     // Array of medical conditions
+  medications String[]     // Long-term medications
+  weight      Float?       // For dosage calculations
+  weightUnit  String?      // lbs or kg
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  member FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("medical_profiles")
+}
+
+enum HealthEventType {
+  ILLNESS
+  INJURY
+  DOCTOR_VISIT
+  WELLNESS_CHECK
+  VACCINATION
+  OTHER
+}
+
+enum SymptomType {
+  FEVER
+  COUGH
+  SORE_THROAT
+  RUNNY_NOSE
+  HEADACHE
+  STOMACH_ACHE
+  VOMITING
+  DIARRHEA
+  RASH
+  FATIGUE
+  LOSS_OF_APPETITE
+  OTHER
+}
+
+enum TempMethod {
+  ORAL
+  RECTAL
+  ARMPIT
+  EAR
+  FOREHEAD
+}
+
+// ============================================
+// RULES ENGINE & AUTOMATION MODULE
+// ============================================
+
+model AutomationRule {
+  id          String   @id @default(uuid())
+  familyId    String
+  name        String
+  description String?
+  trigger     Json     // { type: TriggerType, config: {...} }
+  conditions  Json?    // Optional: { operator: 'AND'|'OR', rules: [...] }
+  actions     Json     // Array: [{ type: ActionType, config: {...} }]
+  isEnabled   Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  family     Family          @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  creator    FamilyMember    @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  executions RuleExecution[]
+
+  @@index([familyId, isEnabled])
+  @@index([createdAt])
+  @@map("automation_rules")
+}
+
+model RuleExecution {
+  id         String   @id @default(uuid())
+  ruleId     String
+  success    Boolean
+  result     Json?    // { actionsCompleted: number, errors: [], results: [] }
+  error      String?
+  metadata   Json?    // Trigger context, matched conditions, etc.
+  executedAt DateTime @default(now())
+
+  // Relations
+  rule AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, executedAt])
+  @@index([success, executedAt])
+  @@map("rule_executions")
 }

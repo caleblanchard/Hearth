@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { onCalendarEventAdded } from '@/lib/rules-engine/hooks';
 
 export async function GET(request: Request) {
   try {
@@ -126,6 +127,40 @@ export async function POST(request: Request) {
 
       return event;
     });
+
+    // Count events for the same day to check if calendar is busy
+    const eventDate = new Date(result.startTime);
+    const dayStart = new Date(eventDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(eventDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const dayEventCount = await prisma.calendarEvent.count({
+      where: {
+        familyId: session.user.familyId,
+        startTime: {
+          gte: dayStart,
+          lte: dayEnd,
+        },
+      },
+    });
+
+    // Trigger rules engine evaluation (async, fire-and-forget)
+    try {
+      await onCalendarEventAdded(
+        {
+          id: result.id,
+          title: result.title,
+          startTime: result.startTime,
+          endTime: result.endTime,
+        },
+        session.user.familyId,
+        dayEventCount
+      );
+    } catch (error) {
+      console.error('Rules engine hook error:', error);
+      // Don't fail the event creation if rules engine fails
+    }
 
     return NextResponse.json({
       message: 'Event created successfully',
