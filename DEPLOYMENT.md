@@ -47,12 +47,19 @@ NEXTAUTH_SECRET=your_generated_secret_here
 NEXTAUTH_URL=http://your-server-ip:3000
 # Or if using a domain:
 # NEXTAUTH_URL=https://hearth.yourdomain.com
+
+# MinIO Configuration (for file storage)
+MINIO_ROOT_PASSWORD=your_secure_minio_password_min_8_chars
+# The default MinIO settings work for most deployments:
+# MINIO_ROOT_USER=minioadmin
+# S3_BUCKET_NAME=hearth-uploads
 ```
 
 **Important Security Notes:**
-- Use strong, unique passwords
+- Use strong, unique passwords for both PostgreSQL and MinIO
 - Keep your `.env` file secure and never commit it to version control
 - Generate `NEXTAUTH_SECRET` using: `openssl rand -base64 32`
+- MinIO password must be at least 8 characters
 
 ### 3. Pull and Start the Application
 
@@ -112,53 +119,90 @@ docker-compose -f docker-compose.prod.yml down
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
-### File Storage
+### File Storage with MinIO
 
-By default, files are stored locally in a Docker volume. For production, you may want to configure cloud storage:
+The production docker-compose includes MinIO, an S3-compatible object storage service, for storing uploaded files (documents, photos, etc.).
 
-#### Option 1: AWS S3
+#### MinIO is Included by Default
 
-Add to your `.env` file:
+MinIO is automatically started with the application and provides:
+- S3-compatible API for file storage
+- Web-based management console
+- Persistent storage with Docker volumes
+- No external dependencies or cloud accounts needed
 
-```bash
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_S3_BUCKET=your-bucket-name
-AWS_S3_REGION=us-east-1
-```
+#### MinIO Configuration
 
-#### Option 2: MinIO (Self-hosted S3-compatible)
-
-You can add MinIO to your docker-compose.prod.yml:
-
-```yaml
-  minio:
-    image: minio/minio:latest
-    container_name: hearth-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
-      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - hearth-minio-data:/data
-    networks:
-      - hearth-network
-```
-
-Add to your `.env`:
+Add these variables to your `.env` file:
 
 ```bash
-MINIO_ENDPOINT=minio
-MINIO_PORT=9000
-MINIO_ACCESS_KEY=your_access_key
-MINIO_SECRET_KEY=your_secret_key
-MINIO_BUCKET=hearth-storage
-MINIO_USE_SSL=false
+# MinIO Root Credentials (Admin access to MinIO Console)
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=your_secure_minio_password_min_8_chars
+
+# MinIO Ports
+MINIO_API_PORT=9000       # API endpoint
+MINIO_CONSOLE_PORT=9001   # Web UI console
+
+# S3 Configuration (for app to connect to MinIO)
+S3_ENDPOINT=http://hearth-minio:9000
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=your_secure_minio_password_min_8_chars
+S3_BUCKET_NAME=hearth-uploads
+S3_REGION=us-east-1
+S3_FORCE_PATH_STYLE=true
 ```
+
+**Important:** The `MINIO_ROOT_PASSWORD` and `S3_SECRET_ACCESS_KEY` should be the same value. Use a strong password with at least 8 characters.
+
+#### Accessing MinIO Console
+
+After starting the application, access the MinIO web console at:
+- `http://your-server-ip:9001`
+
+Login with:
+- Username: Value of `MINIO_ROOT_USER` (default: `minioadmin`)
+- Password: Value of `MINIO_ROOT_PASSWORD`
+
+From the console, you can:
+- View and manage uploaded files
+- Create and manage buckets
+- Monitor storage usage
+- Configure access policies
+
+#### Creating the Bucket
+
+The application will automatically create the bucket specified in `S3_BUCKET_NAME` on first upload. Alternatively, you can create it manually via the MinIO Console:
+
+1. Access the MinIO Console (http://your-server-ip:9001)
+2. Login with your credentials
+3. Click "Create Bucket"
+4. Enter the bucket name (e.g., `hearth-uploads`)
+5. Click "Create Bucket"
+
+#### Using External S3 (AWS, DigitalOcean, etc.)
+
+If you prefer to use AWS S3 or another S3-compatible service instead of MinIO, simply update the environment variables:
+
+```bash
+# For AWS S3
+S3_ENDPOINT=https://s3.amazonaws.com
+S3_ACCESS_KEY_ID=your_aws_access_key
+S3_SECRET_ACCESS_KEY=your_aws_secret_key
+S3_BUCKET_NAME=your-s3-bucket-name
+S3_REGION=us-east-1
+S3_FORCE_PATH_STYLE=false
+
+# For DigitalOcean Spaces
+S3_ENDPOINT=https://nyc3.digitaloceanspaces.com
+S3_ACCESS_KEY_ID=your_spaces_access_key
+S3_SECRET_ACCESS_KEY=your_spaces_secret_key
+S3_BUCKET_NAME=your-space-name
+S3_REGION=nyc3
+S3_FORCE_PATH_STYLE=false
+```
+
+Then remove or comment out the `hearth-minio` service from `docker-compose.prod.yml`.
 
 ## Setting Up HTTPS with Reverse Proxy
 
@@ -403,6 +447,39 @@ docker system prune -a
    ```bash
    docker-compose -f docker-compose.prod.yml exec hearth-db psql -U hearth_user hearth_db -c "SELECT pg_size_pretty(pg_database_size('hearth_db'));"
    ```
+
+4. Check MinIO storage usage via the web console at `http://your-server-ip:9001`
+
+### MinIO Issues
+
+1. Can't access MinIO Console:
+   ```bash
+   # Check if MinIO is running
+   docker-compose -f docker-compose.prod.yml ps hearth-minio
+
+   # Check MinIO logs
+   docker-compose -f docker-compose.prod.yml logs hearth-minio
+
+   # Verify port 9001 is available
+   sudo lsof -i :9001
+   ```
+
+2. Files not uploading to MinIO:
+   ```bash
+   # Check S3 environment variables are set correctly
+   docker-compose -f docker-compose.prod.yml exec hearth-app env | grep S3
+
+   # Test MinIO connectivity from app container
+   docker-compose -f docker-compose.prod.yml exec hearth-app curl -I http://hearth-minio:9000/minio/health/live
+   ```
+
+3. MinIO password not working:
+   - Ensure `MINIO_ROOT_PASSWORD` is at least 8 characters
+   - Verify `MINIO_ROOT_PASSWORD` and `S3_SECRET_ACCESS_KEY` match
+   - After changing the password, restart the containers:
+     ```bash
+     docker-compose -f docker-compose.prod.yml restart hearth-minio
+     ```
 
 ## For Maintainers: Automated Builds with GitHub Actions
 
