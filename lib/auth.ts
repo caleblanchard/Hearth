@@ -1,5 +1,5 @@
 import NextAuth, { NextAuthConfig } from 'next-auth';
-import Credentials from '@auth/core/providers/credentials';
+import Credentials from 'next-auth/providers/credentials';
 import { compare } from 'bcrypt';
 import prisma from './prisma';
 import { Role } from '@/app/generated/prisma';

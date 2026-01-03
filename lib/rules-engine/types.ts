@@ -106,6 +106,7 @@ export interface AddShoppingItemConfig {
   category?: string;          // Shopping category
   priority?: 'NORMAL' | 'NEEDED_SOON' | 'URGENT';
   fromInventory?: boolean;    // Auto-populate from low inventory item
+  notes?: string;             // Optional notes for the shopping item
 }
 
 export interface CreateTodoConfig {
