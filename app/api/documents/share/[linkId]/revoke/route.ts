@@ -55,9 +55,6 @@ export async function POST(
         revokedAt: new Date(),
         revokedBy: session.user.id,
       },
-      include: {
-        creator: { select: { id: true, name: true } },
-      },
     });
 
     // Create audit log
