@@ -11,11 +11,15 @@ This guide will walk you through deploying HouseholdERP to a Docker server for p
 
 ## Quick Start
 
-### 1. Clone the Repository
+### 1. Create Deployment Directory
 
 ```bash
-git clone <your-repo-url> /opt/householderp
+# Create a directory for your deployment
+mkdir -p /opt/householderp
 cd /opt/householderp
+
+# Download the docker-compose.prod.yml file
+curl -O https://raw.githubusercontent.com/caleblanchard/Hearth/master/docker-compose.prod.yml
 ```
 
 ### 2. Configure Environment Variables
@@ -29,6 +33,10 @@ cp .env.production .env
 Edit the `.env` file and configure the following **required** settings:
 
 ```bash
+# DockerHub configuration
+DOCKERHUB_USERNAME=caleblanchard  # Or your own DockerHub username if you've forked
+IMAGE_TAG=latest                   # Or specify a version like 1.0.0
+
 # Generate a strong password for PostgreSQL
 POSTGRES_PASSWORD=your_strong_database_password_here
 
@@ -46,10 +54,13 @@ NEXTAUTH_URL=http://your-server-ip:3000
 - Keep your `.env` file secure and never commit it to version control
 - Generate `NEXTAUTH_SECRET` using: `openssl rand -base64 32`
 
-### 3. Build and Start the Application
+### 3. Pull and Start the Application
 
 ```bash
-# Build and start the containers
+# Pull the latest Docker image from DockerHub
+docker-compose -f docker-compose.prod.yml pull
+
+# Start the containers
 docker-compose -f docker-compose.prod.yml up -d
 
 # View logs to ensure everything started correctly
@@ -58,7 +69,7 @@ docker-compose -f docker-compose.prod.yml logs -f
 
 The application will:
 1. Start the PostgreSQL database
-2. Build the Next.js application
+2. Pull the pre-built Docker image from DockerHub
 3. Run database migrations automatically
 4. Start the web server on port 3000
 
@@ -283,18 +294,19 @@ docker-compose -f docker-compose.prod.yml up -d
 ### Update the Application
 
 ```bash
-# Pull the latest code
 cd /opt/householderp
-git pull
 
-# Rebuild and restart
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml build
+# Pull the latest Docker image
+docker-compose -f docker-compose.prod.yml pull
+
+# Restart with the new image
 docker-compose -f docker-compose.prod.yml up -d
 
 # Check logs
 docker-compose -f docker-compose.prod.yml logs -f
 ```
+
+**Note:** To update to a specific version, edit your `.env` file and change `IMAGE_TAG` to the desired version (e.g., `IMAGE_TAG=1.2.0`), then run the commands above.
 
 ## Monitoring and Maintenance
 
@@ -391,6 +403,47 @@ docker system prune -a
    ```bash
    docker-compose -f docker-compose.prod.yml exec hearth-db psql -U hearth_user hearth_db -c "SELECT pg_size_pretty(pg_database_size('hearth_db'));"
    ```
+
+## For Maintainers: Automated Builds with GitHub Actions
+
+If you've forked this repository and want to publish your own Docker images, you'll need to set up GitHub Actions:
+
+### 1. Create DockerHub Account and Repository
+
+1. Create an account at [hub.docker.com](https://hub.docker.com)
+2. Create a new repository named `hearth`
+3. Generate an access token:
+   - Go to Account Settings → Security → New Access Token
+   - Give it a descriptive name (e.g., "GitHub Actions")
+   - Save the token securely
+
+### 2. Configure GitHub Secrets
+
+In your GitHub repository, add these secrets (Settings → Secrets and variables → Actions):
+
+- `DOCKERHUB_USERNAME`: Your DockerHub username
+- `DOCKERHUB_TOKEN`: The access token you generated
+
+### 3. Create a Release
+
+The GitHub Action automatically builds and publishes when you create a version tag:
+
+```bash
+# Create and push a version tag
+git tag -a v1.0.0 -m "Release version 1.0.0"
+git push origin v1.0.0
+```
+
+This will:
+1. Build the Docker image for multiple platforms (amd64, arm64)
+2. Push to DockerHub with tags: `latest` and `1.0.0`
+3. Create a GitHub release with notes
+4. Update the DockerHub repository description
+
+### 4. Monitor the Build
+
+- Check the Actions tab in GitHub to see the build progress
+- Once complete, your image will be available at `docker pull your-username/hearth:latest`
 
 ## Security Best Practices
 

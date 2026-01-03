@@ -24,7 +24,9 @@
       "Bash(WEATHER_API_KEY=test-api-key node_modules/.bin/jest:*)",
       "Bash(xargs:*)",
       "Bash(done)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(git remote:*)",
+      "Bash(mkdir:*)"
     ]
   }
 }

@@ -23,9 +23,7 @@ services:
 
   # Next.js Application (Production)
   hearth-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME:-your-dockerhub-username}/hearth:${IMAGE_TAG:-latest}
     container_name: hearth-app
     restart: unless-stopped
     environment:
