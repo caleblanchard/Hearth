@@ -23,7 +23,8 @@
       "Bash(node_modules/.bin/jest:*)",
       "Bash(WEATHER_API_KEY=test-api-key node_modules/.bin/jest:*)",
       "Bash(xargs:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(chmod:*)"
     ]
   }
 }

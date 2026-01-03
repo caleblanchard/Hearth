@@ -374,7 +374,7 @@ export default function FamilyPage() {
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -430,7 +430,7 @@ export default function FamilyPage() {
             {!editingSettings && (
               <button
                 onClick={() => setEditingSettings(true)}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+                className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
               >
                 Edit Settings
               </button>
@@ -559,7 +559,7 @@ export default function FamilyPage() {
                       href="https://www.latlong.net/" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 hover:underline"
+                      className="text-ember-700 dark:text-ember-500 hover:underline"
                     >
                       latlong.net
                     </a>
@@ -649,7 +649,7 @@ export default function FamilyPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                    <div className="w-12 h-12 bg-ember-700 rounded-full flex items-center justify-center text-white text-lg font-bold">
                       {member.name.charAt(0)}
                     </div>
                     <div>
@@ -659,8 +659,8 @@ export default function FamilyPage() {
                         </h3>
                         <span className={`px-2 py-1 text-xs font-medium rounded ${
                           member.role === 'PARENT'
-                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            ? 'bg-ember-300 text-ember-700 dark:bg-slate-900 dark:text-ember-300'
+                            : 'bg-info/20 text-info dark:bg-info/30 dark:text-info'
                         }`}>
                           {member.role}
                         </span>
@@ -683,7 +683,7 @@ export default function FamilyPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setEditMemberModal(member)}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                      className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white text-sm font-semibold rounded-lg transition-colors"
                     >
                       Edit
                     </button>
@@ -900,7 +900,7 @@ export default function FamilyPage() {
             <button
               onClick={handleUpdateMember}
               disabled={savingMember}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-2 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold rounded-lg transition-colors"
             >
               {savingMember ? 'Saving...' : 'Save Changes'}
             </button>

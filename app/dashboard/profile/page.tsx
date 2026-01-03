@@ -60,8 +60,8 @@ export default function ProfilePage() {
       case 'BRONZE': return 'text-orange-700 bg-orange-100 dark:bg-orange-900/30';
       case 'SILVER': return 'text-gray-600 bg-gray-200 dark:bg-gray-700';
       case 'GOLD': return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30';
-      case 'PLATINUM': return 'text-purple-600 bg-purple-100 dark:bg-purple-900/30';
-      case 'DIAMOND': return 'text-blue-500 bg-blue-100 dark:bg-blue-900/30';
+      case 'PLATINUM': return 'text-ember-700 bg-ember-300 dark:bg-slate-900/30';
+      case 'DIAMOND': return 'text-slate-700 bg-slate-300 dark:bg-slate-900/30';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
@@ -125,7 +125,7 @@ export default function ProfilePage() {
             {/* Level */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
               <div className="flex items-center gap-3 mb-3">
-                <StarIcon className="h-8 w-8 text-indigo-600" />
+                <StarIcon className="h-8 w-8 text-ember-700" />
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Level</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -146,7 +146,7 @@ export default function ProfilePage() {
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'all'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-ember-700 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
             }`}
           >
@@ -156,7 +156,7 @@ export default function ProfilePage() {
             onClick={() => setFilter('completed')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'completed'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-ember-700 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
             }`}
           >
@@ -166,7 +166,7 @@ export default function ProfilePage() {
             onClick={() => setFilter('in-progress')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'in-progress'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-ember-700 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
             }`}
           >
@@ -177,7 +177,7 @@ export default function ProfilePage() {
         {/* Achievements Grid */}
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -216,7 +216,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
-                        className="bg-indigo-600 h-2 rounded-full transition-all"
+                        className="bg-ember-700 h-2 rounded-full transition-all"
                         style={{ width: `${achievement.percentage}%` }}
                       />
                     </div>

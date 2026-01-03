@@ -78,7 +78,7 @@ export default function ChoresPage() {
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
       case 'COMPLETED':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+        return 'bg-info/20 text-info dark:bg-info/30 dark:text-info';
       case 'APPROVED':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'REJECTED':
@@ -106,7 +106,7 @@ export default function ChoresPage() {
       <div className="p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -173,7 +173,7 @@ export default function ChoresPage() {
                         {chore.creditValue} credits
                       </span>
                       {chore.requiresApproval && (
-                        <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                        <span className="flex items-center gap-1 text-ember-700 dark:text-ember-500">
                           <CheckIcon className="h-4 w-4" />
                           Requires approval
                         </span>
@@ -211,7 +211,7 @@ export default function ChoresPage() {
                       )}
                     </button>
                   ) : chore.status === 'COMPLETED' ? (
-                    <div className="px-6 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-semibold rounded-lg flex items-center gap-2">
+                    <div className="px-6 py-2 bg-info/20 text-info dark:bg-info/30 dark:text-info font-semibold rounded-lg flex items-center gap-2">
                       <ClockIcon className="h-5 w-5" />
                       Waiting for approval
                     </div>

@@ -484,7 +484,7 @@ export default function ManageChoresPage() {
               setShowAddForm(true);
             }
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors"
         >
           {showAddForm ? <XMarkIcon className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />}
           {showAddForm ? 'Cancel' : 'Add Chore'}
@@ -615,7 +615,7 @@ export default function ManageChoresPage() {
                     type="checkbox"
                     checked={newChore.requiresApproval}
                     onChange={(e) => setNewChore({ ...newChore, requiresApproval: e.target.checked })}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="rounded border-gray-300 text-ember-700 focus:ring-ember-500"
                   />
                   <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
                     Requires parent approval
@@ -627,7 +627,7 @@ export default function ManageChoresPage() {
                     type="checkbox"
                     checked={newChore.requiresPhoto}
                     onChange={(e) => setNewChore({ ...newChore, requiresPhoto: e.target.checked })}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="rounded border-gray-300 text-ember-700 focus:ring-ember-500"
                   />
                   <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
                     Requires photo proof
@@ -668,7 +668,7 @@ export default function ManageChoresPage() {
                         type="checkbox"
                         checked={newChore.selectedMembers.includes(member.id)}
                         onChange={() => handleToggleMemberSelection(member.id)}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        className="rounded border-gray-300 text-ember-700 focus:ring-ember-500"
                       />
                       <span className="ml-3 text-sm text-gray-900 dark:text-white">
                         {member.name}
@@ -688,7 +688,7 @@ export default function ManageChoresPage() {
               <button
                 onClick={editingChore ? handleEditChore : handleAddChore}
                 disabled={adding}
-                className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {adding ? (editingChore ? 'Updating...' : 'Creating...') : (editingChore ? 'Update Chore' : 'Create Chore')}
               </button>
@@ -792,7 +792,7 @@ export default function ManageChoresPage() {
                 <div className="flex gap-2 ml-4">
                   <button
                     onClick={() => handleStartEdit(chore)}
-                    className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                    className="p-2 text-ember-700 hover:bg-ember-300/30 dark:hover:bg-slate-900/20 rounded-lg transition-colors"
                     title="Edit chore"
                   >
                     <PencilIcon className="h-5 w-5" />

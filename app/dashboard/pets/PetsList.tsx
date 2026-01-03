@@ -198,7 +198,7 @@ export default function PetsList() {
         {session?.user?.role === 'PARENT' && (
           <button
             onClick={() => setShowAddDialog(true)}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg transition-colors"
             aria-label="Add pet"
           >
             + Add Pet
@@ -398,7 +398,7 @@ export default function PetsList() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 rounded-lg transition-colors"
                 >
                   {submitting ? 'Adding...' : 'Add Pet'}
                 </button>

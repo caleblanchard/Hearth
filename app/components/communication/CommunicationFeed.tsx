@@ -33,18 +33,19 @@ interface Post {
 
 interface CommunicationFeedProps {
   initialFilter?: string;
+  refreshTrigger?: number;
 }
 
 const EMOJI_OPTIONS = ['👍', '❤️', '😊', '🎉', '👏', '🔥'];
 
 const POST_TYPE_COLORS = {
-  ANNOUNCEMENT: 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200',
+  ANNOUNCEMENT: 'bg-info/20 dark:bg-info/30 text-info dark:text-info',
   KUDOS: 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200',
   NOTE: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200',
-  PHOTO: 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-200',
+  PHOTO: 'bg-ember-300/30 dark:bg-slate-900/30 text-ember-700 dark:text-ember-300',
 };
 
-export default function CommunicationFeed({ initialFilter }: CommunicationFeedProps) {
+export default function CommunicationFeed({ initialFilter, refreshTrigger }: CommunicationFeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,8 +99,11 @@ export default function CommunicationFeed({ initialFilter }: CommunicationFeedPr
   };
 
   useEffect(() => {
-    fetchPosts();
-  }, [typeFilter, pinnedOnly]);
+    // Reset offset when filters or refresh trigger changes
+    setOffset(0);
+    fetchPosts(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeFilter, pinnedOnly, refreshTrigger]);
 
   const handleReaction = async (postId: string, emoji: string, isRemoving: boolean) => {
     try {
@@ -187,31 +191,31 @@ export default function CommunicationFeed({ initialFilter }: CommunicationFeedPr
           <div className="flex gap-2">
             <button
               onClick={() => setTypeFilter(null)}
-              className={`px-3 py-1 rounded ${!typeFilter ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+              className={`px-3 py-1 rounded ${!typeFilter ? 'bg-ember-700 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
             >
               All
             </button>
             <button
               onClick={() => setTypeFilter('ANNOUNCEMENT')}
-              className={`px-3 py-1 rounded ${typeFilter === 'ANNOUNCEMENT' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+              className={`px-3 py-1 rounded ${typeFilter === 'ANNOUNCEMENT' ? 'bg-ember-700 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
             >
               Announcements
             </button>
             <button
               onClick={() => setTypeFilter('KUDOS')}
-              className={`px-3 py-1 rounded ${typeFilter === 'KUDOS' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+              className={`px-3 py-1 rounded ${typeFilter === 'KUDOS' ? 'bg-ember-700 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
             >
               Kudos
             </button>
             <button
               onClick={() => setTypeFilter('NOTE')}
-              className={`px-3 py-1 rounded ${typeFilter === 'NOTE' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+              className={`px-3 py-1 rounded ${typeFilter === 'NOTE' ? 'bg-ember-700 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
             >
               Notes
             </button>
             <button
               onClick={() => setTypeFilter('PHOTO')}
-              className={`px-3 py-1 rounded ${typeFilter === 'PHOTO' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+              className={`px-3 py-1 rounded ${typeFilter === 'PHOTO' ? 'bg-ember-700 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
             >
               Photos
             </button>
@@ -330,7 +334,7 @@ export default function CommunicationFeed({ initialFilter }: CommunicationFeedPr
           <button
             onClick={() => fetchPosts(true)}
             disabled={loading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="px-6 py-2 bg-ember-700 text-white rounded-lg hover:bg-ember-500 disabled:opacity-50"
           >
             {loading ? 'Loading...' : 'Load More'}
           </button>

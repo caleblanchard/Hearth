@@ -203,7 +203,7 @@ export default function SavingsGoalsPage() {
 
   const getProgressColor = (percentage: number) => {
     if (percentage >= 100) return 'bg-green-500';
-    if (percentage >= 75) return 'bg-blue-500';
+    if (percentage >= 75) return 'bg-ember-500';
     if (percentage >= 50) return 'bg-yellow-500';
     return 'bg-gray-400';
   };
@@ -213,7 +213,7 @@ export default function SavingsGoalsPage() {
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -242,7 +242,7 @@ export default function SavingsGoalsPage() {
                   setShowAddForm(true);
                 }
               }}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
             >
               {showAddForm ? '✕ Cancel' : '+ Add Goal'}
             </button>
@@ -266,7 +266,7 @@ export default function SavingsGoalsPage() {
                   value={newGoal.name}
                   onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })}
                   placeholder="e.g., New Bicycle, Video Game, Summer Camp"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
 
@@ -280,7 +280,7 @@ export default function SavingsGoalsPage() {
                   onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
                   placeholder="Describe your goal..."
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
 
@@ -295,7 +295,7 @@ export default function SavingsGoalsPage() {
                     value={newGoal.targetAmount}
                     onChange={(e) => setNewGoal({ ...newGoal, targetAmount: parseInt(e.target.value) || 0 })}
                     min="1"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
 
@@ -308,7 +308,7 @@ export default function SavingsGoalsPage() {
                     type="date"
                     value={newGoal.deadline}
                     onChange={(e) => setNewGoal({ ...newGoal, deadline: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>
@@ -366,7 +366,7 @@ export default function SavingsGoalsPage() {
 
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                      <span className="text-2xl font-bold text-ember-700 dark:text-ember-500">
                         {goal.currentAmount}
                       </span>
                       <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -407,7 +407,7 @@ export default function SavingsGoalsPage() {
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
             >
               Create First Goal
             </button>

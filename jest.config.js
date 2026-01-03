@@ -32,6 +32,9 @@ const customJestConfig = {
       statements: 80,
     },
   },
+  watchman: false,
+  forceExit: true, // Force Jest to exit after tests complete
+  detectOpenHandles: true, // Help identify what's keeping Jest alive
 }
 
 module.exports = createJestConfig(customJestConfig)

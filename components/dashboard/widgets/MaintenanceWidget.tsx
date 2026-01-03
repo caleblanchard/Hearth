@@ -77,11 +77,11 @@ export default function MaintenanceWidget() {
   // Get color for category
   const getCategoryColor = (category: string): string => {
     const colors: Record<string, string> = {
-      HVAC: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+      HVAC: 'bg-info/20 dark:bg-info/30 text-info dark:text-info',
       PLUMBING: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300',
       ELECTRICAL: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300',
       EXTERIOR: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-      INTERIOR: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300',
+      INTERIOR: 'bg-ember-300/30 dark:bg-slate-900/30 text-ember-700 dark:text-ember-300',
       LAWN_GARDEN: 'bg-lime-100 dark:bg-lime-900/30 text-lime-800 dark:text-lime-300',
       APPLIANCES: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300',
       SAFETY: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',

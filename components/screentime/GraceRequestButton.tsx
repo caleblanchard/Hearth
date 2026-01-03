@@ -161,7 +161,7 @@ export default function GraceRequestButton({
                     ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
                     : message.type === 'error'
                     ? 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-                    : 'bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200'
+                    : 'bg-info/10 dark:bg-info/20 text-info dark:text-info'
                 }`}
               >
                 {message.text}

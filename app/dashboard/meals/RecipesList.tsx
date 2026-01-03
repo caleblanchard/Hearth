@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { PlusIcon } from '@heroicons/react/24/outline';
 
 interface Creator {
   id: string;
@@ -162,6 +163,13 @@ export default function RecipesList() {
           >
             ⭐ Favorites
           </button>
+          <button
+            onClick={() => router.push('/dashboard/meals/recipes/new')}
+            className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Add Recipe
+          </button>
         </div>
       </div>
 
@@ -212,7 +220,7 @@ export default function RecipesList() {
                   {recipe.difficulty}
                 </span>
                 {recipe.category && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/20 dark:bg-info/30 text-info dark:text-info">
                     {recipe.category}
                   </span>
                 )}

@@ -85,10 +85,10 @@ export default function TransportWidget({ memberId }: { memberId?: string } = {}
   // Get color for transport type
   const getTypeColor = (type: string): string => {
     const colors: Record<string, string> = {
-      SCHOOL_DROPOFF: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+      SCHOOL_DROPOFF: 'bg-info/20 dark:bg-info/30 text-info dark:text-info',
       SCHOOL_PICKUP: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
       ACTIVITY_DROPOFF:
-        'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300',
+        'bg-ember-300/30 dark:bg-slate-900/30 text-ember-700 dark:text-ember-300',
       ACTIVITY_PICKUP:
         'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300',
       APPOINTMENT: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',

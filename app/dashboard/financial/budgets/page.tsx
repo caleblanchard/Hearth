@@ -259,7 +259,7 @@ export default function BudgetsPage() {
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -288,7 +288,7 @@ export default function BudgetsPage() {
                   setShowAddForm(true);
                 }
               }}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
             >
               {showAddForm ? '✕ Cancel' : '+ Add Budget'}
             </button>
@@ -310,7 +310,7 @@ export default function BudgetsPage() {
                   id="member-select"
                   value={newBudget.memberId}
                   onChange={(e) => setNewBudget({ ...newBudget, memberId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 >
                   {members.map((member) => (
                     <option key={member.id} value={member.id}>
@@ -329,7 +329,7 @@ export default function BudgetsPage() {
                     id="category-select"
                     value={newBudget.category}
                     onChange={(e) => setNewBudget({ ...newBudget, category: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   >
                     {CATEGORIES.map((cat) => (
                       <option key={cat.value} value={cat.value}>
@@ -349,7 +349,7 @@ export default function BudgetsPage() {
                     value={newBudget.limitAmount}
                     onChange={(e) => setNewBudget({ ...newBudget, limitAmount: parseInt(e.target.value) || 0 })}
                     min="1"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
 
@@ -361,7 +361,7 @@ export default function BudgetsPage() {
                     id="period-select"
                     value={newBudget.period}
                     onChange={(e) => setNewBudget({ ...newBudget, period: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   >
                     {PERIODS.map((p) => (
                       <option key={p.value} value={p.value}>
@@ -381,7 +381,7 @@ export default function BudgetsPage() {
                     id="reset-day"
                     value={newBudget.resetDay}
                     onChange={(e) => setNewBudget({ ...newBudget, resetDay: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   >
                     {DAYS_OF_WEEK.map((day) => (
                       <option key={day.value} value={day.value}>
@@ -429,7 +429,7 @@ export default function BudgetsPage() {
                         <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                           {budget.member.name}
                         </h3>
-                        <span className="px-2 py-1 text-xs font-medium rounded bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                        <span className="px-2 py-1 text-xs font-medium rounded bg-ember-300 text-ember-700 dark:bg-slate-900 dark:text-ember-300">
                           {budget.category}
                         </span>
                         <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
@@ -493,7 +493,7 @@ export default function BudgetsPage() {
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
             >
               Create First Budget
             </button>

@@ -200,7 +200,7 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
                 <button
                   onClick={() => handleMarkAsTaken(medication)}
                   disabled={markingDose === medication.id}
-                  className="w-full mt-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded transition-colors duration-200"
+                  className="w-full mt-2 px-3 py-1.5 text-sm bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white rounded transition-colors duration-200"
                 >
                   {markingDose === medication.id ? 'Logging...' : 'Mark as Taken'}
                 </button>

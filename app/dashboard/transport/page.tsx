@@ -56,7 +56,7 @@ export default function TransportPage() {
 
   const getTypeColor = (type: string) => {
     return type === 'PICKUP'
-      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+      ? 'bg-info/20 dark:bg-info/30 text-info dark:text-info'
       : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
   };
 
@@ -89,7 +89,7 @@ export default function TransportPage() {
         </div>
         <button
           onClick={() => router.push('/dashboard/transport/create')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg font-medium transition-colors"
         >
           <PlusIcon className="h-5 w-5" />
           Add Schedule
@@ -104,8 +104,8 @@ export default function TransportPage() {
 
       {/* Today's Transport */}
       {todaySchedules.length > 0 && (
-        <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-4">
+        <div className="bg-info/10 dark:bg-info/20 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
             Today's Transport - {DAYS_OF_WEEK[new Date().getDay()]}
           </h2>
           <div className="space-y-3">

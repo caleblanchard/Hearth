@@ -70,7 +70,7 @@ export default function LeaderboardPage() {
             onClick={() => setPeriod('weekly')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               period === 'weekly'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-ember-700 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
@@ -80,7 +80,7 @@ export default function LeaderboardPage() {
             onClick={() => setPeriod('monthly')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               period === 'monthly'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-ember-700 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
@@ -90,7 +90,7 @@ export default function LeaderboardPage() {
             onClick={() => setPeriod('all-time')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               period === 'all-time'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-ember-700 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
@@ -101,7 +101,7 @@ export default function LeaderboardPage() {
         {/* Leaderboard */}
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         ) : leaderboard.length > 0 ? (
           <div className="space-y-4">
@@ -127,8 +127,8 @@ export default function LeaderboardPage() {
                       className="w-16 h-16 rounded-full"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                    <div className="w-16 h-16 rounded-full bg-ember-300 dark:bg-slate-900 flex items-center justify-center">
+                      <span className="text-2xl font-bold text-ember-700 dark:text-ember-500">
                         {entry.name[0]}
                       </span>
                     </div>

@@ -162,7 +162,7 @@ export default function InventoryList() {
           onClick={() => setFilter('all')}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
             filter === 'all'
-              ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+              ? 'border-ember-700 text-ember-700 dark:border-ember-500 dark:text-ember-500'
               : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
           }`}
         >

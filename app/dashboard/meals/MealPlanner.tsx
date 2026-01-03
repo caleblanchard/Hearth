@@ -305,7 +305,7 @@ export default function MealPlanner() {
                     >
                       {entry ? (
                         <div
-                          className="relative cursor-pointer p-2 rounded bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                          className="relative cursor-pointer p-2 rounded bg-info/10 dark:bg-info/20 hover:bg-info/20 dark:hover:bg-info/30"
                           onClick={() => openEditDialog(entry)}
                           onMouseEnter={() => setHoveredEntry(entry.id)}
                           onMouseLeave={() => setHoveredEntry(null)}
@@ -401,7 +401,7 @@ export default function MealPlanner() {
                 </button>
                 <button
                   onClick={handleCreateMeal}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                  className="px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg"
                   aria-label="Save"
                 >
                   Save
@@ -476,7 +476,7 @@ export default function MealPlanner() {
                   </button>
                   <button
                     onClick={handleUpdateMeal}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                    className="px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg"
                     aria-label="Save"
                   >
                     Save

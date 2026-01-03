@@ -4,8 +4,8 @@
   "description": "A family-first household management system",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4f46e5",
+  "background_color": "#FAFAFA",
+  "theme_color": "#E65100",
   "orientation": "portrait-primary",
   "icons": [
     {

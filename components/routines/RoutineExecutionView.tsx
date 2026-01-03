@@ -107,7 +107,7 @@ export default function RoutineExecutionView({
           {routine.name}
         </h2>
         <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-          <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full">
+          <span className="px-3 py-1 bg-ember-300/30 dark:bg-slate-900/30 text-ember-700 dark:text-ember-300 rounded-full">
             {routine.type.charAt(0) + routine.type.slice(1).toLowerCase().replace('_', ' ')}
           </span>
           {totalEstimatedMinutes > 0 && (
@@ -131,7 +131,7 @@ export default function RoutineExecutionView({
         </div>
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
           <div
-            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+            className="bg-ember-700 h-2 rounded-full transition-all duration-300"
             style={{
               width: `${routine.steps.length > 0
                 ? (checkedSteps.size / routine.steps.length) * 100

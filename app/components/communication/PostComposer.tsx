@@ -68,10 +68,12 @@ export default function PostComposer({ userRole, onSuccess, onCancel }: PostComp
       setContent('');
       setImageUrl('');
 
-      // Call onSuccess callback
-      if (onSuccess) {
-        onSuccess();
-      }
+      // Call onSuccess callback after a brief delay to show success message
+      setTimeout(() => {
+        if (onSuccess) {
+          onSuccess();
+        }
+      }, 500);
     } catch (err: any) {
       setError(err.message || 'Failed to create post');
     } finally {
@@ -86,21 +88,17 @@ export default function PostComposer({ userRole, onSuccess, onCancel }: PostComp
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-        Create New Post
-      </h2>
-
+    <form onSubmit={handleSubmit} className="space-y-4">
       {/* Post Type */}
       <div className="mb-4">
-        <label htmlFor="post-type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label htmlFor="post-type" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
           Post Type
         </label>
         <select
           id="post-type"
           value={type}
           onChange={(e) => setType(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-ember-500 focus:outline-none"
         >
           {postTypes.map((t) => (
             <option key={t} value={t}>
@@ -112,7 +110,7 @@ export default function PostComposer({ userRole, onSuccess, onCancel }: PostComp
 
       {/* Title */}
       <div className="mb-4">
-        <label htmlFor="post-title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label htmlFor="post-title" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
           Title (Optional)
         </label>
         <input
@@ -121,13 +119,13 @@ export default function PostComposer({ userRole, onSuccess, onCancel }: PostComp
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Add a title..."
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-ember-500 focus:outline-none"
         />
       </div>
 
       {/* Content */}
       <div className="mb-4">
-        <label htmlFor="post-content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label htmlFor="post-content" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
           Content *
         </label>
         <textarea
@@ -136,14 +134,14 @@ export default function PostComposer({ userRole, onSuccess, onCancel }: PostComp
           onChange={(e) => setContent(e.target.value)}
           placeholder="What's on your mind?"
           rows={4}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
+          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-ember-500 focus:outline-none resize-none"
         />
       </div>
 
       {/* Image URL (only for PHOTO type) */}
       {type === 'PHOTO' && (
         <div className="mb-4">
-          <label htmlFor="image-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label htmlFor="image-url" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Image URL
           </label>
           <input
@@ -152,31 +150,31 @@ export default function PostComposer({ userRole, onSuccess, onCancel }: PostComp
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
             placeholder="https://example.com/image.jpg"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-ember-500 focus:outline-none"
           />
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg">
+        <div className="p-3 bg-error/10 dark:bg-error/20 border border-error/20 text-error rounded-lg">
           {error}
         </div>
       )}
 
       {/* Success Message */}
       {success && (
-        <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-lg">
+        <div className="p-3 bg-success/10 dark:bg-success/20 border border-success/20 text-success rounded-lg">
           {success}
         </div>
       )}
 
       {/* Buttons */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Posting...' : 'Post'}
         </button>
@@ -186,7 +184,7 @@ export default function PostComposer({ userRole, onSuccess, onCancel }: PostComp
             type="button"
             onClick={handleCancel}
             disabled={loading}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+            className="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-canvas-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
           >
             Cancel
           </button>

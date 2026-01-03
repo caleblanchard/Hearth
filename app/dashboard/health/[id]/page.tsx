@@ -186,7 +186,7 @@ export default function HealthEventDetailPage() {
       case 'INJURY':
         return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
       case 'DOCTOR_VISIT':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+        return 'bg-info/20 text-info dark:bg-info/30 dark:text-info';
       case 'VACCINATION':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       default:
@@ -254,7 +254,7 @@ export default function HealthEventDetailPage() {
       <div className="mb-6">
         <Link
           href="/dashboard/health"
-          className="text-blue-600 dark:text-blue-400 hover:underline text-sm mb-2 inline-block"
+          className="text-ember-700 dark:text-ember-500 hover:underline text-sm mb-2 inline-block"
         >
           ← Back to Health Events
         </Link>
@@ -389,7 +389,7 @@ export default function HealthEventDetailPage() {
           {!event.endedAt && session?.user?.role === 'PARENT' && (
             <button
               onClick={() => setShowMedDialog(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+              className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white text-sm rounded-lg transition-colors"
             >
               + Add Medication
             </button>
@@ -405,7 +405,7 @@ export default function HealthEventDetailPage() {
             {event.medications.map((med) => (
               <div
                 key={med.id}
-                className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4"
+                className="bg-info/10 dark:bg-info/20 rounded-lg p-4"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -427,7 +427,7 @@ export default function HealthEventDetailPage() {
                   {med.nextDoseAt && (
                     <div className="text-right">
                       <p className="text-xs text-gray-500 dark:text-gray-400">Next dose in:</p>
-                      <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                      <p className="text-lg font-semibold text-ember-700 dark:text-ember-500">
                         {getTimeUntilNextDose(med.nextDoseAt)}
                       </p>
                     </div>
@@ -617,7 +617,7 @@ export default function HealthEventDetailPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 rounded-lg transition-colors"
                 >
                   {submitting ? 'Adding...' : 'Add Medication'}
                 </button>

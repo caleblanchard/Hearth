@@ -77,7 +77,7 @@ export default function FinancialDashboardPage() {
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -117,7 +117,7 @@ export default function FinancialDashboardPage() {
                 onClick={() => setPeriod('weekly')}
                 className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
                   period === 'weekly'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-ember-700 text-white'
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
@@ -127,7 +127,7 @@ export default function FinancialDashboardPage() {
                 onClick={() => setPeriod('monthly')}
                 className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
                   period === 'monthly'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-ember-700 text-white'
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
@@ -188,8 +188,8 @@ export default function FinancialDashboardPage() {
                   {summary.netChange}
                 </p>
               </div>
-              <div className="p-3 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
-                <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+              <div className="p-3 bg-ember-300/30 dark:bg-slate-900/20 rounded-lg">
+                <CurrencyDollarIcon className="h-8 w-8 text-ember-700 dark:text-ember-500" />
               </div>
             </div>
           </div>

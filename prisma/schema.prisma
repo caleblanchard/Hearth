@@ -53,6 +53,7 @@ model Family {
   kioskSessions          KioskSession[]
   kioskSettings          KioskSettings?
   automationRules        AutomationRule[]
+  projects               Project[]
 
   @@map("families")
 }
@@ -110,6 +111,8 @@ model FamilyMember {
   guestInvitesCreated               GuestInvite[]
   fileUploadsCreated                FileUpload[]
   notifications                     Notification[]
+  pushSubscriptions                 PushSubscription[]
+  notificationPreference            NotificationPreference?
   achievements                      UserAchievement[]
   streaks                           Streak[]
   leaderboardEntries                LeaderboardEntry[]
@@ -134,6 +137,8 @@ model FamilyMember {
   temperatureLogs                   TemperatureLog[]
   medicalProfile                    MedicalProfile?
   automationRulesCreated            AutomationRule[]
+  projectsCreated                   Project[]         @relation("ProjectCreator")
+  projectTasksAssigned              ProjectTask[]
 
   @@index([familyId])
   @@index([email])
@@ -678,6 +683,7 @@ model ShoppingItem {
   addedById    String
   purchasedById String?
   purchasedAt  DateTime?
+  projectId    String?          // Optional link to project
   notes        String?
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
@@ -687,8 +693,10 @@ model ShoppingItem {
   requestedBy FamilyMember  @relation("ShoppingItemRequester", fields: [requestedById], references: [id], onDelete: Cascade)
   addedBy     FamilyMember  @relation("ShoppingItemAdder", fields: [addedById], references: [id], onDelete: Cascade)
   purchasedBy FamilyMember? @relation("ShoppingItemPurchaser", fields: [purchasedById], references: [id], onDelete: SetNull)
+  project     Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([listId, status])
+  @@index([projectId])
   @@map("shopping_items")
 }
 
@@ -715,6 +723,7 @@ model CalendarEvent {
   externalId  String?
   color       String?
   isAllDay    Boolean   @default(false)
+  projectId   String?   // Optional link to project
   createdById String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -722,9 +731,11 @@ model CalendarEvent {
   // Relations
   family      Family                    @relation(fields: [familyId], references: [id], onDelete: Cascade)
   createdBy   FamilyMember              @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  project     Project?                  @relation(fields: [projectId], references: [id], onDelete: SetNull)
   assignments CalendarEventAssignment[]
 
   @@index([familyId, startTime, endTime])
+  @@index([projectId])
   @@map("calendar_events")
 }
 
@@ -1042,6 +1053,18 @@ enum AuditAction {
   RULE_EXECUTED
   RULE_TEST_RUN
 
+  // Projects
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+  PROJECT_STATUS_CHANGED
+  PROJECT_TASK_CREATED
+  PROJECT_TASK_UPDATED
+  PROJECT_TASK_DELETED
+  PROJECT_TASK_STATUS_CHANGED
+  PROJECT_DEPENDENCY_ADDED
+  PROJECT_DEPENDENCY_REMOVED
+
   // Settings
   SETTINGS_CHANGED
   MODULE_ENABLED
@@ -1105,6 +1128,17 @@ enum NotificationType {
   TODO_ASSIGNED
   SHOPPING_REQUEST
   GENERAL
+  // New PWA notification types (Feature 11)
+  LEFTOVER_EXPIRING
+  DOCUMENT_EXPIRING
+  MEDICATION_AVAILABLE
+  ROUTINE_TIME
+  MAINTENANCE_DUE
+  PET_CARE_REMINDER
+  CARPOOL_REMINDER
+  SAVINGS_GOAL_ACHIEVED
+  BUSY_DAY_ALERT
+  RULE_TRIGGERED
 }
 
 model Notification {
@@ -1124,6 +1158,50 @@ model Notification {
 
   @@index([userId, isRead, createdAt])
   @@map("notifications")
+}
+
+// Web Push subscription storage for PWA push notifications
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique // Web Push endpoint URL
+  p256dh    String   // Public key for encryption
+  auth      String   // Auth secret for encryption
+  userAgent String?  // Browser/device info
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user FamilyMember @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+// Notification preferences per user
+model NotificationPreference {
+  id                      String   @id @default(uuid())
+  userId                  String   @unique
+  // Enabled notification types (array of NotificationType values)
+  enabledTypes            String[] @default([])
+  // Quiet hours configuration
+  quietHoursEnabled       Boolean  @default(false)
+  quietHoursStart         String?  // HH:MM format (e.g., "22:00")
+  quietHoursEnd           String?  // HH:MM format (e.g., "07:00")
+  // Push notification settings
+  pushEnabled             Boolean  @default(true)
+  inAppEnabled            Boolean  @default(true)
+  // Specific notification type preferences
+  leftoverExpiringHours   Int      @default(24) // Hours before expiration to notify
+  documentExpiringDays    Int      @default(90) // Days before expiration to notify
+  carpoolReminderMinutes  Int      @default(30) // Minutes before carpool to notify
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  user FamilyMember @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }
 
 // ============================================
@@ -1543,8 +1621,8 @@ model RecipeIngredient {
   id        String  @id @default(uuid())
   recipeId  String
   name      String
-  quantity  Float
-  unit      String  // cups, tbsp, lbs, oz, etc.
+  quantity  Float?  // Optional - some ingredients like "Salt to taste" don't have quantity
+  unit      String? // Optional - cups, tbsp, lbs, oz, etc.
   notes     String? // "diced", "room temperature"
   sortOrder Int     @default(0)
 
@@ -2220,6 +2298,27 @@ enum TempMethod {
   FOREHEAD
 }
 
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+  CANCELLED
+}
+
+enum DependencyType {
+  FINISH_TO_START
+  START_TO_START
+  BLOCKING
+}
+
 // ============================================
 // RULES ENGINE & AUTOMATION MODULE
 // ============================================
@@ -2262,4 +2361,77 @@ model RuleExecution {
   @@index([ruleId, executedAt])
   @@index([success, executedAt])
   @@map("rule_executions")
+}
+
+// ============================================
+// PROJECTS MODULE
+// ============================================
+
+model Project {
+  id          String        @id @default(uuid())
+  familyId    String
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  startDate   DateTime?
+  dueDate     DateTime?
+  budget      Float?
+  notes       String?
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  family   Family        @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  creator  FamilyMember  @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  tasks    ProjectTask[]
+  shopping ShoppingItem[]
+  events   CalendarEvent[]
+
+  @@index([familyId, status])
+  @@index([createdAt])
+  @@map("projects")
+}
+
+model ProjectTask {
+  id             String       @id @default(uuid())
+  projectId      String
+  name           String
+  description    String?
+  status         TaskStatus   @default(PENDING)
+  assigneeId     String?
+  dueDate        DateTime?
+  estimatedHours Float?
+  actualHours    Float?
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  project      Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee     FamilyMember?    @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  dependencies TaskDependency[] @relation("DependentTask")
+  dependents   TaskDependency[] @relation("BlockingTask")
+
+  @@index([projectId, sortOrder])
+  @@index([assigneeId])
+  @@index([status])
+  @@map("project_tasks")
+}
+
+model TaskDependency {
+  id              String         @id @default(uuid())
+  dependentTaskId String // Task that is blocked
+  blockingTaskId  String // Task that must complete first
+  dependencyType  DependencyType @default(FINISH_TO_START)
+  createdAt       DateTime       @default(now())
+
+  // Relations
+  dependentTask ProjectTask @relation("DependentTask", fields: [dependentTaskId], references: [id], onDelete: Cascade)
+  blockingTask  ProjectTask @relation("BlockingTask", fields: [blockingTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([dependentTaskId, blockingTaskId])
+  @@index([dependentTaskId])
+  @@index([blockingTaskId])
+  @@map("task_dependencies")
 }

@@ -347,7 +347,7 @@ export default function MedicationsPage() {
                         className={`flex-1 px-4 py-2 rounded font-medium ${
                           isLocked
                             ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                            : 'bg-ember-700 hover:bg-ember-500 text-white'
                         }`}
                       >
                         Log Dose

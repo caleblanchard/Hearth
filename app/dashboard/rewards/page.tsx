@@ -152,7 +152,7 @@ export default function RewardsPage() {
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -175,7 +175,7 @@ export default function RewardsPage() {
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600 dark:text-gray-400">Your Credits</p>
-              <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+              <p className="text-3xl font-bold text-ember-700 dark:text-ember-500">
                 {userCredits}
               </p>
             </div>
@@ -184,13 +184,13 @@ export default function RewardsPage() {
             <div className="mt-4 flex gap-3">
               <button
                 onClick={() => router.push('/dashboard/rewards/manage')}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+                className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
               >
                 Manage Rewards
               </button>
               <button
                 onClick={() => router.push('/dashboard/rewards/redemptions')}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+                className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
               >
                 View Redemptions
               </button>
@@ -208,7 +208,7 @@ export default function RewardsPage() {
                 onClick={() => setFilter(cat.value)}
                 className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors flex items-center gap-2 ${
                   filter === cat.value
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-ember-700 text-white'
                     : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
@@ -238,7 +238,7 @@ export default function RewardsPage() {
                       className="w-full h-48 object-cover"
                     />
                   ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <div className="w-full h-48 bg-gradient-to-br from-ember-500 to-ember-700 flex items-center justify-center">
                       {(() => {
                         const CategoryIcon = CATEGORIES.find(c => c.value === reward.category)?.Icon || GiftIcon;
                         return <CategoryIcon className="h-24 w-24 text-white" />;
@@ -256,7 +256,7 @@ export default function RewardsPage() {
                     )}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                        <span className="text-2xl font-bold text-ember-700 dark:text-ember-500">
                           {reward.costCredits}
                         </span>
                         <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -278,8 +278,8 @@ export default function RewardsPage() {
                           : !available
                           ? 'bg-red-300 dark:bg-red-900 text-red-700 dark:text-red-300 cursor-not-allowed'
                           : redeeming === reward.id
-                          ? 'bg-indigo-400 text-white cursor-wait'
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                          ? 'bg-ember-300 text-white cursor-wait'
+                          : 'bg-ember-700 hover:bg-ember-500 text-white'
                       }`}
                     >
                       {!affordable
@@ -305,7 +305,7 @@ export default function RewardsPage() {
             {session?.user?.role === 'PARENT' && filter === 'ALL' && (
               <button
                 onClick={() => router.push('/dashboard/rewards/manage')}
-                className="mt-4 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+                className="mt-4 px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
               >
                 Create First Reward
               </button>

@@ -177,7 +177,7 @@ export default function RoutineBuilder({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 dark:bg-gray-700 dark:text-white"
             placeholder="e.g., Morning Routine"
           />
         </div>
@@ -194,7 +194,7 @@ export default function RoutineBuilder({
             id="routine-type"
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 dark:bg-gray-700 dark:text-white"
           >
             <option value="MORNING">Morning</option>
             <option value="BEDTIME">Bedtime</option>
@@ -216,7 +216,7 @@ export default function RoutineBuilder({
             id="routine-assign"
             value={assignedTo || ''}
             onChange={(e) => setAssignedTo(e.target.value || null)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 dark:bg-gray-700 dark:text-white"
           >
             <option value="">All Children</option>
             {familyMembers
@@ -240,7 +240,7 @@ export default function RoutineBuilder({
                 type="checkbox"
                 checked={isWeekday}
                 onChange={(e) => setIsWeekday(e.target.checked)}
-                className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                className="mr-2 h-4 w-4 text-ember-700 focus:ring-ember-500 border-gray-300 rounded"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">Weekdays</span>
             </label>
@@ -249,7 +249,7 @@ export default function RoutineBuilder({
                 type="checkbox"
                 checked={isWeekend}
                 onChange={(e) => setIsWeekend(e.target.checked)}
-                className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                className="mr-2 h-4 w-4 text-ember-700 focus:ring-ember-500 border-gray-300 rounded"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">Weekends</span>
             </label>
@@ -265,7 +265,7 @@ export default function RoutineBuilder({
             <button
               type="button"
               onClick={addStep}
-              className="flex items-center gap-2 px-3 py-1 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              className="flex items-center gap-2 px-3 py-1 text-sm bg-ember-700 text-white rounded-lg hover:bg-ember-500"
             >
               <PlusIcon className="h-4 w-4" />
               Add Step
@@ -364,7 +364,7 @@ export default function RoutineBuilder({
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg"
+            className="px-6 py-2 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white rounded-lg"
           >
             {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Routine'}
           </button>

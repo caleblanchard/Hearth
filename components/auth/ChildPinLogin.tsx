@@ -74,9 +74,9 @@ export default function ChildPinLogin({ onLogin }: ChildPinLoginProps) {
             <button
               key={child.id}
               onClick={() => setSelectedChild(child)}
-              className="flex flex-col items-center justify-center p-6 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors duration-200 border-2 border-transparent hover:border-purple-400"
+              className="flex flex-col items-center justify-center p-6 bg-ember-300/30 dark:bg-slate-900/20 hover:bg-ember-300/40 dark:hover:bg-slate-900/30 rounded-lg transition-colors duration-200 border-2 border-transparent hover:border-ember-500"
             >
-              <div className="w-16 h-16 bg-purple-200 dark:bg-purple-700 rounded-full flex items-center justify-center text-2xl font-bold text-purple-700 dark:text-purple-200 mb-2">
+              <div className="w-16 h-16 bg-ember-300 dark:bg-ember-700 rounded-full flex items-center justify-center text-2xl font-bold text-ember-700 dark:text-ember-200 mb-2">
                 {child.name.charAt(0)}
               </div>
               <span className="text-gray-800 dark:text-white font-medium">
@@ -92,7 +92,7 @@ export default function ChildPinLogin({ onLogin }: ChildPinLoginProps) {
   return (
     <div>
       <div className="text-center mb-6">
-        <div className="w-20 h-20 bg-purple-200 dark:bg-purple-700 rounded-full flex items-center justify-center text-3xl font-bold text-purple-700 dark:text-purple-200 mx-auto mb-3">
+        <div className="w-20 h-20 bg-ember-300 dark:bg-ember-700 rounded-full flex items-center justify-center text-3xl font-bold text-ember-700 dark:text-ember-200 mx-auto mb-3">
           {selectedChild.name.charAt(0)}
         </div>
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
@@ -110,7 +110,7 @@ export default function ChildPinLogin({ onLogin }: ChildPinLoginProps) {
             key={i}
             className={`w-12 h-12 border-2 rounded-lg flex items-center justify-center text-2xl font-bold ${
               i < pin.length
-                ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                ? 'border-ember-700 bg-ember-300/30 dark:bg-slate-900/20'
                 : 'border-gray-300 dark:border-gray-600'
             }`}
           >
@@ -163,7 +163,7 @@ export default function ChildPinLogin({ onLogin }: ChildPinLoginProps) {
       <button
         onClick={handleSubmit}
         disabled={isLoading || pin.length < 4}
-        className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"
+        className="w-full bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"
       >
         {isLoading ? 'Signing in...' : 'Sign In'}
       </button>

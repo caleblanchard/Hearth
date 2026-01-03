@@ -114,9 +114,12 @@ export default function ExecutionHistoryPage() {
 
   if (loading && executions.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center py-12 text-gray-600">Loading execution history...</div>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 mx-auto mb-4"></div>
+            <div className="text-slate-600 dark:text-slate-400">Loading execution history...</div>
+          </div>
         </div>
       </div>
     );
@@ -124,7 +127,7 @@ export default function ExecutionHistoryPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
         <div className="max-w-4xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
             {error}
@@ -135,21 +138,21 @@ export default function ExecutionHistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/dashboard/rules" className="text-blue-600 hover:text-blue-800 text-sm mb-2 inline-block">
+          <Link href="/dashboard/rules" className="text-ember-700 dark:text-ember-400 hover:text-ember-500 dark:hover:text-ember-300 text-sm mb-2 inline-block">
             ← Back to Rules
           </Link>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Execution History</h1>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Execution History</h1>
               {rule && (
-                <p className="text-gray-600 mt-2">
+                <p className="text-slate-600 dark:text-slate-400 mt-2">
                   {rule.name}
                   <span className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    rule.isEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-800'
+                    rule.isEnabled ? 'bg-success/20 text-success dark:bg-success/30' : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
                   }`}>
                     {rule.isEnabled ? 'Enabled' : 'Disabled'}
                   </span>
@@ -161,33 +164,33 @@ export default function ExecutionHistoryPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900">{total}</div>
-            <div className="text-sm text-gray-600">Total Executions</div>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+            <div className="text-2xl font-bold text-slate-900 dark:text-white">{total}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">Total Executions</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-green-600">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+            <div className="text-2xl font-bold text-success">
               {executions.filter(e => e.success).length}
             </div>
-            <div className="text-sm text-gray-600">Successful</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">Successful</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-red-600">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+            <div className="text-2xl font-bold text-error">
               {executions.filter(e => !e.success).length}
             </div>
-            <div className="text-sm text-gray-600">Failed</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">Failed</div>
           </div>
         </div>
 
         {/* Filter */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
           <div className="flex items-center gap-2">
             <button
               onClick={() => { setFilter('all'); setOffset(0); }}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 filter === 'all'
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-ember-700 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-canvas-200 dark:hover:bg-slate-700'
               }`}
             >
               All
@@ -196,8 +199,8 @@ export default function ExecutionHistoryPage() {
               onClick={() => { setFilter('success'); setOffset(0); }}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 filter === 'success'
-                  ? 'bg-green-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-success text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-canvas-200 dark:hover:bg-slate-700'
               }`}
             >
               Successful
@@ -206,8 +209,8 @@ export default function ExecutionHistoryPage() {
               onClick={() => { setFilter('failed'); setOffset(0); }}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 filter === 'failed'
-                  ? 'bg-red-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-error text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-canvas-200 dark:hover:bg-slate-700'
               }`}
             >
               Failed
@@ -217,14 +220,14 @@ export default function ExecutionHistoryPage() {
 
         {/* Timeline */}
         {executions.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <div className="text-gray-400 mb-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
+            <div className="text-slate-400 dark:text-slate-500 mb-4">
               <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No executions found</h3>
-            <p className="text-gray-600">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No executions found</h3>
+            <p className="text-slate-600 dark:text-slate-400">
               {filter !== 'all'
                 ? `This rule has no ${filter} executions yet.`
                 : 'This rule has not been executed yet.'}
@@ -235,38 +238,38 @@ export default function ExecutionHistoryPage() {
             {executions.map((execution, idx) => (
               <div
                 key={execution.id}
-                className={`bg-white rounded-lg shadow-sm border-2 p-6 ${
+                className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border-2 p-6 ${
                   execution.success
-                    ? 'border-green-200 hover:border-green-300'
-                    : 'border-red-200 hover:border-red-300'
+                    ? 'border-success/30 hover:border-success/50 dark:border-success/50'
+                    : 'border-error/30 hover:border-error/50 dark:border-error/50'
                 } transition-colors`}
               >
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      execution.success ? 'bg-green-100' : 'bg-red-100'
+                      execution.success ? 'bg-success/20 dark:bg-success/30' : 'bg-error/20 dark:bg-error/30'
                     }`}>
                       {execution.success ? (
-                        <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-6 h-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       ) : (
-                        <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-6 h-6 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       )}
                     </div>
                     <div>
-                      <div className="font-semibold text-gray-900">
+                      <div className="font-semibold text-slate-900 dark:text-white">
                         {execution.success ? 'Executed Successfully' : 'Execution Failed'}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-slate-500 dark:text-slate-400">
                         {getRelativeTime(execution.executedAt)}
                       </div>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
                     {formatDate(execution.executedAt)}
                   </div>
                 </div>
@@ -274,14 +277,14 @@ export default function ExecutionHistoryPage() {
                 {/* Result */}
                 {execution.result && (
                   <div className="mb-3">
-                    <div className="text-sm font-medium text-gray-700 mb-1">Result</div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                    <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Result</div>
+                    <div className="bg-canvas-100 dark:bg-slate-700 rounded-lg p-3 text-sm">
                       {execution.result.actionsCompleted !== undefined && (
-                        <div className="text-gray-700">
+                        <div className="text-slate-700 dark:text-slate-300">
                           <span className="font-medium">Actions Completed:</span>{' '}
                           {execution.result.actionsCompleted}
                           {execution.result.actionsFailed > 0 && (
-                            <span className="text-red-600 ml-2">
+                            <span className="text-error ml-2">
                               ({execution.result.actionsFailed} failed)
                             </span>
                           )}
@@ -294,8 +297,8 @@ export default function ExecutionHistoryPage() {
                 {/* Error */}
                 {execution.error && (
                   <div className="mb-3">
-                    <div className="text-sm font-medium text-red-700 mb-1">Error</div>
-                    <div className="bg-red-50 rounded-lg p-3 text-sm text-red-700">
+                    <div className="text-sm font-medium text-error mb-1">Error</div>
+                    <div className="bg-error/10 dark:bg-error/20 rounded-lg p-3 text-sm text-error">
                       {execution.error}
                     </div>
                   </div>
@@ -304,11 +307,11 @@ export default function ExecutionHistoryPage() {
                 {/* Metadata */}
                 {execution.metadata && Object.keys(execution.metadata).length > 0 && (
                   <details className="mt-3">
-                    <summary className="text-sm font-medium text-gray-700 cursor-pointer hover:text-gray-900">
+                    <summary className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer hover:text-slate-900 dark:hover:text-white">
                       View Metadata
                     </summary>
-                    <div className="mt-2 bg-gray-50 rounded-lg p-3">
-                      <pre className="text-xs text-gray-600 overflow-x-auto">
+                    <div className="mt-2 bg-canvas-100 dark:bg-slate-700 rounded-lg p-3">
+                      <pre className="text-xs text-slate-600 dark:text-slate-400 overflow-x-auto">
                         {JSON.stringify(execution.metadata, null, 2)}
                       </pre>
                     </div>

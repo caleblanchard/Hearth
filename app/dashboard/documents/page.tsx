@@ -129,7 +129,7 @@ export default function DocumentsPage() {
         </div>
         <button
           onClick={() => router.push('/dashboard/documents/upload')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg font-medium transition-colors"
         >
           <PlusIcon className="h-5 w-5" />
           Upload Document
@@ -157,7 +157,7 @@ export default function DocumentsPage() {
       <div className="flex gap-2 mb-6 flex-wrap">
         <button
           onClick={() => setFilter('all')}
-          className={`px-3 py-1 rounded ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+          className={`px-3 py-1 rounded ${filter === 'all' ? 'bg-ember-700 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
         >
           All
         </button>
@@ -167,7 +167,7 @@ export default function DocumentsPage() {
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`px-3 py-1 rounded flex items-center gap-2 ${filter === key ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+              className={`px-3 py-1 rounded flex items-center gap-2 ${filter === key ? 'bg-ember-700 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
             >
               <Icon className="h-4 w-4" />
               {label}

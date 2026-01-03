@@ -132,10 +132,10 @@ export async function POST(request: NextRequest) {
     const ingredientsData =
       ingredients?.map((ing: any, index: number) => ({
         name: ing.name,
-        quantity: ing.quantity,
-        unit: ing.unit,
-        notes: ing.notes || null,
-        sortOrder: index,
+        ...(ing.quantity !== undefined && { quantity: ing.quantity }),
+        ...(ing.unit !== undefined && ing.unit?.trim() && { unit: ing.unit.trim() }),
+        ...(ing.notes !== undefined && ing.notes?.trim() && { notes: ing.notes.trim() }),
+        sortOrder: ing.sortOrder ?? index,
       })) || [];
 
     // Create recipe
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
         difficulty: difficulty || 'MEDIUM',
         imageUrl: imageUrl?.trim() || null,
         sourceUrl: sourceUrl?.trim() || null,
-        instructions: JSON.stringify(instructions || []),
+        instructions: instructions || JSON.stringify([]),
         notes: notes?.trim() || null,
         isFavorite: isFavorite || false,
         category: category || null,

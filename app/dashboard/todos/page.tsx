@@ -409,7 +409,7 @@ export default function TodosPage() {
       <div className="p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -443,7 +443,7 @@ export default function TodosPage() {
                   setShowAddForm(true);
                 }
               }}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
+              className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
             >
               {showAddForm ? (
                 <>
@@ -464,7 +464,7 @@ export default function TodosPage() {
               onClick={() => setFilter('ALL')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 filter === 'ALL'
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-ember-700 text-white'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
               }`}
             >
@@ -474,7 +474,7 @@ export default function TodosPage() {
               onClick={() => setFilter('MY_TODOS')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 filter === 'MY_TODOS'
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-ember-700 text-white'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
               }`}
             >
@@ -484,7 +484,7 @@ export default function TodosPage() {
               onClick={() => setFilter('COMPLETED')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 filter === 'COMPLETED'
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-ember-700 text-white'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
               }`}
             >
@@ -518,7 +518,7 @@ export default function TodosPage() {
                   value={newTodo.title}
                   onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
                   placeholder="What needs to be done?"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <div>
@@ -530,7 +530,7 @@ export default function TodosPage() {
                   onChange={(e) => setNewTodo({ ...newTodo, description: e.target.value })}
                   placeholder="Additional details..."
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -541,7 +541,7 @@ export default function TodosPage() {
                   <select
                     value={newTodo.priority}
                     onChange={(e) => setNewTodo({ ...newTodo, priority: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   >
                     {PRIORITIES.map((pri) => (
                       <option key={pri.value} value={pri.value}>
@@ -558,7 +558,7 @@ export default function TodosPage() {
                     type="date"
                     value={newTodo.dueDate}
                     onChange={(e) => setNewTodo({ ...newTodo, dueDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>
@@ -571,7 +571,7 @@ export default function TodosPage() {
                   value={newTodo.category}
                   onChange={(e) => setNewTodo({ ...newTodo, category: e.target.value })}
                   placeholder="e.g., Work, Home, Personal"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <div>
@@ -581,7 +581,7 @@ export default function TodosPage() {
                 <select
                   value={newTodo.assignedToId}
                   onChange={(e) => setNewTodo({ ...newTodo, assignedToId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 >
                   <option value="">Unassigned</option>
                   {familyMembers.map((member) => (
@@ -718,13 +718,13 @@ function TodoCard({
                 <span className={`text-xs px-2 py-1 rounded font-medium ${
                   todo.priority === 'URGENT' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
                   todo.priority === 'HIGH' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
-                  todo.priority === 'MEDIUM' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                  todo.priority === 'MEDIUM' ? 'bg-info/20 text-info dark:bg-info/30 dark:text-info' :
                   'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200'
                 }`}>
                   {priority?.label}
                 </span>
                 {todo.assignedTo && (
-                  <span className="text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 font-medium">
+                  <span className="text-xs px-2 py-1 rounded bg-ember-300 text-ember-700 dark:bg-slate-900 dark:text-ember-300 font-medium">
                     Assigned to {todo.assignedTo.name}
                   </span>
                 )}
@@ -734,7 +734,7 @@ function TodoCard({
                   </span>
                 )}
                 {todo.category && (
-                  <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                  <span className="text-xs px-2 py-1 rounded bg-ember-300 text-ember-700 dark:bg-slate-900 dark:text-ember-300">
                     {todo.category}
                   </span>
                 )}
@@ -749,7 +749,7 @@ function TodoCard({
           {isPending && (
             <button
               onClick={() => onUpdateStatus(todo.id, 'IN_PROGRESS')}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors duration-200 whitespace-nowrap"
+              className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white text-sm font-semibold rounded-lg transition-colors duration-200 whitespace-nowrap"
             >
               Start
             </button>
@@ -766,7 +766,7 @@ function TodoCard({
           <div className="flex gap-2">
             <button
               onClick={() => onEdit(todo)}
-              className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+              className="p-2 text-ember-700 hover:bg-ember-300/30 dark:hover:bg-slate-900/20 rounded-lg transition-colors"
               title="Edit task"
             >
               <PencilIcon className="h-5 w-5" />

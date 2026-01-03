@@ -49,9 +49,15 @@ describe('DashboardNav', () => {
     render(<DashboardNav />)
 
     const choresButtons = screen.getAllByText('Chores')
-    const activeButton = choresButtons.find(btn => 
-      btn.closest('button')?.classList.contains('bg-indigo-100')
-    )
+    const activeButton = choresButtons.find(btn => {
+      const button = btn.closest('button')
+      return button && (
+        button.classList.contains('bg-ember-300') || 
+        button.classList.contains('bg-slate-900') ||
+        button.className.includes('ember-300') ||
+        button.className.includes('ember-700')
+      )
+    })
     expect(activeButton).toBeDefined()
   })
 

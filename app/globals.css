@@ -3,14 +3,32 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Light Mode - Hearth Color Scheme */
+  --background: #FAFAFA;
+  --foreground: #263238;
+  --card-background: #FFFFFF;
+  --secondary-text: #4A6572;
+  --borders: #CFD8DC;
+  --primary-button: #E65100;
+  --primary-button-hover: #FF8A65;
+  --button-text: #FFFFFF;
+  --link: #E65100;
+  --link-hover: #FF8A65;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Dark Mode - Hearth Color Scheme */
+    --background: #121212;
+    --foreground: #ECEFF1;
+    --card-background: #232323;
+    --secondary-text: #B0BEC5;
+    --borders: #37474F;
+    --primary-button: #FF8A65;
+    --primary-button-hover: #FFB199;
+    --button-text: #121212;
+    --link: #FF8A65;
+    --link-hover: #FFB199;
   }
 }
 

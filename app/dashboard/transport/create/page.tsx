@@ -164,7 +164,7 @@ export default function CreateTransportPage() {
             required
             value={formData.memberId}
             onChange={(e) => setFormData({ ...formData, memberId: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
           >
             <option value="">Select member...</option>
             {members.map((member) => (
@@ -184,7 +184,7 @@ export default function CreateTransportPage() {
             <select
               value={formData.dayOfWeek}
               onChange={(e) => setFormData({ ...formData, dayOfWeek: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
             >
               {DAYS_OF_WEEK.map((day) => (
                 <option key={day.value} value={day.value}>
@@ -201,7 +201,7 @@ export default function CreateTransportPage() {
             <select
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
             >
               {TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
@@ -222,7 +222,7 @@ export default function CreateTransportPage() {
             required
             value={formData.time}
             onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
           />
         </div>
 
@@ -234,7 +234,7 @@ export default function CreateTransportPage() {
           <select
             value={formData.locationId}
             onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
           >
             <option value="">None</option>
             {locations.map((location) => (
@@ -253,7 +253,7 @@ export default function CreateTransportPage() {
           <select
             value={formData.driverId}
             onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
           >
             <option value="">None</option>
             {drivers.map((driver) => (
@@ -272,7 +272,7 @@ export default function CreateTransportPage() {
           <select
             value={formData.carpoolId}
             onChange={(e) => setFormData({ ...formData, carpoolId: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
           >
             <option value="">None</option>
             {carpools.map((carpool) => (
@@ -292,7 +292,7 @@ export default function CreateTransportPage() {
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             rows={3}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
             placeholder="Additional notes"
           />
         </div>
@@ -302,7 +302,7 @@ export default function CreateTransportPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+            className="flex-1 px-6 py-3 bg-ember-700 hover:bg-ember-500 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
           >
             {submitting ? 'Adding...' : 'Add Schedule'}
           </button>

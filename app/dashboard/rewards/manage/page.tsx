@@ -304,7 +304,7 @@ export default function ManageRewardsPage() {
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -333,7 +333,7 @@ export default function ManageRewardsPage() {
                   setShowAddForm(true);
                 }
               }}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+              className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
             >
               {showAddForm ? (
                 <>
@@ -366,7 +366,7 @@ export default function ManageRewardsPage() {
                   value={newReward.name}
                   onChange={(e) => setNewReward({ ...newReward, name: e.target.value })}
                   placeholder="e.g., Extra Screen Time, Favorite Dinner, New Toy"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <div>
@@ -378,7 +378,7 @@ export default function ManageRewardsPage() {
                   onChange={(e) => setNewReward({ ...newReward, description: e.target.value })}
                   placeholder="Describe the reward..."
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -389,7 +389,7 @@ export default function ManageRewardsPage() {
                   <select
                     value={newReward.category}
                     onChange={(e) => setNewReward({ ...newReward, category: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   >
                     {CATEGORIES.map((cat) => (
                       <option key={cat.value} value={cat.value}>
@@ -407,7 +407,7 @@ export default function ManageRewardsPage() {
                     value={newReward.costCredits}
                     onChange={(e) => setNewReward({ ...newReward, costCredits: parseInt(e.target.value) || 0 })}
                     min="1"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div>
@@ -420,7 +420,7 @@ export default function ManageRewardsPage() {
                     onChange={(e) => setNewReward({ ...newReward, quantity: e.target.value })}
                     placeholder="Unlimited"
                     min="1"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>
@@ -471,7 +471,7 @@ export default function ManageRewardsPage() {
                       </p>
                     )}
                     <div className="flex items-center gap-4 text-sm">
-                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                      <span className="text-ember-700 dark:text-ember-500 font-medium">
                         {reward.costCredits} credits
                       </span>
                       <span className="text-gray-500">•</span>
@@ -491,14 +491,14 @@ export default function ManageRewardsPage() {
                   <div className="flex gap-2 ml-4">
                     <button
                       onClick={() => handleStartEdit(reward)}
-                      className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                      className="p-2 text-ember-700 hover:bg-ember-300/30 dark:hover:bg-slate-900/20 rounded-lg transition-colors"
                       title="Edit reward"
                     >
                       <PencilIcon className="h-5 w-5" />
                     </button>
                     <button
                       onClick={() => handleToggleStatus(reward.id, reward.status)}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                      className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white text-sm font-semibold rounded-lg transition-colors"
                     >
                       {reward.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                     </button>
@@ -521,7 +521,7 @@ export default function ManageRewardsPage() {
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
             >
               Create First Reward
             </button>

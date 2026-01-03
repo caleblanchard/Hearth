@@ -150,11 +150,11 @@ export default function ModuleSettingsPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-8">
+      <div className="bg-info/10 dark:bg-info/20 border border-info/30 dark:border-info/40 rounded-lg p-4 mb-8">
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
             <svg
-              className="h-5 w-5 text-blue-600 dark:text-blue-400"
+              className="h-5 w-5 text-info dark:text-info"
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -165,7 +165,7 @@ export default function ModuleSettingsPage() {
               />
             </svg>
           </div>
-          <div className="flex-1 text-sm text-blue-800 dark:text-blue-200">
+          <div className="flex-1 text-sm text-info dark:text-info">
             <p className="font-medium mb-1">Important Notes:</p>
             <ul className="list-disc list-inside space-y-1">
               <li>Disabling a module hides it from all family members</li>

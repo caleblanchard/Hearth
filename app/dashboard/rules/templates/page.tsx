@@ -23,10 +23,10 @@ const CATEGORY_LABELS = {
 };
 
 const CATEGORY_COLORS = {
-  productivity: 'bg-blue-100 text-blue-800',
+  productivity: 'bg-info/20 text-info',
   safety: 'bg-red-100 text-red-800',
   rewards: 'bg-green-100 text-green-800',
-  convenience: 'bg-purple-100 text-purple-800',
+  convenience: 'bg-ember-300 text-ember-700',
 };
 
 export default function TemplatesPage() {
@@ -110,9 +110,12 @@ export default function TemplatesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center py-12 text-gray-600">Loading templates...</div>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 mx-auto mb-4"></div>
+            <div className="text-slate-600 dark:text-slate-400">Loading templates...</div>
+          </div>
         </div>
       </div>
     );
@@ -120,9 +123,9 @@ export default function TemplatesPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          <div className="bg-error/10 border border-error/20 rounded-lg p-4 text-error">
             {error}
           </div>
         </div>
@@ -131,26 +134,26 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/dashboard/rules" className="text-blue-600 hover:text-blue-800 text-sm mb-2 inline-block">
+          <Link href="/dashboard/rules" className="text-ember-700 hover:text-ember-500 text-sm mb-2 inline-block">
             ← Back to Rules
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Rule Templates</h1>
-          <p className="text-gray-600 mt-2">Choose from pre-built automation templates</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Rule Templates</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">Choose from pre-built automation templates</p>
         </div>
 
         {/* Category Filter */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setCategoryFilter(null)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 categoryFilter === null
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-ember-700 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-canvas-200 dark:hover:bg-slate-700'
               }`}
             >
               All Categories
@@ -161,8 +164,8 @@ export default function TemplatesPage() {
                 onClick={() => setCategoryFilter(key)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   categoryFilter === key
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-ember-700 text-white'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-canvas-200 dark:hover:bg-slate-700'
                 }`}
               >
                 {label}
@@ -173,51 +176,51 @@ export default function TemplatesPage() {
 
         {/* Templates Grid */}
         {templates.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <div className="text-gray-400 mb-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
+            <div className="text-slate-400 dark:text-slate-500 mb-4">
               <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No templates found</h3>
-            <p className="text-gray-600">Try selecting a different category or create a custom rule.</p>
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No templates found</h3>
+            <p className="text-slate-600 dark:text-slate-400">Try selecting a different category or create a custom rule.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {templates.map((template) => (
               <div
                 key={template.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow"
               >
                 {/* Template Header */}
                 <div className="mb-4">
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{template.name}</h3>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${CATEGORY_COLORS[template.category]}`}>
                       {CATEGORY_LABELS[template.category]}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600">{template.description}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{template.description}</p>
                 </div>
 
                 {/* Template Details */}
-                <div className="space-y-3 mb-4 pb-4 border-b border-gray-200">
+                <div className="space-y-3 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
                   <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase mb-1">Trigger</div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Trigger</div>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-ember-300 dark:bg-ember-700 text-ember-700 dark:text-ember-300">
                       {getTriggerLabel(template.trigger)}
                     </span>
                   </div>
 
                   <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">
                       Actions ({template.actions.length})
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {template.actions.map((action, idx) => (
                         <span
                           key={idx}
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/20 dark:bg-info/30 text-info"
                         >
                           {getActionLabel(action)}
                         </span>
@@ -227,8 +230,8 @@ export default function TemplatesPage() {
 
                   {template.customizable.length > 0 && (
                     <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase mb-1">Customizable</div>
-                      <div className="text-xs text-gray-600">
+                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Customizable</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400">
                         {template.customizable.length} field{template.customizable.length !== 1 ? 's' : ''} can be customized
                       </div>
                     </div>
@@ -239,13 +242,13 @@ export default function TemplatesPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => useTemplate(template)}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                    className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-md text-sm font-medium transition-colors"
                   >
                     Use Template
                   </button>
                   <button
                     onClick={() => setSelectedTemplate(template)}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-canvas-200 dark:hover:bg-slate-700 transition-colors"
                   >
                     Details
                   </button>
@@ -258,18 +261,18 @@ export default function TemplatesPage() {
         {/* Template Details Modal */}
         {selectedTemplate && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{selectedTemplate.name}</h2>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedTemplate.name}</h2>
                     <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium ${CATEGORY_COLORS[selectedTemplate.category]}`}>
                       {CATEGORY_LABELS[selectedTemplate.category]}
                     </span>
                   </div>
                   <button
                     onClick={() => setSelectedTemplate(null)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                   >
                     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -277,30 +280,30 @@ export default function TemplatesPage() {
                   </button>
                 </div>
 
-                <p className="text-gray-600 mb-6">{selectedTemplate.description}</p>
+                <p className="text-slate-600 dark:text-slate-400 mb-6">{selectedTemplate.description}</p>
 
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Trigger</h3>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="text-sm text-gray-700">
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Trigger</h3>
+                    <div className="bg-canvas-100 dark:bg-slate-700 rounded-lg p-3">
+                      <div className="text-sm text-slate-700 dark:text-slate-300">
                         <span className="font-medium">Type:</span> {getTriggerLabel(selectedTemplate.trigger)}
                       </div>
-                      <div className="text-xs text-gray-600 mt-1">
+                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                         {JSON.stringify(selectedTemplate.trigger.config, null, 2)}
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Actions</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Actions</h3>
                     <div className="space-y-2">
                       {selectedTemplate.actions.map((action, idx) => (
-                        <div key={idx} className="bg-gray-50 rounded-lg p-3">
-                          <div className="text-sm text-gray-700">
+                        <div key={idx} className="bg-canvas-100 dark:bg-slate-700 rounded-lg p-3">
+                          <div className="text-sm text-slate-700 dark:text-slate-300">
                             <span className="font-medium">Type:</span> {getActionLabel(action)}
                           </div>
-                          <div className="text-xs text-gray-600 mt-1">
+                          <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                             {JSON.stringify(action.config, null, 2)}
                           </div>
                         </div>
@@ -310,8 +313,8 @@ export default function TemplatesPage() {
 
                   {selectedTemplate.conditions && (
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-2">Conditions</h3>
-                      <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Conditions</h3>
+                      <div className="bg-canvas-100 dark:bg-slate-700 rounded-lg p-3 text-xs text-slate-600 dark:text-slate-400">
                         {JSON.stringify(selectedTemplate.conditions, null, 2)}
                       </div>
                     </div>
@@ -321,13 +324,13 @@ export default function TemplatesPage() {
                 <div className="mt-6 flex items-center justify-end gap-3">
                   <button
                     onClick={() => setSelectedTemplate(null)}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                    className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-slate-700 dark:text-slate-300 hover:bg-canvas-200 dark:hover:bg-slate-700 transition-colors"
                   >
                     Close
                   </button>
                   <button
                     onClick={handleCreateFromTemplate}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-md transition-colors"
                   >
                     Use This Template
                   </button>

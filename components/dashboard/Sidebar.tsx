@@ -32,6 +32,10 @@ import {
   ArchiveBoxIcon,
   TruckIcon,
   DocumentTextIcon,
+  FolderIcon,
+  BoltIcon,
+  ChatBubbleLeftRightIcon,
+  BookOpenIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -70,9 +74,9 @@ export default function Sidebar() {
         console.error('Error fetching enabled modules:', error);
         // On error, assume all modules are enabled
         setEnabledModules(new Set([
-          'CHORES', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS',
+          'CHORES', 'PROJECTS', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS',
           'ROUTINES', 'MEAL_PLANNING', 'HEALTH', 'PETS', 'LEADERBOARD', 'FINANCIAL',
-          'INVENTORY', 'MAINTENANCE', 'TRANSPORT', 'DOCUMENTS'
+          'INVENTORY', 'MAINTENANCE', 'TRANSPORT', 'DOCUMENTS', 'RULES_ENGINE'
         ]));
       }
     }
@@ -100,6 +104,7 @@ export default function Sidebar() {
       name: 'Tasks & Activities',
       items: [
         { name: 'Chores', path: '/dashboard/chores', icon: CheckCircleIcon, moduleId: 'CHORES' },
+        { name: 'Projects', path: '/dashboard/projects', icon: FolderIcon, moduleId: 'PROJECTS' },
         { name: 'To-Do', path: '/dashboard/todos', icon: ListBulletIcon, moduleId: 'TODOS' },
         { name: 'Shopping', path: '/dashboard/shopping', icon: ShoppingCartIcon, moduleId: 'SHOPPING' },
       ],
@@ -115,6 +120,8 @@ export default function Sidebar() {
         { name: 'Budgets', path: '/dashboard/financial/budgets', icon: BanknotesIcon, moduleId: 'FINANCIAL' },
         { name: 'Calendar', path: '/dashboard/calendar', icon: CalendarDaysIcon, moduleId: 'CALENDAR' },
         { name: 'Meals', path: '/dashboard/meals', icon: CakeIcon, moduleId: 'MEAL_PLANNING' },
+        { name: 'Recipes', path: '/dashboard/meals/recipes', icon: BookOpenIcon, moduleId: 'RECIPES' },
+        { name: 'Communication', path: '/dashboard/communication', icon: ChatBubbleLeftRightIcon, moduleId: 'COMMUNICATION' },
         { name: 'Health', path: '/dashboard/health', icon: BeakerIcon, moduleId: 'HEALTH' },
         { name: 'Pets', path: '/dashboard/pets', icon: HeartIcon, moduleId: 'PETS' },
         { name: 'Inventory', path: '/dashboard/inventory', icon: ArchiveBoxIcon, moduleId: 'INVENTORY' },
@@ -140,6 +147,7 @@ export default function Sidebar() {
       name: 'Settings',
       items: [
         { name: 'Module Settings', path: '/dashboard/settings/modules', icon: Cog6ToothIcon },
+        { name: 'Automation Rules', path: '/dashboard/rules', icon: BoltIcon, moduleId: 'RULES_ENGINE' },
         { name: 'Reports', path: '/dashboard/reports', icon: ChartBarIcon },
         { name: 'Approvals', path: '/dashboard/approvals', icon: CheckBadgeIcon },
         { name: 'Manage Chores', path: '/dashboard/chores/manage', icon: WrenchScrewdriverIcon },
@@ -164,8 +172,8 @@ export default function Sidebar() {
         }}
         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
           isActive
-            ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200'
-            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            ? 'bg-ember-300 dark:bg-slate-900 text-ember-700 dark:text-ember-300'
+            : 'text-slate-700 dark:text-slate-300 hover:bg-canvas-200 dark:hover:bg-slate-700'
         }`}
       >
         <Icon className="h-5 w-5 flex-shrink-0" />
@@ -182,6 +190,10 @@ export default function Sidebar() {
     const filteredItems = group.items.filter((item) => {
       // If no moduleId, always show (like Dashboard, Profile, Family)
       if (!item.moduleId) return true;
+      // RULES_ENGINE is always available to parents (non-configurable)
+      if (item.moduleId === 'RULES_ENGINE' && session?.user?.role === 'PARENT') {
+        return true;
+      }
       // Check if module is enabled
       return enabledModules.has(item.moduleId);
     });
@@ -231,7 +243,7 @@ export default function Sidebar() {
               alt="Hearth" 
               className="h-8 w-8"
             />
-            <h1 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+            <h1 className="text-2xl font-bold text-ember-700 dark:text-ember-500">
               Hearth
             </h1>
           </div>
@@ -265,7 +277,7 @@ export default function Sidebar() {
       {isOpen && session?.user && (
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
+            <div className="w-10 h-10 bg-ember-700 dark:bg-ember-500 rounded-full flex items-center justify-center text-white font-bold">
               {session.user.name?.charAt(0) || 'U'}
             </div>
             <div className="flex-1 min-w-0">
@@ -287,7 +299,7 @@ export default function Sidebar() {
       {/* Mobile menu button */}
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="md:hidden fixed bottom-4 right-4 z-40 p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg transition-colors"
+        className="md:hidden fixed bottom-4 right-4 z-40 p-3 bg-ember-700 hover:bg-ember-500 text-white rounded-full shadow-lg transition-colors"
       >
         <Bars3Icon className="h-6 w-6" />
       </button>

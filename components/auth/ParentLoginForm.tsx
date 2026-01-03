@@ -41,7 +41,7 @@ export default function ParentLoginForm({ onLogin }: ParentLoginFormProps) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
           placeholder="you@example.com"
           disabled={isLoading}
         />
@@ -60,7 +60,7 @@ export default function ParentLoginForm({ onLogin }: ParentLoginFormProps) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
           placeholder="••••••••"
           disabled={isLoading}
         />
@@ -75,7 +75,7 @@ export default function ParentLoginForm({ onLogin }: ParentLoginFormProps) {
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"
+        className="w-full bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"
       >
         {isLoading ? 'Signing in...' : 'Sign In'}
       </button>
@@ -83,7 +83,7 @@ export default function ParentLoginForm({ onLogin }: ParentLoginFormProps) {
       <div className="text-center">
         <a
           href="/auth/forgot-password"
-          className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="text-sm text-ember-700 dark:text-ember-500 hover:underline"
         >
           Forgot password?
         </a>

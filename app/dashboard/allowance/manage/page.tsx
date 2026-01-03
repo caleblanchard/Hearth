@@ -390,7 +390,7 @@ export default function ManageAllowancePage() {
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -419,7 +419,7 @@ export default function ManageAllowancePage() {
                   setShowAddForm(true);
                 }
               }}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
             >
               {showAddForm ? '✕ Cancel' : '+ Add Schedule'}
             </button>
@@ -442,7 +442,7 @@ export default function ManageAllowancePage() {
                   value={newSchedule.memberId}
                   onChange={(e) => setNewSchedule({ ...newSchedule, memberId: e.target.value })}
                   disabled={!!editingSchedule}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 >
                   {members.map((member) => (
                     <option key={member.id} value={member.id}>
@@ -468,7 +468,7 @@ export default function ManageAllowancePage() {
                     value={newSchedule.amount}
                     onChange={(e) => setNewSchedule({ ...newSchedule, amount: parseInt(e.target.value) || 0 })}
                     min="1"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
 
@@ -480,7 +480,7 @@ export default function ManageAllowancePage() {
                     id="frequency-select"
                     value={newSchedule.frequency}
                     onChange={(e) => setNewSchedule({ ...newSchedule, frequency: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   >
                     {FREQUENCIES.map((freq) => (
                       <option key={freq.value} value={freq.value}>
@@ -500,7 +500,7 @@ export default function ManageAllowancePage() {
                     id="day-of-week-select"
                     value={newSchedule.dayOfWeek}
                     onChange={(e) => setNewSchedule({ ...newSchedule, dayOfWeek: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   >
                     {DAYS_OF_WEEK.map((day) => (
                       <option key={day.value} value={day.value}>
@@ -523,7 +523,7 @@ export default function ManageAllowancePage() {
                     onChange={(e) => setNewSchedule({ ...newSchedule, dayOfMonth: parseInt(e.target.value) || 1 })}
                     min="1"
                     max="31"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     For months with fewer days, the last day of the month will be used
@@ -541,7 +541,7 @@ export default function ManageAllowancePage() {
                     type="date"
                     value={newSchedule.startDate}
                     onChange={(e) => setNewSchedule({ ...newSchedule, startDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
 
@@ -554,7 +554,7 @@ export default function ManageAllowancePage() {
                     type="date"
                     value={newSchedule.endDate}
                     onChange={(e) => setNewSchedule({ ...newSchedule, endDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>
@@ -604,7 +604,7 @@ export default function ManageAllowancePage() {
                       )}
                     </div>
                     <div className="flex items-center gap-4 text-sm mb-2">
-                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                      <span className="text-ember-700 dark:text-ember-500 font-medium">
                         {schedule.amount} credits
                       </span>
                       <span className="text-gray-500">•</span>
@@ -629,14 +629,14 @@ export default function ManageAllowancePage() {
                   <div className="flex gap-2 ml-4">
                     <button
                       onClick={() => handleStartEdit(schedule)}
-                      className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                      className="p-2 text-ember-700 hover:bg-ember-300/30 dark:hover:bg-slate-900/20 rounded-lg transition-colors"
                       title="Edit schedule"
                     >
                       <PencilIcon className="h-5 w-5" />
                     </button>
                     <button
                       onClick={() => handleTogglePause(schedule.id, schedule.isPaused)}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
                       title={schedule.isPaused ? 'Resume schedule' : 'Pause schedule'}
                     >
                       {schedule.isPaused ? (
@@ -670,7 +670,7 @@ export default function ManageAllowancePage() {
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
             >
               Create First Schedule
             </button>

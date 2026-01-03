@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import SessionProvider from '@/components/SessionProvider';
+import ServiceWorkerRegistration from './components/ServiceWorkerRegistration';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 export const metadata: Metadata = {
   title: 'Hearth - Household ERP',
@@ -48,7 +50,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#4f46e5',
+  themeColor: '#E65100', // Hearth Ember 700
 };
 
 export default function RootLayout({
@@ -59,8 +61,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        <ServiceWorkerRegistration />
         <SessionProvider>
           {children}
+          <PWAInstallPrompt />
         </SessionProvider>
       </body>
     </html>

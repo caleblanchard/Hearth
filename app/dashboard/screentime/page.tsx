@@ -248,7 +248,7 @@ export default function ScreenTimePage() {
       <div className="p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -284,11 +284,11 @@ export default function ScreenTimePage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
               <div className="flex items-center gap-3 mb-2">
-                <ClockIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Current Balance</p>
+                <ClockIcon className="h-6 w-6 text-ember-700 dark:text-ember-500" />
+                <p className="text-sm text-slate-600 dark:text-slate-400">Current Balance</p>
               </div>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                <p className="text-3xl font-bold text-ember-700 dark:text-ember-500">
                   {formatTime(stats.summary.currentBalance)}
                 </p>
                 {graceStatus && graceStatus.borrowedMinutes > 0 && (
@@ -301,10 +301,10 @@ export default function ScreenTimePage() {
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
               <div className="flex items-center gap-3 mb-2">
-                <ChartBarIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">This Week</p>
+                <ChartBarIcon className="h-6 w-6 text-slate-700 dark:text-slate-400" />
+                <p className="text-sm text-slate-600 dark:text-slate-400">This Week</p>
               </div>
-              <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-3xl font-bold text-slate-700 dark:text-slate-400">
                 {formatTime(stats.summary.totalMinutes)}
               </p>
             </div>
@@ -321,10 +321,10 @@ export default function ScreenTimePage() {
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
               <div className="flex items-center gap-3 mb-2">
-                <DevicePhoneMobileIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Weekly Limit</p>
+                <DevicePhoneMobileIcon className="h-6 w-6 text-slate-700 dark:text-slate-400" />
+                <p className="text-sm text-slate-600 dark:text-slate-400">Weekly Limit</p>
               </div>
-              <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+              <p className="text-3xl font-bold text-slate-700 dark:text-slate-400">
                 {formatTime(stats.summary.weeklyAllocation)}
               </p>
             </div>
@@ -342,7 +342,7 @@ export default function ScreenTimePage() {
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
               <div
-                className="bg-indigo-600 dark:bg-indigo-500 h-4 rounded-full transition-all"
+                className="bg-ember-700 dark:bg-ember-500 h-4 rounded-full transition-all"
                 style={{
                   width: `${Math.min(100, ((stats.summary.weeklyAllocation - stats.summary.currentBalance) / stats.summary.weeklyAllocation * 100))}%`
                 }}
@@ -373,8 +373,8 @@ export default function ScreenTimePage() {
                   onClick={() => setSelectedDevice(device.value)}
                   className={`p-4 rounded-lg border-2 transition-all ${
                     selectedDevice === device.value
-                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-indigo-400'
+                      ? 'border-ember-700 bg-ember-300/30 dark:bg-slate-900/20'
+                      : 'border-slate-300 dark:border-slate-700 hover:border-ember-500'
                   }`}
                 >
                   <div className="mb-2 flex justify-center">
@@ -400,7 +400,7 @@ export default function ScreenTimePage() {
                 key={minutes}
                 onClick={() => handleLogTime(minutes)}
                 disabled={logging}
-                className="p-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-lg transition-colors duration-200"
+                className="p-4 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold rounded-lg transition-colors duration-200"
               >
                 {minutes} min
               </button>
@@ -419,7 +419,7 @@ export default function ScreenTimePage() {
               value={customMinutes}
               onChange={(e) => setCustomMinutes(e.target.value)}
               placeholder="Enter minutes..."
-              className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               min="1"
             />
             <button
@@ -461,7 +461,7 @@ export default function ScreenTimePage() {
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
-                        className="bg-indigo-600 dark:bg-indigo-500 h-2 rounded-full"
+                        className="bg-ember-700 dark:bg-ember-500 h-2 rounded-full"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
@@ -480,7 +480,7 @@ export default function ScreenTimePage() {
             </h2>
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+              className="text-sm text-ember-700 dark:text-ember-500 hover:underline"
             >
               {showHistory ? 'Hide' : 'Show'} ({transactions.length})
             </button>
@@ -527,7 +527,7 @@ export default function ScreenTimePage() {
                                 ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                                 : transaction.type === 'EARNED'
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                : 'bg-info/20 text-info dark:bg-info/30 dark:text-info'
                             }`}
                           >
                             {transaction.type}
@@ -574,7 +574,7 @@ export default function ScreenTimePage() {
             </h2>
             <button
               onClick={() => setShowGraceHistory(!showGraceHistory)}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+              className="text-sm text-ember-700 dark:text-ember-500 hover:underline"
             >
               {showGraceHistory ? 'Hide' : 'Show'} ({graceLogs.length})
             </button>
@@ -620,7 +620,7 @@ export default function ScreenTimePage() {
                             log.repaymentStatus === 'PENDING'
                               ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                               : log.repaymentStatus === 'DEDUCTED'
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                              ? 'bg-info/20 text-info dark:bg-info/30 dark:text-info'
                               : log.repaymentStatus === 'EARNED_BACK'
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                               : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'

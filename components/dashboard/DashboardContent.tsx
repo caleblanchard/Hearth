@@ -9,6 +9,7 @@ import MedicationWidget from '@/components/dashboard/widgets/MedicationWidget';
 import MaintenanceWidget from '@/components/dashboard/widgets/MaintenanceWidget';
 import InventoryWidget from '@/components/dashboard/widgets/InventoryWidget';
 import WeatherWidget from '@/components/dashboard/widgets/WeatherWidget';
+import CommunicationWidget from '@/components/dashboard/widgets/CommunicationWidget';
 
 interface DashboardData {
   chores: Array<{
@@ -60,8 +61,27 @@ export default function DashboardContent() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [enabledModules, setEnabledModules] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    async function fetchEnabledModules() {
+      try {
+        const res = await fetch('/api/settings/modules/enabled');
+        if (res.ok) {
+          const data = await res.json();
+          setEnabledModules(new Set(data.enabledModules));
+        }
+      } catch (error) {
+        console.error('Error fetching enabled modules:', error);
+        // On error, assume all modules are enabled
+        setEnabledModules(new Set([
+          'CHORES', 'PROJECTS', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS',
+          'ROUTINES', 'MEAL_PLANNING', 'HEALTH', 'PETS', 'LEADERBOARD', 'FINANCIAL',
+          'INVENTORY', 'MAINTENANCE', 'TRANSPORT', 'DOCUMENTS', 'RULES_ENGINE', 'COMMUNICATION', 'RECIPES'
+        ]));
+      }
+    }
+
     async function fetchDashboard() {
       try {
         const response = await fetch('/api/dashboard');
@@ -78,6 +98,7 @@ export default function DashboardContent() {
     }
 
     if (session) {
+      fetchEnabledModules();
       fetchDashboard();
     }
   }, [session]);
@@ -86,7 +107,7 @@ export default function DashboardContent() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Loading dashboard...</p>
         </div>
       </div>
@@ -111,12 +132,13 @@ export default function DashboardContent() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {/* Chores Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/chores')}>
+      {enabledModules.has('CHORES') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/chores')}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Today's Chores
           </h2>
-          <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium px-2.5 py-0.5 rounded">
+          <span className="bg-info/20 dark:bg-info/30 text-info dark:text-info text-xs font-medium px-2.5 py-0.5 rounded">
             {completedChores}/{data.chores.length}
           </span>
         </div>
@@ -157,10 +179,12 @@ export default function DashboardContent() {
             No chores scheduled for today.
           </p>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Screen Time Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/screentime')}>
+      {enabledModules.has('SCREEN_TIME') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/screentime')}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Screen Time
@@ -199,10 +223,12 @@ export default function DashboardContent() {
             Balance not configured yet.
           </p>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Credits Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+      {enabledModules.has('CREDITS') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Credits
@@ -237,10 +263,12 @@ export default function DashboardContent() {
             Balance not configured yet.
           </p>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Shopping List Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/shopping')}>
+      {enabledModules.has('SHOPPING') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/shopping')}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Shopping List
@@ -265,15 +293,17 @@ export default function DashboardContent() {
             Shopping list is empty.
           </p>
         )}
-      </div>
+        </div>
+      )}
 
       {/* To-Do List Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/todos')}>
+      {enabledModules.has('TODOS') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/todos')}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             To-Do List
           </h2>
-          <span className="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs font-medium px-2.5 py-0.5 rounded">
+          <span className="bg-ember-300 dark:bg-slate-900 text-ember-700 dark:text-ember-300 text-xs font-medium px-2.5 py-0.5 rounded">
             {data.todos.length}
           </span>
         </div>
@@ -313,15 +343,17 @@ export default function DashboardContent() {
             No tasks pending.
           </p>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Calendar Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+      {enabledModules.has('CALENDAR') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Upcoming Events
           </h2>
-          <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs font-medium px-2.5 py-0.5 rounded">
+          <span className="bg-ember-300 dark:bg-slate-900 text-ember-700 dark:text-ember-300 text-xs font-medium px-2.5 py-0.5 rounded">
             {data.events.length}
           </span>
         </div>
@@ -356,32 +388,48 @@ export default function DashboardContent() {
             No events scheduled.
           </p>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Transport Widget - spans 2 columns on large screens */}
-      <div className="md:col-span-2 lg:col-span-2">
-        <TransportWidget memberId={session?.user?.id} />
-      </div>
+      {enabledModules.has('TRANSPORT') && (
+        <div className="md:col-span-2 lg:col-span-2">
+          <TransportWidget memberId={session?.user?.id} />
+        </div>
+      )}
 
-      {/* Weather Widget */}
+      {/* Communication Widget */}
+      {enabledModules.has('COMMUNICATION') && (
+        <div className="md:col-span-1 lg:col-span-1">
+          <CommunicationWidget />
+        </div>
+      )}
+
+      {/* Weather Widget - Always visible (not module-specific) */}
       <div className="md:col-span-1 lg:col-span-1">
         <WeatherWidget />
       </div>
 
       {/* Medication Widget */}
-      <div className="md:col-span-1 lg:col-span-1">
-        <MedicationWidget memberId={session?.user?.id} />
-      </div>
+      {enabledModules.has('HEALTH') && (
+        <div className="md:col-span-1 lg:col-span-1">
+          <MedicationWidget memberId={session?.user?.id} />
+        </div>
+      )}
 
       {/* Maintenance Widget */}
-      <div className="md:col-span-1 lg:col-span-1">
-        <MaintenanceWidget />
-      </div>
+      {enabledModules.has('MAINTENANCE') && (
+        <div className="md:col-span-1 lg:col-span-1">
+          <MaintenanceWidget />
+        </div>
+      )}
 
       {/* Inventory Widget */}
-      <div className="md:col-span-1 lg:col-span-1">
-        <InventoryWidget />
-      </div>
+      {enabledModules.has('INVENTORY') && (
+        <div className="md:col-span-1 lg:col-span-1">
+          <InventoryWidget />
+        </div>
+      )}
     </div>
   );
 }

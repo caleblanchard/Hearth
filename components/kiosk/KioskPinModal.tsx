@@ -108,9 +108,9 @@ export default function KioskPinModal({
                 <button
                   key={member.id}
                   onClick={() => setSelectedMember(member)}
-                  className="flex flex-col items-center justify-center p-6 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors duration-200 border-2 border-transparent hover:border-blue-400"
+                  className="flex flex-col items-center justify-center p-6 bg-info/10 dark:bg-info/20 hover:bg-info/20 dark:hover:bg-info/30 rounded-lg transition-colors duration-200 border-2 border-transparent hover:border-ember-500"
                 >
-                  <div className="w-16 h-16 bg-blue-200 dark:bg-blue-700 rounded-full flex items-center justify-center text-2xl font-bold text-blue-700 dark:text-blue-200 mb-2">
+                  <div className="w-16 h-16 bg-ember-300 dark:bg-ember-700 rounded-full flex items-center justify-center text-2xl font-bold text-ember-700 dark:text-ember-200 mb-2">
                     {member.name.charAt(0)}
                   </div>
                   <span className="text-gray-800 dark:text-white font-medium">
@@ -123,7 +123,7 @@ export default function KioskPinModal({
         ) : (
           <div>
             <div className="text-center mb-6">
-              <div className="w-20 h-20 bg-blue-200 dark:bg-blue-700 rounded-full flex items-center justify-center text-3xl font-bold text-blue-700 dark:text-blue-200 mx-auto mb-3">
+              <div className="w-20 h-20 bg-ember-300 dark:bg-ember-700 rounded-full flex items-center justify-center text-3xl font-bold text-ember-700 dark:text-ember-200 mx-auto mb-3">
                 {selectedMember.name.charAt(0)}
               </div>
               <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
@@ -141,7 +141,7 @@ export default function KioskPinModal({
                   key={i}
                   className={`w-12 h-12 border-2 rounded-lg flex items-center justify-center text-2xl font-bold ${
                     i < pin.length
-                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                      ? 'border-ember-700 bg-ember-300/30 dark:bg-slate-900/20'
                       : 'border-gray-300 dark:border-gray-600'
                   }`}
                 >
@@ -194,7 +194,7 @@ export default function KioskPinModal({
             <button
               onClick={handleSubmit}
               disabled={isLoading || pin.length < 4}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"
+              className="w-full bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"
             >
               {isLoading ? 'Unlocking...' : 'Unlock'}
             </button>

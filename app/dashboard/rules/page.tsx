@@ -118,10 +118,11 @@ export default function RulesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center py-12">
-            <div className="text-gray-600">Loading rules...</div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 mx-auto mb-4"></div>
+            <div className="text-slate-600 dark:text-slate-400">Loading rules...</div>
           </div>
         </div>
       </div>
@@ -130,9 +131,9 @@ export default function RulesPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          <div className="bg-error/10 border border-error/20 rounded-lg p-4 text-error">
             {error}
           </div>
         </div>
@@ -141,24 +142,24 @@ export default function RulesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Automation Rules</h1>
-          <p className="text-gray-600">Create and manage automated household rules</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Automation Rules</h1>
+          <p className="text-slate-600 dark:text-slate-400">Create and manage automated household rules</p>
         </div>
 
         {/* Actions Bar */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setFilter('all')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   filter === 'all'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-ember-700 text-white'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-canvas-200 dark:hover:bg-slate-700'
                 }`}
               >
                 All ({rules.length})
@@ -167,8 +168,8 @@ export default function RulesPage() {
                 onClick={() => setFilter('enabled')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   filter === 'enabled'
-                    ? 'bg-green-100 text-green-700'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-success/20 text-success dark:bg-success/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-canvas-200 dark:hover:bg-slate-700'
                 }`}
               >
                 Enabled ({rules.filter(r => r.isEnabled).length})
@@ -177,8 +178,8 @@ export default function RulesPage() {
                 onClick={() => setFilter('disabled')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   filter === 'disabled'
-                    ? 'bg-gray-200 text-gray-700'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-canvas-200 dark:hover:bg-slate-700'
                 }`}
               >
                 Disabled ({rules.filter(r => !r.isEnabled).length})
@@ -188,13 +189,13 @@ export default function RulesPage() {
             <div className="flex items-center gap-3">
               <Link
                 href="/dashboard/rules/templates"
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-canvas-200 dark:hover:bg-slate-700 transition-colors"
               >
                 Browse Templates
               </Link>
               <Link
                 href="/dashboard/rules/create"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-md text-sm font-medium transition-colors"
               >
                 Create Rule
               </Link>
@@ -204,14 +205,14 @@ export default function RulesPage() {
 
         {/* Rules Table */}
         {filteredRules.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <div className="text-gray-400 mb-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
+            <div className="text-slate-400 dark:text-slate-500 mb-4">
               <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No rules found</h3>
-            <p className="text-gray-600 mb-6">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No rules found</h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
               {filter !== 'all'
                 ? `You don't have any ${filter} rules yet.`
                 : 'Get started by creating your first automation rule or browsing templates.'}
@@ -219,64 +220,64 @@ export default function RulesPage() {
             <div className="flex items-center justify-center gap-3">
               <Link
                 href="/dashboard/rules/templates"
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-canvas-200 dark:hover:bg-slate-700 transition-colors"
               >
                 Browse Templates
               </Link>
               <Link
                 href="/dashboard/rules/create"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-md text-sm font-medium transition-colors"
               >
                 Create Rule
               </Link>
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-900">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Rule Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Trigger
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Actions
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Executions
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                 {filteredRules.map((rule) => (
-                  <tr key={rule.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={rule.id} className="hover:bg-canvas-100 dark:hover:bg-slate-700 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{rule.name}</div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-white">{rule.name}</div>
                       {rule.description && (
-                        <div className="text-sm text-gray-500 mt-1">{rule.description}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">{rule.description}</div>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-ember-300 dark:bg-ember-700 text-ember-700 dark:text-ember-300">
                         {getTriggerLabel(rule.trigger)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
                       {getActionCount(rule.actions)}
                     </td>
                     <td className="px-6 py-4">
                       <Link
                         href={`/dashboard/rules/${rule.id}/history`}
-                        className="text-sm text-blue-600 hover:text-blue-800"
+                        className="text-sm text-ember-700 dark:text-ember-400 hover:text-ember-500 dark:hover:text-ember-300"
                       >
                         {rule._count?.executions || 0}
                       </Link>
@@ -285,7 +286,7 @@ export default function RulesPage() {
                       <button
                         onClick={() => toggleRule(rule.id, rule.isEnabled)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          rule.isEnabled ? 'bg-green-600' : 'bg-gray-200'
+                          rule.isEnabled ? 'bg-success' : 'bg-slate-200 dark:bg-slate-600'
                         }`}
                       >
                         <span
@@ -298,13 +299,13 @@ export default function RulesPage() {
                     <td className="px-6 py-4 text-right text-sm font-medium space-x-2">
                       <Link
                         href={`/dashboard/rules/${rule.id}/edit`}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="text-ember-700 dark:text-ember-400 hover:text-ember-500 dark:hover:text-ember-300"
                       >
                         Edit
                       </Link>
                       <button
                         onClick={() => deleteRule(rule.id)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-error hover:text-error/80"
                       >
                         Delete
                       </button>

@@ -199,7 +199,7 @@ export default function LeftoversList() {
           </h2>
           <button
             onClick={() => setShowAddDialog(true)}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+            className="px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg"
             aria-label="Add leftover"
           >
             + Add Leftover
@@ -221,7 +221,7 @@ export default function LeftoversList() {
         </h2>
         <button
           onClick={() => setShowAddDialog(true)}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+          className="px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg"
           aria-label="Add leftover"
         >
           + Add Leftover
@@ -390,7 +390,7 @@ export default function LeftoversList() {
                 </button>
                 <button
                   onClick={handleCreateLeftover}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                  className="px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg"
                   aria-label="Save"
                 >
                   Save

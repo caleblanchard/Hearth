@@ -125,15 +125,16 @@ export default function CreateRulePage() {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="chore-streak-days" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Number of Days
               </label>
               <input
+                id="chore-streak-days"
                 type="number"
                 min="1"
                 value={triggerConfig.days || ''}
                 onChange={(e) => handleTriggerConfigChange('days', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                 placeholder="e.g., 7"
               />
             </div>
@@ -144,15 +145,16 @@ export default function CreateRulePage() {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="screentime-threshold" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Threshold (minutes)
               </label>
               <input
+                id="screentime-threshold"
                 type="number"
                 min="1"
                 value={triggerConfig.thresholdMinutes || ''}
                 onChange={(e) => handleTriggerConfigChange('thresholdMinutes', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                 placeholder="e.g., 30"
               />
             </div>
@@ -163,7 +165,7 @@ export default function CreateRulePage() {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Event Count
               </label>
               <input
@@ -171,7 +173,7 @@ export default function CreateRulePage() {
                 min="1"
                 value={triggerConfig.eventCount || ''}
                 onChange={(e) => handleTriggerConfigChange('eventCount', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                 placeholder="e.g., 3"
               />
             </div>
@@ -182,29 +184,31 @@ export default function CreateRulePage() {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="time-based-cron" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Cron Expression
               </label>
               <input
+                id="time-based-cron"
                 type="text"
                 value={triggerConfig.cron || ''}
                 onChange={(e) => handleTriggerConfigChange('cron', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                 placeholder="e.g., 0 9 * * 0 (Every Sunday at 9 AM)"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Format: minute hour day month dayOfWeek
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="time-based-description" className="block text-sm font-medium text-gray-700 mb-1">
                 Description
               </label>
               <input
+                id="time-based-description"
                 type="text"
                 value={triggerConfig.description || ''}
                 onChange={(e) => handleTriggerConfigChange('description', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                 placeholder="e.g., Every Sunday at 9 AM"
               />
             </div>
@@ -213,7 +217,7 @@ export default function CreateRulePage() {
 
       default:
         return (
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-slate-500 dark:text-slate-400">
             Select a trigger type to configure
           </div>
         );
@@ -226,28 +230,30 @@ export default function CreateRulePage() {
         return (
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor={`award-credits-amount-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
                 Amount
               </label>
               <input
+                id={`award-credits-amount-${index}`}
                 type="number"
                 min="1"
                 max="1000"
                 value={action.config.amount || ''}
                 onChange={(e) => handleActionConfigChange(index, 'amount', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                 placeholder="e.g., 10"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor={`award-credits-reason-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
                 Reason (optional)
               </label>
               <input
+                id={`award-credits-reason-${index}`}
                 type="text"
                 value={action.config.reason || ''}
                 onChange={(e) => handleActionConfigChange(index, 'reason', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                 placeholder="e.g., Streak bonus"
               />
             </div>
@@ -258,25 +264,27 @@ export default function CreateRulePage() {
         return (
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor={`send-notification-title-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
                 Title
               </label>
               <input
+                id={`send-notification-title-${index}`}
                 type="text"
                 value={action.config.title || ''}
                 onChange={(e) => handleActionConfigChange(index, 'title', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                 placeholder="e.g., Alert"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor={`send-notification-message-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
                 Message
               </label>
               <textarea
+                id={`send-notification-message-${index}`}
                 value={action.config.message || ''}
                 onChange={(e) => handleActionConfigChange(index, 'message', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                 rows={3}
                 placeholder="e.g., Important notification"
               />
@@ -288,7 +296,7 @@ export default function CreateRulePage() {
         return (
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Amount (minutes, use negative to subtract)
               </label>
               <input
@@ -297,7 +305,7 @@ export default function CreateRulePage() {
                 max="120"
                 value={action.config.amountMinutes || ''}
                 onChange={(e) => handleActionConfigChange(index, 'amountMinutes', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                 placeholder="e.g., 30 or -15"
               />
             </div>
@@ -306,7 +314,7 @@ export default function CreateRulePage() {
 
       default:
         return (
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-slate-500 dark:text-slate-400">
             Select an action type to configure
           </div>
         );
@@ -314,48 +322,48 @@ export default function CreateRulePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <Link href="/dashboard/rules" className="text-blue-600 hover:text-blue-800 text-sm mb-2 inline-block">
+          <Link href="/dashboard/rules" className="text-ember-700 dark:text-ember-400 hover:text-ember-500 dark:hover:text-ember-300 text-sm mb-2 inline-block">
             ← Back to Rules
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Create Automation Rule</h1>
-          <p className="text-gray-600 mt-2">Define triggers and actions for automated household management</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Create Automation Rule</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">Define triggers and actions for automated household management</p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-700">
+          <div className="bg-error/10 border border-error/20 rounded-lg p-4 mb-6 text-error">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Basic Information</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Rule Name *
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                   placeholder="e.g., Weekly Allowance"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Description (optional)
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                   rows={3}
                   placeholder="e.g., Award weekly allowance every Sunday"
                 />
@@ -364,11 +372,11 @@ export default function CreateRulePage() {
           </div>
 
           {/* Trigger */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Trigger</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Trigger</h2>
             <div className="space-y-4">
               <div>
-                <label htmlFor="trigger-type" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="trigger-type" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Trigger Type *
                 </label>
                 <select
@@ -378,7 +386,7 @@ export default function CreateRulePage() {
                     setTriggerType(e.target.value);
                     setTriggerConfig({});
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                   required
                   aria-label="Trigger Type"
                 >
@@ -391,8 +399,8 @@ export default function CreateRulePage() {
                 </select>
               </div>
               {triggerType && (
-                <div className="border-t border-gray-200 pt-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Trigger Configuration</h3>
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Trigger Configuration</h3>
                   {renderTriggerConfig()}
                 </div>
               )}
@@ -400,13 +408,13 @@ export default function CreateRulePage() {
           </div>
 
           {/* Actions */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Actions</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Actions</h2>
               <button
                 type="button"
                 onClick={handleAddAction}
-                className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+                className="px-3 py-1 bg-ember-700 text-white text-sm rounded-md hover:bg-ember-500"
                 disabled={actions.length >= 5}
               >
                 Add Action
@@ -440,7 +448,7 @@ export default function CreateRulePage() {
                           id={`action-type-${index}`}
                           value={action.type}
                           onChange={(e) => handleActionTypeChange(index, e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
                           aria-label="Action Type"
                         >
                           <option value="">Select an action...</option>
@@ -474,7 +482,7 @@ export default function CreateRulePage() {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating...' : 'Create Rule'}
             </button>

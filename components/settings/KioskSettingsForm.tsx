@@ -102,7 +102,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 mx-auto"></div>
         <p className="mt-4 text-gray-600 dark:text-gray-400">Loading settings...</p>
       </div>
     );
@@ -133,7 +133,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
                 setSettings((prev) => ({ ...prev, isEnabled: !prev.isEnabled }))
               }
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.isEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
+                settings.isEnabled ? 'bg-ember-700' : 'bg-gray-200 dark:bg-gray-700'
               }`}
             >
               <span
@@ -164,7 +164,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
                   autoLockMinutes: parseInt(e.target.value) || 15,
                 }))
               }
-              className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500 focus:border-transparent"
             />
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Kiosk will auto-lock after this period of inactivity
@@ -187,7 +187,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
                 setSettings((prev) => ({ ...prev, allowGuestView: !prev.allowGuestView }))
               }
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.allowGuestView ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
+                settings.allowGuestView ? 'bg-ember-700' : 'bg-gray-200 dark:bg-gray-700'
               }`}
             >
               <span
@@ -218,7 +218,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
               }
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 settings.requirePinForSwitch
-                  ? 'bg-indigo-600'
+                  ? 'bg-ember-700'
                   : 'bg-gray-200 dark:bg-gray-700'
               }`}
             >
@@ -250,7 +250,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
                   id={widget.id}
                   checked={settings.enabledWidgets.includes(widget.id)}
                   onChange={() => toggleWidget(widget.id)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-ember-700 focus:ring-ember-500 border-gray-300 rounded"
                 />
                 <div>
                   <label
@@ -294,7 +294,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
         <button
           type="submit"
           disabled={saving}
-          className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg transition-colors"
+          className="px-6 py-2 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white rounded-lg transition-colors"
         >
           {saving ? 'Saving...' : 'Save Settings'}
         </button>

@@ -20,7 +20,7 @@ export default function MaintenancePage() {
         </div>
         <button
           onClick={() => router.push('/dashboard/maintenance/create')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg font-medium transition-colors"
         >
           <PlusIcon className="h-5 w-5" />
           Add Task

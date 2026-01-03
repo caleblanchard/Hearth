@@ -210,7 +210,7 @@ export default function HealthEventsList() {
       case 'INJURY':
         return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
       case 'DOCTOR_VISIT':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+        return 'bg-info/20 text-info dark:bg-info/30 dark:text-info';
       case 'VACCINATION':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       default:
@@ -236,7 +236,7 @@ export default function HealthEventsList() {
         <div className="flex gap-2">
           <button
             onClick={() => setShowTempDialog(true)}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg transition-colors"
           >
             🌡️ Log Temperature
           </button>
@@ -301,7 +301,7 @@ export default function HealthEventsList() {
           {events.map((event) => (
             <div
               key={event.id}
-              className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer"
+              className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 hover:border-ember-500 dark:hover:border-ember-400 transition-colors cursor-pointer"
               onClick={() => router.push(`/dashboard/health/${event.id}`)}
             >
               <div className="flex items-start justify-between">
@@ -337,7 +337,7 @@ export default function HealthEventsList() {
                     {event.medications.length > 0 && (
                       <span>💊 {event.medications.length} medication(s)</span>
                     )}
-                    <span className="text-blue-600 dark:text-blue-400 font-medium">
+                    <span className="text-ember-700 dark:text-ember-500 font-medium">
                       View Details →
                     </span>
                   </div>
@@ -548,7 +548,7 @@ export default function HealthEventsList() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 rounded-lg transition-colors"
                 >
                   {submitting ? 'Logging...' : 'Log Temperature'}
                 </button>

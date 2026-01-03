@@ -136,7 +136,7 @@ export default function ReportsPage() {
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -176,7 +176,7 @@ export default function ReportsPage() {
                   onClick={() => handlePeriodChange('week')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     period === 'week'
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-ember-700 text-white'
                       : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
                   }`}
                 >
@@ -186,7 +186,7 @@ export default function ReportsPage() {
                   onClick={() => handlePeriodChange('month')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     period === 'month'
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-ember-700 text-white'
                       : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
                   }`}
                 >
@@ -264,8 +264,8 @@ export default function ReportsPage() {
           {/* Screen Time */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <ClockIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <div className="p-3 bg-info/20 dark:bg-info/30 rounded-lg">
+                <ClockIcon className="h-6 w-6 text-slate-700 dark:text-slate-400" />
               </div>
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Screen Time</p>
@@ -282,8 +282,8 @@ export default function ReportsPage() {
           {/* Todos */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <ListBulletIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              <div className="p-3 bg-ember-300/30 dark:bg-slate-900/30 rounded-lg">
+                <ListBulletIcon className="h-6 w-6 text-ember-700 dark:text-ember-500" />
               </div>
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Tasks</p>
@@ -294,13 +294,13 @@ export default function ReportsPage() {
             </div>
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 dark:text-gray-400">Completion Rate</p>
-              <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+              <p className="text-sm font-semibold text-ember-700 dark:text-ember-500">
                 {reportData.summary.todos.completionRate}%
               </p>
             </div>
             <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
-                className="bg-purple-600 dark:bg-purple-500 h-2 rounded-full"
+                className="bg-ember-700 dark:bg-ember-500 h-2 rounded-full"
                 style={{ width: `${reportData.summary.todos.completionRate}%` }}
               />
             </div>
@@ -377,8 +377,8 @@ export default function ReportsPage() {
                     className="h-12 w-12 rounded-full"
                   />
                 ) : (
-                  <div className="h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-                    <span className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
+                  <div className="h-12 w-12 rounded-full bg-ember-300 dark:bg-slate-900 flex items-center justify-center">
+                    <span className="text-lg font-semibold text-ember-700 dark:text-ember-500">
                       {child.name[0]}
                     </span>
                   </div>
@@ -413,14 +413,14 @@ export default function ReportsPage() {
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Screen Time</span>
-                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-400">
                     {child.screenTime.hours}h {child.screenTime.minutes}m
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Tasks</span>
-                  <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+                  <span className="text-sm font-semibold text-ember-700 dark:text-ember-500">
                     {child.todos.completed}/{child.todos.total}
                   </span>
                 </div>

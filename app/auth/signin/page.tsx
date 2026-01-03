@@ -39,12 +39,12 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ember-300/30 via-canvas-50 to-canvas-100 dark:from-gray-900 dark:via-slate-900 dark:to-slate-800">
       <div className="max-w-md w-full mx-4">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
           {/* Logo and Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent mb-2">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-ember-700 to-ember-500 bg-clip-text text-transparent mb-2">
               Hearth
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
@@ -57,13 +57,13 @@ export default function SignInPage() {
             <div className="space-y-4">
               <button
                 onClick={() => setMode('parent')}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 shadow-md"
+                className="w-full bg-ember-700 hover:bg-ember-500 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 shadow-md"
               >
                 Parent Login
               </button>
               <button
                 onClick={() => setMode('child')}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 shadow-md"
+                className="w-full bg-ember-700 hover:bg-ember-500 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 shadow-md"
               >
                 Child Login
               </button>
@@ -75,7 +75,7 @@ export default function SignInPage() {
             <div>
               <button
                 onClick={() => setMode('select')}
-                className="mb-4 text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                className="mb-4 text-ember-700 dark:text-ember-500 hover:underline flex items-center gap-1"
               >
                 ← Back
               </button>
@@ -88,7 +88,7 @@ export default function SignInPage() {
             <div>
               <button
                 onClick={() => setMode('select')}
-                className="mb-4 text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                className="mb-4 text-ember-700 dark:text-ember-500 hover:underline flex items-center gap-1"
               >
                 ← Back
               </button>

@@ -155,7 +155,7 @@ export default function NotificationBell() {
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
+                className="text-sm text-ember-700 dark:text-ember-500 hover:text-ember-500 dark:hover:text-ember-300 font-medium"
               >
                 Mark all read
               </button>
@@ -166,7 +166,7 @@ export default function NotificationBell() {
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-32">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ember-700"></div>
               </div>
             ) : notifications && notifications.notifications.length > 0 ? (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -175,14 +175,14 @@ export default function NotificationBell() {
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
                     className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${
-                      !notification.isRead ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                      !notification.isRead ? 'bg-ember-300/30 dark:bg-slate-900/20' : ''
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           {!notification.isRead && (
-                            <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
+                            <div className="w-2 h-2 bg-ember-700 rounded-full"></div>
                           )}
                           <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                             {notification.title}
@@ -237,7 +237,7 @@ export default function NotificationBell() {
                   router.push('/dashboard/notifications');
                   setIsOpen(false);
                 }}
-                className="w-full text-center text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
+                className="w-full text-center text-sm text-ember-700 dark:text-ember-500 hover:text-ember-500 dark:hover:text-ember-300 font-medium"
               >
                 View all notifications
               </button>

@@ -152,7 +152,7 @@ export default function RedemptionsPage() {
       <div className="p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function RedemptionsPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                      <div className="w-10 h-10 bg-ember-700 rounded-full flex items-center justify-center text-white text-sm font-bold">
                         {redemption.member.name.charAt(0)}
                       </div>
                       <div>
@@ -210,7 +210,7 @@ export default function RedemptionsPage() {
                       </p>
                     )}
                     <div className="flex items-center gap-4 text-sm">
-                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                      <span className="text-ember-700 dark:text-ember-500 font-medium">
                         {redemption.reward.costCredits} credits
                       </span>
                       <span className="text-gray-500">•</span>

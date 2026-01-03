@@ -221,7 +221,7 @@ export default function MedicalProfilePage() {
             value={selectedMemberId}
             onChange={(e) => setSelectedMemberId(e.target.value)}
             disabled={!isParent}
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500 disabled:opacity-50"
           >
             <option value="">Select a member...</option>
             {members.map((member) => (
@@ -249,7 +249,7 @@ export default function MedicalProfilePage() {
               value={bloodType}
               onChange={(e) => setBloodType(e.target.value)}
               disabled={!canEdit}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500 disabled:opacity-50"
             >
               <option value="">Not specified</option>
               {BLOOD_TYPES.map((type) => (
@@ -274,13 +274,13 @@ export default function MedicalProfilePage() {
                 placeholder="Enter weight"
                 min="0"
                 step="0.1"
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500 disabled:opacity-50"
               />
               <select
                 value={weightUnit}
                 onChange={(e) => setWeightUnit(e.target.value)}
                 disabled={!canEdit}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500 disabled:opacity-50"
               >
                 <option value="lbs">lbs</option>
                 <option value="kg">kg</option>
@@ -301,11 +301,11 @@ export default function MedicalProfilePage() {
                   onChange={(e) => setNewAllergy(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addAllergy()}
                   placeholder="Add allergy (e.g., Peanuts)"
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
                 />
                 <button
                   onClick={addAllergy}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
+                  className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg flex items-center gap-2"
                 >
                   <PlusIcon className="h-5 w-5" />
                   Add
@@ -353,11 +353,11 @@ export default function MedicalProfilePage() {
                   onChange={(e) => setNewCondition(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addCondition()}
                   placeholder="Add condition (e.g., Asthma)"
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
                 />
                 <button
                   onClick={addCondition}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
+                  className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg flex items-center gap-2"
                 >
                   <PlusIcon className="h-5 w-5" />
                   Add
@@ -405,11 +405,11 @@ export default function MedicalProfilePage() {
                   onChange={(e) => setNewMedication(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addMedication()}
                   placeholder="Add medication (e.g., Daily vitamin)"
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500"
                 />
                 <button
                   onClick={addMedication}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
+                  className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg flex items-center gap-2"
                 >
                   <PlusIcon className="h-5 w-5" />
                   Add
@@ -425,7 +425,7 @@ export default function MedicalProfilePage() {
                 medications.map((medication, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+                    className="flex items-center justify-between p-3 bg-info/10 dark:bg-info/20 rounded-lg border border-info/30 dark:border-info/40"
                   >
                     <span className="text-gray-900 dark:text-white">
                       {medication}
@@ -433,7 +433,7 @@ export default function MedicalProfilePage() {
                     {canEdit && (
                       <button
                         onClick={() => removeMedication(index)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        className="text-ember-700 dark:text-ember-500 hover:text-ember-500 dark:hover:text-ember-300"
                       >
                         <XMarkIcon className="h-5 w-5" />
                       </button>

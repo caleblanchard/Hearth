@@ -186,7 +186,7 @@ export default function ApprovalsPage() {
       <div className="p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -326,7 +326,7 @@ export default function ApprovalsPage() {
                     )}
                     <div className="flex items-center gap-4 mb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                        <div className="w-8 h-8 bg-ember-700 rounded-full flex items-center justify-center text-white text-sm font-bold">
                           {chore.assignedTo.name.charAt(0)}
                         </div>
                         <div>
@@ -340,7 +340,7 @@ export default function ApprovalsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-sm">
-                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                      <span className="text-ember-700 dark:text-ember-500 font-medium">
                         {chore.difficulty}
                       </span>
                       <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-1">

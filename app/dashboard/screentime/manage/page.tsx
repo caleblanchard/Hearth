@@ -141,7 +141,7 @@ export default function ManageScreenTimePage() {
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -184,8 +184,8 @@ export default function ManageScreenTimePage() {
                       className="h-12 w-12 rounded-full"
                     />
                   ) : (
-                    <div className="h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-                      <UserIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                    <div className="h-12 w-12 rounded-full bg-ember-300 dark:bg-slate-900 flex items-center justify-center">
+                      <UserIcon className="h-6 w-6 text-ember-700 dark:text-ember-500" />
                     </div>
                   )}
                   <div>
@@ -201,7 +201,7 @@ export default function ManageScreenTimePage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Current Balance</span>
-                    <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                    <span className="text-lg font-bold text-ember-700 dark:text-ember-500">
                       {formatTime(member.currentBalance)}
                     </span>
                   </div>
@@ -215,7 +215,7 @@ export default function ManageScreenTimePage() {
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
-                        className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full"
+                        className="bg-ember-700 dark:bg-ember-500 h-2 rounded-full"
                         style={{ width: `${Math.min(100, parseFloat(usagePercentage as string))}%` }}
                       />
                     </div>
@@ -227,7 +227,7 @@ export default function ManageScreenTimePage() {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setSelectedMember(member)}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                      className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
                       <ArrowPathIcon className="h-5 w-5" />
                       Adjust
@@ -267,7 +267,7 @@ export default function ManageScreenTimePage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                   Current Balance:
                 </p>
-                <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                <p className="text-3xl font-bold text-ember-700 dark:text-ember-500">
                   {formatTime(selectedMember.currentBalance)}
                 </p>
               </div>
@@ -282,7 +282,7 @@ export default function ManageScreenTimePage() {
                     value={adjustmentAmount}
                     onChange={(e) => setAdjustmentAmount(e.target.value)}
                     placeholder="e.g., +30 or -15"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Use positive numbers to add time, negative to remove
@@ -298,7 +298,7 @@ export default function ManageScreenTimePage() {
                     onChange={(e) => setAdjustmentReason(e.target.value)}
                     placeholder="Why are you adjusting the balance?"
                     rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
 
@@ -306,7 +306,7 @@ export default function ManageScreenTimePage() {
                   <button
                     onClick={handleAdjustBalance}
                     disabled={adjusting || !adjustmentAmount}
-                    className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-lg transition-colors"
+                    className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold rounded-lg transition-colors"
                   >
                     {adjusting ? 'Adjusting...' : 'Apply Adjustment'}
                   </button>

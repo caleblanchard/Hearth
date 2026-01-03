@@ -55,7 +55,7 @@ export default function KioskHeader({
               </div>
             ) : currentMember ? (
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-200 dark:bg-blue-700 rounded-full flex items-center justify-center text-lg font-bold text-blue-700 dark:text-blue-200">
+                <div className="w-10 h-10 bg-ember-300 dark:bg-ember-700 rounded-full flex items-center justify-center text-lg font-bold text-ember-700 dark:text-ember-200">
                   {currentMember.name.charAt(0)}
                 </div>
                 <div>

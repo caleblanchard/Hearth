@@ -153,7 +153,7 @@ export default function GuestManagement() {
 
   const getAccessLevelColor = (level: string): string => {
     const colors: Record<string, string> = {
-      VIEW_ONLY: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+      VIEW_ONLY: 'bg-info/20 dark:bg-info/30 text-info dark:text-info',
       LIMITED: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300',
       CAREGIVER: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
     };
@@ -199,7 +199,7 @@ export default function GuestManagement() {
       <div className="flex justify-end">
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg font-medium transition-colors"
         >
           {showCreateForm ? 'Cancel' : '+ Create Guest Invite'}
         </button>
@@ -304,7 +304,7 @@ export default function GuestManagement() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors"
+                className="px-4 py-2 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white rounded-lg font-medium transition-colors"
               >
                 {submitting ? 'Creating...' : 'Create Invite'}
               </button>

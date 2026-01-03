@@ -304,7 +304,7 @@ export default function CalendarPage() {
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
           </div>
         </div>
       </div>
@@ -320,7 +320,7 @@ export default function CalendarPage() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Calendar</h1>
             <button
               onClick={handleToday}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
             >
               <CalendarIcon className="h-4 w-4" />
               Today
@@ -386,7 +386,7 @@ export default function CalendarPage() {
                         <span
                           className={`text-sm font-medium ${
                             isToday
-                              ? 'bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center'
+                              ? 'bg-ember-700 text-white w-6 h-6 rounded-full flex items-center justify-center'
                               : 'text-gray-700 dark:text-gray-300'
                           }`}
                         >
@@ -468,7 +468,7 @@ export default function CalendarPage() {
               id="isAllDay"
               checked={eventForm.isAllDay}
               onChange={(e) => setEventForm({ ...eventForm, isAllDay: e.target.checked })}
-              className="w-4 h-4 text-indigo-600 border-gray-300 rounded"
+              className="w-4 h-4 text-ember-700 border-gray-300 rounded"
             />
             <label htmlFor="isAllDay" className="text-sm font-medium text-gray-700 dark:text-gray-300">
               All Day Event
@@ -556,7 +556,7 @@ export default function CalendarPage() {
                         });
                       }
                     }}
-                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded"
+                    className="w-4 h-4 text-ember-700 border-gray-300 rounded"
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-300">{member.name}</span>
                 </label>
@@ -569,7 +569,7 @@ export default function CalendarPage() {
           <button
             onClick={handleSaveEvent}
             disabled={savingEvent}
-            className="flex-1 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-lg transition-colors"
+            className="flex-1 px-6 py-2 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold rounded-lg transition-colors"
           >
             {savingEvent ? 'Saving...' : editingEvent ? 'Update Event' : 'Create Event'}
           </button>

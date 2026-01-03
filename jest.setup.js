@@ -65,3 +65,44 @@ global.console = {
   error: jest.fn(),
   warn: jest.fn(),
 }
+
+// Cleanup after all tests
+afterAll(async () => {
+  // Clean up rate limiters if they exist (they have setInterval that keeps process alive)
+  try {
+    const rateLimitModule = require('@/lib/rate-limit')
+    if (rateLimitModule.apiRateLimiter?.destroy) {
+      rateLimitModule.apiRateLimiter.destroy()
+    }
+    if (rateLimitModule.authRateLimiter?.destroy) {
+      rateLimitModule.authRateLimiter.destroy()
+    }
+    if (rateLimitModule.cronRateLimiter?.destroy) {
+      rateLimitModule.cronRateLimiter.destroy()
+    }
+  } catch (e) {
+    // Ignore if module not loaded
+  }
+  
+  // Close Prisma connections if they exist
+  try {
+    const prismaModule = require('@/lib/prisma')
+    const prisma = prismaModule.prisma || prismaModule.default
+    if (prisma?.$disconnect) {
+      await prisma.$disconnect()
+    }
+  } catch (e) {
+    // Ignore if module not loaded
+  }
+  
+  // Clear any remaining timers
+  jest.clearAllTimers()
+  
+  // Give time for cleanup
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
+  // Force exit if still hanging (last resort)
+  if (process.env.CI) {
+    setTimeout(() => process.exit(0), 1000)
+  }
+})

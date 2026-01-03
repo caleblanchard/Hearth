@@ -52,7 +52,7 @@ export default function DashboardNav() {
           <div className="flex-shrink-0">
             <button
               onClick={() => router.push('/dashboard')}
-              className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+              className="text-2xl font-bold text-ember-700 dark:text-ember-500 hover:text-ember-500 dark:hover:text-ember-300 transition-colors"
             >
               Hearth
             </button>
@@ -69,8 +69,8 @@ export default function DashboardNav() {
                   onClick={() => router.push(item.path)}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      ? 'bg-ember-300 dark:bg-slate-900 text-ember-700 dark:text-ember-300'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-canvas-200 dark:hover:bg-slate-700'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -110,8 +110,8 @@ export default function DashboardNav() {
                 onClick={() => router.push(item.path)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
                   isActive
-                    ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-ember-300 dark:bg-slate-900 text-ember-700 dark:text-ember-300'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-canvas-200 dark:hover:bg-slate-700'
                 }`}
               >
                 <Icon className="h-5 w-5" />

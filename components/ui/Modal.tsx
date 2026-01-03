@@ -45,15 +45,18 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
               {title}
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              aria-label="Close modal"
             >
-              <span className="text-2xl">&times;</span>
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
 
@@ -89,8 +92,8 @@ export function ConfirmModal({
   const colorClasses = {
     red: 'bg-red-600 hover:bg-red-700',
     green: 'bg-green-600 hover:bg-green-700',
-    blue: 'bg-blue-600 hover:bg-blue-700',
-    indigo: 'bg-indigo-600 hover:bg-indigo-700',
+    blue: 'bg-ember-700 hover:bg-ember-500',
+    indigo: 'bg-ember-700 hover:bg-ember-500',
   };
 
   return (
@@ -150,8 +153,8 @@ export function AlertModal({
     },
     info: {
       icon: 'i',
-      iconColor: 'text-blue-600 dark:text-blue-400',
-      iconBg: 'bg-blue-100 dark:bg-blue-900',
+      iconColor: 'text-info dark:text-info',
+      iconBg: 'bg-info/20 dark:bg-info/30',
     },
   };
 
@@ -174,7 +177,7 @@ export function AlertModal({
       <div className="flex justify-end">
         <button
           onClick={onClose}
-          className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+          className="px-6 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
         >
           OK
         </button>

@@ -156,7 +156,7 @@ export default function MaintenanceList() {
           onClick={() => setFilter('all')}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
             filter === 'all'
-              ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+              ? 'border-ember-700 text-ember-700 dark:border-ember-500 dark:text-ember-500'
               : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
           }`}
         >
@@ -232,7 +232,7 @@ export default function MaintenanceList() {
                   </div>
                 )}
                 {item.nextDueAt && !isOverdue(item.nextDueAt) && !isDueSoon(item.nextDueAt) && (
-                  <div className="flex items-center gap-2 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded text-sm">
+                  <div className="flex items-center gap-2 px-2 py-1 bg-info/20 dark:bg-info/30 text-info dark:text-info rounded text-sm">
                     <span>📅</span>
                     <span>{getDueText(item.nextDueAt)}</span>
                   </div>

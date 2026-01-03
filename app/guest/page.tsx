@@ -68,7 +68,7 @@ export default function GuestRedeemPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-canvas-50 to-canvas-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
@@ -104,7 +104,7 @@ export default function GuestRedeemPage() {
                     pattern="[0-9]{6}"
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value.replace(/\D/g, ''))}
-                    className="w-full px-4 py-3 text-center text-2xl font-bold tracking-widest border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-3 text-center text-2xl font-bold tracking-widest border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-ember-500 focus:border-ember-500"
                     placeholder="000000"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
@@ -115,7 +115,7 @@ export default function GuestRedeemPage() {
                 <button
                   type="submit"
                   disabled={loading || inviteCode.length !== 6}
-                  className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-lg font-semibold rounded-lg transition-colors"
+                  className="w-full px-6 py-3 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white text-lg font-semibold rounded-lg transition-colors"
                 >
                   {loading ? 'Verifying...' : 'Access Dashboard'}
                 </button>
@@ -162,14 +162,14 @@ export default function GuestRedeemPage() {
 
                 {/* Access Info */}
                 {guestInfo && (
-                  <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 mb-6">
-                    <p className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
+                  <div className="bg-info/10 dark:bg-info/20 rounded-lg p-4 mb-6">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-300 mb-2">
                       Access Level: {guestInfo.accessLevel.replace('_', ' ')}
                     </p>
-                    <p className="text-sm text-blue-800 dark:text-blue-400">
+                    <p className="text-sm text-info dark:text-info">
                       {getAccessLevelDescription(guestInfo.accessLevel)}
                     </p>
-                    <p className="text-xs text-blue-700 dark:text-blue-500 mt-2">
+                    <p className="text-xs text-ember-700 dark:text-ember-500 mt-2">
                       Valid until {new Date(guestInfo.expiresAt).toLocaleString()}
                     </p>
                   </div>

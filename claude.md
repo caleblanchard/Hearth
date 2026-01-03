@@ -79,19 +79,99 @@ For each new feature, we follow this order:
 - **UI Components**: Rules list, create form, template browser, execution history
 - **Next Steps**: Refine unit/component tests to match implementation details
 
+### Recipe Management - Manual Creation & URL Import (Section 7.2)
+- **Status**: Complete ✓
+- **Tests**: 93/93 passing (100%)
+  - 20 tests for POST `/api/meals/recipes/import` (Schema.org extraction)
+  - 25 component tests for NewRecipeForm
+  - 48 existing recipe API tests (CRUD, rating, favorites)
+- **Features Implemented**:
+  - Manual recipe creation form at `/dashboard/meals/recipes/new`
+  - URL import with Schema.org/JSON-LD extraction
+  - Two-step import flow (Extract → Review/Edit → Save)
+  - Support for all major recipe sites (AllRecipes, Food Network, NYT Cooking, etc.)
+  - Dynamic ingredient management (add/remove with quantity, unit, name)
+  - Dynamic instruction management (add/remove/reorder)
+  - Dietary tags selection
+  - ISO 8601 duration parsing (prep/cook times)
+  - Automatic difficulty inference
+  - Category mapping to enum values
+- **Implementation Files**:
+  - `/lib/recipe-extractor.ts` - Schema.org extraction utility (300+ lines)
+  - `/app/api/meals/recipes/import/route.ts` - Import API endpoint
+  - `/app/dashboard/meals/recipes/new/page.tsx` - Recipe creation form (700+ lines)
+  - `/app/dashboard/meals/RecipesList.tsx` - Added "Add Recipe" button
+
 ### Communication Board (Section 8.1)
-- **Status**: In Progress
-- **Tests Written**: 49 API tests (all passing)
-  - 16 tests for GET/POST `/api/communication`
-  - 17 tests for PATCH/DELETE `/api/communication/[id]`
-  - 16 tests for POST/DELETE `/api/communication/[id]/react`
-- **Component Tests**: 16 tests for CommunicationFeed component
-- **Implementation**: API routes complete, UI components in progress
+- **Status**: Complete
+- **Tests Written**: 76 API and component tests (all passing)
+  - 49 API integration tests
+  - 27 component tests for CommunicationFeed and PostComposer
+- **Implementation**: Full API and UI implementation complete
 
 ### Routines & Morning Checklists (Section 9)
 - **Status**: Complete
 - **Tests**: Comprehensive coverage of routine CRUD and checklist operations
 - **Implementation**: Full API and UI implementation
+
+### PWA & Push Notifications (Section 11)
+- **Status**: Complete ✓
+- **Tests**: 26 API tests (all passing)
+  - 13 tests for POST/DELETE `/api/notifications/subscribe` (push subscription management)
+  - 13 tests for GET/PATCH `/api/notifications/preferences` (notification preferences)
+- **Database Schema**:
+  - `PushSubscription` model for storing Web Push subscriptions (endpoint, p256dh, auth keys)
+  - `NotificationPreference` model for user preferences (enabled types, quiet hours, timing)
+  - 10 new NotificationType enum values (LEFTOVER_EXPIRING, DOCUMENT_EXPIRING, MEDICATION_AVAILABLE, etc.)
+- **Core Implementation**:
+  - Service Worker (`/public/sw.js`) with cache-first strategy for static assets
+  - Network-first for API calls with offline fallback
+  - Background sync for offline actions
+  - Push notification handler with click actions
+  - Offline page (`/public/offline.html`) with connection status
+- **PWA Features**:
+  - Full offline support with intelligent caching
+  - Install prompt component with dismissal and 7-day snooze
+  - Service worker registration with automatic updates
+  - IndexedDB queue for offline actions
+  - Manifest configuration for app-like experience
+- **Push Notification System**:
+  - Web Push API integration with VAPID keys
+  - Push notification utility (`/lib/push-notifications.ts`)
+  - Quiet hours support (configurable start/end times)
+  - Per-notification-type preferences
+  - Automatic expired subscription cleanup
+  - Support for notification actions and badges
+- **Notification Preferences UI**:
+  - Full preferences management at `/dashboard/settings/notifications`
+  - Toggle push notifications on/off
+  - Configure quiet hours (e.g., 22:00-07:00)
+  - Select which notification types to receive
+  - Customize timing (leftover expiring hours, document expiring days, carpool reminder minutes)
+  - In-app vs push notification toggles
+- **VAPID Key Generation**:
+  - Script at `/scripts/generate-vapid-keys.js` for one-time setup
+  - Environment variable configuration (NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
+- **Integration Examples**:
+  - Comprehensive examples in `/lib/examples/push-notification-example.ts`
+  - Shows integration with leftovers, documents, medications, carpool, routines, maintenance
+  - Includes cron job patterns for scheduled notifications
+- **Features Implemented**:
+  - ✅ Service worker with cache-first for static assets
+  - ✅ Network-first for API calls with cache fallback
+  - ✅ Background sync for offline actions (IndexedDB queue)
+  - ✅ PWA install prompt with smart timing
+  - ✅ Push notification subscription management
+  - ✅ Notification preferences with quiet hours
+  - ✅ 10 notification types ready for integration
+  - ✅ Offline support with fallback page
+  - ✅ Automatic service worker updates
+  - ✅ Full PWA manifest configuration
+- **Next Steps**:
+  - Integrate push notifications into cron jobs (leftovers, documents, medications, etc.)
+  - Add notification center UI to view notification history
+  - Implement notification action handlers (e.g., "Mark Complete" from notification)
+  - Add notification preferences to onboarding flow
 
 ## Testing Technologies
 
@@ -130,10 +210,11 @@ npm test -- --coverage
 
 ## Next Features (TDD Pipeline)
 
-1. **Rules Engine Test Refinement** - Update remaining unit/component tests to match implementation
-2. **Communication Board** - Complete UI components
-3. **Meal Planning** - Following same TDD pattern
-4. **Screen Time Grace Period** - See plan at `.claude/plans/jiggly-crafting-lark.md`
+1. **Integrate Push Notifications** - Add notification sending to cron jobs and existing modules
+2. **Notification Center UI** - Build notification history viewer
+3. **File Upload Integration** - Implement photo uploads for chores, recipes, pets, etc.
+4. **Projects Module** - Task dependencies and Gantt charts
+5. **Advanced Analytics Dashboard** - Fairness index, completion rates, trends
 
 ---
 
