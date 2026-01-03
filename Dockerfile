@@ -46,8 +46,8 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Install production dependencies only
-RUN apk add --no-cache libc6-compat openssl
+# Install runtime dependencies including build tools for native modules
+RUN apk add --no-cache libc6-compat openssl python3 make g++
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
@@ -62,6 +62,14 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/app/generated ./app/generated
+
+# Copy bcrypt and other native modules from deps stage
+# Standalone mode doesn't always properly bundle native modules
+COPY --from=deps /app/node_modules/bcrypt ./node_modules/bcrypt
+COPY --from=deps /app/node_modules/@mapbox ./node_modules/@mapbox
+
+# Rebuild native modules for Alpine Linux (musl libc)
+RUN npm rebuild bcrypt --build-from-source
 
 # Create uploads directory
 RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
