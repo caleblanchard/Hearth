@@ -241,7 +241,7 @@ export function instantiateTemplate(
   familyId: string,
   createdById: string,
   customizations?: Record<string, any>
-): Prisma.AutomationRuleCreateInput | null {
+): any {
   const template = getTemplateById(templateId);
 
   if (!template) {

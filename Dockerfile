@@ -27,9 +27,12 @@ COPY --from=deps /app/prisma ./prisma
 # Copy application code
 COPY . .
 
+# Copy generated Prisma Client from deps stage
+COPY --from=deps /app/app/generated ./app/generated
+
 # Set build-time environment variables
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 
 # Build the application
 RUN npm run build
@@ -59,10 +62,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/app/generated ./app/generated
 RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
 
 # Set environment variables
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
 USER nextjs
 

@@ -26,7 +26,11 @@
       "Bash(done)",
       "Bash(chmod:*)",
       "Bash(git remote:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(git add:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(docker build:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

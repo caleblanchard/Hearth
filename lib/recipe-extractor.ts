@@ -185,7 +185,8 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractedRecipe
   const html = await response.text();
 
   // Find all JSON-LD script tags
-  const jsonLdMatches = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>(.*?)<\/script>/gis);
+  const jsonLdMatchesIterator = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>(.*?)<\/script>/gis);
+  const jsonLdMatches = Array.from(jsonLdMatchesIterator);
 
   let recipeData: any = null;
 

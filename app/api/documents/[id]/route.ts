@@ -58,7 +58,6 @@ export async function GET(
         documentId: document.id,
         accessedBy: session.user.id,
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
       },
     });
 

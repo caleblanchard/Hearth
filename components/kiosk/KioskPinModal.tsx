@@ -31,7 +31,7 @@ export default function KioskPinModal({
 
   useEffect(() => {
     if (isOpen) {
-      async function fetchMembers() {
+      const fetchMembers = async () => {
         try {
           const response = await fetch(`/api/families/${familyId}/members`);
           if (response.ok) {
@@ -41,7 +41,7 @@ export default function KioskPinModal({
         } catch (error) {
           console.error('Failed to fetch family members:', error);
         }
-      }
+      };
       fetchMembers();
     }
   }, [isOpen, familyId]);

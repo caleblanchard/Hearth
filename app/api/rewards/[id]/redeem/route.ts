@@ -233,7 +233,7 @@ export async function POST(
       budgetWarning: budgetWarning || undefined,
     });
   } catch (error) {
-    logger.error('Redeem reward error', error, { rewardId: params.id, userId: session?.user?.id });
+    logger.error('Redeem reward error', error, { rewardId: params.id });
     return NextResponse.json(
       { error: 'Failed to redeem reward' },
       { status: 500 }

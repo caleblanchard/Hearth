@@ -20,7 +20,7 @@ import { logger } from '@/lib/logger';
  * Examples:
  *   "0 9 * * 0" - Every Sunday at 9 AM
  *   "0 0 * * *" - Every day at midnight
- *   "*/15 * * * *" - Every 15 minutes
+ *   "star/15 * * * *" - Every 15 minutes (replace star with *)
  *
  * Special keywords:
  *   "birthday" - Member's birthday (handled separately)

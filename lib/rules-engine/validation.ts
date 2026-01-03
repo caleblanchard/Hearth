@@ -8,6 +8,7 @@
 import {
   TriggerConfig,
   ActionConfig,
+  ActionType,
   ConditionConfig,
   ValidationResult,
   isValidTriggerType,
@@ -535,7 +536,7 @@ export function detectInfiniteLoopRisk(
   ];
 
   for (const pair of riskyPairs) {
-    if (trigger.type === pair.trigger && actionTypes.includes(pair.action)) {
+    if (trigger.type === pair.trigger && actionTypes.includes(pair.action as ActionType)) {
       return { hasRisk: true, warning: pair.warning };
     }
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { PostType } from '@prisma/client';
+import { PostType } from '@/app/generated/prisma';
 
 const VALID_POST_TYPES = ['ANNOUNCEMENT', 'KUDOS', 'NOTE', 'PHOTO'];
 

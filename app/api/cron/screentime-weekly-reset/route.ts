@@ -65,18 +65,31 @@ export async function GET(request: NextRequest) {
           // Get updated balance after repayment (might have been deducted)
           const updatedBalance = await tx.screenTimeBalance.findUnique({
             where: { memberId: balance.memberId },
+            include: {
+              member: {
+                select: {
+                  screenTimeSettings: {
+                    select: {
+                      weeklyAllocationMinutes: true,
+                    },
+                  },
+                },
+              },
+            },
           });
 
-          if (!updatedBalance) {
-            throw new Error(`Balance not found for member ${balance.memberId}`);
+          if (!updatedBalance || !updatedBalance.member.screenTimeSettings) {
+            throw new Error(`Balance or settings not found for member ${balance.memberId}`);
           }
+
+          const weeklyAllocation = updatedBalance.member.screenTimeSettings.weeklyAllocationMinutes;
 
           // Reset to weekly allocation
           await tx.screenTimeBalance.update({
             where: { memberId: balance.memberId },
             data: {
-              currentBalanceMinutes: updatedBalance.weeklyAllocationMinutes,
-              lastResetAt: now,
+              currentBalanceMinutes: weeklyAllocation,
+              weekStartDate: now,
             },
           });
 
@@ -85,8 +98,8 @@ export async function GET(request: NextRequest) {
             data: {
               memberId: balance.memberId,
               type: 'ALLOCATION',
-              amountMinutes: updatedBalance.weeklyAllocationMinutes,
-              balanceAfter: updatedBalance.weeklyAllocationMinutes,
+              amountMinutes: weeklyAllocation,
+              balanceAfter: weeklyAllocation,
               reason: 'Weekly reset',
               createdById: balance.memberId, // System reset
             },
@@ -97,12 +110,12 @@ export async function GET(request: NextRequest) {
             data: {
               familyId: balance.member.familyId,
               memberId: balance.memberId,
-              action: 'SCREENTIME_RESET',
+              action: 'SCREENTIME_ADJUSTED',
               entityType: 'SCREEN_TIME',
               result: 'SUCCESS',
               metadata: {
                 memberName: balance.member.name,
-                weeklyAllocationMinutes: updatedBalance.weeklyAllocationMinutes,
+                weeklyAllocationMinutes: weeklyAllocation,
                 previousBalance: balance.currentBalanceMinutes,
                 graceRepaymentsProcessed: repaymentResult.logsProcessed,
                 graceMinutesRepaid: repaymentResult.totalRepaid,
@@ -116,7 +129,7 @@ export async function GET(request: NextRequest) {
               userId: balance.memberId,
               type: 'SCREEN_TIME_RESET' as any,
               title: 'Screen Time Reset',
-              message: `Your screen time has been reset to ${updatedBalance.weeklyAllocationMinutes} minutes for the week!`,
+              message: `Your screen time has been reset to ${weeklyAllocation} minutes for the week!`,
               isRead: false,
             },
           });

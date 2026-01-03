@@ -165,7 +165,6 @@ export async function notifyRoutineTime(routine: {
         routineId: routine.id,
       },
       tag: `routine-${routine.id}`,
-      requireInteraction: true, // Keep notification visible
     }
   );
 }

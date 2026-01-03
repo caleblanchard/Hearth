@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { RoutineType } from '@prisma/client';
+import { RoutineType } from '@/app/generated/prisma';
 
 const VALID_ROUTINE_TYPES = ['MORNING', 'BEDTIME', 'HOMEWORK', 'AFTER_SCHOOL', 'CUSTOM'];
 

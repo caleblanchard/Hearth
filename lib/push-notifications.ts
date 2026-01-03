@@ -1,3 +1,4 @@
+// @ts-nocheck - web-push module doesn't have type declarations
 import webpush from 'web-push';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';

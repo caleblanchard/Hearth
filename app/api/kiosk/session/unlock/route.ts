@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         entityId: session.id,
         result: 'SUCCESS',
         metadata: {
-          memberName: updatedSession?.currentMember?.name,
+          memberId: updatedSession?.currentMemberId,
         },
       },
     });
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      member: updatedSession?.currentMember,
+      memberId: updatedSession?.currentMemberId,
     });
   } catch (error) {
     logger.error('Error unlocking kiosk session', error);

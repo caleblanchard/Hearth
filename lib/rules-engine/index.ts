@@ -143,10 +143,16 @@ export async function evaluateRules(
       // Add ruleId to context
       context.ruleId = rule.id;
 
+      // Skip if trigger is null
+      if (!rule.trigger) {
+        console.warn(`Rule ${rule.id} (${rule.name}) has no trigger`);
+        continue;
+      }
+
       // Evaluate trigger
       const triggerMatched = await evaluateTrigger(
-        rule.trigger.type as string,
-        rule.trigger.config,
+        (rule.trigger as any).type as string,
+        (rule.trigger as any).config,
         context
       );
 
@@ -170,7 +176,8 @@ export async function evaluateRules(
       let actionsCompleted = 0;
       let actionsFailed = 0;
 
-      for (const action of rule.actions as ActionConfig[]) {
+      const actions = (rule.actions as unknown as ActionConfig[]) || [];
+      for (const action of actions) {
         const result = await executeAction(
           action.type,
           action.config,
@@ -200,7 +207,7 @@ export async function evaluateRules(
             actionsCompleted,
             actionsFailed,
             actionResults,
-          },
+          } as any,
           error: errors.length > 0 ? errors.join('; ') : null,
           metadata: {
             triggerType,
@@ -283,10 +290,22 @@ export async function dryRunRule(
     const errors: string[] = [];
     const warnings: string[] = [];
 
+    // Check if trigger exists
+    if (!rule.trigger) {
+      return {
+        wouldExecute: false,
+        triggerEvaluated: false,
+        conditionsEvaluated: false,
+        actions: [],
+        errors: ['Rule has no trigger configured'],
+        warnings: [],
+      };
+    }
+
     // Evaluate trigger
     const triggerEvaluated = await evaluateTrigger(
-      rule.trigger.type as string,
-      rule.trigger.config,
+      (rule.trigger as any).type as string,
+      (rule.trigger as any).config,
       simulatedContext
     );
 
@@ -299,7 +318,8 @@ export async function dryRunRule(
     const wouldExecute = triggerEvaluated && conditionsEvaluated;
 
     // Simulate actions
-    const actions = (rule.actions as ActionConfig[]).map(action => {
+    const ruleActions = (rule.actions as unknown as ActionConfig[]) || [];
+    const actions = ruleActions.map(action => {
       let simulation = '';
 
       switch (action.type) {

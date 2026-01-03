@@ -90,7 +90,7 @@ export async function POST(
       data: {
         familyId: session.user.familyId,
         memberId: session.user.id,
-        action: 'MEDICATION_GIVEN',
+        action: 'PET_MEDICATION_GIVEN',
         entityType: 'HealthMedication',
         entityId: medication.id,
         result: 'SUCCESS',

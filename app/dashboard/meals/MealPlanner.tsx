@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { MealType } from '@prisma/client';
+import { MealType } from '@/app/generated/prisma';
 
 interface MealPlanEntry {
   id: string;

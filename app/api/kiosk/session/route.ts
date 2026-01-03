@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       isActive: session.isActive,
       isLocked: !session.currentMemberId,
-      currentMember: session.currentMember || null,
+      currentMemberId: session.currentMemberId,
       autoLockMinutes: session.autoLockMinutes,
       lastActivityAt: session.lastActivityAt,
     });

@@ -53,6 +53,7 @@ export interface CalendarBusyConfig {
 
 export interface MedicationGivenConfig {
   medicationId?: string;      // Specific medication (optional)
+  memberId?: string;          // Specific family member (optional)
   anyMedication?: boolean;    // Match any medication
 }
 

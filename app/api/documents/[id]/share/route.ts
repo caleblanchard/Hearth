@@ -44,29 +44,16 @@ export async function POST(
     // Generate secure token
     const token = randomBytes(32).toString('hex');
 
-    // Calculate expiration
-    let expiresAt: Date | null = null;
-    if (expiresInDays) {
-      expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + expiresInDays);
-    }
+    // Calculate expiration (default to 30 days if not specified)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + (expiresInDays || 30));
 
     const shareLink = await prisma.documentShareLink.create({
       data: {
         documentId: document.id,
         token,
         expiresAt,
-        recipientEmail: recipientEmail?.trim() || null,
-        notes: notes?.trim() || null,
         createdBy: session.user.id,
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
       },
     });
 
@@ -130,14 +117,6 @@ export async function GET(
     const shareLinks = await prisma.documentShareLink.findMany({
       where: {
         documentId: params.id,
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
       },
       orderBy: {
         createdAt: 'desc',

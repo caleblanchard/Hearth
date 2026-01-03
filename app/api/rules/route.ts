@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
         result: 'SUCCESS',
         metadata: {
           ruleName: rule.name,
-          triggerType: rule.trigger.type,
+          triggerType: (rule.trigger as any)?.type || 'unknown',
           actionCount: (rule.actions as any[]).length,
         },
       },
