@@ -85,6 +85,41 @@ describe('DashboardContent', () => {
     ],
   }
 
+  const mockWeatherData = {
+    current: {
+      temp: 72,
+      description: 'Partly cloudy',
+    },
+    today: {
+      high: 78,
+      low: 65,
+    },
+    location: 'Test City',
+  }
+
+  const setupSuccessfulFetchMock = () => {
+    ;(global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/weather')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockWeatherData,
+        })
+      }
+      if (url.includes('/api/settings/modules/enabled')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            enabledModules: ['CHORES', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS']
+          }),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => mockDashboardData,
+      })
+    })
+  }
+
   it('should display loading state initially', () => {
     ;(useSession as jest.Mock).mockReturnValue({
       data: { user: { id: 'user-1' } },
@@ -113,10 +148,7 @@ describe('DashboardContent', () => {
     ;(useSession as jest.Mock).mockReturnValue({
       data: { user: { id: 'user-1' } },
     })
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => mockDashboardData,
-    })
+    setupSuccessfulFetchMock()
 
     render(<DashboardContent />)
 
@@ -134,10 +166,7 @@ describe('DashboardContent', () => {
     ;(useSession as jest.Mock).mockReturnValue({
       data: { user: { id: 'user-1' } },
     })
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => mockDashboardData,
-    })
+    setupSuccessfulFetchMock()
 
     render(<DashboardContent />)
 
@@ -150,10 +179,7 @@ describe('DashboardContent', () => {
     ;(useSession as jest.Mock).mockReturnValue({
       data: { user: { id: 'user-1' } },
     })
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => mockDashboardData,
-    })
+    setupSuccessfulFetchMock()
 
     render(<DashboardContent />)
 
@@ -171,12 +197,28 @@ describe('DashboardContent', () => {
     ;(useSession as jest.Mock).mockReturnValue({
       data: { user: { id: 'user-1' } },
     })
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        ...mockDashboardData,
-        chores: [],
-      }),
+    ;(global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/weather')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockWeatherData,
+        })
+      }
+      if (url.includes('/api/settings/modules/enabled')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            enabledModules: ['CHORES', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS']
+          }),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          ...mockDashboardData,
+          chores: [],
+        }),
+      })
     })
 
     render(<DashboardContent />)
@@ -190,10 +232,7 @@ describe('DashboardContent', () => {
     ;(useSession as jest.Mock).mockReturnValue({
       data: { user: { id: 'user-1' } },
     })
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => mockDashboardData,
-    })
+    setupSuccessfulFetchMock()
 
     render(<DashboardContent />)
 
@@ -207,10 +246,7 @@ describe('DashboardContent', () => {
     ;(useSession as jest.Mock).mockReturnValue({
       data: { user: { id: 'user-1' } },
     })
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => mockDashboardData,
-    })
+    setupSuccessfulFetchMock()
 
     render(<DashboardContent />)
 

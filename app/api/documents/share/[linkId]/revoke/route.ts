@@ -40,9 +40,24 @@ export async function POST(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Delete the share link to revoke access
-    await prisma.documentShareLink.delete({
+    // Check if already revoked
+    if (shareLink.revokedAt) {
+      return NextResponse.json(
+        { error: 'Share link is already revoked' },
+        { status: 400 }
+      );
+    }
+
+    // Update the share link to mark it as revoked
+    const updatedShareLink = await prisma.documentShareLink.update({
       where: { id: params.linkId },
+      data: {
+        revokedAt: new Date(),
+        revokedBy: session.user.id,
+      },
+      include: {
+        creator: { select: { id: true, name: true } },
+      },
     });
 
     // Create audit log
@@ -63,6 +78,7 @@ export async function POST(
 
     return NextResponse.json({
       message: 'Share link revoked successfully',
+      shareLink: updatedShareLink,
     });
   } catch (error) {
     console.error('Error revoking share link:', error);

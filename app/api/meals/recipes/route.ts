@@ -150,7 +150,9 @@ export async function POST(request: NextRequest) {
         difficulty: difficulty || 'MEDIUM',
         imageUrl: imageUrl?.trim() || null,
         sourceUrl: sourceUrl?.trim() || null,
-        instructions: instructions || JSON.stringify([]),
+        instructions: Array.isArray(instructions)
+          ? JSON.stringify(instructions)
+          : instructions || JSON.stringify([]),
         notes: notes?.trim() || null,
         isFavorite: isFavorite || false,
         category: category || null,

@@ -118,6 +118,14 @@ export async function GET(
       where: {
         documentId: params.id,
       },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
       orderBy: {
         createdAt: 'desc',
       },

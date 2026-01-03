@@ -275,7 +275,7 @@ export async function executeAddShoppingItem(
         category: config.category || null,
         priority: config.priority || 'NORMAL',
         status: 'PENDING',
-        notes: 'Added by automation rule',
+        notes: config.notes || 'Added by automation rule',
         requestedById: systemUser.id,
         addedById: systemUser.id,
       },
@@ -376,7 +376,8 @@ export async function executeLockMedication(
 ): Promise<ActionResult> {
   try {
     // Validate medication ID
-    if (!config.medicationId) {
+    const medicationId = config.medicationId || context.medicationId;
+    if (!medicationId) {
       return {
         success: false,
         error: 'Lock medication action requires medicationId',
@@ -410,7 +411,7 @@ export async function executeLockMedication(
 
     // Update medication safety record
     const medication = await prisma.medicationSafety.update({
-      where: { id: config.medicationId },
+      where: { id: medicationId },
       data: {
         lastDoseAt: new Date(),
         nextDoseAvailableAt: nextDoseTime,
@@ -634,7 +635,7 @@ export async function executeAdjustScreenTime(
     if (!balance) {
       return {
         success: false,
-        error: 'Screen time not configured for this member',
+        error: 'Screen time balance not found',
       };
     }
 

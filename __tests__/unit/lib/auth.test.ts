@@ -1,20 +1,3 @@
-// Mock next-auth and related modules before any imports
-jest.mock('next-auth', () => ({
-  default: jest.fn(),
-}))
-
-jest.mock('next-auth/providers/credentials', () => ({
-  default: jest.fn((config) => ({
-    id: config.id,
-    name: config.name,
-    authorize: config.authorize,
-  })),
-}))
-
-jest.mock('@auth/core/providers/credentials', () => ({
-  default: jest.fn(),
-}))
-
 import { compare, hash } from 'bcrypt'
 import { Role } from '@/app/generated/prisma'
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'

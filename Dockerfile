@@ -2,15 +2,20 @@
 
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat openssl
+RUN apk add --no-cache libc6-compat openssl python3 make g++
 WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci
+# Install dependencies with QEMU workarounds
+# - Increase Node.js memory limit for ARM64 builds
+# - Skip optional dependencies that may cause issues under QEMU
+# - Disable postinstall scripts that might fail under emulation
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV npm_config_optional=false
+RUN npm ci --legacy-peer-deps --no-audit --prefer-offline || npm ci --legacy-peer-deps --no-audit
 
 # Generate Prisma Client
 RUN npx prisma generate

@@ -46,7 +46,7 @@ describe('Modal', () => {
       </Modal>
     )
 
-    const closeButton = screen.getByText('×')
+    const closeButton = screen.getByLabelText('Close modal')
     fireEvent.click(closeButton)
 
     expect(onClose).toHaveBeenCalled()

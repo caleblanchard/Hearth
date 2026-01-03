@@ -17,13 +17,40 @@ global.Headers = Headers
 // Mock next-auth
 jest.mock('next-auth', () => ({
   __esModule: true,
-  default: jest.fn(),
+  default: jest.fn(() => ({
+    handlers: { GET: jest.fn(), POST: jest.fn() },
+    auth: jest.fn(),
+    signIn: jest.fn(),
+    signOut: jest.fn(),
+  })),
 }))
 
 jest.mock('next-auth/react', () => ({
   useSession: jest.fn(),
   signIn: jest.fn(),
   signOut: jest.fn(),
+}))
+
+jest.mock('next-auth/providers/credentials', () => ({
+  __esModule: true,
+  default: jest.fn((config) => ({
+    id: config?.id || 'credentials',
+    name: config?.name || 'Credentials',
+    type: 'credentials',
+    credentials: config?.credentials || {},
+    authorize: config?.authorize || jest.fn(),
+  })),
+}))
+
+jest.mock('@auth/core/providers/credentials', () => ({
+  __esModule: true,
+  default: jest.fn((config) => ({
+    id: config?.id || 'credentials',
+    name: config?.name || 'Credentials',
+    type: 'credentials',
+    credentials: config?.credentials || {},
+    authorize: config?.authorize || jest.fn(),
+  })),
 }))
 
 // Mock next/navigation
@@ -71,19 +98,20 @@ afterAll(async () => {
   // Clean up rate limiters if they exist (they have setInterval that keeps process alive)
   try {
     const rateLimitModule = require('@/lib/rate-limit')
-    if (rateLimitModule.apiRateLimiter?.destroy) {
+    // Destroy rate limiters, checking if cleanupInterval still exists (not already destroyed)
+    if (rateLimitModule.apiRateLimiter?.cleanupInterval) {
       rateLimitModule.apiRateLimiter.destroy()
     }
-    if (rateLimitModule.authRateLimiter?.destroy) {
+    if (rateLimitModule.authRateLimiter?.cleanupInterval) {
       rateLimitModule.authRateLimiter.destroy()
     }
-    if (rateLimitModule.cronRateLimiter?.destroy) {
+    if (rateLimitModule.cronRateLimiter?.cleanupInterval) {
       rateLimitModule.cronRateLimiter.destroy()
     }
   } catch (e) {
-    // Ignore if module not loaded
+    // Ignore if module not loaded or already cleaned up
   }
-  
+
   // Close Prisma connections if they exist
   try {
     const prismaModule = require('@/lib/prisma')
@@ -94,15 +122,10 @@ afterAll(async () => {
   } catch (e) {
     // Ignore if module not loaded
   }
-  
+
   // Clear any remaining timers
   jest.clearAllTimers()
-  
+
   // Give time for cleanup
   await new Promise(resolve => setTimeout(resolve, 100))
-  
-  // Force exit if still hanging (last resort)
-  if (process.env.CI) {
-    setTimeout(() => process.exit(0), 1000)
-  }
 })

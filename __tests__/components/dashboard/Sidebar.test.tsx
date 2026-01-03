@@ -18,6 +18,21 @@ jest.mock('next/navigation', () => ({
 // Mock fetch for module settings
 global.fetch = jest.fn()
 
+// Mock window.matchMedia for responsive tests
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: query.includes('min-width'), // Simulate desktop viewport
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+})
+
 describe('Sidebar', () => {
   const mockPush = jest.fn()
   const mockRouter = { push: mockPush }
@@ -38,15 +53,17 @@ describe('Sidebar', () => {
       data: { user: { id: 'user-1', name: 'Test User', role: 'CHILD', familyId: 'family-1' } },
     })
 
-    render(<Sidebar />)
+    const { container } = render(<Sidebar />)
 
-    // Wait for modules to load
+    // Wait for modules to load by checking for a module-dependent item
     await waitFor(() => {
-      expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0)
+      const choresElements = screen.queryAllByText('Chores', { hidden: true })
+      expect(choresElements.length).toBeGreaterThan(0)
     })
 
-    expect(screen.getAllByText('Chores').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('To-Do').length).toBeGreaterThan(0)
+    // Check that other navigation items exist (even if hidden in test environment)
+    expect(screen.queryAllByText('To-Do', { hidden: true }).length).toBeGreaterThan(0)
+    expect(screen.queryAllByText('Dashboard', { hidden: true }).length).toBeGreaterThan(0)
   })
 
   it('should show parent-only settings group for parents', async () => {

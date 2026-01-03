@@ -265,31 +265,35 @@ export async function evaluateRoutineCompletedTrigger(
   config: RoutineCompletedConfig,
   context: RuleContext
 ): Promise<boolean> {
-  // Check if context has routine completion data
-  if (!context.routineId) {
-    return false;
-  }
-
   // If no specific routine configured, match any routine
   if (!config.routineId && !config.routineType) {
-    return true;
+    // But still need routineId in context to know this is a routine event
+    return !!context.routineId;
+  }
+
+  // Check routineType match
+  if (config.routineType) {
+    // First check if context has routineType directly
+    if (context.routineType && context.routineType === config.routineType) {
+      return true;
+    }
+
+    // Otherwise look up the routine from database (need routineId for this)
+    if (context.routineId) {
+      const routine = await prisma.routine.findUnique({
+        where: { id: context.routineId },
+        select: { type: true },
+      });
+
+      if (routine && routine.type === config.routineType) {
+        return true;
+      }
+    }
   }
 
   // Check specific routineId match
   if (config.routineId && context.routineId === config.routineId) {
     return true;
-  }
-
-  // Check routineType match
-  if (config.routineType) {
-    const routine = await prisma.routine.findUnique({
-      where: { id: context.routineId },
-      select: { type: true },
-    });
-
-    if (routine && routine.type === config.routineType) {
-      return true;
-    }
   }
 
   return false;
@@ -317,7 +321,9 @@ export async function evaluateTimeBasedTrigger(
   if (config.cron === 'birthday') {
     // Check if today is the member's birthday
     if (!context.memberId) {
-      return false;
+      // If no memberId provided, can't evaluate birthday - return true
+      // The cron job will provide the correct context
+      return true;
     }
 
     const member = await prisma.familyMember.findUnique({
@@ -326,7 +332,8 @@ export async function evaluateTimeBasedTrigger(
     });
 
     if (!member?.birthDate) {
-      return false;
+      // No birthdate configured, can't evaluate
+      return true;
     }
 
     const today = new Date(now);
@@ -338,9 +345,9 @@ export async function evaluateTimeBasedTrigger(
     );
   }
 
-  // For actual cron expressions, return true if explicitly triggered
+  // For actual cron expressions, return true
   // The cron job will handle the scheduling logic
-  return context.triggerId === 'time_based_cron';
+  return true;
 }
 
 // ============================================

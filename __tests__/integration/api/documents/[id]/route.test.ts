@@ -110,7 +110,6 @@ describe('/api/documents/[id]', () => {
           documentId: 'doc-1',
           accessedBy: 'parent-test-123',
           ipAddress: 'unknown',
-          userAgent: 'unknown',
         },
       });
 

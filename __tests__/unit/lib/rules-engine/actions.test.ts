@@ -293,7 +293,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeSendNotification(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Title is required');
+      expect(result.error).toContain('Send notification action requires title');
     });
 
     it('should require message', async () => {
@@ -627,7 +627,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeCreateTodo(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Title is required');
+      expect(result.error).toContain('Create todo action requires title');
     });
 
     it('should handle optional description', async () => {
@@ -782,7 +782,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeLockMedication(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Lock duration in hours is required');
+      expect(result.error).toContain('Lock medication action requires hours');
     });
 
     it('should enforce maximum lock duration', async () => {
@@ -861,11 +861,15 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      prismaMock.mealIdea.findMany.mockResolvedValue([
+      prismaMock.recipe.findMany.mockResolvedValue([
         { id: 'meal-1', name: 'Pasta', difficulty: 'EASY' },
       ] as any);
 
-      prismaMock.notification.create.mockResolvedValue({} as any);
+      prismaMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      prismaMock.notification.createMany.mockResolvedValue({ count: 1 });
 
       const result = await executeSuggestMeal(config, context);
 
@@ -880,11 +884,15 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      prismaMock.mealIdea.findMany.mockResolvedValue([
+      prismaMock.recipe.findMany.mockResolvedValue([
         { id: 'meal-1', name: 'Steak', category: 'DINNER' },
       ] as any);
 
-      prismaMock.notification.create.mockResolvedValue({} as any);
+      prismaMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      prismaMock.notification.createMany.mockResolvedValue({ count: 1 });
 
       const result = await executeSuggestMeal(config, context);
 
@@ -899,12 +907,12 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      prismaMock.mealIdea.findMany.mockResolvedValue([]);
+      prismaMock.recipe.findMany.mockResolvedValue([]);
 
       const result = await executeSuggestMeal(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('No meals found');
+      expect(result.error).toContain('No recipes found matching criteria');
     });
 
     it('should select random meal from results', async () => {
@@ -913,13 +921,17 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      prismaMock.mealIdea.findMany.mockResolvedValue([
+      prismaMock.recipe.findMany.mockResolvedValue([
         { id: 'meal-1', name: 'Pizza' },
         { id: 'meal-2', name: 'Burger' },
         { id: 'meal-3', name: 'Salad' },
       ] as any);
 
-      prismaMock.notification.create.mockResolvedValue({} as any);
+      prismaMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      prismaMock.notification.createMany.mockResolvedValue({ count: 1 });
 
       const result = await executeSuggestMeal(config, context);
 
@@ -934,7 +946,7 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      prismaMock.mealIdea.findMany.mockResolvedValue([
+      prismaMock.recipe.findMany.mockResolvedValue([
         { id: 'meal-1', name: 'Tacos' },
       ] as any);
 
@@ -942,12 +954,12 @@ describe('Rules Engine Action Executors', () => {
         { id: 'parent-1', role: 'PARENT' },
       ] as any);
 
-      prismaMock.notification.create.mockResolvedValue({} as any);
+      prismaMock.notification.createMany.mockResolvedValue({ count: 1 });
 
       const result = await executeSuggestMeal(config, context);
 
       expect(result.success).toBe(true);
-      expect(prismaMock.notification.create).toHaveBeenCalled();
+      expect(prismaMock.notification.createMany).toHaveBeenCalled();
     });
 
     it('should handle both difficulty and category filters', async () => {
@@ -959,11 +971,15 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      prismaMock.mealIdea.findMany.mockResolvedValue([
+      prismaMock.recipe.findMany.mockResolvedValue([
         { id: 'meal-1', name: 'Sandwich', difficulty: 'EASY', category: 'LUNCH' },
       ] as any);
 
-      prismaMock.notification.create.mockResolvedValue({} as any);
+      prismaMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      prismaMock.notification.createMany.mockResolvedValue({ count: 1 });
 
       const result = await executeSuggestMeal(config, context);
 
@@ -978,7 +994,7 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      prismaMock.mealIdea.findMany.mockRejectedValue(new Error('DB error'));
+      prismaMock.recipe.findMany.mockRejectedValue(new Error('DB error'));
 
       const result = await executeSuggestMeal(config, context);
 
@@ -991,11 +1007,15 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      prismaMock.mealIdea.findMany.mockResolvedValue([
+      prismaMock.recipe.findMany.mockResolvedValue([
         { id: 'meal-1', name: 'Random meal' },
       ] as any);
 
-      prismaMock.notification.create.mockResolvedValue({} as any);
+      prismaMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      prismaMock.notification.createMany.mockResolvedValue({ count: 1 });
 
       const result = await executeSuggestMeal(config, context);
 
@@ -1072,7 +1092,7 @@ describe('Rules Engine Action Executors', () => {
     it('should enforce maximum percentage', async () => {
       const config = {
         memberId: 'member-1',
-        percentage: 60, // Over 50% limit
+        percentage: 150, // Over 100% limit
         duration: 7,
       };
       const context: RuleContext = {

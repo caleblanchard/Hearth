@@ -274,14 +274,14 @@ describe('FinancialDashboardPage', () => {
     const weeklyButton = screen.getByText('Weekly')
 
     // Monthly should be active initially
-    expect(monthlyButton).toHaveClass('bg-indigo-600')
-    expect(weeklyButton).not.toHaveClass('bg-indigo-600')
+    expect(monthlyButton).toHaveClass('bg-ember-700')
+    expect(weeklyButton).not.toHaveClass('bg-ember-700')
 
     // Click weekly
     fireEvent.click(weeklyButton)
 
     await waitFor(() => {
-      expect(weeklyButton).toHaveClass('bg-indigo-600')
+      expect(weeklyButton).toHaveClass('bg-ember-700')
     })
   })
 })

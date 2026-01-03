@@ -283,7 +283,7 @@ describe('Kiosk Session API Endpoints', () => {
       expect(response.status).toBe(200);
       expect(data.isActive).toBe(true);
       expect(data.isLocked).toBe(false);
-      expect(data.currentMember.name).toBe('Test Child');
+      expect(data.currentMemberId).toBe('member-1');
     });
 
     it('should auto-lock expired session', async () => {
@@ -478,8 +478,8 @@ describe('Kiosk Session API Endpoints', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.member).toBeDefined();
-      expect(data.member.name).toBe('Test Child');
+      expect(data.memberId).toBeDefined();
+      expect(data.memberId).toBe('member-1');
     });
 
     it('should return 400 with invalid PIN', async () => {

@@ -179,6 +179,13 @@ describe('lib/rate-limit.ts', () => {
   })
 
   describe('Rate Limiter Instances', () => {
+    afterAll(() => {
+      // Clean up global rate limiter instances to prevent hanging
+      apiRateLimiter.destroy()
+      authRateLimiter.destroy()
+      cronRateLimiter.destroy()
+    })
+
     it('should have correct limits for apiRateLimiter', () => {
       expect(apiRateLimiter.maxRequests).toBe(100)
       expect(apiRateLimiter.windowMs).toBe(60000)

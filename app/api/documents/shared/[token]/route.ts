@@ -19,6 +19,12 @@ export async function GET(
             },
           },
         },
+        creator: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -26,6 +32,14 @@ export async function GET(
       return NextResponse.json(
         { error: 'Share link not found' },
         { status: 404 }
+      );
+    }
+
+    // Check if link is revoked
+    if (shareLink.revokedAt) {
+      return NextResponse.json(
+        { error: 'Share link has been revoked' },
+        { status: 410 }
       );
     }
 
@@ -37,18 +51,27 @@ export async function GET(
       );
     }
 
-    // Increment access count
+    // Increment access count and update last accessed time
     await prisma.documentShareLink.update({
       where: { id: shareLink.id },
       data: {
         accessCount: {
           increment: 1,
         },
+        lastAccessedAt: new Date(),
       },
     });
 
-    // Note: External access via share link is tracked by accessCount on the share link itself
-    // No access log created as accessedBy requires a valid FamilyMember ID
+    // Create document access log for external access
+    await prisma.documentAccessLog.create({
+      data: {
+        documentId: shareLink.documentId,
+        accessedBy: null, // External access
+        ipAddress: 'unknown',
+        userAgent: 'unknown',
+        viaShareLink: shareLink.id,
+      },
+    });
 
     // Create audit log
     await prisma.auditLog.create({
@@ -80,6 +103,8 @@ export async function GET(
       shareInfo: {
         createdAt: shareLink.createdAt,
         expiresAt: shareLink.expiresAt,
+        createdBy: shareLink.creator?.name,
+        notes: shareLink.notes,
       },
     });
   } catch (error) {

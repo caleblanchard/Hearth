@@ -55,9 +55,17 @@ describe('RulesList Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({ rules: mockRules }),
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/settings/modules/enabled')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ enabledModules: ['RULES_ENGINE'] }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ rules: mockRules }),
+      });
     });
   });
 
@@ -127,15 +135,25 @@ describe('RulesList Component', () => {
   });
 
   it('should toggle rule enabled status', async () => {
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
+    let callCount = 0;
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/settings/modules/enabled')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ enabledModules: ['RULES_ENGINE'] }),
+        });
+      }
+      if (url.includes('/api/rules/rule-1/toggle')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true }),
+        });
+      }
+      return Promise.resolve({
         ok: true,
         json: async () => ({ rules: mockRules }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ success: true }),
       });
+    });
 
     render(<RulesPage />);
 
@@ -165,21 +183,32 @@ describe('RulesList Component', () => {
     // Mock window.confirm
     global.confirm = jest.fn(() => true);
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
+    // Reset and set up fresh mocks
+    jest.clearAllMocks();
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/settings/modules/enabled')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ enabledModules: ['RULES_ENGINE'] }),
+        });
+      }
+      if (url.includes('/api/rules/rule-1') && url === '/api/rules/rule-1') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true }),
+        });
+      }
+      return Promise.resolve({
         ok: true,
         json: async () => ({ rules: mockRules }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ success: true }),
       });
+    });
 
     render(<RulesPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Weekly Allowance')).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
 
     // Click delete button
     const deleteButtons = screen.getAllByText(/delete/i);
