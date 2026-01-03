@@ -63,9 +63,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/app/generated ./app/generated
 
-# Copy bcrypt native module from deps stage
-# Standalone mode doesn't always properly bundle native modules
-COPY --from=deps /app/node_modules/bcrypt ./node_modules/bcrypt
+# Copy node_modules from deps stage to ensure native modules are available
+# Standalone mode doesn't always properly bundle native modules like bcrypt
+COPY --from=deps /app/node_modules ./node_modules
 
 # Rebuild native modules for Alpine Linux (musl libc)
 RUN npm rebuild bcrypt --build-from-source
