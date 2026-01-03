@@ -2082,17 +2082,18 @@ model DocumentVersion {
 }
 
 model DocumentShareLink {
-  id          String    @id @default(uuid())
-  documentId  String
-  token       String    @unique
-  expiresAt   DateTime
-  password    String?   // Hashed
-  accessCount Int       @default(0)
-  maxAccess   Int?      // Limit number of accesses
-  createdBy   String
-  createdAt   DateTime  @default(now())
-  revokedAt   DateTime? // When the link was revoked
-  revokedBy   String?   // Who revoked the link
+  id             String    @id @default(uuid())
+  documentId     String
+  token          String    @unique
+  expiresAt      DateTime
+  password       String?   // Hashed
+  accessCount    Int       @default(0)
+  maxAccess      Int?      // Limit number of accesses
+  createdBy      String
+  createdAt      DateTime  @default(now())
+  lastAccessedAt DateTime? // Last time the link was accessed
+  revokedAt      DateTime? // When the link was revoked
+  revokedBy      String?   // Who revoked the link
 
   // Relations
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
@@ -2103,15 +2104,17 @@ model DocumentShareLink {
 }
 
 model DocumentAccessLog {
-  id         String       @id @default(uuid())
-  documentId String
-  accessedBy String
-  accessedAt DateTime     @default(now())
-  ipAddress  String?
+  id             String       @id @default(uuid())
+  documentId     String
+  accessedBy     String?      // Null for external/anonymous access via share link
+  accessedAt     DateTime     @default(now())
+  ipAddress      String?
+  userAgent      String?      // Browser user agent string
+  viaShareLink   String?      // ID of share link if accessed externally
 
   // Relations
-  document Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  member   FamilyMember @relation(fields: [accessedBy], references: [id], onDelete: Cascade)
+  document Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  member   FamilyMember? @relation(fields: [accessedBy], references: [id], onDelete: Cascade)
 
   @@index([documentId])
   @@index([accessedBy])

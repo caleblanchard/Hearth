@@ -19,12 +19,6 @@ export async function GET(
             },
           },
         },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
       },
     });
 
@@ -103,8 +97,7 @@ export async function GET(
       shareInfo: {
         createdAt: shareLink.createdAt,
         expiresAt: shareLink.expiresAt,
-        createdBy: shareLink.creator?.name,
-        notes: shareLink.notes,
+        createdBy: shareLink.createdBy, // User ID who created the share link
       },
     });
   } catch (error) {
