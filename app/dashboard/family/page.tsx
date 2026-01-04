@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { format } from 'date-fns';
 import { Modal, ConfirmModal, AlertModal } from '@/components/ui/Modal';
 
 const TIMEZONES = [
@@ -675,7 +676,7 @@ export default function FamilyPage() {
                       )}
                       {member.birthDate && (
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Born: {new Date(member.birthDate).toLocaleDateString()}
+                          Born: {format(new Date(member.birthDate.split('T')[0]), 'MMMM d, yyyy')}
                         </p>
                       )}
                     </div>

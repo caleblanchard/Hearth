@@ -35,6 +35,8 @@ services:
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=this-is-a-development-secret-please-change-in-production-min-32-chars
       - AUTH_TRUST_HOST=true
+      # Weather API (OpenWeatherMap) - optional
+      - WEATHER_API_KEY=${WEATHER_API_KEY:-}
       - NODE_ENV=development
     ports:
       - "3000:3000"

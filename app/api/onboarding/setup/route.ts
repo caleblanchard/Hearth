@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
     const {
       familyName,
       timezone,
+      location,
+      latitude,
+      longitude,
       adminName,
       adminEmail,
       adminPassword,
@@ -109,6 +112,9 @@ export async function POST(request: NextRequest) {
         data: {
           name: familyName.trim(),
           timezone: timezone || 'America/New_York',
+          location: location?.trim() || null,
+          latitude: latitude !== undefined && latitude !== null ? parseFloat(latitude.toString()) : null,
+          longitude: longitude !== undefined && longitude !== null ? parseFloat(longitude.toString()) : null,
         },
       });
 

@@ -9,6 +9,9 @@ type OnboardingStep = 'welcome' | 'account' | 'modules' | 'complete';
 interface OnboardingData {
   familyName: string;
   timezone: string;
+  location?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   adminName: string;
   adminEmail: string;
   adminPassword: string;
@@ -50,6 +53,9 @@ export default function OnboardingPage() {
   const [data, setData] = useState<OnboardingData>({
     familyName: '',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
+    location: '',
+    latitude: null,
+    longitude: null,
     adminName: '',
     adminEmail: '',
     adminPassword: '',
@@ -155,6 +161,9 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           familyName: data.familyName.trim(),
           timezone: data.timezone,
+          location: data.location?.trim() || undefined,
+          latitude: data.latitude || undefined,
+          longitude: data.longitude || undefined,
           adminName: data.adminName.trim(),
           adminEmail: data.adminEmail.trim().toLowerCase(),
           adminPassword: data.adminPassword,
@@ -323,6 +332,69 @@ export default function OnboardingPage() {
                 <p className="mt-1 text-sm text-gray-500">
                   Auto-detected: {Intl.DateTimeFormat().resolvedOptions().timeZone}
                 </p>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  Location (for Weather Widget) <span className="text-gray-500 font-normal">(Optional)</span>
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
+                      Location Name
+                    </label>
+                    <input
+                      type="text"
+                      id="location"
+                      value={data.location || ''}
+                      onChange={(e) => updateData('location', e.target.value)}
+                      placeholder="e.g., New York, NY"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-2">
+                        Latitude
+                      </label>
+                      <input
+                        type="number"
+                        id="latitude"
+                        step="any"
+                        value={data.latitude ?? ''}
+                        onChange={(e) => updateData('latitude', e.target.value ? parseFloat(e.target.value) : null)}
+                        placeholder="e.g., 40.7128"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-2">
+                        Longitude
+                      </label>
+                      <input
+                        type="number"
+                        id="longitude"
+                        step="any"
+                        value={data.longitude ?? ''}
+                        onChange={(e) => updateData('longitude', e.target.value ? parseFloat(e.target.value) : null)}
+                        placeholder="e.g., -74.0060"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Enter your location coordinates for accurate weather data. You can find coordinates using{' '}
+                    <a 
+                      href="https://www.latlong.net/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 hover:text-indigo-700 underline"
+                    >
+                      latlong.net
+                    </a>
+                    {' '}or search for your city.
+                  </p>
+                </div>
               </div>
 
               {error && (

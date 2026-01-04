@@ -89,13 +89,16 @@ interface FamilyMember {
   name: string;
   role: string;
   avatarUrl?: string;
+  isActive: boolean;
 }
 
 export default function ManageChoresPage() {
+  console.log('🚀 ManageChoresPage component rendered');
   const { data: session } = useSession();
   const router = useRouter();
   const [chores, setChores] = useState<Chore[]>([]);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  console.log('📊 Current familyMembers state:', familyMembers);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -131,7 +134,8 @@ export default function ManageChoresPage() {
 
   // Check authorization
   useEffect(() => {
-    if (session?.user?.role !== 'PARENT') {
+    // Only redirect if session is loaded and user is not a parent
+    if (session && session?.user?.role !== 'PARENT') {
       router.push('/dashboard');
     }
   }, [session, router]);
@@ -151,14 +155,27 @@ export default function ManageChoresPage() {
   };
 
   const fetchFamilyMembers = async () => {
+    console.log('🔍 fetchFamilyMembers called');
     try {
-      const response = await fetch('/api/children');
+      console.log('📡 Fetching from /api/family...');
+      const response = await fetch('/api/family');
+      console.log('📥 Response status:', response.status, response.ok);
+
       if (response.ok) {
         const data = await response.json();
-        setFamilyMembers(data.children || []);
+        console.log('✅ Family API response:', data);
+
+        // Get all family members
+        const allMembers = data.family?.members || [];
+        console.log('📋 All family members:', allMembers, 'Count:', allMembers.length);
+
+        setFamilyMembers(allMembers);
+        console.log('✅ State updated with', allMembers.length, 'members');
+      } else {
+        console.error('❌ Failed to fetch family members - response not ok:', response.status);
       }
     } catch (error) {
-      console.error('Failed to fetch family members:', error);
+      console.error('❌ Failed to fetch family members - error:', error);
     }
   };
 
@@ -166,6 +183,14 @@ export default function ManageChoresPage() {
     fetchChores();
     fetchFamilyMembers();
   }, []);
+
+  // Fetch family members when the add form is opened
+  useEffect(() => {
+    if (showAddForm) {
+      console.log('Add form opened, fetching family members...');
+      fetchFamilyMembers();
+    }
+  }, [showAddForm]);
 
   const handleAddChore = async () => {
     // Validation
@@ -662,24 +687,36 @@ export default function ManageChoresPage() {
                   Assign To * {newChore.assignmentType === 'ROTATING' && '(order matters)'}
                 </label>
                 <div className="space-y-2">
-                  {familyMembers.map(member => (
-                    <label key={member.id} className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={newChore.selectedMembers.includes(member.id)}
-                        onChange={() => handleToggleMemberSelection(member.id)}
-                        className="rounded border-gray-300 text-ember-700 focus:ring-ember-500"
-                      />
-                      <span className="ml-3 text-sm text-gray-900 dark:text-white">
-                        {member.name}
-                        {newChore.assignmentType === 'ROTATING' && newChore.selectedMembers.includes(member.id) && (
-                          <span className="ml-2 text-xs text-gray-500">
-                            (#{newChore.selectedMembers.indexOf(member.id) + 1})
-                          </span>
-                        )}
-                      </span>
-                    </label>
-                  ))}
+                  {(() => {
+                    console.log('🎨 Rendering assignment section. familyMembers:', familyMembers);
+                    console.log('🎨 familyMembers.length:', familyMembers.length);
+                    return null;
+                  })()}
+                  {familyMembers.length === 0 ? (
+                    <div className="text-sm text-gray-500 dark:text-gray-400 p-3 border border-gray-300 dark:border-gray-600 rounded-lg">
+                      <p>No family members available. Please add family members first.</p>
+                      <p className="text-xs mt-2">Debug: familyMembers array has {familyMembers.length} items</p>
+                    </div>
+                  ) : (
+                    familyMembers.map(member => (
+                      <label key={member.id} className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newChore.selectedMembers.includes(member.id)}
+                          onChange={() => handleToggleMemberSelection(member.id)}
+                          className="rounded border-gray-300 text-ember-700 focus:ring-ember-500"
+                        />
+                        <span className="ml-3 text-sm text-gray-900 dark:text-white">
+                          {member.name}
+                          {newChore.assignmentType === 'ROTATING' && newChore.selectedMembers.includes(member.id) && (
+                            <span className="ml-2 text-xs text-gray-500">
+                              (#{newChore.selectedMembers.indexOf(member.id) + 1})
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    ))
+                  )}
                 </div>
               </div>
             </div>

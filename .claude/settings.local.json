@@ -38,7 +38,8 @@
       "Bash(docker buildx build:*)",
       "Bash(docker inspect:*)",
       "Bash(docker ps:*)",
-      "Bash(docker images:*)"
+      "Bash(docker images:*)",
+      "Bash(docker exec:*)"
     ]
   }
 }
