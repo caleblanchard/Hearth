@@ -2,6 +2,15 @@
 set -e
 
 echo "🚀 Starting Hearth application..."
+
+# Debug: Check if DATABASE_URL is set
+if [ -z "$DATABASE_URL" ]; then
+  echo "❌ ERROR: DATABASE_URL environment variable is not set!"
+  echo "Please ensure you pass -e DATABASE_URL=... to docker run"
+  exit 1
+fi
+
+echo "✅ Database URL configured"
 echo "⏳ Waiting a few seconds for database to be ready..."
 sleep 5
 
