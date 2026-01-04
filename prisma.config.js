@@ -1,8 +1,8 @@
 // Prisma 7 configuration file
 // This file configures the datasource URL for Prisma migrations and client
-import "dotenv/config";
+require("dotenv/config");
 
-export default {
+module.exports = {
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",

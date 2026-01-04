@@ -8,6 +8,7 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
+COPY prisma.config.* ./
 
 # Install dependencies with QEMU workarounds
 # - Increase Node.js memory limit for ARM64 builds
@@ -28,6 +29,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
 COPY --from=deps /app/prisma ./prisma
+COPY --from=deps /app/prisma.config.* ./
 
 # Copy application code
 COPY . .
@@ -57,6 +59,7 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.* ./
 
 # Copy built application
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
