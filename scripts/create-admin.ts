@@ -80,7 +80,7 @@ function hiddenQuestion(query: string): Promise<string> {
 }
 
 async function main() {
-  console.log('🚀 HouseholdERP - Create Admin User\n');
+  console.log('🚀 Hearth - Create Admin User\n');
 
   // Check if any families exist
   const existingFamilyCount = await prisma.family.count();

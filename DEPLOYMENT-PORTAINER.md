@@ -1,6 +1,6 @@
-# HouseholdERP - Portainer Deployment Guide
+# Hearth - Portainer Deployment Guide
 
-This guide will walk you through deploying HouseholdERP using Portainer, a web-based Docker management interface. This is the easiest way to deploy if you prefer a graphical interface over command-line tools.
+This guide will walk you through deploying Hearth using Portainer, a web-based Docker management interface. This is the easiest way to deploy if you prefer a graphical interface over command-line tools.
 
 ## What is Portainer?
 
@@ -66,7 +66,7 @@ On first access, you'll be prompted to create an admin account.
 
 1. In the left sidebar, click **"Stacks"**
 2. Click the **"+ Add stack"** button
-3. Enter a name for your stack: `hearth` (or `householderp`)
+3. Enter a name for your stack: `hearth`
 
 ### Step 3: Add the Docker Compose Configuration
 
@@ -240,7 +240,7 @@ Portainer will:
 2. You'll see all containers and their status:
    - `hearth-db` - PostgreSQL database
    - `hearth-minio` - MinIO object storage
-   - `hearth-app` - HouseholdERP application
+   - `hearth-app` - Hearth application
 
 Each should show a green "running" status.
 
@@ -281,11 +281,11 @@ Once all containers are running:
 
 Open your browser and navigate to:
 
-- **HouseholdERP App**: `http://your-server-ip:3000`
+- **Hearth App**: `http://your-server-ip:3000`
 - **MinIO Console**: `http://your-server-ip:9001`
 - **Portainer**: `https://your-server-ip:9443`
 
-Login to HouseholdERP with the admin credentials you just created!
+Login to Hearth with the admin credentials you just created!
 
 ## Managing Your Deployment in Portainer
 
@@ -619,7 +619,7 @@ If you're using Nginx Proxy Manager in Portainer:
 ### Stack Naming
 
 Use clear, descriptive stack names:
-- ✅ Good: `hearth-production`, `householderp-main`
+- ✅ Good: `hearth-production`, `hearth-main`
 - ❌ Bad: `stack1`, `test`, `temp`
 
 ### Environment Variable Management
@@ -663,7 +663,7 @@ Set up Portainer notifications:
 ## Support and Resources
 
 - **Portainer Documentation**: https://docs.portainer.io/
-- **HouseholdERP Issues**: https://github.com/caleblanchard/Hearth/issues
+- **Hearth Issues**: https://github.com/caleblanchard/Hearth/issues
 - **Docker Documentation**: https://docs.docker.com/
 - **MinIO Documentation**: https://min.io/docs/
 

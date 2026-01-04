@@ -47,7 +47,7 @@ A family-first household management system that helps run a home the same way an
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd HouseholdERP
+cd Hearth
 ```
 
 2. Copy environment variables:

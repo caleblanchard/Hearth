@@ -1,6 +1,6 @@
-# HouseholdERP - Production Deployment Guide
+# Hearth - Production Deployment Guide
 
-This guide will walk you through deploying HouseholdERP to a Docker server for production use.
+This guide will walk you through deploying Hearth to a Docker server for production use.
 
 ## Prerequisites
 
@@ -15,8 +15,8 @@ This guide will walk you through deploying HouseholdERP to a Docker server for p
 
 ```bash
 # Create a directory for your deployment
-mkdir -p /opt/householderp
-cd /opt/householderp
+mkdir -p /opt/hearth
+cd /opt/hearth
 
 # Download the docker-compose.prod.yml file
 curl -O https://raw.githubusercontent.com/caleblanchard/Hearth/master/docker-compose.prod.yml
@@ -307,7 +307,7 @@ docker-compose -f docker-compose.prod.yml exec hearth-db pg_dump -U hearth_user 
 
 # Or use this script (create as backup.sh)
 #!/bin/bash
-BACKUP_DIR="/opt/householderp/backups"
+BACKUP_DIR="/opt/hearth/backups"
 mkdir -p $BACKUP_DIR
 docker-compose -f docker-compose.prod.yml exec -T hearth-db pg_dump -U hearth_user hearth_db | gzip > $BACKUP_DIR/backup_$(date +%Y%m%d_%H%M%S).sql.gz
 echo "Backup created in $BACKUP_DIR"
@@ -338,7 +338,7 @@ docker-compose -f docker-compose.prod.yml up -d
 ### Update the Application
 
 ```bash
-cd /opt/householderp
+cd /opt/hearth
 
 # Pull the latest Docker image
 docker-compose -f docker-compose.prod.yml pull

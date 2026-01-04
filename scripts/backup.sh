@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# HouseholdERP Database Backup Script
+# Hearth Database Backup Script
 #
 # This script creates a backup of the PostgreSQL database
 # and keeps the last 30 days of backups.
 #
 # Usage: ./scripts/backup.sh
-# Or add to crontab: 0 2 * * * /opt/householderp/scripts/backup.sh
+# Or add to crontab: 0 2 * * * /opt/hearth/scripts/backup.sh
 
 set -e
 
@@ -25,7 +25,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}🗄️  HouseholdERP Database Backup${NC}"
+echo -e "${GREEN}🗄️  Hearth Database Backup${NC}"
 echo "Started at: $(date)"
 echo ""
 

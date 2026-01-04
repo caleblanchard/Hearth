@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# HouseholdERP Database Restore Script
+# Hearth Database Restore Script
 #
 # This script restores a backup of the PostgreSQL database
 #
