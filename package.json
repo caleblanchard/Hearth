@@ -2,7 +2,7 @@
   "name": "hearth",
   "version": "0.1.0",
   "private": true,
-  "description": "A Household ERP System - Family-first task and resource management",
+  "description": "Hearth - Family-first household management system",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
