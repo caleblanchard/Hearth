@@ -3,16 +3,73 @@ import type { NextRequest } from 'next/server';
 import { apiRateLimiter, authRateLimiter, cronRateLimiter, getClientIdentifier } from '@/lib/rate-limit';
 import { MAX_REQUEST_SIZE_BYTES } from '@/lib/constants';
 
+// Cache the onboarding status in memory to avoid database hits on every request
+let onboardingStatusCache: { complete: boolean; lastCheck: number } | null = null;
+const CACHE_TTL = 60000; // 1 minute
+
+async function checkOnboardingStatus(): Promise<boolean> {
+  // Return cached status if available and fresh
+  if (onboardingStatusCache && Date.now() - onboardingStatusCache.lastCheck < CACHE_TTL) {
+    return onboardingStatusCache.complete;
+  }
+
+  try {
+    // Check onboarding status via API
+    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/onboarding/check`);
+    const data = await response.json();
+
+    // Update cache
+    onboardingStatusCache = {
+      complete: data.onboardingComplete === true,
+      lastCheck: Date.now(),
+    };
+
+    return onboardingStatusCache.complete;
+  } catch (error) {
+    console.error('Failed to check onboarding status:', error);
+    // On error, assume onboarding is complete to avoid blocking access
+    return true;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip rate limiting for static files and Next.js internals
+  // Skip middleware for static files and Next.js internals
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
     pathname.includes('.')
   ) {
     return NextResponse.next();
+  }
+
+  // Check onboarding status for all routes except onboarding and its API
+  const isOnboardingRoute = pathname.startsWith('/onboarding');
+  const isOnboardingAPI = pathname.startsWith('/api/onboarding');
+  const isAuthAPI = pathname.startsWith('/api/auth');
+  const isHealthAPI = pathname === '/api/health';
+
+  if (!isOnboardingRoute && !isOnboardingAPI && !isAuthAPI && !isHealthAPI) {
+    const onboardingComplete = await checkOnboardingStatus();
+
+    if (!onboardingComplete) {
+      // Redirect to onboarding page
+      const url = request.nextUrl.clone();
+      url.pathname = '/onboarding';
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // If trying to access onboarding when already complete, redirect to dashboard
+  if (isOnboardingRoute && !isOnboardingAPI) {
+    const onboardingComplete = await checkOnboardingStatus();
+
+    if (onboardingComplete) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
   }
 
   // Skip rate limiting for session checks (read-only, called frequently)
