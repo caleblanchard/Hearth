@@ -7,6 +7,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
+# Copy entire prisma directory (including migrations if they exist in build context)
 COPY prisma ./prisma/
 COPY prisma.config.* ./
 
@@ -28,8 +29,17 @@ WORKDIR /app
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
+# Explicitly copy prisma directory including migrations
 COPY --from=deps /app/prisma ./prisma
 COPY --from=deps /app/prisma.config.* ./
+
+# Verify migrations are present
+RUN if [ ! -d "/app/prisma/migrations" ] || [ -z "$(ls -A /app/prisma/migrations 2>/dev/null)" ]; then \
+      echo "⚠️  WARNING: Migrations directory is missing or empty!"; \
+      ls -la /app/prisma/ || true; \
+    else \
+      echo "✅ Migrations directory found with $(ls -1 /app/prisma/migrations | wc -l) migration(s)"; \
+    fi
 
 # Copy application code
 COPY . .
@@ -58,8 +68,19 @@ RUN adduser --system --uid 1001 nextjs
 # Copy necessary files from builder
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
+# Explicitly copy prisma directory including migrations
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.* ./
+
+# Verify migrations are present in final image
+RUN if [ ! -d "/app/prisma/migrations" ] || [ -z "$(ls -A /app/prisma/migrations 2>/dev/null)" ]; then \
+      echo "❌ ERROR: Migrations directory is missing or empty in final image!"; \
+      echo "Contents of /app/prisma:"; \
+      ls -la /app/prisma/ || true; \
+      exit 1; \
+    else \
+      echo "✅ Migrations verified: $(ls -1 /app/prisma/migrations | grep -E '^[0-9]' | wc -l) migration(s) found"; \
+    fi
 
 # Copy built application
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

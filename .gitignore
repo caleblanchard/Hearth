@@ -39,8 +39,9 @@ yarn-error.log*
 next-env.d.ts
 
 # prisma
-prisma/migrations
-!prisma/migrations/.gitkeep
+# Note: Migrations SHOULD be committed to the repository for production deployments
+# Only ignore the generated Prisma Client (it's generated during build)
+/app/generated/prisma
 
 # IDEs
 .idea
@@ -57,6 +58,7 @@ prisma/migrations
 # Backups
 /backups
 *.sql
+!prisma/migrations/**/*.sql
 *.sql.gz
 
 # Uploads
