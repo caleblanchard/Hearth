@@ -1,5 +1,6 @@
 #!/bin/sh
-set -e
+# Explicitly do NOT use set -e - we want to handle all errors gracefully
+# and always reach the exec command at the end
 
 echo "🚀 Starting Hearth application..."
 
@@ -33,60 +34,69 @@ fi
 export DATABASE_URL
 
 # Run database migrations (this will wait/retry if DB isn't ready)
+MIGRATION_SUCCESS=false
+
 if [ "$USE_DB_PUSH" = "true" ]; then
   echo "🔄 Pushing database schema (no migrations found)..."
-  PUSH_OUTPUT=$(npx prisma db push --accept-data-loss --skip-generate 2>&1)
-  PUSH_EXIT_CODE=$?
-  
-  if [ $PUSH_EXIT_CODE -eq 0 ]; then
+  if npx prisma db push --accept-data-loss --skip-generate 2>&1; then
     echo "✅ Database schema pushed successfully"
+    MIGRATION_SUCCESS=true
   else
-    echo "❌ Schema push failed"
-    echo "Push output:"
-    echo "$PUSH_OUTPUT"
-    exit 1
+    echo "❌ Schema push failed (see output above)"
+    MIGRATION_SUCCESS=false
   fi
 else
   echo "🔄 Running database migrations..."
   echo "Using DATABASE_URL: ${DATABASE_URL%%@*}" # Show only the protocol part for security
   
-  # Try migrate deploy with explicit error handling
-  MIGRATE_OUTPUT=$(npx prisma migrate deploy 2>&1)
+  # Test database connectivity first
+  echo "🔍 Testing database connectivity..."
+  if npx prisma db execute --stdin <<< "SELECT 1;" > /dev/null 2>&1; then
+    echo "✅ Database is reachable"
+  else
+    echo "⚠️  Warning: Could not connect to database, but continuing anyway..."
+  fi
+  
+  # Try migrate deploy with explicit error handling - run directly to see output in real-time
+  echo "📦 Running: npx prisma migrate deploy"
+  echo "   (This may take a moment...)"
+  
+  # Run migration - always continue even if it fails
+  echo "📦 Executing: npx prisma migrate deploy"
+  npx prisma migrate deploy 2>&1
   MIGRATE_EXIT_CODE=$?
   
   if [ $MIGRATE_EXIT_CODE -eq 0 ]; then
     echo "✅ Database migrations completed successfully"
+    MIGRATION_SUCCESS=true
   else
     echo "⚠️  Migration failed with exit code: $MIGRATE_EXIT_CODE"
-    echo "Migration output:"
-    echo "$MIGRATE_OUTPUT"
-    echo ""
     echo "⚠️  Will retry in 10 seconds..."
     sleep 10
     
-    MIGRATE_OUTPUT=$(npx prisma migrate deploy 2>&1)
+    echo "📦 Retrying: npx prisma migrate deploy"
+    npx prisma migrate deploy 2>&1
     MIGRATE_EXIT_CODE=$?
     
     if [ $MIGRATE_EXIT_CODE -eq 0 ]; then
       echo "✅ Database migrations completed successfully (retry)"
+      MIGRATION_SUCCESS=true
     else
-      echo "❌ Database migrations failed after retry"
-      echo "Retry output:"
-      echo "$MIGRATE_OUTPUT"
+      echo "❌ Database migrations failed after retry (exit code: $MIGRATE_EXIT_CODE)"
       echo ""
       echo "⚠️  Attempting to push schema directly as fallback..."
-      PUSH_OUTPUT=$(npx prisma db push --accept-data-loss --skip-generate 2>&1)
+      npx prisma db push --accept-data-loss --skip-generate 2>&1
       PUSH_EXIT_CODE=$?
       
       if [ $PUSH_EXIT_CODE -eq 0 ]; then
         echo "✅ Database schema pushed successfully (fallback method)"
+        MIGRATION_SUCCESS=true
       else
-        echo "❌ Schema push also failed"
-        echo "Push output:"
-        echo "$PUSH_OUTPUT"
+        echo "❌ Schema push also failed (exit code: $PUSH_EXIT_CODE)"
         echo ""
         echo "⚠️  Starting application anyway - migrations may need manual intervention"
         echo "⚠️  You may need to run: docker exec <container> npx prisma migrate deploy"
+        MIGRATION_SUCCESS=false
       fi
     fi
   fi
@@ -97,10 +107,19 @@ echo "🔍 Verifying database setup..."
 if npx prisma db execute --stdin <<< "SELECT 1 FROM system_config LIMIT 1;" > /dev/null 2>&1; then
   echo "✅ Database tables verified"
 else
-  echo "⚠️  Warning: Could not verify database tables (this may be normal if using db push)"
+  echo "⚠️  Warning: Could not verify database tables"
+  if [ "$MIGRATION_SUCCESS" = "false" ]; then
+    echo "⚠️  Migrations did not complete successfully - database may not be ready"
+  fi
 fi
 
 echo "🎉 Starting Next.js application..."
+echo "   Command: $@"
+echo "   Working directory: $(pwd)"
+echo "   Prisma migrations status: $MIGRATION_SUCCESS"
 
-# Start the Next.js server
+# Always start the application, even if migrations failed
+# This allows the container to run so you can debug the issue
+# Use exec to replace the shell process with the application
+echo "🚀 Executing application command..."
 exec "$@"
