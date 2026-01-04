@@ -297,7 +297,7 @@ export default function OnboardingPage() {
                   value={data.familyName}
                   onChange={(e) => updateData('familyName', e.target.value)}
                   placeholder='e.g., "The Smith Family"'
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
                   autoFocus
                 />
               </div>
@@ -310,7 +310,7 @@ export default function OnboardingPage() {
                   id="timezone"
                   value={data.timezone}
                   onChange={(e) => updateData('timezone', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
                 >
                   <option value="America/New_York">Eastern Time (ET)</option>
                   <option value="America/Chicago">Central Time (CT)</option>
@@ -362,7 +362,7 @@ export default function OnboardingPage() {
                   value={data.adminName}
                   onChange={(e) => updateData('adminName', e.target.value)}
                   placeholder="e.g., John Smith"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
                   autoFocus
                 />
               </div>
@@ -377,7 +377,7 @@ export default function OnboardingPage() {
                   value={data.adminEmail}
                   onChange={(e) => updateData('adminEmail', e.target.value)}
                   placeholder="your@email.com"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
                 />
               </div>
 
@@ -391,7 +391,7 @@ export default function OnboardingPage() {
                   value={data.adminPassword}
                   onChange={(e) => updateData('adminPassword', e.target.value)}
                   placeholder="At least 8 characters"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
                 />
                 <p className="mt-1 text-sm text-gray-500">
                   Must be at least 8 characters long
@@ -408,7 +408,7 @@ export default function OnboardingPage() {
                   value={data.confirmPassword}
                   onChange={(e) => updateData('confirmPassword', e.target.value)}
                   placeholder="Re-enter your password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
                 />
               </div>
 
