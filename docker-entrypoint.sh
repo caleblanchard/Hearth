@@ -2,46 +2,23 @@
 set -e
 
 echo "🚀 Starting Hearth application..."
+echo "⏳ Waiting a few seconds for database to be ready..."
+sleep 5
 
-# Function to wait for database to be ready
-wait_for_db() {
-  echo "⏳ Waiting for database to be ready..."
-
-  max_attempts=30
-  attempt=0
-
-  while [ $attempt -lt $max_attempts ]; do
-    if echo "SELECT 1;" | npx prisma db execute --stdin >/dev/null 2>&1; then
-      echo "✅ Database is ready!"
-      return 0
-    fi
-
-    attempt=$((attempt + 1))
-    echo "   Attempt $attempt/$max_attempts - Database not ready yet..."
-    sleep 2
-  done
-
-  echo "❌ Database did not become ready in time"
-  return 1
-}
-
-# Wait for database connection
-if ! wait_for_db; then
-  echo "⚠️  Proceeding without database connection verification"
-fi
-
-# Run database migrations
+# Run database migrations (this will wait/retry if DB isn't ready)
 echo "🔄 Running database migrations..."
 if npx prisma migrate deploy; then
   echo "✅ Database migrations completed successfully"
 else
-  echo "❌ Database migrations failed"
-  exit 1
+  echo "⚠️  Migration failed - will retry in 10 seconds..."
+  sleep 10
+  if npx prisma migrate deploy; then
+    echo "✅ Database migrations completed successfully (retry)"
+  else
+    echo "❌ Database migrations failed after retry"
+    echo "⚠️  Starting application anyway - migrations may need manual intervention"
+  fi
 fi
-
-# Optional: Generate Prisma Client (in case it's needed)
-# echo "🔧 Generating Prisma Client..."
-# npx prisma generate
 
 echo "🎉 Starting Next.js application..."
 
