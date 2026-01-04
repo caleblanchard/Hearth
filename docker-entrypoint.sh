@@ -38,7 +38,7 @@ MIGRATION_SUCCESS=false
 
 if [ "$USE_DB_PUSH" = "true" ]; then
   echo "🔄 Pushing database schema (no migrations found)..."
-  if npx prisma db push --accept-data-loss --skip-generate 2>&1; then
+  if npx prisma db push --accept-data-loss 2>&1; then
     echo "✅ Database schema pushed successfully"
     MIGRATION_SUCCESS=true
   else
@@ -86,7 +86,7 @@ else
       echo "❌ Database migrations failed after retry (exit code: $MIGRATE_EXIT_CODE)"
       echo ""
       echo "⚠️  Attempting to push schema directly as fallback..."
-      npx prisma db push --accept-data-loss --skip-generate 2>&1
+      npx prisma db push --accept-data-loss 2>&1
       PUSH_EXIT_CODE=$?
       
       if [ $PUSH_EXIT_CODE -eq 0 ]; then
