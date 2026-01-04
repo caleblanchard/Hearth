@@ -51,7 +51,8 @@ else
   
   # Test database connectivity first
   echo "🔍 Testing database connectivity..."
-  if npx prisma db execute --stdin <<< "SELECT 1;" > /dev/null 2>&1; then
+  echo "SELECT 1;" | npx prisma db execute --stdin > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
     echo "✅ Database is reachable"
   else
     echo "⚠️  Warning: Could not connect to database, but continuing anyway..."
@@ -104,7 +105,8 @@ fi
 
 # Verify that at least the system_config table exists (basic sanity check)
 echo "🔍 Verifying database setup..."
-if npx prisma db execute --stdin <<< "SELECT 1 FROM system_config LIMIT 1;" > /dev/null 2>&1; then
+echo "SELECT 1 FROM system_config LIMIT 1;" | npx prisma db execute --stdin > /dev/null 2>&1
+if [ $? -eq 0 ]; then
   echo "✅ Database tables verified"
 else
   echo "⚠️  Warning: Could not verify database tables"
