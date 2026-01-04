@@ -11,7 +11,7 @@ wait_for_db() {
   attempt=0
 
   while [ $attempt -lt $max_attempts ]; do
-    if npx prisma db execute --stdin <<< "SELECT 1;" >/dev/null 2>&1; then
+    if echo "SELECT 1;" | npx prisma db execute --stdin >/dev/null 2>&1; then
       echo "✅ Database is ready!"
       return 0
     fi
