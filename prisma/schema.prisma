@@ -58,6 +58,22 @@ model Family {
   @@map("families")
 }
 
+// ============================================
+// SYSTEM CONFIGURATION
+// ============================================
+
+model SystemConfig {
+  id                 String   @id @default("system") // Singleton - only one row
+  onboardingComplete Boolean  @default(false)
+  setupCompletedAt   DateTime?
+  setupCompletedBy   String?  // Member ID who completed onboarding
+  version            String   @default("0.1.0")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("system_config")
+}
+
 enum Role {
   PARENT
   CHILD
