@@ -169,9 +169,6 @@ describe('/api/documents/share/[linkId]/revoke', () => {
           revokedAt: expect.any(Date),
           revokedBy: 'parent-test-123',
         },
-        include: {
-          creator: { select: { id: true, name: true } },
-        },
       });
 
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({

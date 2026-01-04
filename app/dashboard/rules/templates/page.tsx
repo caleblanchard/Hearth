@@ -65,7 +65,7 @@ export default function TemplatesPage() {
     }
   };
 
-  const useTemplate = async (template: RuleTemplate) => {
+  const selectTemplate = async (template: RuleTemplate) => {
     setSelectedTemplate(template);
   };
 
@@ -241,7 +241,7 @@ export default function TemplatesPage() {
                 {/* Actions */}
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => useTemplate(template)}
+                    onClick={() => selectTemplate(template)}
                     className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-md text-sm font-medium transition-colors"
                   >
                     Use Template

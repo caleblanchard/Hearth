@@ -1,4 +1,3 @@
-// @ts-nocheck - web-push module doesn't have type declarations
 import webpush from 'web-push';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
@@ -18,7 +17,7 @@ interface NotificationPayload {
   body: string;
   icon?: string;
   badge?: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   tag?: string;
   actions?: Array<{
     action: string;
@@ -135,9 +134,10 @@ export async function sendPushNotificationToUser(
           endpoint: subscription.endpoint.substring(0, 50) + '...',
           notificationType,
         });
-      } catch (error: any) {
+      } catch (error) {
         // Handle gone/expired subscriptions
-        if (error.statusCode === 404 || error.statusCode === 410) {
+        const webPushError = error as { statusCode?: number };
+        if (webPushError.statusCode === 404 || webPushError.statusCode === 410) {
           logger.warn('Push subscription expired, removing', {
             userId,
             endpoint: subscription.endpoint,
@@ -149,7 +149,7 @@ export async function sendPushNotificationToUser(
           logger.error('Failed to send push notification', {
             userId,
             endpoint: subscription.endpoint.substring(0, 50) + '...',
-            error: error.message,
+            error: error instanceof Error ? error.message : String(error),
           });
         }
       }

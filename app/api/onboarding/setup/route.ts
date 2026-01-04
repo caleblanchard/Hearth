@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { hash } from 'bcrypt';
-import { Role } from '@/app/generated/prisma';
+import { Role, ModuleId } from '@/app/generated/prisma';
+import { generateSampleData } from '@/lib/sample-data-generator';
+import { sendWelcomeEmail } from '@/lib/welcome-email';
 
 /**
  * POST /api/onboarding/setup
@@ -9,7 +11,9 @@ import { Role } from '@/app/generated/prisma';
  * Complete initial system onboarding by creating:
  * 1. Family record
  * 2. First admin/parent user
- * 3. Mark system as onboarded
+ * 3. Module configurations
+ * 4. Optional sample data
+ * 5. Mark system as onboarded
  *
  * This endpoint is public (no authentication required) but can only
  * be called once during initial setup.
@@ -17,7 +21,15 @@ import { Role } from '@/app/generated/prisma';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { familyName, timezone, adminName, adminEmail, adminPassword } = body;
+    const {
+      familyName,
+      timezone,
+      adminName,
+      adminEmail,
+      adminPassword,
+      selectedModules = [],
+      generateSampleData: shouldGenerateSampleData = false,
+    } = body;
 
     // Check if onboarding is already complete
     const existingConfig = await prisma.systemConfig.findUnique({
@@ -77,6 +89,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate selected modules (must be valid ModuleId enum values)
+    const validModuleIds = Object.values(ModuleId);
+    const invalidModules = selectedModules.filter(
+      (moduleId: string) => !validModuleIds.includes(moduleId as ModuleId)
+    );
+
+    if (invalidModules.length > 0) {
+      return NextResponse.json(
+        { error: `Invalid module IDs: ${invalidModules.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
     // Use transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx) => {
       // Create family
@@ -102,6 +127,29 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Create module configurations for selected modules
+      const moduleConfigurations = [];
+      for (const moduleId of selectedModules) {
+        const config = await tx.moduleConfiguration.create({
+          data: {
+            familyId: family.id,
+            moduleId: moduleId as ModuleId,
+            isEnabled: true,
+            enabledAt: new Date(),
+          },
+        });
+        moduleConfigurations.push(config);
+      }
+
+      // Generate sample data if requested
+      if (shouldGenerateSampleData && selectedModules.length > 0) {
+        await generateSampleData(tx, {
+          familyId: family.id,
+          adminId: admin.id,
+          enabledModules: selectedModules as ModuleId[],
+        });
+      }
+
       // Mark onboarding as complete
       const systemConfig = await tx.systemConfig.upsert({
         where: { id: 'system' },
@@ -118,8 +166,28 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return { family, admin, systemConfig };
+      return { family, admin, systemConfig, moduleConfigurations };
     });
+
+    // Log successful onboarding
+    console.log(`Onboarding completed for family: ${result.family.name}`);
+    console.log(`Enabled modules: ${selectedModules.join(', ') || 'none'}`);
+    console.log(`Sample data generated: ${shouldGenerateSampleData ? 'yes' : 'no'}`);
+
+    // Send welcome email (non-blocking - don't wait for it)
+    // Email is guaranteed to be non-null because we validated it in the request
+    if (result.admin.email) {
+      sendWelcomeEmail({
+        familyName: result.family.name,
+        adminName: result.admin.name,
+        adminEmail: result.admin.email,
+        enabledModules: selectedModules,
+        sampleDataGenerated: shouldGenerateSampleData,
+      }).catch(error => {
+        console.error('Failed to send welcome email:', error);
+        // Don't fail the request if email fails
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -133,6 +201,13 @@ export async function POST(request: NextRequest) {
         name: result.admin.name,
         email: result.admin.email,
         role: result.admin.role,
+      },
+      modules: {
+        enabled: selectedModules,
+        count: selectedModules.length,
+      },
+      sampleData: {
+        generated: shouldGenerateSampleData,
       },
     });
   } catch (error: any) {

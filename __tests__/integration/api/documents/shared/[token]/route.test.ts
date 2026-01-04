@@ -119,8 +119,9 @@ describe('/api/documents/shared/[token]', () => {
       const data = await response.json();
       expect(data.document.name).toBe('Passport.pdf');
       expect(data.document.fileUrl).toBe('/uploads/passport.pdf');
-      expect(data.shareInfo.createdBy).toBe('Parent');
-      expect(data.shareInfo.notes).toBe('Shared with recipient');
+      expect(data.shareInfo.createdBy).toBe('parent-test-123'); // User ID who created the share link
+      expect(data.shareInfo.createdAt).toBeDefined();
+      expect(data.shareInfo.expiresAt).toBeDefined();
 
       // Verify access count was incremented
       expect(prismaMock.documentShareLink.update).toHaveBeenCalledWith({

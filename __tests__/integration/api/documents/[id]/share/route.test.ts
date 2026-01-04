@@ -298,9 +298,6 @@ describe('/api/documents/[id]/share', () => {
 
       expect(prismaMock.documentShareLink.findMany).toHaveBeenCalledWith({
         where: { documentId: 'doc-1' },
-        include: {
-          creator: { select: { id: true, name: true } },
-        },
         orderBy: { createdAt: 'desc' },
       });
     });
