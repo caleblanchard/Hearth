@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
@@ -79,7 +80,7 @@ export async function PATCH(
       message: `Leftover marked as ${action}`,
     });
   } catch (error) {
-    console.error('Error updating leftover:', error);
+    logger.error('Error updating leftover:', error);
     return NextResponse.json(
       { error: 'Failed to update leftover' },
       { status: 500 }

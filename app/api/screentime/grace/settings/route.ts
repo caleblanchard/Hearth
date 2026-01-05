@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateGraceSettings } from '@/lib/screentime-grace';
 import { GraceRepaymentMode } from '@/app/generated/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ settings });
   } catch (error) {
-    console.error('Error fetching grace settings:', error);
+    logger.error('Error fetching grace settings:', error);
     return NextResponse.json(
       { error: 'Failed to fetch grace settings' },
       { status: 500 }
@@ -159,7 +160,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ settings });
   } catch (error) {
-    console.error('Error updating grace settings:', error);
+    logger.error('Error updating grace settings:', error);
     return NextResponse.json(
       { error: 'Failed to update grace settings' },
       { status: 500 }

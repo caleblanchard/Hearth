@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { checkGraceEligibility, getOrCreateGraceSettings } from '@/lib/screentime-grace';
 import { RepaymentStatus } from '@/app/generated/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
       newBalance,
     });
   } catch (error) {
-    console.error('Error requesting grace period:', error);
+    logger.error('Error requesting grace period:', error);
     return NextResponse.json(
       { error: 'Failed to request grace period' },
       { status: 500 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // Helper function to detect circular dependencies
 async function hasCircularDependency(
@@ -199,7 +200,7 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating dependency:', error);
+    logger.error('Error creating dependency:', error);
     return NextResponse.json(
       { error: 'Failed to create dependency' },
       { status: 500 }
@@ -280,7 +281,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error deleting dependency:', error);
+    logger.error('Error deleting dependency:', error);
     return NextResponse.json(
       { error: 'Failed to delete dependency' },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { onCalendarEventAdded } from '@/lib/rules-engine/hooks';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: Request) {
   try {
@@ -21,11 +22,31 @@ export async function GET(request: Request) {
     };
 
     // Filter by date range if provided
+    // Include events that overlap the date range (start before endDate and end after startDate)
     if (startDate && endDate) {
-      where.startTime = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
-      };
+      where.OR = [
+        // Events that start within the range
+        {
+          startTime: {
+            gte: new Date(startDate),
+            lte: new Date(endDate),
+          },
+        },
+        // Events that end within the range
+        {
+          endTime: {
+            gte: new Date(startDate),
+            lte: new Date(endDate),
+          },
+        },
+        // Events that span the entire range
+        {
+          AND: [
+            { startTime: { lte: new Date(startDate) } },
+            { endTime: { gte: new Date(endDate) } },
+          ],
+        },
+      ];
     }
 
     const events = await prisma.calendarEvent.findMany({
@@ -56,7 +77,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ events });
   } catch (error) {
-    console.error('Error fetching events:', error);
+    logger.error('Error fetching events:', error);
     return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
   }
 }
@@ -158,7 +179,7 @@ export async function POST(request: Request) {
         dayEventCount
       );
     } catch (error) {
-      console.error('Rules engine hook error:', error);
+      logger.error('Rules engine hook error:', error);
       // Don't fail the event creation if rules engine fails
     }
 
@@ -167,7 +188,7 @@ export async function POST(request: Request) {
       event: result,
     });
   } catch (error) {
-    console.error('Error creating event:', error);
+    logger.error('Error creating event:', error);
     return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -66,7 +67,7 @@ export async function GET() {
 
     return NextResponse.json({ members: membersWithData });
   } catch (error) {
-    console.error('Family screen time error:', error);
+    logger.error('Family screen time error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch family screen time' },
       { status: 500 }

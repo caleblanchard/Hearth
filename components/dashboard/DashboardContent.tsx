@@ -37,6 +37,14 @@ interface DashboardData {
     name: string;
     itemCount: number;
     urgentCount: number;
+    items: Array<{
+      id: string;
+      name: string;
+      quantity?: number;
+      unit?: string;
+      priority: string;
+      category?: string;
+    }>;
   } | null;
   todos: Array<{
     id: string;
@@ -52,6 +60,15 @@ interface DashboardData {
     endTime: string;
     location?: string;
     color?: string;
+  }>;
+  projectTasks: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    status: string;
+    dueDate: string | null;
+    projectId: string;
+    projectName: string;
   }>;
 }
 
@@ -189,11 +206,61 @@ export default function DashboardContent() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Screen Time
           </h2>
-          <span className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium px-2.5 py-0.5 rounded">
-            {data.screenTime?.currentBalance || 0} min
-          </span>
+          {data.screenTime?.allowances && data.screenTime.allowances.length > 0 ? (
+            <span className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium px-2.5 py-0.5 rounded">
+              {data.screenTime.allowances.reduce((sum: number, a: any) => sum + a.remainingMinutes, 0)} min
+            </span>
+          ) : (
+            <span className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium px-2.5 py-0.5 rounded">
+              {data.screenTime?.currentBalance || 0} min
+            </span>
+          )}
         </div>
-        {data.screenTime ? (
+        {data.screenTime?.allowances && data.screenTime.allowances.length > 0 ? (
+          <div>
+            <div className="space-y-3">
+              {data.screenTime.allowances.slice(0, 3).map((allowance: any) => {
+                const percentage = allowance.allowanceMinutes > 0
+                  ? (allowance.remainingMinutes / allowance.allowanceMinutes) * 100
+                  : 0;
+                const isLow = allowance.remainingMinutes < allowance.allowanceMinutes * 0.2;
+                const formatTime = (min: number) => {
+                  const h = Math.floor(min / 60);
+                  const m = min % 60;
+                  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+                };
+
+                return (
+                  <div key={allowance.id} className="border border-gray-200 dark:border-gray-700 rounded p-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {allowance.screenTimeTypeName}
+                      </span>
+                      <span className={`text-xs font-semibold ${
+                        isLow ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                      }`}>
+                        {formatTime(allowance.remainingMinutes)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full transition-all ${
+                          isLow ? 'bg-red-600 dark:bg-red-400' : 'bg-green-600 dark:bg-green-400'
+                        }`}
+                        style={{ width: `${Math.min(100, percentage)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {data.screenTime.allowances.length > 3 && (
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-3 text-center">
+                +{data.screenTime.allowances.length - 3} more type{data.screenTime.allowances.length - 3 !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+        ) : data.screenTime ? (
           <div>
             <div className="mb-2">
               <div className="flex justify-between text-sm mb-1">
@@ -278,14 +345,54 @@ export default function DashboardContent() {
           </span>
         </div>
         {data.shopping && data.shopping.itemCount > 0 ? (
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              {data.shopping.itemCount} items on the list
-            </p>
-            {data.shopping.urgentCount > 0 && (
-              <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
-                {data.shopping.urgentCount} urgent item{data.shopping.urgentCount !== 1 ? 's' : ''}
-              </p>
+          <div className="space-y-2">
+            {data.shopping.items && data.shopping.items.length > 0 ? (
+              <>
+                {data.shopping.items.slice(0, 3).map(item => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {item.name}
+                      </p>
+                      {(item.quantity || item.unit) && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {item.quantity && item.unit
+                            ? `${item.quantity} ${item.unit}`
+                            : item.quantity
+                            ? `${item.quantity}`
+                            : item.unit
+                            ? item.unit
+                            : ''}
+                        </p>
+                      )}
+                    </div>
+                    {item.priority === 'URGENT' && (
+                      <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                        Urgent
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {data.shopping.items.length > 3 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+                    +{data.shopping.items.length - 3} more
+                  </p>
+                )}
+              </>
+            ) : (
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  {data.shopping.itemCount} items on the list
+                </p>
+                {data.shopping.urgentCount > 0 && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                    {data.shopping.urgentCount} urgent item{data.shopping.urgentCount !== 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
             )}
           </div>
         ) : (
@@ -348,7 +455,10 @@ export default function DashboardContent() {
 
       {/* Calendar Card */}
       {enabledModules.has('CALENDAR') && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => router.push('/dashboard/calendar?view=week')}
+        >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Upcoming Events
@@ -388,6 +498,74 @@ export default function DashboardContent() {
             No events scheduled.
           </p>
         )}
+        </div>
+      )}
+
+      {/* Project Tasks Card */}
+      {enabledModules.has('PROJECTS') && data.projectTasks && data.projectTasks.length > 0 && (
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => router.push('/dashboard/projects')}
+        >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            My Project Tasks
+          </h2>
+          <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium px-2.5 py-0.5 rounded">
+            {data.projectTasks.length}
+          </span>
+        </div>
+        <div className="space-y-2">
+          {data.projectTasks.slice(0, 3).map(task => {
+            const getStatusColor = (status: string) => {
+              switch (status) {
+                case 'PENDING':
+                  return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+                case 'IN_PROGRESS':
+                  return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+                case 'BLOCKED':
+                  return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+                default:
+                  return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+              }
+            };
+
+            return (
+              <div
+                key={task.id}
+                className="p-2 bg-gray-50 dark:bg-gray-700 rounded"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/dashboard/projects/${task.projectId}/tasks/${task.id}`);
+                }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {task.name}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {task.projectName}
+                    </p>
+                    {task.dueDate && (
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        Due: {new Date(task.dueDate).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                    {task.status.replace('_', ' ')}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+          {data.projectTasks.length > 3 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+              +{data.projectTasks.length - 3} more
+            </p>
+          )}
+        </div>
         </div>
       )}
 

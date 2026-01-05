@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { dryRunRule } from '@/lib/rules-engine';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // POST /api/rules/[id]/test
@@ -104,7 +105,7 @@ export async function POST(
       result,
     });
   } catch (error) {
-    console.error('Error testing rule:', error);
+    logger.error('Error testing rule:', error);
     return NextResponse.json(
       { error: 'Failed to test rule' },
       { status: 500 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -38,7 +39,7 @@ export async function GET() {
 
     return NextResponse.json({ family });
   } catch (error) {
-    console.error('Error fetching family:', error);
+    logger.error('Error fetching family:', error);
     return NextResponse.json({ error: 'Failed to fetch family' }, { status: 500 });
   }
 }
@@ -72,7 +73,7 @@ export async function PATCH(request: Request) {
       family: updatedFamily,
     });
   } catch (error) {
-    console.error('Error updating family:', error);
+    logger.error('Error updating family:', error);
     return NextResponse.json({ error: 'Failed to update family' }, { status: 500 });
   }
 }

@@ -4,6 +4,8 @@ import { hash } from 'bcrypt';
 import { Role, ModuleId } from '@/app/generated/prisma';
 import { generateSampleData } from '@/lib/sample-data-generator';
 import { sendWelcomeEmail } from '@/lib/welcome-email';
+import { logger } from '@/lib/logger';
+import { sanitizeString, sanitizeEmail } from '@/lib/input-sanitization';
 
 /**
  * POST /api/onboarding/setup
@@ -176,9 +178,13 @@ export async function POST(request: NextRequest) {
     });
 
     // Log successful onboarding
-    console.log(`Onboarding completed for family: ${result.family.name}`);
-    console.log(`Enabled modules: ${selectedModules.join(', ') || 'none'}`);
-    console.log(`Sample data generated: ${shouldGenerateSampleData ? 'yes' : 'no'}`);
+    logger.info('Onboarding completed', {
+      familyId: result.family.id,
+      familyName: result.family.name,
+      adminId: result.admin.id,
+      enabledModules: selectedModules,
+      sampleDataGenerated: shouldGenerateSampleData,
+    });
 
     // Send welcome email (non-blocking - don't wait for it)
     // Email is guaranteed to be non-null because we validated it in the request
@@ -190,7 +196,7 @@ export async function POST(request: NextRequest) {
         enabledModules: selectedModules,
         sampleDataGenerated: shouldGenerateSampleData,
       }).catch(error => {
-        console.error('Failed to send welcome email:', error);
+        logger.error('Failed to send welcome email', error);
         // Don't fail the request if email fails
       });
     }
@@ -217,7 +223,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error completing onboarding:', error);
+    logger.error('Error completing onboarding', error);
 
     // Handle Prisma unique constraint errors
     if (error.code === 'P2002') {

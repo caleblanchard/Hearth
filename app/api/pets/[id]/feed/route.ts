@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -63,7 +64,7 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error logging feeding:', error);
+    logger.error('Error logging feeding:', error);
     return NextResponse.json({ error: 'Failed to log feeding' }, { status: 500 });
   }
 }
@@ -113,7 +114,7 @@ export async function GET(
 
     return NextResponse.json({ feedings });
   } catch (error) {
-    console.error('Error fetching feeding history:', error);
+    logger.error('Error fetching feeding history:', error);
     return NextResponse.json(
       { error: 'Failed to fetch feeding history' },
       { status: 500 }

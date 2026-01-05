@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { onRoutineCompleted } from '@/lib/rules-engine/hooks';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -115,7 +116,7 @@ export async function POST(
           routine.type
         );
       } catch (error) {
-        console.error('Rules engine hook error:', error);
+        logger.error('Rules engine hook error:', error);
         // Don't fail the completion if rules engine fails
       }
 
@@ -137,7 +138,7 @@ export async function POST(
       throw error;
     }
   } catch (error) {
-    console.error('Error completing routine:', error);
+    logger.error('Error completing routine:', error);
     return NextResponse.json(
       { error: 'Failed to complete routine' },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { ModuleId } from '@/app/generated/prisma';
+import { logger } from '@/lib/logger';
 
 // All modules that should be enabled by default (if no config exists)
 const DEFAULT_ENABLED_MODULES: ModuleId[] = [
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ enabledModules }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching enabled modules:', error);
+    logger.error('Error fetching enabled modules:', error);
     return NextResponse.json(
       { error: 'Failed to fetch enabled modules' },
       { status: 500 }

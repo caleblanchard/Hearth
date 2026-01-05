@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -58,7 +59,7 @@ export async function GET() {
       items: shoppingList.items,
     });
   } catch (error) {
-    console.error('Shopping list API error:', error);
+    logger.error('Shopping list API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch shopping list' },
       { status: 500 }

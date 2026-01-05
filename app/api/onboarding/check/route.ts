@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/onboarding/check
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
       setupCompletedAt: systemConfig.setupCompletedAt?.toISOString(),
     });
   } catch (error) {
-    console.error('Error checking onboarding status:', error);
+    logger.error('Error checking onboarding status', error);
     return NextResponse.json(
       { error: 'Failed to check onboarding status' },
       { status: 500 }

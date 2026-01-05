@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { logger } from '@/lib/logger';
 import {
   calculateAnalytics,
   getSpendingByCategory,
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
       period,
     })
   } catch (error) {
-    console.error('Analytics API error:', error)
+    logger.error('Analytics API error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch analytics' },
       { status: 500 }

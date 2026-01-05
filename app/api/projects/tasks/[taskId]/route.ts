@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED', 'CANCELLED'];
 
@@ -74,7 +75,7 @@ export async function GET(
 
     return NextResponse.json({ task });
   } catch (error) {
-    console.error('Error fetching task:', error);
+    logger.error('Error fetching task:', error);
     return NextResponse.json(
       { error: 'Failed to fetch task' },
       { status: 500 }
@@ -126,6 +127,7 @@ export async function PATCH(
     const {
       name,
       description,
+      notes,
       status,
       assigneeId,
       dueDate,
@@ -169,6 +171,7 @@ export async function PATCH(
     const updateData: any = {};
     if (name !== undefined) updateData.name = name.trim();
     if (description !== undefined) updateData.description = description?.trim() || null;
+    if (notes !== undefined) updateData.notes = notes?.trim() || null;
     if (status !== undefined) updateData.status = status;
     if (assigneeId !== undefined) updateData.assigneeId = assigneeId || null;
     if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
@@ -177,9 +180,45 @@ export async function PATCH(
     if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
 
     // Update task
-    const task = await prisma.projectTask.update({
+    const updatedTask = await prisma.projectTask.update({
       where: { id: params.taskId },
       data: updateData,
+      include: {
+        project: {
+          select: {
+            id: true,
+            familyId: true,
+          },
+        },
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        dependencies: {
+          include: {
+            blockingTask: {
+              select: {
+                id: true,
+                name: true,
+                status: true,
+              },
+            },
+          },
+        },
+        dependents: {
+          include: {
+            dependentTask: {
+              select: {
+                id: true,
+                name: true,
+                status: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     // Create audit log
@@ -191,18 +230,18 @@ export async function PATCH(
         result: 'SUCCESS',
         metadata: {
           projectId: existingTask.project.id,
-          taskId: task.id,
+          taskId: updatedTask.id,
           updates: body,
         },
       },
     });
 
     return NextResponse.json(
-      { task, message: 'Task updated successfully' },
+      { task: updatedTask, message: 'Task updated successfully' },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error updating task:', error);
+    logger.error('Error updating task:', error);
     return NextResponse.json(
       { error: 'Failed to update task' },
       { status: 500 }
@@ -275,7 +314,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error deleting task:', error);
+    logger.error('Error deleting task:', error);
     return NextResponse.json(
       { error: 'Failed to delete task' },
       { status: 500 }

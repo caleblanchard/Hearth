@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { RoutineType } from '@/app/generated/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_ROUTINE_TYPES = ['MORNING', 'BEDTIME', 'HOMEWORK', 'AFTER_SCHOOL', 'CUSTOM'];
 
@@ -51,7 +52,7 @@ export async function GET(
       routine,
     });
   } catch (error) {
-    console.error('Error fetching routine:', error);
+    logger.error('Error fetching routine:', error);
     return NextResponse.json(
       { error: 'Failed to fetch routine' },
       { status: 500 }
@@ -200,7 +201,7 @@ export async function PUT(
       message: 'Routine updated successfully',
     });
   } catch (error) {
-    console.error('Error updating routine:', error);
+    logger.error('Error updating routine:', error);
     return NextResponse.json(
       { error: 'Failed to update routine' },
       { status: 500 }
@@ -269,7 +270,7 @@ export async function DELETE(
       message: 'Routine deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting routine:', error);
+    logger.error('Error deleting routine:', error);
     return NextResponse.json(
       { error: 'Failed to delete routine' },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { Frequency } from '@/app/generated/prisma'
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -36,7 +37,7 @@ export async function GET() {
 
     return NextResponse.json({ schedules })
   } catch (error) {
-    console.error('Allowance schedules API error:', error)
+    logger.error('Allowance schedules API error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch allowance schedules' },
       { status: 500 }
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Create allowance schedule error:', error)
+    logger.error('Create allowance schedule error:', error)
     return NextResponse.json(
       { error: 'Failed to create allowance schedule' },
       { status: 500 }

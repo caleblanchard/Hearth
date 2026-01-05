@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -120,7 +121,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Transactions API error:', error)
+    logger.error('Transactions API error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch transactions' },
       { status: 500 }

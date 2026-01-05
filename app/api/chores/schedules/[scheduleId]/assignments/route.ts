@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: Request,
@@ -90,7 +91,7 @@ export async function POST(
       message: 'Assignment created successfully',
     });
   } catch (error) {
-    console.error('Error creating assignment:', error);
+    logger.error('Error creating assignment:', error);
     return NextResponse.json({ error: 'Failed to create assignment' }, { status: 500 });
   }
 }

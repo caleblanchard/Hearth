@@ -40,8 +40,7 @@ export default function DashboardNav() {
   }
 
   const handleSignOut = async () => {
-    const callbackUrl = `${window.location.origin}/auth/signin`;
-    await signOut({ callbackUrl });
+    await signOut({ callbackUrl: '/auth/signin' });
   };
 
   return (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'];
 const VALID_CATEGORIES = [
@@ -63,7 +64,7 @@ export async function GET(
 
     return NextResponse.json({ recipe });
   } catch (error) {
-    console.error('Error fetching recipe:', error);
+    logger.error('Error fetching recipe:', error);
     return NextResponse.json({ error: 'Failed to fetch recipe' }, { status: 500 });
   }
 }
@@ -258,7 +259,7 @@ export async function PATCH(
       message: 'Recipe updated successfully',
     });
   } catch (error) {
-    console.error('Error updating recipe:', error);
+    logger.error('Error updating recipe:', error);
     return NextResponse.json({ error: 'Failed to update recipe' }, { status: 500 });
   }
 }
@@ -308,7 +309,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Recipe deleted successfully' });
   } catch (error) {
-    console.error('Error deleting recipe:', error);
+    logger.error('Error deleting recipe:', error);
     return NextResponse.json({ error: 'Failed to delete recipe' }, { status: 500 });
   }
 }

@@ -1,14 +1,28 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { sanitizeString } from '@/lib/input-sanitization';
+import { parsePaginationParams, createPaginationResponse } from '@/lib/pagination';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
 
     if (!session?.user?.familyId || session.user.role !== 'PARENT') {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
+
+    // Parse pagination parameters
+    const { page, limit } = parsePaginationParams(request.nextUrl.searchParams);
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const total = await prisma.choreDefinition.count({
+      where: {
+        familyId: session.user.familyId,
+      },
+    });
 
     const chores = await prisma.choreDefinition.findMany({
       where: {
@@ -48,11 +62,13 @@ export async function GET() {
       orderBy: {
         name: 'asc',
       },
+      skip,
+      take: limit,
     });
 
-    return NextResponse.json({ chores });
+    return NextResponse.json(createPaginationResponse(chores, page, limit, total));
   } catch (error) {
-    console.error('Error fetching chores:', error);
+    logger.error('Error fetching chores', error);
     return NextResponse.json({ error: 'Failed to fetch chores' }, { status: 500 });
   }
 }
@@ -67,18 +83,19 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const {
-      name,
-      description,
-      creditValue,
-      difficulty,
-      estimatedMinutes,
-      minimumAge,
-      iconName,
+      name: rawName,
+      description: rawDescription,
+      creditValue: rawCreditValue,
+      difficulty: rawDifficulty,
+      estimatedMinutes: rawEstimatedMinutes,
+      minimumAge: rawMinimumAge,
+      iconName: rawIconName,
       schedule,
     } = body;
 
-    // Validation
-    if (!name || name.trim().length === 0) {
+    // Sanitize and validate input
+    const name = sanitizeString(rawName);
+    if (!name || name.length === 0) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
@@ -86,15 +103,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Name must be 100 characters or less' }, { status: 400 });
     }
 
-    if (creditValue == null || creditValue < 0) {
+    const description = rawDescription ? sanitizeString(rawDescription) : null;
+    const iconName = rawIconName ? sanitizeString(rawIconName) : null;
+
+    const creditValue = rawCreditValue != null ? parseInt(String(rawCreditValue), 10) : 0;
+    if (isNaN(creditValue) || creditValue < 0) {
       return NextResponse.json({ error: 'Credit value must be 0 or greater' }, { status: 400 });
     }
 
+    const estimatedMinutes = rawEstimatedMinutes ? parseInt(String(rawEstimatedMinutes), 10) : null;
     if (!estimatedMinutes || estimatedMinutes <= 0) {
       return NextResponse.json({ error: 'Estimated minutes must be greater than 0' }, { status: 400 });
     }
 
-    if (!['EASY', 'MEDIUM', 'HARD'].includes(difficulty)) {
+    const minimumAge = rawMinimumAge ? parseInt(String(rawMinimumAge), 10) : null;
+    if (minimumAge !== null && (isNaN(minimumAge) || minimumAge < 0)) {
+      return NextResponse.json({ error: 'Minimum age must be 0 or greater' }, { status: 400 });
+    }
+
+    const difficulty = sanitizeString(rawDifficulty);
+    if (!difficulty || !['EASY', 'MEDIUM', 'HARD'].includes(difficulty)) {
       return NextResponse.json({ error: 'Difficulty must be EASY, MEDIUM, or HARD' }, { status: 400 });
     }
 
@@ -143,8 +171,8 @@ export async function POST(request: Request) {
       const definition = await tx.choreDefinition.create({
         data: {
           familyId: session.user.familyId,
-          name: name.trim(),
-          description: description?.trim() || null,
+          name,
+          description,
           creditValue,
           difficulty,
           estimatedMinutes,
@@ -207,7 +235,7 @@ export async function POST(request: Request) {
       message: 'Chore created successfully',
     });
   } catch (error) {
-    console.error('Error creating chore:', error);
+    logger.error('Error creating chore', error);
     return NextResponse.json({ error: 'Failed to create chore' }, { status: 500 });
   }
 }

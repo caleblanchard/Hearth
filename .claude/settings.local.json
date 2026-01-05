@@ -39,7 +39,8 @@
       "Bash(docker inspect:*)",
       "Bash(docker ps:*)",
       "Bash(docker images:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

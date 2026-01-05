@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_SPECIES = [
   'DOG',
@@ -40,7 +41,7 @@ export async function GET(
 
     return NextResponse.json({ pet });
   } catch (error) {
-    console.error('Error fetching pet:', error);
+    logger.error('Error fetching pet:', error);
     return NextResponse.json({ error: 'Failed to fetch pet' }, { status: 500 });
   }
 }
@@ -119,7 +120,7 @@ export async function PATCH(
       message: 'Pet updated successfully',
     });
   } catch (error) {
-    console.error('Error updating pet:', error);
+    logger.error('Error updating pet:', error);
     return NextResponse.json({ error: 'Failed to update pet' }, { status: 500 });
   }
 }
@@ -174,7 +175,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Pet deleted successfully' });
   } catch (error) {
-    console.error('Error deleting pet:', error);
+    logger.error('Error deleting pet:', error);
     return NextResponse.json({ error: 'Failed to delete pet' }, { status: 500 });
   }
 }

@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // PATCH /api/rules/[id]/toggle
@@ -90,7 +91,7 @@ export async function PATCH(
       rule: updatedRule,
     });
   } catch (error) {
-    console.error('Error toggling rule:', error);
+    logger.error('Error toggling rule:', error);
     return NextResponse.json(
       { error: 'Failed to toggle rule' },
       { status: 500 }

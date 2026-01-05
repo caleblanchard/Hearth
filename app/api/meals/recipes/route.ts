@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { parsePaginationParams, createPaginationResponse } from '@/lib/pagination';
 
 const VALID_DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'];
 const VALID_CATEGORIES = [
@@ -48,34 +50,44 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const recipes = await prisma.recipe.findMany({
-      where,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        ingredients: {
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        },
-        _count: {
-          select: {
-            ratings: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    // Parse pagination
+    const { page, limit } = parsePaginationParams(request.nextUrl.searchParams);
+    const skip = (page - 1) * limit;
 
-    return NextResponse.json({ recipes });
+    // Fetch recipes with pagination
+    const [recipes, total] = await Promise.all([
+      prisma.recipe.findMany({
+        where,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          ingredients: {
+            orderBy: {
+              sortOrder: 'asc',
+            },
+          },
+          _count: {
+            select: {
+              ratings: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.recipe.count({ where }),
+    ]);
+
+    return NextResponse.json(createPaginationResponse(recipes, page, limit, total));
   } catch (error) {
-    console.error('Error fetching recipes:', error);
+    logger.error('Error fetching recipes:', error);
     return NextResponse.json({ error: 'Failed to fetch recipes' }, { status: 500 });
   }
 }
@@ -196,7 +208,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating recipe:', error);
+    logger.error('Error creating recipe:', error);
     return NextResponse.json({ error: 'Failed to create recipe' }, { status: 500 });
   }
 }

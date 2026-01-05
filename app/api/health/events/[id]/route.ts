@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
@@ -41,7 +42,7 @@ export async function GET(
 
     return NextResponse.json({ event }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching health event:', error);
+    logger.error('Error fetching health event:', error);
     return NextResponse.json(
       { error: 'Failed to fetch health event' },
       { status: 500 }
@@ -144,7 +145,7 @@ export async function PATCH(
 
     return NextResponse.json({ event }, { status: 200 });
   } catch (error) {
-    console.error('Error updating health event:', error);
+    logger.error('Error updating health event:', error);
     return NextResponse.json(
       { error: 'Failed to update health event' },
       { status: 500 }

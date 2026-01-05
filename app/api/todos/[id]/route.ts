@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
@@ -64,7 +65,7 @@ export async function PATCH(
       message: 'Todo updated successfully',
     });
   } catch (error) {
-    console.error('Update todo error:', error);
+    logger.error('Update todo error:', error);
     return NextResponse.json(
       { error: 'Failed to update todo' },
       { status: 500 }
@@ -114,7 +115,7 @@ export async function DELETE(
       message: 'Todo deleted successfully',
     });
   } catch (error) {
-    console.error('Delete todo error:', error);
+    logger.error('Delete todo error:', error);
     return NextResponse.json(
       { error: 'Failed to delete todo' },
       { status: 500 }

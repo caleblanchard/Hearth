@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function DELETE(
   request: Request,
@@ -53,7 +54,7 @@ export async function DELETE(
       message: 'Assignment removed successfully',
     });
   } catch (error) {
-    console.error('Error deleting assignment:', error);
+    logger.error('Error deleting assignment:', error);
     return NextResponse.json({ error: 'Failed to delete assignment' }, { status: 500 });
   }
 }

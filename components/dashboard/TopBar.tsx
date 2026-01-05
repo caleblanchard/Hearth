@@ -47,8 +47,7 @@ export default function TopBar() {
   const pathname = usePathname();
 
   const handleSignOut = async () => {
-    const callbackUrl = `${window.location.origin}/auth/signin`;
-    await signOut({ callbackUrl });
+    await signOut({ callbackUrl: '/auth/signin' });
   };
 
   // Get page title - check exact match first, then check patterns for dynamic routes

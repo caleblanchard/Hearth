@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_TYPES = ['PICKUP', 'DROPOFF'];
 
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ schedules });
   } catch (error) {
-    console.error('Error fetching transport schedules:', error);
+    logger.error('Error fetching transport schedules:', error);
     return NextResponse.json(
       { error: 'Failed to fetch transport schedules' },
       { status: 500 }
@@ -221,7 +222,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating transport schedule:', error);
+    logger.error('Error creating transport schedule:', error);
     return NextResponse.json(
       { error: 'Failed to create transport schedule' },
       { status: 500 }

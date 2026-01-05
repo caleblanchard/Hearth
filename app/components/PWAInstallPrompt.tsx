@@ -15,12 +15,34 @@ export default function PWAInstallPrompt() {
   useEffect(() => {
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('[PWA] App is already installed (standalone mode)');
       setIsInstalled(true);
       return;
     }
 
+    // Check if running in a secure context (HTTPS or localhost)
+    if (!window.isSecureContext) {
+      console.warn('[PWA] Not running in a secure context. PWA requires HTTPS in production.');
+    }
+
+    // Check if service worker is registered
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then((registration) => {
+        if (registration) {
+          console.log('[PWA] Service Worker is registered:', registration.scope);
+        } else {
+          console.warn('[PWA] Service Worker is not registered. Install prompt may not appear.');
+        }
+      });
+    }
+
+    // Track if the event fired (using a ref to avoid dependency issues)
+    let eventFired = false;
+
     // Listen for the beforeinstallprompt event
     const handler = (e: Event) => {
+      console.log('[PWA] beforeinstallprompt event fired');
+      eventFired = true;
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
 
@@ -37,13 +59,27 @@ export default function PWAInstallPrompt() {
 
     // Listen for app installed event
     window.addEventListener('appinstalled', () => {
+      console.log('[PWA] App installed successfully');
       setIsInstalled(true);
       setShowPrompt(false);
       localStorage.removeItem('pwa-install-dismissed');
     });
 
+    // Log if the event doesn't fire (for debugging)
+    const debugTimeout = setTimeout(() => {
+      if (!eventFired) {
+        console.warn('[PWA] beforeinstallprompt event did not fire. Possible reasons:');
+        console.warn('  - App is already installed');
+        console.warn('  - Not running over HTTPS (required in production)');
+        console.warn('  - Service worker not registered');
+        console.warn('  - Manifest.json not accessible or invalid');
+        console.warn('  - Browser does not support PWA installation');
+      }
+    }, 10000); // Check after 10 seconds
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      clearTimeout(debugTimeout);
     };
   }, []);
 

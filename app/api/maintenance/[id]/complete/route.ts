@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -75,7 +76,7 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error logging maintenance completion:', error);
+    logger.error('Error logging maintenance completion:', error);
     return NextResponse.json(
       { error: 'Failed to log maintenance completion' },
       { status: 500 }

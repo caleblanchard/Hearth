@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 const TRIGGER_TYPES = [
@@ -26,8 +26,38 @@ const ACTION_TYPES = [
   { value: 'adjust_screentime', label: 'Adjust Screen Time' },
 ];
 
+interface ChoreDefinition {
+  id: string;
+  name: string;
+}
+
+interface Medication {
+  id: string;
+  medicationName: string;
+  member: { id: string; name: string };
+}
+
+interface Routine {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+}
+
+interface FamilyMember {
+  id: string;
+  name: string;
+  role: string;
+}
+
 export default function CreateRulePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [triggerType, setTriggerType] = useState('');
@@ -35,6 +65,101 @@ export default function CreateRulePage() {
   const [actions, setActions] = useState<Array<{ type: string; config: Record<string, any> }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templateLoaded, setTemplateLoaded] = useState(false);
+  
+  // Dropdown data
+  const [choreDefinitions, setChoreDefinitions] = useState<ChoreDefinition[]>([]);
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [loadingDropdowns, setLoadingDropdowns] = useState(false);
+
+  // Fetch dropdown data
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      setLoadingDropdowns(true);
+      try {
+        // Fetch all data in parallel
+        const [choresRes, medicationsRes, routinesRes, inventoryRes, familyRes] = await Promise.all([
+          fetch('/api/chores').catch(() => null),
+          fetch('/api/medications').catch(() => null),
+          fetch('/api/routines').catch(() => null),
+          fetch('/api/inventory').catch(() => null),
+          fetch('/api/family').catch(() => null),
+        ]);
+
+        if (choresRes?.ok) {
+          const data = await choresRes.json();
+          setChoreDefinitions(data.chores || []);
+        }
+
+        if (medicationsRes?.ok) {
+          const data = await medicationsRes.json();
+          setMedications(data.medications || []);
+        }
+
+        if (routinesRes?.ok) {
+          const data = await routinesRes.json();
+          setRoutines(data.routines || []);
+        }
+
+        if (inventoryRes?.ok) {
+          const data = await inventoryRes.json();
+          setInventoryItems(data.items || []);
+        }
+
+        if (familyRes?.ok) {
+          const data = await familyRes.json();
+          setFamilyMembers(data.family?.members || []);
+        }
+      } catch (err) {
+        console.error('Error fetching dropdown data:', err);
+      } finally {
+        setLoadingDropdowns(false);
+      }
+    };
+
+    fetchDropdownData();
+  }, []);
+
+  // Load template data from URL if present
+  useEffect(() => {
+    if (templateLoaded) return;
+    
+    try {
+      const templateParam = searchParams?.get('template');
+      if (templateParam) {
+        const templateData = JSON.parse(decodeURIComponent(templateParam));
+        
+        // Populate form with template data
+        if (templateData.name) setName(templateData.name);
+        if (templateData.description) setDescription(templateData.description);
+        
+        if (templateData.trigger) {
+          setTriggerType(templateData.trigger.type || '');
+          setTriggerConfig(templateData.trigger.config || {});
+        }
+        
+        if (templateData.actions && Array.isArray(templateData.actions)) {
+          setActions(templateData.actions.map((action: any) => ({
+            type: action.type || '',
+            config: action.config || {},
+          })));
+        }
+        
+        setTemplateLoaded(true);
+        
+        // Clean up URL by removing template parameter
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    } catch (err) {
+      console.error('Failed to parse template data:', err);
+      setError('Failed to load template data');
+      setTemplateLoaded(true); // Mark as loaded to prevent retry
+    }
+  }, [searchParams, templateLoaded]);
 
   const handleAddAction = () => {
     setActions([...actions, { type: '', config: {} }]);
@@ -52,6 +177,10 @@ export default function CreateRulePage() {
 
   const handleActionConfigChange = (index: number, key: string, value: any) => {
     const newActions = [...actions];
+    if (!newActions[index]) return;
+    if (!newActions[index].config) {
+      newActions[index].config = {};
+    }
     newActions[index].config[key] = value;
     setActions(newActions);
   };
@@ -121,6 +250,61 @@ export default function CreateRulePage() {
 
   const renderTriggerConfig = () => {
     switch (triggerType) {
+      case 'chore_completed':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={triggerConfig.anyChore === true}
+                  onChange={(e) => handleTriggerConfigChange('anyChore', e.target.checked ? true : undefined)}
+                  className="w-4 h-4 text-ember-600 border-slate-300 rounded focus:ring-ember-500"
+                />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Match any chore completion
+                </span>
+              </label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 ml-6">
+                If checked, this rule will trigger for any chore completion. Leave unchecked to specify a particular chore.
+              </p>
+            </div>
+            
+            {!triggerConfig.anyChore && (
+              <div className="space-y-3 border-t border-slate-200 dark:border-slate-700 pt-4">
+                <div>
+                  <label htmlFor="chore-completed-definition-id" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Chore Definition (optional)
+                  </label>
+                  <select
+                    id="chore-completed-definition-id"
+                    value={triggerConfig.choreDefinitionId || ''}
+                    onChange={(e) => handleTriggerConfigChange('choreDefinitionId', e.target.value || undefined)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
+                    disabled={loadingDropdowns}
+                  >
+                    <option value="">Select a chore definition...</option>
+                    {choreDefinitions.map((chore) => (
+                      <option key={chore.id} value={chore.id}>
+                        {chore.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Select a chore definition to trigger when any instance of that chore type is completed.
+                  </p>
+                </div>
+                
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3">
+                  <p className="text-xs text-amber-800 dark:text-amber-200">
+                    <strong>Note:</strong> You must either check "Match any chore" above, or select a chore definition above.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
       case 'chore_streak':
         return (
           <div className="space-y-4">
@@ -180,6 +364,189 @@ export default function CreateRulePage() {
           </div>
         );
 
+      case 'inventory_low':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="inventory-low-threshold" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Threshold Percentage
+              </label>
+              <input
+                id="inventory-low-threshold"
+                type="number"
+                min="1"
+                max="100"
+                value={triggerConfig.thresholdPercentage || ''}
+                onChange={(e) => handleTriggerConfigChange('thresholdPercentage', e.target.value ? parseInt(e.target.value) : undefined)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
+                placeholder="e.g., 20 (default: 20%)"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Alert when inventory drops below this percentage (default: 20%)
+              </p>
+            </div>
+            <div>
+              <label htmlFor="inventory-low-item-id" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Specific Item (optional)
+              </label>
+              <select
+                id="inventory-low-item-id"
+                value={triggerConfig.itemId || ''}
+                onChange={(e) => handleTriggerConfigChange('itemId', e.target.value || undefined)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
+                disabled={loadingDropdowns}
+              >
+                <option value="">Select an item (or leave empty to monitor all items)...</option>
+                {inventoryItems.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ({item.category})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Leave empty to monitor all items, or select a particular item
+              </p>
+            </div>
+            <div>
+              <label htmlFor="inventory-low-category" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Category (optional)
+              </label>
+              <input
+                id="inventory-low-category"
+                type="text"
+                value={triggerConfig.category || ''}
+                onChange={(e) => handleTriggerConfigChange('category', e.target.value || undefined)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
+                placeholder="e.g., Groceries, Cleaning Supplies"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Monitor items in a specific category
+              </p>
+            </div>
+          </div>
+        );
+
+      case 'medication_given':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={triggerConfig.anyMedication === true}
+                  onChange={(e) => handleTriggerConfigChange('anyMedication', e.target.checked ? true : undefined)}
+                  className="w-4 h-4 text-ember-600 border-slate-300 rounded focus:ring-ember-500"
+                />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Match any medication
+                </span>
+              </label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 ml-6">
+                If checked, this rule will trigger for any medication administration. Leave unchecked to specify a particular medication.
+              </p>
+            </div>
+            
+            {!triggerConfig.anyMedication && (
+              <div className="space-y-3 border-t border-slate-200 dark:border-slate-700 pt-4">
+                <div>
+                  <label htmlFor="medication-given-medication-id" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Medication (optional)
+                  </label>
+                  <select
+                    id="medication-given-medication-id"
+                    value={triggerConfig.medicationId || ''}
+                    onChange={(e) => handleTriggerConfigChange('medicationId', e.target.value || undefined)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
+                    disabled={loadingDropdowns}
+                  >
+                    <option value="">Select a medication...</option>
+                    {medications.map((med) => (
+                      <option key={med.id} value={med.id}>
+                        {med.medicationName} ({med.member.name})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Select a specific medication to trigger only when that medication is given.
+                  </p>
+                </div>
+                
+                <div>
+                  <label htmlFor="medication-given-member-id" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Family Member (optional)
+                  </label>
+                  <select
+                    id="medication-given-member-id"
+                    value={triggerConfig.memberId || ''}
+                    onChange={(e) => handleTriggerConfigChange('memberId', e.target.value || undefined)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
+                    disabled={loadingDropdowns}
+                  >
+                    <option value="">Select a family member...</option>
+                    {familyMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} ({member.role})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Select a specific family member to trigger only when medication is given to that member.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'routine_completed':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="routine-completed-routine-id" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Routine (optional)
+              </label>
+              <select
+                id="routine-completed-routine-id"
+                value={triggerConfig.routineId || ''}
+                onChange={(e) => handleTriggerConfigChange('routineId', e.target.value || undefined)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
+                disabled={loadingDropdowns}
+              >
+                <option value="">Select a routine (or leave empty to match any routine)...</option>
+                {routines.map((routine) => (
+                  <option key={routine.id} value={routine.id}>
+                    {routine.name} ({routine.type})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Select a specific routine to trigger only when that routine is completed. Leave empty to match any routine.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="routine-completed-type" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Routine Type (optional)
+              </label>
+              <select
+                id="routine-completed-type"
+                value={triggerConfig.routineType || ''}
+                onChange={(e) => handleTriggerConfigChange('routineType', e.target.value || undefined)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
+              >
+                <option value="">Select a routine type...</option>
+                <option value="MORNING">MORNING</option>
+                <option value="BEDTIME">BEDTIME</option>
+                <option value="HOMEWORK">HOMEWORK</option>
+                <option value="AFTER_SCHOOL">AFTER_SCHOOL</option>
+                <option value="CUSTOM">CUSTOM</option>
+              </select>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Select a routine type to trigger only when routines of that type are completed.
+              </p>
+            </div>
+          </div>
+        );
+
       case 'time_based':
         return (
           <div className="space-y-4">
@@ -200,7 +567,7 @@ export default function CreateRulePage() {
               </p>
             </div>
             <div>
-              <label htmlFor="time-based-description" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="time-based-description" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Description
               </label>
               <input
@@ -261,11 +628,86 @@ export default function CreateRulePage() {
         );
 
       case 'send_notification':
+        const recipients = Array.isArray(action.config?.recipients) ? action.config.recipients : [];
+        
+        const handleRecipientToggle = (recipient: string) => {
+          const currentRecipients = [...recipients];
+          const recipientIndex = currentRecipients.indexOf(recipient);
+          
+          if (recipientIndex > -1) {
+            currentRecipients.splice(recipientIndex, 1);
+          } else {
+            currentRecipients.push(recipient);
+          }
+          
+          handleActionConfigChange(index, 'recipients', currentRecipients);
+        };
+        
         return (
           <div className="space-y-3">
             <div>
-              <label htmlFor={`send-notification-title-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
-                Title
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Recipients *
+              </label>
+              <div className="space-y-2">
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={recipients.includes('all')}
+                      onChange={() => handleRecipientToggle('all')}
+                      className="w-4 h-4 text-ember-600 border-slate-300 rounded focus:ring-ember-500"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">All family members</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={recipients.includes('parents')}
+                      onChange={() => handleRecipientToggle('parents')}
+                      className="w-4 h-4 text-ember-600 border-slate-300 rounded focus:ring-ember-500"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">All parents</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={recipients.includes('child')}
+                      onChange={() => handleRecipientToggle('child')}
+                      className="w-4 h-4 text-ember-600 border-slate-300 rounded focus:ring-ember-500"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">Child who triggered the rule</span>
+                  </label>
+                </div>
+                
+                {familyMembers.length > 0 && (
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-2 mt-2">
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Or select specific members:</p>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {familyMembers.map((member) => (
+                        <label key={member.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={recipients.includes(member.id)}
+                            onChange={() => handleRecipientToggle(member.id)}
+                            className="w-4 h-4 text-ember-600 border-slate-300 rounded focus:ring-ember-500"
+                          />
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            {member.name} ({member.role})
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Select who should receive this notification. You can choose special groups or specific family members.
+              </p>
+            </div>
+            <div>
+              <label htmlFor={`send-notification-title-${index}`} className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Title *
               </label>
               <input
                 id={`send-notification-title-${index}`}
@@ -277,8 +719,8 @@ export default function CreateRulePage() {
               />
             </div>
             <div>
-              <label htmlFor={`send-notification-message-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
-                Message
+              <label htmlFor={`send-notification-message-${index}`} className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Message *
               </label>
               <textarea
                 id={`send-notification-message-${index}`}
@@ -288,6 +730,22 @@ export default function CreateRulePage() {
                 rows={3}
                 placeholder="e.g., Important notification"
               />
+            </div>
+            <div>
+              <label htmlFor={`send-notification-action-url-${index}`} className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Action URL (optional)
+              </label>
+              <input
+                id={`send-notification-action-url-${index}`}
+                type="text"
+                value={action.config.actionUrl || ''}
+                onChange={(e) => handleActionConfigChange(index, 'actionUrl', e.target.value || undefined)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ember-500"
+                placeholder="e.g., /dashboard/chores"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Optional deep link URL that will open when the notification is clicked
+              </p>
             </div>
           </div>
         );

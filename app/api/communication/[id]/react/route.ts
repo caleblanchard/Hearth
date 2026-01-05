@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -94,7 +95,7 @@ export async function POST(
       message: 'Reaction added successfully',
     });
   } catch (error) {
-    console.error('Error adding reaction:', error);
+    logger.error('Error adding reaction:', error);
     return NextResponse.json(
       { error: 'Failed to add reaction' },
       { status: 500 }
@@ -184,7 +185,7 @@ export async function DELETE(
       message: 'Reaction removed successfully',
     });
   } catch (error) {
-    console.error('Error removing reaction:', error);
+    logger.error('Error removing reaction:', error);
     return NextResponse.json(
       { error: 'Failed to remove reaction' },
       { status: 500 }

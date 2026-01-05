@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -96,7 +97,7 @@ export async function POST(
       message: `Approved ${redemption.member.name}'s redemption of "${redemption.reward.name}"`,
     });
   } catch (error) {
-    console.error('Approve redemption error:', error);
+    logger.error('Approve redemption error:', error);
     return NextResponse.json(
       { error: 'Failed to approve redemption' },
       { status: 500 }

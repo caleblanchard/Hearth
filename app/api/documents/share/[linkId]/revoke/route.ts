@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -78,7 +79,7 @@ export async function POST(
       shareLink: updatedShareLink,
     });
   } catch (error) {
-    console.error('Error revoking share link:', error);
+    logger.error('Error revoking share link:', error);
     return NextResponse.json(
       { error: 'Failed to revoke share link' },
       { status: 500 }

@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { validateRuleConfiguration } from '@/lib/rules-engine/validation';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // GET /api/rules
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('Error fetching rules:', error);
+    logger.error('Error fetching rules:', error);
     return NextResponse.json(
       { error: 'Failed to fetch rules' },
       { status: 500 }
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating rule:', error);
+    logger.error('Error creating rule:', error);
     return NextResponse.json(
       { error: 'Failed to create rule' },
       { status: 500 }

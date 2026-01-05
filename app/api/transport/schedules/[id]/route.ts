@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_TYPES = ['PICKUP', 'DROPOFF'];
 
@@ -68,7 +69,7 @@ export async function GET(
 
     return NextResponse.json({ schedule });
   } catch (error) {
-    console.error('Error fetching transport schedule:', error);
+    logger.error('Error fetching transport schedule:', error);
     return NextResponse.json(
       { error: 'Failed to fetch transport schedule' },
       { status: 500 }
@@ -202,7 +203,7 @@ export async function PATCH(
       message: 'Transport schedule updated successfully',
     });
   } catch (error) {
-    console.error('Error updating transport schedule:', error);
+    logger.error('Error updating transport schedule:', error);
     return NextResponse.json(
       { error: 'Failed to update transport schedule' },
       { status: 500 }
@@ -269,7 +270,7 @@ export async function DELETE(
       message: 'Transport schedule deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting transport schedule:', error);
+    logger.error('Error deleting transport schedule:', error);
     return NextResponse.json(
       { error: 'Failed to delete transport schedule' },
       { status: 500 }

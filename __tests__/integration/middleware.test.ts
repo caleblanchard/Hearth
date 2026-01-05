@@ -1,9 +1,8 @@
 // Set up mocks BEFORE any imports
-import { apiRateLimiter, authRateLimiter, cronRateLimiter } from '@/lib/rate-limit'
 import { MAX_REQUEST_SIZE_BYTES } from '@/lib/constants'
 
-// Mock rate limiters
-jest.mock('@/lib/rate-limit', () => ({
+// Mock rate limiters (now from rate-limit-redis)
+jest.mock('@/lib/rate-limit-redis', () => ({
   apiRateLimiter: {
     check: jest.fn(),
     maxRequests: 100,
@@ -18,6 +17,9 @@ jest.mock('@/lib/rate-limit', () => ({
   },
   getClientIdentifier: jest.fn(),
 }))
+
+// Import after mock
+const { apiRateLimiter, authRateLimiter, cronRateLimiter, getClientIdentifier } = require('@/lib/rate-limit-redis')
 
 // Mock constants
 jest.mock('@/lib/constants', () => ({
@@ -74,23 +76,23 @@ jest.mock('next/server', () => {
 import { middleware } from '@/middleware'
 import { NextRequest } from 'next/server'
 
-const { getClientIdentifier } = require('@/lib/rate-limit')
 const { NextResponse } = require('next/server')
 
 describe('middleware.ts', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(apiRateLimiter.check as jest.Mock).mockReturnValue({
+    // Rate limiter is now async, so mock as Promise
+    ;(apiRateLimiter.check as jest.Mock).mockResolvedValue({
       allowed: true,
       remaining: 99,
       resetTime: Date.now() + 60000,
     })
-    ;(authRateLimiter.check as jest.Mock).mockReturnValue({
+    ;(authRateLimiter.check as jest.Mock).mockResolvedValue({
       allowed: true,
       remaining: 4,
       resetTime: Date.now() + 60000,
     })
-    ;(cronRateLimiter.check as jest.Mock).mockReturnValue({
+    ;(cronRateLimiter.check as jest.Mock).mockResolvedValue({
       allowed: true,
       remaining: 9,
       resetTime: Date.now() + 60000,
@@ -210,7 +212,7 @@ describe('middleware.ts', () => {
     })
 
     it('should return 429 when rate limit exceeded', async () => {
-      ;(apiRateLimiter.check as jest.Mock).mockReturnValue({
+      ;(apiRateLimiter.check as jest.Mock).mockResolvedValue({
         allowed: false,
         remaining: 0,
         resetTime: Date.now() + 30000,

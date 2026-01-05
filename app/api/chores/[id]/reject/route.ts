@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -95,7 +96,7 @@ export async function POST(
       message: 'Chore rejected. Please try again!',
     });
   } catch (error) {
-    console.error('Chore rejection error:', error);
+    logger.error('Chore rejection error:', error);
     return NextResponse.json(
       { error: 'Failed to reject chore' },
       { status: 500 }

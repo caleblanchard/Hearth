@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AlertModal } from '@/components/ui/Modal';
 
 interface RuleTemplate {
   id: string;
@@ -36,6 +37,17 @@ export default function TemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<RuleTemplate | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error',
+  });
 
   useEffect(() => {
     fetchTemplates();
@@ -65,18 +77,31 @@ export default function TemplatesPage() {
     }
   };
 
-  const selectTemplate = async (template: RuleTemplate) => {
+  const selectTemplate = (template: RuleTemplate) => {
     setSelectedTemplate(template);
   };
 
-  const handleCreateFromTemplate = async () => {
-    if (!selectedTemplate) return;
+  const handleCreateFromTemplate = async (template?: RuleTemplate) => {
+    const templateToUse = template || selectedTemplate;
+    if (!templateToUse) return;
 
     try {
-      // For now, redirect to create page - could be enhanced with pre-filled form
-      router.push('/dashboard/rules/create');
+      // Encode template data as URL parameter
+      const templateData = encodeURIComponent(JSON.stringify({
+        name: templateToUse.name,
+        description: templateToUse.description,
+        trigger: templateToUse.trigger,
+        actions: templateToUse.actions,
+        conditions: templateToUse.conditions,
+      }));
+      router.push(`/dashboard/rules/create?template=${templateData}`);
     } catch (err) {
-      alert('Failed to use template');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to use template',
+        type: 'error',
+      });
     }
   };
 
@@ -241,7 +266,7 @@ export default function TemplatesPage() {
                 {/* Actions */}
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => selectTemplate(template)}
+                    onClick={() => handleCreateFromTemplate(template)}
                     className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-md text-sm font-medium transition-colors"
                   >
                     Use Template
@@ -340,6 +365,15 @@ export default function TemplatesPage() {
           </div>
         )}
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

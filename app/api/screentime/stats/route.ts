@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -129,7 +130,7 @@ export async function GET(request: NextRequest) {
       period,
     });
   } catch (error) {
-    console.error('Screen time stats error:', error);
+    logger.error('Screen time stats error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch screen time stats' },
       { status: 500 }

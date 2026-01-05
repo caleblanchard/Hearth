@@ -2,16 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { MealType } from '@/app/generated/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'];
 
-// Helper function to get Monday of the week for a given date (in UTC)
-function getMonday(date: Date): Date {
+// Helper function to get start of week based on family setting
+async function getWeekStart(date: Date, familyId: string): Promise<Date> {
+  // Fetch family settings to get week start day
+  const family = await prisma.family.findUnique({
+    where: { id: familyId },
+    select: { settings: true },
+  });
+
+  const weekStartDay = (family?.settings as any)?.weekStartDay || 'MONDAY';
+  
   const d = new Date(date);
   d.setUTCHours(0, 0, 0, 0);
-  const day = d.getUTCDay();
-  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-  d.setUTCDate(diff);
+  const day = d.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  if (weekStartDay === 'SUNDAY') {
+    // Get Sunday of the week
+    const diff = d.getUTCDate() - day;
+    d.setUTCDate(diff);
+  } else {
+    // Get Monday of the week (default)
+    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+    d.setUTCDate(diff);
+  }
+  
   return d;
 }
 
@@ -43,15 +61,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Normalize to Monday of that week (already sets UTC hours to 0)
-    const monday = getMonday(weekDate);
+    // Normalize to start of week based on family setting (already sets UTC hours to 0)
+    const weekStartDate = await getWeekStart(weekDate, session.user.familyId);
 
     // Get meal plan for the week
     const mealPlan = await prisma.mealPlan.findUnique({
       where: {
         familyId_weekStart: {
           familyId: session.user.familyId,
-          weekStart: monday,
+          weekStart: weekStartDate,
         },
       },
       include: {
@@ -66,10 +84,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       mealPlan,
-      weekStart: monday.toISOString().split('T')[0],
+      weekStart: weekStartDate.toISOString().split('T')[0],
     });
   } catch (error) {
-    console.error('Error fetching meal plan:', error);
+    logger.error('Error fetching meal plan:', error);
     return NextResponse.json(
       { error: 'Failed to fetch meal plan' },
       { status: 500 }
@@ -127,8 +145,8 @@ export async function POST(request: NextRequest) {
     }
     mealDate.setUTCHours(0, 0, 0, 0);
 
-    // Get Monday of that week (getMonday already sets UTC hours to 0)
-    const weekStart = getMonday(mealDate);
+    // Get start of week based on family setting (getWeekStart already sets UTC hours to 0)
+    const weekStart = await getWeekStart(mealDate, session.user.familyId);
 
     // Upsert meal plan for the week
     const mealPlan = await prisma.mealPlan.upsert({
@@ -180,7 +198,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating meal entry:', error);
+    logger.error('Error creating meal entry:', error);
     return NextResponse.json(
       { error: 'Failed to create meal entry' },
       { status: 500 }

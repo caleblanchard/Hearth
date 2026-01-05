@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
@@ -117,7 +118,7 @@ export async function PATCH(
       message: 'Post updated successfully',
     });
   } catch (error) {
-    console.error('Error updating post:', error);
+    logger.error('Error updating post:', error);
     return NextResponse.json(
       { error: 'Failed to update post' },
       { status: 500 }
@@ -185,7 +186,7 @@ export async function DELETE(
       message: 'Post deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting post:', error);
+    logger.error('Error deleting post:', error);
     return NextResponse.json(
       { error: 'Failed to delete post' },
       { status: 500 }

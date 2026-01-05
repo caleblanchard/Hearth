@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { Frequency } from '@/app/generated/prisma'
+import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
@@ -40,7 +41,7 @@ export async function GET(
 
     return NextResponse.json({ schedule })
   } catch (error) {
-    console.error('Get allowance schedule error:', error)
+    logger.error('Get allowance schedule error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch allowance schedule' },
       { status: 500 }
@@ -162,7 +163,7 @@ export async function PUT(
       message: 'Allowance schedule updated successfully',
     })
   } catch (error) {
-    console.error('Update allowance schedule error:', error)
+    logger.error('Update allowance schedule error:', error)
     return NextResponse.json(
       { error: 'Failed to update allowance schedule' },
       { status: 500 }
@@ -240,7 +241,7 @@ export async function PATCH(
         : 'Allowance schedule resumed',
     })
   } catch (error) {
-    console.error('Patch allowance schedule error:', error)
+    logger.error('Patch allowance schedule error:', error)
     return NextResponse.json(
       { error: 'Failed to update allowance schedule' },
       { status: 500 }
@@ -296,7 +297,7 @@ export async function DELETE(
       message: 'Allowance schedule deactivated successfully',
     })
   } catch (error) {
-    console.error('Delete allowance schedule error:', error)
+    logger.error('Delete allowance schedule error:', error)
     return NextResponse.json(
       { error: 'Failed to delete allowance schedule' },
       { status: 500 }

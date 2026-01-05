@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { PlusIcon } from '@heroicons/react/24/outline';
 
 interface MedicationDose {
   id: string;
@@ -36,8 +38,15 @@ interface LogDoseData {
   overrideReason?: string;
 }
 
+interface FamilyMember {
+  id: string;
+  name: string;
+}
+
 export default function MedicationsPage() {
+  const { data: session } = useSession();
   const [medications, setMedications] = useState<Medication[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMed, setSelectedMed] = useState<string | null>(null);
   const [dosage, setDosage] = useState('');
@@ -46,12 +55,40 @@ export default function MedicationsPage() {
   const [overrideReason, setOverrideReason] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [addFormData, setAddFormData] = useState({
+    memberId: '',
+    medicationName: '',
+    activeIngredient: '',
+    minIntervalHours: 4,
+    maxDosesPerDay: '',
+    notifyWhenReady: true,
+  });
 
   useEffect(() => {
     loadMedications();
+    loadFamilyMembers();
     const interval = setInterval(loadMedications, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, []);
+
+  const loadFamilyMembers = async () => {
+    try {
+      const response = await fetch('/api/family');
+      if (response.ok) {
+        const data = await response.json();
+        setFamilyMembers(
+          data.family.members.filter((m: any) => m.isActive).map((m: any) => ({
+            id: m.id,
+            name: m.name,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Failed to load family members:', err);
+    }
+  };
 
   const loadMedications = async () => {
     try {
@@ -157,6 +194,56 @@ export default function MedicationsPage() {
     setError(null);
   };
 
+  const handleAddMedication = async () => {
+    if (!addFormData.memberId || !addFormData.medicationName || !addFormData.minIntervalHours) {
+      setError('Member, medication name, and minimum interval are required');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/medications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: addFormData.memberId,
+          medicationName: addFormData.medicationName.trim(),
+          activeIngredient: addFormData.activeIngredient.trim() || null,
+          minIntervalHours: parseInt(addFormData.minIntervalHours.toString()),
+          maxDosesPerDay: addFormData.maxDosesPerDay ? parseInt(addFormData.maxDosesPerDay) : null,
+          notifyWhenReady: addFormData.notifyWhenReady,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to create medication');
+        return;
+      }
+
+      setSuccess('Medication added successfully');
+      setShowAddModal(false);
+      setAddFormData({
+        memberId: '',
+        medicationName: '',
+        activeIngredient: '',
+        minIntervalHours: 4,
+        maxDosesPerDay: '',
+        notifyWhenReady: true,
+      });
+      await loadMedications();
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to create medication');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -167,13 +254,24 @@ export default function MedicationsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Medication Safety
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Track medications with safety interlock to prevent double-dosing
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            Medication Safety
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Track medications with safety interlock to prevent double-dosing
+          </p>
+        </div>
+        {session?.user?.role === 'PARENT' && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Add Medication
+          </button>
+        )}
       </div>
 
       {error && (
@@ -196,9 +294,18 @@ export default function MedicationsPage() {
 
       {medications.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <p className="text-gray-500 dark:text-gray-400">
-            No medications configured yet. Parents can add medication safety configurations.
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            No medications configured yet.
           </p>
+          {session?.user?.role === 'PARENT' && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 mx-auto"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Your First Medication
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
@@ -453,6 +560,139 @@ export default function MedicationsPage() {
                   setOverrideReason('');
                   setDosage('');
                   setNotes('');
+                }}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Medication Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+              Add Medication
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Family Member *
+                </label>
+                <select
+                  value={addFormData.memberId}
+                  onChange={(e) => setAddFormData({ ...addFormData, memberId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  required
+                >
+                  <option value="">Select a family member</option>
+                  {familyMembers.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Medication Name *
+                </label>
+                <input
+                  type="text"
+                  value={addFormData.medicationName}
+                  onChange={(e) => setAddFormData({ ...addFormData, medicationName: e.target.value })}
+                  placeholder="e.g., Tylenol, Ibuprofen"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Active Ingredient (optional)
+                </label>
+                <input
+                  type="text"
+                  value={addFormData.activeIngredient}
+                  onChange={(e) => setAddFormData({ ...addFormData, activeIngredient: e.target.value })}
+                  placeholder="e.g., Acetaminophen, Ibuprofen"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Minimum Interval (hours) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={addFormData.minIntervalHours}
+                  onChange={(e) => setAddFormData({ ...addFormData, minIntervalHours: parseInt(e.target.value) || 4 })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  required
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Minimum time between doses (e.g., 4 hours for Tylenol)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Maximum Doses Per Day (optional)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={addFormData.maxDosesPerDay}
+                  onChange={(e) => setAddFormData({ ...addFormData, maxDosesPerDay: e.target.value })}
+                  placeholder="e.g., 4"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Leave empty for no daily limit
+                </p>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="notifyWhenReady"
+                  checked={addFormData.notifyWhenReady}
+                  onChange={(e) => setAddFormData({ ...addFormData, notifyWhenReady: e.target.checked })}
+                  className="w-4 h-4 text-ember-700 border-gray-300 rounded"
+                />
+                <label htmlFor="notifyWhenReady" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  Notify when next dose is available
+                </label>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleAddMedication}
+                disabled={saving || !addFormData.memberId || !addFormData.medicationName || !addFormData.minIntervalHours}
+                className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white rounded font-medium"
+              >
+                {saving ? 'Adding...' : 'Add Medication'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setAddFormData({
+                    memberId: '',
+                    medicationName: '',
+                    activeIngredient: '',
+                    minIntervalHours: 4,
+                    maxDosesPerDay: '',
+                    notifyWhenReady: true,
+                  });
+                  setError(null);
                 }}
                 className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
               >

@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { hash } from 'bcrypt';
 import { BCRYPT_ROUNDS } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: Request,
@@ -81,7 +82,7 @@ export async function PATCH(
       member: updatedMember,
     });
   } catch (error) {
-    console.error('Error updating family member:', error);
+    logger.error('Error updating family member:', error);
     return NextResponse.json({ error: 'Failed to update family member' }, { status: 500 });
   }
 }
@@ -141,7 +142,7 @@ export async function DELETE(
       message: 'Family member deactivated successfully',
     });
   } catch (error) {
-    console.error('Error deleting family member:', error);
+    logger.error('Error deleting family member:', error);
     return NextResponse.json({ error: 'Failed to delete family member' }, { status: 500 });
   }
 }

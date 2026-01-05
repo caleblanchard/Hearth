@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -152,7 +153,7 @@ export async function POST(
       message: `Rejected ${redemption.member.name}'s redemption of "${redemption.reward.name}". Credits have been refunded.`,
     });
   } catch (error) {
-    console.error('Reject redemption error:', error);
+    logger.error('Reject redemption error:', error);
     return NextResponse.json(
       { error: 'Failed to reject redemption' },
       { status: 500 }

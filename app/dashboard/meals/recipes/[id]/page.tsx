@@ -14,6 +14,7 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon, StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
+import { AlertModal, ConfirmModal } from '@/components/ui/Modal';
 
 interface Ingredient {
   id: string;
@@ -148,7 +149,14 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
   };
 
   const deleteRecipe = async () => {
-    if (!recipe || !confirm('Are you sure you want to delete this recipe?')) return;
+    if (!recipe) return;
+    
+    // Use ConfirmModal instead of confirm()
+    setDeleteConfirmModal({ isOpen: true });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!recipe) return;
 
     try {
       const res = await fetch(`/api/meals/recipes/${recipe.id}`, {
@@ -160,7 +168,13 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
       router.push('/dashboard/meals/recipes');
     } catch (err) {
       console.error('Error deleting recipe:', err);
-      alert('Failed to delete recipe');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to delete recipe',
+        type: 'error',
+      });
+      setDeleteConfirmModal({ isOpen: false });
     }
   };
 
@@ -420,6 +434,27 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirmModal.isOpen}
+        onClose={() => setDeleteConfirmModal({ isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Recipe"
+        message="Are you sure you want to delete this recipe?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="red"
+      />
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

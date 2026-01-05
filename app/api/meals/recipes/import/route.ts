@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { extractRecipeFromUrl } from '@/lib/recipe-extractor';
+import { logger } from '@/lib/logger';
 
 /**
  * POST /api/meals/recipes/import
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to extract recipe' }, { status: 500 });
     }
   } catch (error) {
-    console.error('Unexpected error in import route:', error);
+    logger.error('Unexpected error in import route:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

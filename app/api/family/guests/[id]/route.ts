@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function DELETE(
   request: NextRequest,
@@ -77,7 +78,7 @@ export async function DELETE(
       message: 'Guest invite revoked successfully',
     });
   } catch (error) {
-    console.error('Error revoking guest invite:', error);
+    logger.error('Error revoking guest invite:', error);
     return NextResponse.json(
       { error: 'Failed to revoke guest invite' },
       { status: 500 }

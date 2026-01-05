@@ -9,6 +9,7 @@ import {
   CheckCircleIcon,
   CheckIcon,
 } from '@heroicons/react/24/outline';
+import { AlertModal } from '@/components/ui/Modal';
 
 interface Chore {
   id: string;
@@ -26,6 +27,17 @@ export default function ChoresPage() {
   const [chores, setChores] = useState<Chore[]>([]);
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
   const router = useRouter();
 
   const fetchChores = async () => {
@@ -58,16 +70,31 @@ export default function ChoresPage() {
       const data = await response.json();
 
       if (response.ok) {
-        // Show success message
-        alert(data.message);
+        // Show success message in modal
+        setAlertModal({
+          isOpen: true,
+          title: 'Chore Completed',
+          message: data.message,
+          type: 'success',
+        });
         // Refresh chores list
         await fetchChores();
       } else {
-        alert(data.error || 'Failed to complete chore');
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: data.error || 'Failed to complete chore',
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('Error completing chore:', error);
-      alert('Failed to complete chore');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to complete chore',
+        type: 'error',
+      });
     } finally {
       setCompletingId(null);
     }
@@ -227,6 +254,15 @@ export default function ChoresPage() {
           </div>
         )}
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

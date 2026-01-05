@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SparklesIcon, CurrencyDollarIcon, CheckIcon, XMarkIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { AlertModal } from '@/components/ui/Modal';
 
 interface PendingChore {
   id: string;
@@ -42,6 +43,17 @@ export default function ApprovalsPage() {
   const [processingGraceId, setProcessingGraceId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
   const router = useRouter();
 
   const fetchPendingChores = async () => {
@@ -86,14 +98,29 @@ export default function ApprovalsPage() {
       const data = await response.json();
 
       if (response.ok) {
-        alert(data.message);
+        setAlertModal({
+          isOpen: true,
+          title: 'Success',
+          message: data.message,
+          type: 'success',
+        });
         await fetchPendingChores();
       } else {
-        alert(data.error || 'Failed to approve chore');
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: data.error || 'Failed to approve chore',
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('Error approving chore:', error);
-      alert('Failed to approve chore');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to approve chore',
+        type: 'error',
+      });
     } finally {
       setProcessingId(null);
     }
@@ -101,7 +128,12 @@ export default function ApprovalsPage() {
 
   const handleReject = async (choreId: string) => {
     if (!rejectReason.trim()) {
-      alert('Please provide a reason for rejection');
+      setAlertModal({
+        isOpen: true,
+        title: 'Validation Error',
+        message: 'Please provide a reason for rejection',
+        type: 'warning',
+      });
       return;
     }
 
@@ -116,16 +148,31 @@ export default function ApprovalsPage() {
       const data = await response.json();
 
       if (response.ok) {
-        alert(data.message);
+        setAlertModal({
+          isOpen: true,
+          title: 'Success',
+          message: data.message,
+          type: 'success',
+        });
         setRejectReason('');
         setRejectingId(null);
         await fetchPendingChores();
       } else {
-        alert(data.error || 'Failed to reject chore');
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: data.error || 'Failed to reject chore',
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('Error rejecting chore:', error);
-      alert('Failed to reject chore');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to reject chore',
+        type: 'error',
+      });
     } finally {
       setProcessingId(null);
     }
@@ -143,14 +190,29 @@ export default function ApprovalsPage() {
       const data = await response.json();
 
       if (response.ok) {
-        alert('Grace request approved!');
+        setAlertModal({
+          isOpen: true,
+          title: 'Success',
+          message: 'Grace request approved!',
+          type: 'success',
+        });
         await fetchPendingGraceRequests();
       } else {
-        alert(data.error || 'Failed to approve grace request');
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: data.error || 'Failed to approve grace request',
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('Error approving grace request:', error);
-      alert('Failed to approve grace request');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to approve grace request',
+        type: 'error',
+      });
     } finally {
       setProcessingGraceId(null);
     }
@@ -168,14 +230,29 @@ export default function ApprovalsPage() {
       const data = await response.json();
 
       if (response.ok) {
-        alert('Grace request denied');
+        setAlertModal({
+          isOpen: true,
+          title: 'Success',
+          message: 'Grace request denied',
+          type: 'success',
+        });
         await fetchPendingGraceRequests();
       } else {
-        alert(data.error || 'Failed to deny grace request');
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: data.error || 'Failed to deny grace request',
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('Error denying grace request:', error);
-      alert('Failed to deny grace request');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to deny grace request',
+        type: 'error',
+      });
     } finally {
       setProcessingGraceId(null);
     }
@@ -421,6 +498,15 @@ export default function ApprovalsPage() {
           </div>
         )}
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

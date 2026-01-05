@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ items: lowStockItems });
   } catch (error) {
-    console.error('Error fetching low-stock items:', error);
+    logger.error('Error fetching low-stock items:', error);
     return NextResponse.json(
       { error: 'Failed to fetch low-stock items' },
       { status: 500 }

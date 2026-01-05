@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
       message: `Adjusted ${targetMember.name}'s balance by ${amountMinutes} minutes. New balance: ${newBalance} minutes.`,
     });
   } catch (error) {
-    console.error('Screen time adjustment error:', error);
+    logger.error('Screen time adjustment error:', error);
     return NextResponse.json(
       { error: 'Failed to adjust screen time' },
       { status: 500 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { MealType } from '@/app/generated/prisma';
 
@@ -41,17 +41,34 @@ export default function MealPlanner() {
     notes: '',
   });
   const [hoveredEntry, setHoveredEntry] = useState<string | null>(null);
+  const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('MONDAY');
 
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  // Get days array based on week start day
+  const days = useMemo(() => {
+    if (weekStartDay === 'SUNDAY') {
+      return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    }
+    return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  }, [weekStartDay]);
+  
   const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
-  // Get Monday of current week
-  const getMonday = (date: Date): Date => {
+  // Get start of week based on family setting
+  const getWeekStart = (date: Date, startDay: 'SUNDAY' | 'MONDAY'): Date => {
     const d = new Date(date);
     d.setUTCHours(0, 0, 0, 0);
-    const day = d.getUTCDay();
-    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-    d.setUTCDate(diff);
+    const day = d.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    if (startDay === 'SUNDAY') {
+      // Get Sunday of the week
+      const diff = d.getUTCDate() - day;
+      d.setUTCDate(diff);
+    } else {
+      // Get Monday of the week
+      const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+      d.setUTCDate(diff);
+    }
+    
     return d;
   };
 
@@ -87,11 +104,36 @@ export default function MealPlanner() {
     }
   };
 
-  // Initialize with current week
+  // Fetch family settings to get week start day
   useEffect(() => {
-    const monday = getMonday(new Date());
-    const weekStr = formatDate(monday);
-    loadMealPlan(weekStr);
+    async function fetchFamilySettings() {
+      try {
+        const response = await fetch('/api/family');
+        if (response.ok) {
+          const data = await response.json();
+          const weekStartDaySetting = data.family?.settings?.weekStartDay || 'MONDAY';
+          setWeekStartDay(weekStartDaySetting);
+          
+          // Initialize with current week using the correct start day
+          const weekStartDate = getWeekStart(new Date(), weekStartDaySetting);
+          const weekStr = formatDate(weekStartDate);
+          loadMealPlan(weekStr);
+        } else {
+          // Fallback to default
+          const weekStartDate = getWeekStart(new Date(), 'MONDAY');
+          const weekStr = formatDate(weekStartDate);
+          loadMealPlan(weekStr);
+        }
+      } catch (err) {
+        console.error('Failed to fetch family settings:', err);
+        // Fallback to default
+        const weekStartDate = getWeekStart(new Date(), 'MONDAY');
+        const weekStr = formatDate(weekStartDate);
+        loadMealPlan(weekStr);
+      }
+    }
+    
+    fetchFamilySettings();
   }, []);
 
   // Navigate to previous week
@@ -109,6 +151,20 @@ export default function MealPlanner() {
     const newWeek = formatDate(currentWeek);
     loadMealPlan(newWeek);
   };
+
+  // Reload meal plan when week start day changes
+  useEffect(() => {
+    if (weekStart && weekStartDay) {
+      // Recalculate week start with new setting
+      const currentDate = new Date(weekStart);
+      const weekStartDate = getWeekStart(currentDate, weekStartDay);
+      const weekStr = formatDate(weekStartDate);
+      if (weekStr !== weekStart) {
+        loadMealPlan(weekStr);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStartDay]);
 
   // Get date for specific day of week
   const getDateForDay = (dayIndex: number): string => {

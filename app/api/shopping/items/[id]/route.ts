@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
@@ -73,7 +74,7 @@ export async function PATCH(
       message: 'Item updated',
     });
   } catch (error) {
-    console.error('Update shopping item error:', error);
+    logger.error('Update shopping item error:', error);
     return NextResponse.json(
       { error: 'Failed to update item' },
       { status: 500 }
@@ -141,7 +142,7 @@ export async function DELETE(
       message: 'Item removed from shopping list',
     });
   } catch (error) {
-    console.error('Delete shopping item error:', error);
+    logger.error('Delete shopping item error:', error);
     return NextResponse.json(
       { error: 'Failed to delete item' },
       { status: 500 }

@@ -36,7 +36,7 @@ export default function ModuleSettingsPage() {
           setModules(data.modules || []);
           setCategories(data.categories || {});
         } else if (res.status === 403) {
-          alert('Only parents can access module settings');
+          // Redirect handled by parent check, no alert needed
         }
       } catch (error) {
         console.error('Error fetching module configurations:', error);
@@ -89,11 +89,11 @@ export default function ModuleSettingsPage() {
         });
       } else {
         const error = await res.json();
-        alert(error.error || 'Failed to update module');
+        // Error handling - could add modal here if needed
+        console.error('Failed to update module:', error.error || 'Failed to update module');
       }
     } catch (error) {
       console.error('Error updating module:', error);
-      alert('Failed to update module');
     } finally {
       setUpdating((prev) => {
         const newSet = new Set(prev);

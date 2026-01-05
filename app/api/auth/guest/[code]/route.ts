@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import crypto from 'crypto';
+import { logger } from '@/lib/logger';
 
 // Generate a secure session token
 function generateSessionToken(): string {
@@ -95,7 +96,7 @@ export async function POST(
       message: 'Guest session started successfully',
     });
   } catch (error) {
-    console.error('Error starting guest session:', error);
+    logger.error('Error starting guest session:', error);
     return NextResponse.json(
       { error: 'Failed to start guest session' },
       { status: 500 }

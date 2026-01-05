@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { PostType } from '@/app/generated/prisma';
+import { logger } from '@/lib/logger';
+import { sanitizeString, sanitizeHTML } from '@/lib/input-sanitization';
+import { parsePaginationParams, createPaginationResponse } from '@/lib/pagination';
+import { parseJsonBody } from '@/lib/request-validation';
 
 const VALID_POST_TYPES = ['ANNOUNCEMENT', 'KUDOS', 'NOTE', 'PHOTO'];
 
@@ -16,11 +20,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
     const pinnedOnly = searchParams.get('pinned') === 'true';
-    const limit = Math.min(
-      Math.max(1, parseInt(searchParams.get('limit') || '50', 10)),
-      100  // Maximum limit
-    );
-    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
+    
+    // Use pagination utilities
+    const { page, limit } = parsePaginationParams(searchParams);
+    const skip = (page - 1) * limit;
 
     // Build query filters
     const where: any = {
@@ -67,23 +70,15 @@ export async function GET(request: NextRequest) {
           { isPinned: 'desc' },
           { createdAt: 'desc' },
         ],
-        skip: offset,
+        skip,
         take: limit,
       }),
       prisma.communicationPost.count({ where }),
     ]);
 
-    return NextResponse.json({
-      posts,
-      pagination: {
-        total,
-        limit,
-        offset,
-        hasMore: offset + limit < total,
-      },
-    });
+    return NextResponse.json(createPaginationResponse(posts, page, limit, total));
   } catch (error) {
-    console.error('Error fetching posts:', error);
+    logger.error('Error fetching posts', error);
     return NextResponse.json(
       { error: 'Failed to fetch posts' },
       { status: 500 }
@@ -99,35 +94,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Validate JSON input
-    let body;
-    try {
-      body = await request.json();
-    } catch (error) {
+    // Validate and parse JSON body
+    const bodyResult = await parseJsonBody(request);
+    if (!bodyResult.success) {
       return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
+        { error: bodyResult.error },
+        { status: bodyResult.status }
       );
     }
-    const { type, title, content, imageUrl } = body;
+    const { type, title, content, imageUrl } = bodyResult.data;
 
-    // Validate required fields
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    // Sanitize and validate input
+    const sanitizedContent = sanitizeHTML(content);
+    if (!sanitizedContent || sanitizedContent.trim().length === 0) {
       return NextResponse.json(
         { error: 'Content is required' },
         { status: 400 }
       );
     }
 
-    if (!type || !VALID_POST_TYPES.includes(type)) {
+    const sanitizedType = sanitizeString(type);
+    if (!sanitizedType || !VALID_POST_TYPES.includes(sanitizedType)) {
       return NextResponse.json(
         { error: 'Valid post type is required (ANNOUNCEMENT, KUDOS, NOTE, PHOTO)' },
         { status: 400 }
       );
     }
 
+    const sanitizedTitle = title ? sanitizeString(title) : null;
+    const sanitizedImageUrl = imageUrl ? sanitizeString(imageUrl) : null;
+
     // Only parents can post announcements
-    if (type === 'ANNOUNCEMENT' && session.user.role !== 'PARENT') {
+    if (sanitizedType === 'ANNOUNCEMENT' && session.user.role !== 'PARENT') {
       return NextResponse.json(
         { error: 'Only parents can post announcements' },
         { status: 403 }
@@ -138,10 +136,10 @@ export async function POST(request: NextRequest) {
     const post = await prisma.communicationPost.create({
       data: {
         familyId: session.user.familyId,
-        type: type as PostType,
-        title: title?.trim() || null,
-        content: content.trim(),
-        imageUrl: imageUrl || null,
+        type: sanitizedType as PostType,
+        title: sanitizedTitle,
+        content: sanitizedContent,
+        imageUrl: sanitizedImageUrl,
         authorId: session.user.id,
       },
       include: {
@@ -177,7 +175,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating post:', error);
+    logger.error('Error creating post', error);
     return NextResponse.json(
       { error: 'Failed to create post' },
       { status: 500 }

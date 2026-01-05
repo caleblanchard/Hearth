@@ -1,27 +1,39 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 
 interface ParentLoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
+  initialError?: string;
 }
 
-export default function ParentLoginForm({ onLogin }: ParentLoginFormProps) {
+export default function ParentLoginForm({ onLogin, initialError }: ParentLoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError || '');
+  
+  // Update error if initialError changes (e.g., from URL parameter)
+  useEffect(() => {
+    if (initialError) {
+      setError(initialError);
+    }
+  }, [initialError]);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent any event bubbling that might cause navigation
+    
     setError('');
     setIsLoading(true);
 
     try {
       await onLogin(email, password);
+      // Only clear form on success - if we get here, login was successful
+      // and navigation will happen in the parent component
     } catch (err) {
+      // Display error and keep form state
       setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
       setIsLoading(false);
     }
   };

@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { checkAndAwardAchievement, updateStreak } from '@/lib/achievements';
 import { onChoreCompleted } from '@/lib/rules-engine/hooks';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   _request: NextRequest,
@@ -162,7 +163,7 @@ export async function POST(
       // Update daily streak
       await updateStreak(choreInstance.assignedToId, 'DAILY_CHORES', session.user.familyId);
     } catch (error) {
-      console.error('Achievement check error:', error);
+      logger.error('Achievement check error:', error);
       // Don't fail the approval if achievement check fails
     }
 
@@ -177,7 +178,7 @@ export async function POST(
         session.user.familyId
       );
     } catch (error) {
-      console.error('Rules engine hook error:', error);
+      logger.error('Rules engine hook error:', error);
       // Don't fail the approval if rules engine fails
     }
 
@@ -187,7 +188,7 @@ export async function POST(
       message: 'Chore approved and credits awarded!',
     });
   } catch (error) {
-    console.error('Chore approval error:', error);
+    logger.error('Chore approval error:', error);
     return NextResponse.json(
       { error: 'Failed to approve chore' },
       { status: 500 }

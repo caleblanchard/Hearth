@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getNextDueDates, getNextAssignee, startOfDay, endOfDay } from '@/lib/chore-scheduler';
+import { logger } from '@/lib/logger';
 
 // This endpoint is called by Vercel Cron daily to generate chore instances
 export async function GET(request: Request) {
@@ -158,7 +159,7 @@ export async function GET(request: Request) {
           }
         }
       } catch (error) {
-        console.error(`Error processing schedule ${schedule.id}:`, error);
+        logger.error('Error processing schedule ${schedule.id}:', error);
         errors.push(`Schedule ${schedule.id}: ${error}`);
       }
     }
@@ -175,7 +176,7 @@ export async function GET(request: Request) {
     });
 
   } catch (error) {
-    console.error('Error generating chore instances:', error);
+    logger.error('Error generating chore instances:', error);
     return NextResponse.json({ error: 'Failed to generate chore instances' }, { status: 500 });
   }
 }

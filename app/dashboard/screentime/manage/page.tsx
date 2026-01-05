@@ -1,370 +1,811 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { AlertModal, ConfirmModal } from '@/components/ui/Modal';
-import GraceSettingsPanel from '@/components/screentime/GraceSettingsPanel';
+import { useRouter } from 'next/navigation';
 import {
-  ClockIcon,
-  ChartBarIcon,
   PlusIcon,
-  MinusIcon,
-  UserIcon,
-  ArrowPathIcon,
-  Cog6ToothIcon,
+  PencilIcon,
+  TrashIcon,
   XMarkIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
+import { ConfirmModal } from '@/components/ui/Modal';
+
+interface ScreenTimeType {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  isArchived: boolean;
+  _count?: {
+    transactions: number;
+    allowances: number;
+  };
+}
 
 interface FamilyMember {
   id: string;
   name: string;
-  avatarUrl?: string;
   role: string;
-  currentBalance: number;
-  weeklyAllocation: number;
-  weeklyUsage: number;
-  weekStartDate?: string;
 }
 
-export default function ManageScreenTimePage() {
-  const { data: session } = useSession();
+interface ScreenTimeAllowance {
+  id: string;
+  memberId: string;
+  screenTimeTypeId: string;
+  allowanceMinutes: number;
+  period: 'DAILY' | 'WEEKLY';
+  rolloverEnabled: boolean;
+  rolloverCapMinutes: number | null;
+  member: {
+    id: string;
+    name: string;
+  };
+  screenTimeType: {
+    id: string;
+    name: string;
+  };
+}
+
+export default function ScreenTimeManagePage() {
+  const { data: session, status } = useSession();
   const router = useRouter();
+  const [types, setTypes] = useState<ScreenTimeType[]>([]);
   const [members, setMembers] = useState<FamilyMember[]>([]);
+  const [allowances, setAllowances] = useState<ScreenTimeAllowance[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
-  const [graceSettingsMember, setGraceSettingsMember] = useState<FamilyMember | null>(null);
-  const [adjustmentAmount, setAdjustmentAmount] = useState('');
-  const [adjustmentReason, setAdjustmentReason] = useState('');
-  const [adjusting, setAdjusting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  // Modal state
-  const [alertModal, setAlertModal] = useState<{
+  // Type management state
+  const [showTypeModal, setShowTypeModal] = useState(false);
+  const [editingType, setEditingType] = useState<ScreenTimeType | null>(null);
+  const [typeForm, setTypeForm] = useState({
+    name: '',
+    description: '',
+    isActive: true,
+  });
+
+  // Allowance management state
+  const [showAllowanceModal, setShowAllowanceModal] = useState(false);
+  const [editingAllowance, setEditingAllowance] = useState<ScreenTimeAllowance | null>(null);
+  const [allowanceForm, setAllowanceForm] = useState({
+    memberId: '',
+    screenTimeTypeId: '',
+    allowanceMinutes: 60,
+    period: 'WEEKLY' as 'DAILY' | 'WEEKLY',
+    rolloverEnabled: false,
+    rolloverCapMinutes: '',
+  });
+
+  const [activeTab, setActiveTab] = useState<'types' | 'allowances'>('types');
+  const [archiveConfirmModal, setArchiveConfirmModal] = useState<{
     isOpen: boolean;
-    type: 'success' | 'error' | 'warning';
-    title: string;
-    message: string;
-  }>({ isOpen: false, type: 'success', title: '', message: '' });
+    type: ScreenTimeType | null;
+  }>({
+    isOpen: false,
+    type: null,
+  });
 
-  // Redirect non-parents
   useEffect(() => {
-    if (session?.user?.role !== 'PARENT') {
-      router.push('/dashboard/screentime');
+    // Wait for session to load before checking role
+    if (status === 'loading') {
+      // Session is still loading
+      return;
     }
-  }, [session, router]);
+    
+    if (!session || session.user?.role !== 'PARENT') {
+      router.push('/dashboard/screentime');
+      return;
+    }
+    
+    loadData();
+  }, [session, status, router]);
 
-  const fetchFamilyData = async () => {
+  const loadData = async () => {
     try {
-      const response = await fetch('/api/screentime/family');
-      if (response.ok) {
-        const data = await response.json();
-        setMembers(data.members || []);
+      setLoading(true);
+      setError(null);
+
+      const [typesRes, familyRes, allowancesRes] = await Promise.all([
+        fetch('/api/screentime/types'),
+        fetch('/api/family'),
+        fetch('/api/screentime/allowances'),
+      ]);
+
+      if (!typesRes.ok || !familyRes.ok || !allowancesRes.ok) {
+        throw new Error('Failed to load data');
       }
-    } catch (error) {
-      console.error('Failed to fetch family data:', error);
+
+      const typesData = await typesRes.json();
+      const familyData = await familyRes.json();
+      const allowancesData = await allowancesRes.json();
+
+      setTypes(typesData.types || []);
+      setMembers(familyData.family?.members?.filter((m: any) => m.isActive) || []);
+      setAllowances(allowancesData.allowances || []);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Failed to load screen time settings');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (session?.user?.role === 'PARENT') {
-      fetchFamilyData();
-    }
-  }, [session]);
+  const handleCreateType = () => {
+    setEditingType(null);
+    setTypeForm({ name: '', description: '', isActive: true });
+    setShowTypeModal(true);
+  };
 
-  const handleAdjustBalance = async () => {
-    if (!selectedMember || !adjustmentAmount || parseFloat(adjustmentAmount) === 0) {
-      setAlertModal({
-        isOpen: true,
-        type: 'warning',
-        title: 'Invalid Input',
-        message: 'Please enter a non-zero adjustment amount',
-      });
+  const handleEditType = (type: ScreenTimeType) => {
+    setEditingType(type);
+    setTypeForm({
+      name: type.name,
+      description: type.description || '',
+      isActive: type.isActive,
+    });
+    setShowTypeModal(true);
+  };
+
+  const handleSaveType = async () => {
+    if (!typeForm.name.trim()) {
+      setError('Name is required');
       return;
     }
 
-    setAdjusting(true);
     try {
-      const response = await fetch('/api/screentime/adjust', {
-        method: 'POST',
+      setError(null);
+      const url = editingType
+        ? `/api/screentime/types/${editingType.id}`
+        : '/api/screentime/types';
+      const method = editingType ? 'PATCH' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          memberId: selectedMember.id,
-          amountMinutes: parseInt(adjustmentAmount),
-          reason: adjustmentReason || undefined,
+          name: typeForm.name.trim(),
+          description: typeForm.description.trim() || null,
+          isActive: typeForm.isActive,
         }),
       });
 
       const data = await response.json();
 
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: data.message,
-        });
-        setAdjustmentAmount('');
-        setAdjustmentReason('');
-        setSelectedMember(null);
-        await fetchFamilyData();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to adjust balance',
-        });
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save type');
       }
-    } catch (error) {
-      console.error('Error adjusting balance:', error);
-      setAlertModal({
-        isOpen: true,
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to adjust balance',
+
+      setSuccess(editingType ? 'Type updated successfully' : 'Type created successfully');
+      setShowTypeModal(false);
+      await loadData();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error saving type:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save type');
+    }
+  };
+
+  const handleArchiveType = async (type: ScreenTimeType) => {
+    setArchiveConfirmModal({ isOpen: true, type });
+  };
+
+  const confirmArchiveType = async () => {
+    if (!archiveConfirmModal.type) return;
+    const type = archiveConfirmModal.type;
+
+    try {
+      setError(null);
+      setArchiveConfirmModal({ isOpen: false, type: null });
+      const response = await fetch(`/api/screentime/types/${type.id}`, {
+        method: 'DELETE',
       });
-    } finally {
-      setAdjusting(false);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to archive type');
+      }
+
+      setSuccess('Type archived successfully');
+      await loadData();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error archiving type:', err);
+      setError(err instanceof Error ? err.message : 'Failed to archive type');
+    }
+  };
+
+  const handleCreateAllowance = () => {
+    setEditingAllowance(null);
+    setAllowanceForm({
+      memberId: '',
+      screenTimeTypeId: '',
+      allowanceMinutes: 60,
+      period: 'WEEKLY',
+      rolloverEnabled: false,
+      rolloverCapMinutes: '',
+    });
+    setShowAllowanceModal(true);
+  };
+
+  const handleEditAllowance = (allowance: ScreenTimeAllowance) => {
+    setEditingAllowance(allowance);
+    setAllowanceForm({
+      memberId: allowance.memberId,
+      screenTimeTypeId: allowance.screenTimeTypeId,
+      allowanceMinutes: allowance.allowanceMinutes,
+      period: allowance.period,
+      rolloverEnabled: allowance.rolloverEnabled,
+      rolloverCapMinutes: allowance.rolloverCapMinutes?.toString() || '',
+    });
+    setShowAllowanceModal(true);
+  };
+
+  const handleSaveAllowance = async () => {
+    if (!allowanceForm.memberId || !allowanceForm.screenTimeTypeId) {
+      setError('Member and screen time type are required');
+      return;
+    }
+
+    if (allowanceForm.allowanceMinutes < 0) {
+      setError('Allowance must be non-negative');
+      return;
+    }
+
+    if (allowanceForm.rolloverEnabled && allowanceForm.rolloverCapMinutes) {
+      const cap = parseInt(allowanceForm.rolloverCapMinutes);
+      if (isNaN(cap) || cap < 0) {
+        setError('Rollover cap must be a non-negative number');
+        return;
+      }
+    }
+
+    try {
+      setError(null);
+      const response = await fetch('/api/screentime/allowances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: allowanceForm.memberId,
+          screenTimeTypeId: allowanceForm.screenTimeTypeId,
+          allowanceMinutes: allowanceForm.allowanceMinutes,
+          period: allowanceForm.period,
+          rolloverEnabled: allowanceForm.rolloverEnabled,
+          rolloverCapMinutes: allowanceForm.rolloverCapMinutes
+            ? parseInt(allowanceForm.rolloverCapMinutes)
+            : null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save allowance');
+      }
+
+      setSuccess(editingAllowance ? 'Allowance updated successfully' : 'Allowance created successfully');
+      setShowAllowanceModal(false);
+      await loadData();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error saving allowance:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save allowance');
     }
   };
 
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+    if (hours > 0) {
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+    return `${mins}m`;
   };
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
-          </div>
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700">        </div>
       </div>
-    );
-  }
+
+      {/* Archive Confirmation Modal */}
+      <ConfirmModal
+        isOpen={archiveConfirmModal.isOpen}
+        onClose={() => setArchiveConfirmModal({ isOpen: false, type: null })}
+        onConfirm={confirmArchiveType}
+        title="Archive Screen Time Type"
+        message={archiveConfirmModal.type ? `Are you sure you want to archive "${archiveConfirmModal.type.name}"?` : ''}
+        confirmText="Archive"
+        cancelText="Cancel"
+        confirmColor="red"
+      />
+    </div>
+  );
+}
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Screen Time Management
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Manage screen time balances and settings for your family
-          </p>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          Screen Time Settings
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Manage screen time types and allowances for your family
+        </p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+          <p className="text-red-800 dark:text-red-300">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-600 dark:text-red-400 text-sm mt-2 underline"
+          >
+            Dismiss
+          </button>
         </div>
+      )}
 
-        {/* Family Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {members.map((member) => {
-            const usagePercentage = member.weeklyAllocation > 0
-              ? ((member.weeklyUsage / member.weeklyAllocation) * 100).toFixed(1)
-              : 0;
-            const remainingPercentage = member.weeklyAllocation > 0
-              ? ((member.currentBalance / member.weeklyAllocation) * 100).toFixed(1)
-              : 0;
-
-            return (
-              <div
-                key={member.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  {member.avatarUrl ? (
-                    <img
-                      src={member.avatarUrl}
-                      alt={member.name}
-                      className="h-12 w-12 rounded-full"
-                    />
-                  ) : (
-                    <div className="h-12 w-12 rounded-full bg-ember-300 dark:bg-slate-900 flex items-center justify-center">
-                      <UserIcon className="h-6 w-6 text-ember-700 dark:text-ember-500" />
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {member.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {member.role}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Current Balance</span>
-                    <span className="text-lg font-bold text-ember-700 dark:text-ember-500">
-                      {formatTime(member.currentBalance)}
-                    </span>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Weekly Usage</span>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {formatTime(member.weeklyUsage)} / {formatTime(member.weeklyAllocation)}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div
-                        className="bg-ember-700 dark:bg-ember-500 h-2 rounded-full"
-                        style={{ width: `${Math.min(100, parseFloat(usagePercentage as string))}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {usagePercentage}% used
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => setSelectedMember(member)}
-                      className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      <ArrowPathIcon className="h-5 w-5" />
-                      Adjust
-                    </button>
-                    <button
-                      onClick={() => setGraceSettingsMember(member)}
-                      className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Cog6ToothIcon className="h-5 w-5" />
-                      Grace
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      {success && (
+        <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
+          <p className="text-green-800 dark:text-green-300">{success}</p>
         </div>
+      )}
 
-        {members.length === 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center">
-            <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              No children found. Add family members to manage their screen time.
-            </p>
+      {/* Tabs */}
+      <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+        <nav className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab('types')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'types'
+                ? 'border-ember-700 text-ember-700 dark:text-ember-500'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Screen Time Types
+          </button>
+          <button
+            onClick={() => setActiveTab('allowances')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'allowances'
+                ? 'border-ember-700 text-ember-700 dark:text-ember-500'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Allowances
+          </button>
+        </nav>
+      </div>
+
+      {/* Types Tab */}
+      {activeTab === 'types' && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              Screen Time Types
+            </h2>
+            <button
+              onClick={handleCreateType}
+              className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Type
+            </button>
           </div>
-        )}
 
-        {/* Adjustment Modal */}
-        {selectedMember && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Adjust Balance - {selectedMember.name}
-              </h2>
+          {types.length === 0 ? (
+            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                No screen time types configured yet.
+              </p>
+              <button
+                onClick={handleCreateType}
+                className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
+              >
+                Create Your First Type
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {types.map((type) => (
+                <div
+                  key={type.id}
+                  className={`bg-white dark:bg-gray-800 rounded-lg border-2 p-4 ${
+                    type.isActive
+                      ? 'border-gray-200 dark:border-gray-700'
+                      : 'border-gray-300 dark:border-gray-600 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {type.name}
+                      </h3>
+                      {type.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          {type.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditType(type)}
+                        className="p-1 text-gray-600 dark:text-gray-400 hover:text-ember-700 dark:hover:text-ember-500"
+                        title="Edit"
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleArchiveType(type)}
+                        className="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                        title="Archive"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                    <span
+                      className={`px-2 py-1 rounded ${
+                        type.isActive
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {type.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    {type._count && (
+                      <>
+                        <span>{type._count.allowances} allowances</span>
+                        <span>{type._count.transactions} logs</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-              <div className="mb-6">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  Current Balance:
-                </p>
-                <p className="text-3xl font-bold text-ember-700 dark:text-ember-500">
-                  {formatTime(selectedMember.currentBalance)}
+      {/* Allowances Tab */}
+      {activeTab === 'allowances' && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              Screen Time Allowances
+            </h2>
+            <button
+              onClick={handleCreateAllowance}
+              className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Allowance
+            </button>
+          </div>
+
+          {allowances.length === 0 ? (
+            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                No allowances configured yet.
+              </p>
+              <button
+                onClick={handleCreateAllowance}
+                className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
+              >
+                Create Your First Allowance
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Member
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Type
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Allowance
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Period
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Rollover
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {allowances.map((allowance) => (
+                    <tr key={allowance.id}>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        {allowance.member.name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        {allowance.screenTimeType.name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        {formatTime(allowance.allowanceMinutes)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                        {allowance.period}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                        {allowance.rolloverEnabled ? (
+                          <span>
+                            Yes
+                            {allowance.rolloverCapMinutes !== null && (
+                              <span className="ml-1">
+                                (cap: {formatTime(allowance.rolloverCapMinutes)})
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span>No</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleEditAllowance(allowance)}
+                          className="p-1 text-gray-600 dark:text-gray-400 hover:text-ember-700 dark:hover:text-ember-500"
+                          title="Edit"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Type Modal */}
+      {showTypeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                {editingType ? 'Edit Screen Time Type' : 'Create Screen Time Type'}
+              </h3>
+              <button
+                onClick={() => setShowTypeModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={typeForm.name}
+                  onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  placeholder="e.g., Educational, Entertainment, Gaming"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={typeForm.description}
+                  onChange={(e) => setTypeForm({ ...typeForm, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  rows={3}
+                  placeholder="Describe this screen time type..."
+                />
+              </div>
+
+              {editingType && (
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={typeForm.isActive}
+                    onChange={(e) => setTypeForm({ ...typeForm, isActive: e.target.checked })}
+                    className="w-4 h-4 text-ember-700 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isActive" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                    Active
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleSaveType}
+                className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded font-medium"
+              >
+                {editingType ? 'Update' : 'Create'}
+              </button>
+              <button
+                onClick={() => setShowTypeModal(false)}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Allowance Modal */}
+      {showAllowanceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                {editingAllowance ? 'Edit Allowance' : 'Create Allowance'}
+              </h3>
+              <button
+                onClick={() => setShowAllowanceModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Family Member *
+                </label>
+                <select
+                  value={allowanceForm.memberId}
+                  onChange={(e) => setAllowanceForm({ ...allowanceForm, memberId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required
+                >
+                  <option value="">Select a member</option>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Screen Time Type *
+                </label>
+                <select
+                  value={allowanceForm.screenTimeTypeId}
+                  onChange={(e) =>
+                    setAllowanceForm({ ...allowanceForm, screenTimeTypeId: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required
+                >
+                  <option value="">Select a type</option>
+                  {types
+                    .filter((t) => t.isActive && !t.isArchived)
+                    .map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Allowance (minutes) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={allowanceForm.allowanceMinutes}
+                  onChange={(e) =>
+                    setAllowanceForm({
+                      ...allowanceForm,
+                      allowanceMinutes: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {formatTime(allowanceForm.allowanceMinutes)}
                 </p>
               </div>
 
-              <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Period *
+                </label>
+                <select
+                  value={allowanceForm.period}
+                  onChange={(e) =>
+                    setAllowanceForm({
+                      ...allowanceForm,
+                      period: e.target.value as 'DAILY' | 'WEEKLY',
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required
+                >
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                </select>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="rolloverEnabled"
+                  checked={allowanceForm.rolloverEnabled}
+                  onChange={(e) =>
+                    setAllowanceForm({ ...allowanceForm, rolloverEnabled: e.target.checked })
+                  }
+                  className="w-4 h-4 text-ember-700 border-gray-300 rounded"
+                />
+                <label htmlFor="rolloverEnabled" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  Enable rollover
+                </label>
+              </div>
+
+              {allowanceForm.rolloverEnabled && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Adjustment Amount (minutes)
+                    Rollover Cap (minutes, optional)
                   </label>
                   <input
                     type="number"
-                    value={adjustmentAmount}
-                    onChange={(e) => setAdjustmentAmount(e.target.value)}
-                    placeholder="e.g., +30 or -15"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    min="0"
+                    value={allowanceForm.rolloverCapMinutes}
+                    onChange={(e) =>
+                      setAllowanceForm({ ...allowanceForm, rolloverCapMinutes: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder="No cap"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Use positive numbers to add time, negative to remove
+                    Maximum minutes that can roll over. Leave empty for no cap.
                   </p>
                 </div>
+              )}
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Reason (optional)
-                  </label>
-                  <textarea
-                    value={adjustmentReason}
-                    onChange={(e) => setAdjustmentReason(e.target.value)}
-                    placeholder="Why are you adjusting the balance?"
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleAdjustBalance}
-                    disabled={adjusting || !adjustmentAmount}
-                    className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold rounded-lg transition-colors"
-                  >
-                    {adjusting ? 'Adjusting...' : 'Apply Adjustment'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedMember(null);
-                      setAdjustmentAmount('');
-                      setAdjustmentReason('');
-                    }}
-                    className="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white font-semibold rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleSaveAllowance}
+                className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded font-medium"
+              >
+                {editingAllowance ? 'Update' : 'Create'}
+              </button>
+              <button
+                onClick={() => setShowAllowanceModal(false)}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
             </div>
           </div>
-        )}
-
-        {/* Grace Settings Modal */}
-        {graceSettingsMember && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-2xl w-full my-8">
-              <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 rounded-t-lg">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Grace Settings - {graceSettingsMember.name}
-                  </h2>
-                  <button
-                    onClick={() => setGraceSettingsMember(null)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <GraceSettingsPanel
-                  memberId={graceSettingsMember.id}
-                  memberName={graceSettingsMember.name}
-                  onSettingsSaved={() => {
-                    setTimeout(() => setGraceSettingsMember(null), 2000);
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Alert Modal */}
-        <AlertModal
-          isOpen={alertModal.isOpen}
-          onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
-          title={alertModal.title}
-          message={alertModal.message}
-          type={alertModal.type}
-        />
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
@@ -68,7 +69,7 @@ export async function PATCH(
       message: 'Meal entry updated successfully',
     });
   } catch (error) {
-    console.error('Error updating meal entry:', error);
+    logger.error('Error updating meal entry:', error);
     return NextResponse.json(
       { error: 'Failed to update meal entry' },
       { status: 500 }
@@ -131,7 +132,7 @@ export async function DELETE(
       message: 'Meal entry deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting meal entry:', error);
+    logger.error('Error deleting meal entry:', error);
     return NextResponse.json(
       { error: 'Failed to delete meal entry' },
       { status: 500 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ConfirmModal } from '@/components/ui/Modal';
 
 interface GuestInvite {
   id: string;
@@ -44,6 +45,13 @@ export default function GuestManagement() {
   const [accessLevel, setAccessLevel] = useState('VIEW_ONLY');
   const [durationHours, setDurationHours] = useState(24);
   const [maxUses, setMaxUses] = useState(1);
+  const [revokeConfirmModal, setRevokeConfirmModal] = useState<{
+    isOpen: boolean;
+    inviteId: string | null;
+  }>({
+    isOpen: false,
+    inviteId: null,
+  });
 
   const loadInvites = async () => {
     setLoading(true);
@@ -118,9 +126,12 @@ export default function GuestManagement() {
   };
 
   const handleRevokeInvite = async (inviteId: string) => {
-    if (!confirm('Are you sure you want to revoke this guest invite? All active sessions will be ended.')) {
-      return;
-    }
+    setRevokeConfirmModal({ isOpen: true, inviteId });
+  };
+
+  const confirmRevokeInvite = async () => {
+    if (!revokeConfirmModal.inviteId) return;
+    const inviteId = revokeConfirmModal.inviteId;
 
     try {
       const response = await fetch(`/api/family/guests/${inviteId}`, {
@@ -399,6 +410,18 @@ export default function GuestManagement() {
           ))}
         </div>
       )}
+
+      {/* Revoke Confirmation Modal */}
+      <ConfirmModal
+        isOpen={revokeConfirmModal.isOpen}
+        onClose={() => setRevokeConfirmModal({ isOpen: false, inviteId: null })}
+        onConfirm={confirmRevokeInvite}
+        title="Revoke Guest Invite"
+        message="Are you sure you want to revoke this guest invite? All active sessions will be ended."
+        confirmText="Revoke"
+        cancelText="Cancel"
+        confirmColor="red"
+      />
     </div>
   );
 }

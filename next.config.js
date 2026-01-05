@@ -1,6 +1,6 @@
 const withPWA = require('next-pwa')({
   dest: 'public',
-  register: true,
+  register: false, // We'll handle registration manually to have more control
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
   buildExcludes: [
@@ -8,6 +8,8 @@ const withPWA = require('next-pwa')({
     /app-build-manifest\.json$/,
   ],
   runtimeCaching: [],
+  // Ensure service worker files are included in the build
+  sw: 'sw.js',
 });
 
 /** @type {import('next').NextConfig} */

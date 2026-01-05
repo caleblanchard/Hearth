@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,18 +13,13 @@ export async function GET(request: NextRequest) {
 
     const { familyId, id: memberId } = session.user;
 
-    // Fetch today's chores for the user
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
+    // Fetch all pending/rejected chores for the user (regardless of due date)
+    // This ensures chores show up even if dueDate isn't set correctly or instances weren't generated for today
     const chores = await prisma.choreInstance.findMany({
       where: {
         assignedToId: memberId,
-        dueDate: {
-          gte: today,
-          lt: tomorrow,
+        status: {
+          in: ['PENDING', 'REJECTED'],
         },
       },
       include: {
@@ -33,9 +29,10 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: {
-        dueDate: 'asc',
-      },
+      orderBy: [
+        { dueDate: 'asc' },
+        { createdAt: 'asc' },
+      ],
     });
 
     // Fetch screen time balance
@@ -51,6 +48,62 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+
+    // Fetch screen time allowances with remaining time calculations
+    const allowances = await prisma.screenTimeAllowance.findMany({
+      where: {
+        memberId,
+        screenTimeType: {
+          isActive: true,
+          isArchived: false,
+        },
+      },
+      include: {
+        screenTimeType: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
+    });
+
+    // Calculate remaining time for each allowance
+    const allowancesWithRemaining = await Promise.all(
+      allowances.map(async (allowance) => {
+        try {
+          const { calculateRemainingTime } = await import('@/lib/screentime-utils');
+          const remaining = await calculateRemainingTime(memberId, allowance.screenTimeTypeId);
+          return {
+            id: allowance.id,
+            screenTimeTypeId: allowance.screenTimeTypeId,
+            screenTimeTypeName: allowance.screenTimeType.name,
+            allowanceMinutes: allowance.allowanceMinutes,
+            period: allowance.period,
+            remainingMinutes: remaining.remainingMinutes,
+            usedMinutes: remaining.usedMinutes,
+            rolloverMinutes: remaining.rolloverMinutes,
+          };
+        } catch (error) {
+          // If calculation fails, return basic info
+          logger.warn('Failed to calculate remaining time for allowance', error, {
+            allowanceId: allowance.id,
+            memberId,
+          });
+          return {
+            id: allowance.id,
+            screenTimeTypeId: allowance.screenTimeTypeId,
+            screenTimeTypeName: allowance.screenTimeType.name,
+            allowanceMinutes: allowance.allowanceMinutes,
+            period: allowance.period,
+            remainingMinutes: allowance.allowanceMinutes,
+            usedMinutes: 0,
+            rolloverMinutes: 0,
+          };
+        }
+      })
+    );
 
     // Fetch credit balance
     const creditBalance = await prisma.creditBalance.findUnique({
@@ -124,6 +177,32 @@ export async function GET(request: NextRequest) {
       event.assignments.length > 0 || session.user.role === 'PARENT'
     );
 
+    // Fetch project tasks assigned to the user
+    const projectTasks = await prisma.projectTask.findMany({
+      where: {
+        assigneeId: memberId,
+        status: {
+          in: ['PENDING', 'IN_PROGRESS', 'BLOCKED'],
+        },
+        project: {
+          familyId,
+        },
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        { dueDate: 'asc' },
+        { createdAt: 'asc' },
+      ],
+      take: 5,
+    });
+
     return NextResponse.json({
       chores: chores.map(chore => ({
         id: chore.id,
@@ -139,6 +218,7 @@ export async function GET(request: NextRequest) {
         currentBalance: screenTimeBalance.currentBalanceMinutes,
         weeklyAllocation: screenTimeBalance.member.screenTimeSettings?.weeklyAllocationMinutes || 0,
         weekStartDate: screenTimeBalance.weekStartDate,
+        allowances: allowancesWithRemaining,
       } : null,
       credits: creditBalance ? {
         current: creditBalance.currentBalance,
@@ -150,7 +230,14 @@ export async function GET(request: NextRequest) {
         name: shoppingLists[0].name,
         itemCount: shoppingLists[0].items.length,
         urgentCount: shoppingLists[0].items.filter(item => item.priority === 'URGENT').length,
-        items: shoppingLists[0].items.slice(0, 5),
+        items: shoppingLists[0].items.slice(0, 3).map(item => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          priority: item.priority,
+          category: item.category,
+        })),
       } : null,
       todos: todos.map(todo => ({
         id: todo.id,
@@ -167,9 +254,18 @@ export async function GET(request: NextRequest) {
         location: event.location,
         color: event.color,
       })),
+      projectTasks: projectTasks.map(task => ({
+        id: task.id,
+        name: task.name,
+        description: task.description,
+        status: task.status,
+        dueDate: task.dueDate,
+        projectId: task.projectId,
+        projectName: task.project.name,
+      })),
     });
   } catch (error) {
-    console.error('Dashboard API error:', error);
+    logger.error('Dashboard API error', error);
     return NextResponse.json(
       { error: 'Failed to fetch dashboard data' },
       { status: 500 }

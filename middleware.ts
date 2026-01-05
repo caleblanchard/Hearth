@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { apiRateLimiter, authRateLimiter, cronRateLimiter, getClientIdentifier } from '@/lib/rate-limit';
+import { apiRateLimiter, authRateLimiter, cronRateLimiter, getClientIdentifier } from '@/lib/rate-limit-redis';
 import { MAX_REQUEST_SIZE_BYTES } from '@/lib/constants';
+import { logger } from '@/lib/logger';
+
+import { CACHE_TTL_MS } from '@/lib/constants';
 
 // Cache the onboarding status in memory to avoid database hits on every request
 let onboardingStatusCache: { complete: boolean; lastCheck: number } | null = null;
-const CACHE_TTL = 60000; // 1 minute
 
 async function checkOnboardingStatus(): Promise<boolean> {
   // Return cached status if available and fresh
-  if (onboardingStatusCache && Date.now() - onboardingStatusCache.lastCheck < CACHE_TTL) {
+  if (onboardingStatusCache && Date.now() - onboardingStatusCache.lastCheck < CACHE_TTL_MS) {
     return onboardingStatusCache.complete;
   }
 
@@ -78,11 +80,18 @@ export async function middleware(request: NextRequest) {
   }
 
   // Validate request size for API routes
+  // Note: Full body validation happens in route handlers using parseJsonBody
+  // This is a quick check on content-length header
   if (pathname.startsWith('/api')) {
     const contentLength = request.headers.get('content-length');
     if (contentLength) {
       const size = parseInt(contentLength, 10);
       if (!isNaN(size) && size > MAX_REQUEST_SIZE_BYTES) {
+        logger.warn('Request size exceeded in middleware', {
+          size,
+          maxSize: MAX_REQUEST_SIZE_BYTES,
+          path: pathname,
+        });
         return NextResponse.json(
           {
             error: 'Request too large',
@@ -104,7 +113,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const identifier = getClientIdentifier(request);
-  const result = limiter.check(identifier);
+  const result = await limiter.check(identifier);
 
   if (!result.allowed) {
     return NextResponse.json(

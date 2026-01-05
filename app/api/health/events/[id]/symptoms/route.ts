@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { SymptomType } from '@/app/generated/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_SYMPTOM_TYPES: SymptomType[] = [
   'FEVER',
@@ -99,7 +100,7 @@ export async function POST(
 
     return NextResponse.json({ symptom }, { status: 201 });
   } catch (error) {
-    console.error('Error adding symptom:', error);
+    logger.error('Error adding symptom:', error);
     return NextResponse.json(
       { error: 'Failed to add symptom' },
       { status: 500 }

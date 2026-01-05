@@ -18,42 +18,46 @@ model Family {
   id        String   @id @default(uuid())
   name      String
   timezone  String   @default("America/New_York")
-  location  String?  // City, State or address for display
-  latitude  Float?   // For weather API
-  longitude Float?   // For weather API
+  location  String? // City, State or address for display
+  latitude  Float? // For weather API
+  longitude Float? // For weather API
   settings  Json?    @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  members                FamilyMember[]
-  moduleConfigurations   ModuleConfiguration[]
-  auditLogs              AuditLog[]
-  choreDefinitions       ChoreDefinition[]
-  todoItems              TodoItem[]
-  shoppingLists          ShoppingList[]
-  calendarEvents         CalendarEvent[]
-  guestInvites           GuestInvite[]
-  fileUploads            FileUpload[]
-  rewardItems            RewardItem[]
-  leaderboardEntries     LeaderboardEntry[]
-  routines               Routine[]
-  communicationPosts     CommunicationPost[]
-  mealPlans              MealPlan[]
-  leftovers              Leftover[]
-  recipes                Recipe[]
-  pets                   Pet[]
-  inventoryItems         InventoryItem[]
-  maintenanceItems       MaintenanceItem[]
-  transportSchedules     TransportSchedule[]
-  transportLocations     TransportLocation[]
-  transportDrivers       TransportDriver[]
-  carpoolGroups          CarpoolGroup[]
-  documents              Document[]
-  kioskSessions          KioskSession[]
-  kioskSettings          KioskSettings?
-  automationRules        AutomationRule[]
-  projects               Project[]
+  members                       FamilyMember[]
+  moduleConfigurations          ModuleConfiguration[]
+  auditLogs                     AuditLog[]
+  choreDefinitions              ChoreDefinition[]
+  todoItems                     TodoItem[]
+  shoppingLists                 ShoppingList[]
+  calendarEvents                CalendarEvent[]
+  guestInvites                  GuestInvite[]
+  fileUploads                   FileUpload[]
+  rewardItems                   RewardItem[]
+  leaderboardEntries            LeaderboardEntry[]
+  routines                      Routine[]
+  communicationPosts            CommunicationPost[]
+  mealPlans                     MealPlan[]
+  leftovers                     Leftover[]
+  recipes                       Recipe[]
+  pets                          Pet[]
+  inventoryItems                InventoryItem[]
+  maintenanceItems              MaintenanceItem[]
+  transportSchedules            TransportSchedule[]
+  transportLocations            TransportLocation[]
+  transportDrivers              TransportDriver[]
+  screenTimeTypes               ScreenTimeType[]
+  carpoolGroups                 CarpoolGroup[]
+  documents                     Document[]
+  kioskSessions                 KioskSession[]
+  kioskSettings                 KioskSettings?
+  automationRules               AutomationRule[]
+  projects                      Project[]
+  calendarConnections           CalendarConnection[]
+  externalCalendarSubscriptions ExternalCalendarSubscription[]
+  calendarSyncLogs              CalendarSyncLog[]
 
   @@map("families")
 }
@@ -63,13 +67,13 @@ model Family {
 // ============================================
 
 model SystemConfig {
-  id                 String   @id @default("system") // Singleton - only one row
-  onboardingComplete Boolean  @default(false)
+  id                 String    @id @default("system") // Singleton - only one row
+  onboardingComplete Boolean   @default(false)
   setupCompletedAt   DateTime?
-  setupCompletedBy   String?  // Member ID who completed onboarding
-  version            String   @default("0.1.0")
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  setupCompletedBy   String? // Member ID who completed onboarding
+  version            String    @default("0.1.0")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@map("system_config")
 }
@@ -85,8 +89,8 @@ model FamilyMember {
   familyId     String
   name         String
   email        String?   @unique
-  passwordHash String?   // For parents
-  pin          String?   // Hashed, for children
+  passwordHash String? // For parents
+  pin          String? // Hashed, for children
   role         Role
   birthDate    DateTime?
   avatarUrl    String?
@@ -96,65 +100,68 @@ model FamilyMember {
   lastLoginAt  DateTime?
 
   // Relations
-  family                            Family                    @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  createdTodos                      TodoItem[]                @relation("TodoCreator")
-  assignedTodos                     TodoItem[]                @relation("TodoAssignee")
-  shoppingItemsRequested            ShoppingItem[]            @relation("ShoppingItemRequester")
-  shoppingItemsAdded                ShoppingItem[]            @relation("ShoppingItemAdder")
-  shoppingItemsPurchased            ShoppingItem[]            @relation("ShoppingItemPurchaser")
-  createdEvents                     CalendarEvent[]           @relation("EventCreator")
-  eventAssignments                  CalendarEventAssignment[]
-  choreAssignments                  ChoreAssignment[]
-  choreInstancesAssigned            ChoreInstance[]           @relation("ChoreAssignedTo")
-  choreInstancesCompleted           ChoreInstance[]           @relation("ChoreCompletedBy")
-  choreInstancesApproved            ChoreInstance[]           @relation("ChoreApprovedBy")
-  screenTimeSettings                ScreenTimeSettings?
-  screenTimeBalance                 ScreenTimeBalance?
-  screenTimeTransactions            ScreenTimeTransaction[]   @relation("ScreenTimeTransactions")
-  screenTimeTransactionsCreated     ScreenTimeTransaction[]   @relation("ScreenTimeTransactionsCreated")
-  screenTimeGraceSettings           ScreenTimeGraceSettings?
-  gracePeriodLogs                   GracePeriodLog[]
-  gracePeriodApprovals              GracePeriodLog[]          @relation("GraceApprover")
-  creditBalance                     CreditBalance?
-  creditTransactions                CreditTransaction[]
-  creditAdjustmentsCreated          CreditTransaction[]       @relation("CreditAdjuster")
-  rewardsCreated                    RewardItem[]              @relation("RewardCreator")
-  redemptionsRequested              RewardRedemption[]        @relation("RedemptionRequester")
-  redemptionsApproved               RewardRedemption[]        @relation("RedemptionApprover")
-  redemptionsRejected               RewardRedemption[]        @relation("RedemptionRejecter")
-  redemptionsFulfilled              RewardRedemption[]        @relation("RedemptionFulfiller")
-  auditLogsCreated                  AuditLog[]
-  guestInvitesCreated               GuestInvite[]
-  fileUploadsCreated                FileUpload[]
-  notifications                     Notification[]
-  pushSubscriptions                 PushSubscription[]
-  notificationPreference            NotificationPreference?
-  achievements                      UserAchievement[]
-  streaks                           Streak[]
-  leaderboardEntries                LeaderboardEntry[]
-  allowanceSchedules                AllowanceSchedule[]
-  savingsGoals                      SavingsGoal[]
-  budgets                           Budget[]
-  routinesAssigned                  Routine[]
-  routineCompletions                RoutineCompletion[]
-  postsAuthored                     CommunicationPost[]   @relation("PostAuthor")
-  postReactions                     PostReaction[]
-  leftoversCreated                  Leftover[]
-  recipesCreated                    Recipe[]
-  recipeRatings                     RecipeRating[]
-  petFeedings                       PetFeeding[]
-  maintenanceCompletions            MaintenanceCompletion[]
-  transportSchedules                TransportSchedule[]
-  documentsUploaded                 Document[]
-  documentAccessLogs                DocumentAccessLog[]
-  medicationSafety                  MedicationSafety[]
-  kioskSessionsAsMember             KioskSession[]
-  healthEvents                      HealthEvent[]
-  temperatureLogs                   TemperatureLog[]
-  medicalProfile                    MedicalProfile?
-  automationRulesCreated            AutomationRule[]
-  projectsCreated                   Project[]         @relation("ProjectCreator")
-  projectTasksAssigned              ProjectTask[]
+  family                               Family                         @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdTodos                         TodoItem[]                     @relation("TodoCreator")
+  assignedTodos                        TodoItem[]                     @relation("TodoAssignee")
+  shoppingItemsRequested               ShoppingItem[]                 @relation("ShoppingItemRequester")
+  shoppingItemsAdded                   ShoppingItem[]                 @relation("ShoppingItemAdder")
+  shoppingItemsPurchased               ShoppingItem[]                 @relation("ShoppingItemPurchaser")
+  createdEvents                        CalendarEvent[]                @relation("EventCreator")
+  eventAssignments                     CalendarEventAssignment[]
+  choreAssignments                     ChoreAssignment[]
+  choreInstancesAssigned               ChoreInstance[]                @relation("ChoreAssignedTo")
+  choreInstancesCompleted              ChoreInstance[]                @relation("ChoreCompletedBy")
+  choreInstancesApproved               ChoreInstance[]                @relation("ChoreApprovedBy")
+  screenTimeSettings                   ScreenTimeSettings?
+  screenTimeBalance                    ScreenTimeBalance?
+  screenTimeTransactions               ScreenTimeTransaction[]        @relation("ScreenTimeTransactions")
+  screenTimeTransactionsCreated        ScreenTimeTransaction[]        @relation("ScreenTimeTransactionsCreated")
+  screenTimeGraceSettings              ScreenTimeGraceSettings?
+  screenTimeAllowances                 ScreenTimeAllowance[]
+  gracePeriodLogs                      GracePeriodLog[]
+  gracePeriodApprovals                 GracePeriodLog[]               @relation("GraceApprover")
+  creditBalance                        CreditBalance?
+  creditTransactions                   CreditTransaction[]
+  creditAdjustmentsCreated             CreditTransaction[]            @relation("CreditAdjuster")
+  rewardsCreated                       RewardItem[]                   @relation("RewardCreator")
+  redemptionsRequested                 RewardRedemption[]             @relation("RedemptionRequester")
+  redemptionsApproved                  RewardRedemption[]             @relation("RedemptionApprover")
+  redemptionsRejected                  RewardRedemption[]             @relation("RedemptionRejecter")
+  redemptionsFulfilled                 RewardRedemption[]             @relation("RedemptionFulfiller")
+  auditLogsCreated                     AuditLog[]
+  guestInvitesCreated                  GuestInvite[]
+  fileUploadsCreated                   FileUpload[]
+  notifications                        Notification[]
+  pushSubscriptions                    PushSubscription[]
+  notificationPreference               NotificationPreference?
+  achievements                         UserAchievement[]
+  streaks                              Streak[]
+  leaderboardEntries                   LeaderboardEntry[]
+  allowanceSchedules                   AllowanceSchedule[]
+  savingsGoals                         SavingsGoal[]
+  budgets                              Budget[]
+  routinesAssigned                     Routine[]
+  routineCompletions                   RoutineCompletion[]
+  postsAuthored                        CommunicationPost[]            @relation("PostAuthor")
+  postReactions                        PostReaction[]
+  leftoversCreated                     Leftover[]
+  recipesCreated                       Recipe[]
+  recipeRatings                        RecipeRating[]
+  petFeedings                          PetFeeding[]
+  maintenanceCompletions               MaintenanceCompletion[]
+  transportSchedules                   TransportSchedule[]
+  documentsUploaded                    Document[]
+  documentAccessLogs                   DocumentAccessLog[]
+  medicationSafety                     MedicationSafety[]
+  kioskSessionsAsMember                KioskSession[]
+  healthEvents                         HealthEvent[]
+  temperatureLogs                      TemperatureLog[]
+  medicalProfile                       MedicalProfile?
+  automationRulesCreated               AutomationRule[]
+  projectsCreated                      Project[]                      @relation("ProjectCreator")
+  projectTasksAssigned                 ProjectTask[]
+  calendarConnections                  CalendarConnection[]
+  externalCalendarSubscriptionsCreated ExternalCalendarSubscription[] @relation("SubscriptionCreator")
 
   @@index([familyId])
   @@index([email])
@@ -217,19 +224,19 @@ enum Difficulty {
 }
 
 model ChoreDefinition {
-  id               String   @id @default(uuid())
+  id               String     @id @default(uuid())
   familyId         String
   name             String
   description      String?
   instructions     String?
   estimatedMinutes Int
   difficulty       Difficulty
-  creditValue      Int      @default(0)
+  creditValue      Int        @default(0)
   minimumAge       Int?
-  iconName         String   @default("task")
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  iconName         String     @default("task")
+  isActive         Boolean    @default(true)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   // Relations
   family    Family          @relation(fields: [familyId], references: [id], onDelete: Cascade)
@@ -259,7 +266,7 @@ model ChoreSchedule {
   assignmentType    AssignmentType
   frequency         Frequency
   customCron        String?
-  dayOfWeek         Int?           // 0-6, for weekly
+  dayOfWeek         Int? // 0-6, for weekly
   requiresApproval  Boolean        @default(false)
   requiresPhoto     Boolean        @default(false)
   isActive          Boolean        @default(true)
@@ -301,11 +308,11 @@ enum ChoreStatus {
 }
 
 model ChoreInstance {
-  id              String       @id @default(uuid())
+  id              String      @id @default(uuid())
   choreScheduleId String
   assignedToId    String
   dueDate         DateTime
-  status          ChoreStatus  @default(PENDING)
+  status          ChoreStatus @default(PENDING)
   completedAt     DateTime?
   completedById   String?
   approvedById    String?
@@ -313,8 +320,8 @@ model ChoreInstance {
   photoUrl        String?
   notes           String?
   creditsAwarded  Int?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   // Relations
   choreSchedule ChoreSchedule @relation(fields: [choreScheduleId], references: [id], onDelete: Cascade)
@@ -348,15 +355,15 @@ enum ResetDay {
 }
 
 model ScreenTimeSettings {
-  id                      String      @id @default(uuid())
-  memberId                String      @unique
+  id                      String       @id @default(uuid())
+  memberId                String       @unique
   weeklyAllocationMinutes Int
-  resetDay                ResetDay    @default(SUNDAY)
+  resetDay                ResetDay     @default(SUNDAY)
   rolloverType            RolloverType @default(NONE)
   rolloverCapMinutes      Int?
-  isActive                Boolean     @default(true)
-  createdAt               DateTime    @default(now())
-  updatedAt               DateTime    @updatedAt
+  isActive                Boolean      @default(true)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
 
   // Relations
   member FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -399,24 +406,74 @@ enum DeviceType {
   OTHER
 }
 
+model ScreenTimeType {
+  id          String   @id @default(uuid())
+  familyId    String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  family       Family                  @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  allowances   ScreenTimeAllowance[]
+  transactions ScreenTimeTransaction[]
+
+  @@index([familyId, isActive, isArchived])
+  @@map("screen_time_types")
+}
+
+enum ScreenTimePeriod {
+  DAILY
+  WEEKLY
+}
+
+model ScreenTimeAllowance {
+  id                 String           @id @default(uuid())
+  memberId           String
+  screenTimeTypeId   String
+  allowanceMinutes   Int
+  period             ScreenTimePeriod @default(WEEKLY)
+  rolloverEnabled    Boolean          @default(false)
+  rolloverCapMinutes Int?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  // Relations
+  member         FamilyMember   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  screenTimeType ScreenTimeType @relation(fields: [screenTimeTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, screenTimeTypeId])
+  @@index([memberId])
+  @@index([screenTimeTypeId])
+  @@map("screen_time_allowances")
+}
+
 model ScreenTimeTransaction {
-  id                     String                     @id @default(uuid())
+  id                     String                    @id @default(uuid())
   memberId               String
   type                   ScreenTimeTransactionType
   amountMinutes          Int
   balanceAfter           Int
   deviceType             DeviceType?
+  screenTimeTypeId       String?
   reason                 String?
   relatedChoreInstanceId String?
   createdById            String
   notes                  String?
-  createdAt              DateTime                   @default(now())
+  wasOverride            Boolean                   @default(false)
+  overrideReason         String?
+  createdAt              DateTime                  @default(now())
 
   // Relations
-  member    FamilyMember @relation("ScreenTimeTransactions", fields: [memberId], references: [id], onDelete: Cascade)
-  createdBy FamilyMember @relation("ScreenTimeTransactionsCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  member         FamilyMember    @relation("ScreenTimeTransactions", fields: [memberId], references: [id], onDelete: Cascade)
+  createdBy      FamilyMember    @relation("ScreenTimeTransactionsCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  screenTimeType ScreenTimeType? @relation(fields: [screenTimeTypeId], references: [id], onDelete: SetNull)
 
   @@index([memberId, createdAt])
+  @@index([screenTimeTypeId])
   @@map("screen_time_transactions")
 }
 
@@ -427,16 +484,16 @@ enum GraceRepaymentMode {
 }
 
 model ScreenTimeGraceSettings {
-  id                         String              @id @default(uuid())
-  memberId                   String              @unique
-  gracePeriodMinutes         Int                 @default(15)
-  maxGracePerDay             Int                 @default(1)
-  maxGracePerWeek            Int                 @default(3)
-  graceRepaymentMode         GraceRepaymentMode  @default(DEDUCT_NEXT_WEEK)
-  lowBalanceWarningMinutes   Int                 @default(10)
-  requiresApproval           Boolean             @default(false)
-  createdAt                  DateTime            @default(now())
-  updatedAt                  DateTime            @updatedAt
+  id                       String             @id @default(uuid())
+  memberId                 String             @unique
+  gracePeriodMinutes       Int                @default(15)
+  maxGracePerDay           Int                @default(1)
+  maxGracePerWeek          Int                @default(3)
+  graceRepaymentMode       GraceRepaymentMode @default(DEDUCT_NEXT_WEEK)
+  lowBalanceWarningMinutes Int                @default(10)
+  requiresApproval         Boolean            @default(false)
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
 
   // Relations
   member FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -453,15 +510,15 @@ enum RepaymentStatus {
 }
 
 model GracePeriodLog {
-  id                     String           @id @default(uuid())
-  memberId               String
-  requestedAt            DateTime         @default(now())
-  minutesGranted         Int
-  reason                 String?
-  approvedById           String?
-  repaymentStatus        RepaymentStatus  @default(PENDING)
-  repaidAt               DateTime?
-  relatedTransactionId   String?
+  id                   String          @id @default(uuid())
+  memberId             String
+  requestedAt          DateTime        @default(now())
+  minutesGranted       Int
+  reason               String?
+  approvedById         String?
+  repaymentStatus      RepaymentStatus @default(PENDING)
+  repaidAt             DateTime?
+  relatedTransactionId String?
 
   // Relations
   member     FamilyMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -476,13 +533,13 @@ model GracePeriodLog {
 // ============================================
 
 model CreditBalance {
-  id              String   @id @default(uuid())
-  memberId        String   @unique
-  currentBalance  Int      @default(0)
-  lifetimeEarned  Int      @default(0)
-  lifetimeSpent   Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(uuid())
+  memberId       String   @unique
+  currentBalance Int      @default(0)
+  lifetimeEarned Int      @default(0)
+  lifetimeSpent  Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Relations
   member FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -521,8 +578,8 @@ model CreditTransaction {
   createdAt              DateTime              @default(now())
 
   // Relations
-  member           FamilyMember       @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  adjustedBy       FamilyMember?      @relation("CreditAdjuster", fields: [adjustedById], references: [id], onDelete: SetNull)
+  member           FamilyMember      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  adjustedBy       FamilyMember?     @relation("CreditAdjuster", fields: [adjustedById], references: [id], onDelete: SetNull)
   rewardRedemption RewardRedemption?
 
   @@index([memberId, createdAt])
@@ -555,7 +612,7 @@ model RewardItem {
   description String?
   category    RewardCategory @default(OTHER)
   costCredits Int
-  quantity    Int?           // null = unlimited
+  quantity    Int? // null = unlimited
   imageUrl    String?
   status      RewardStatus   @default(ACTIVE)
   createdById String
@@ -563,8 +620,8 @@ model RewardItem {
   updatedAt   DateTime       @updatedAt
 
   // Relations
-  family      Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  createdBy   FamilyMember        @relation("RewardCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  family      Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdBy   FamilyMember       @relation("RewardCreator", fields: [createdById], references: [id], onDelete: Cascade)
   redemptions RewardRedemption[]
 
   @@index([familyId, status])
@@ -579,21 +636,21 @@ enum RedemptionStatus {
 }
 
 model RewardRedemption {
-  id                     String            @id @default(uuid())
-  rewardId               String
-  memberId               String
-  creditTransactionId    String?           @unique
-  status                 RedemptionStatus  @default(PENDING)
-  requestedAt            DateTime          @default(now())
-  approvedAt             DateTime?
-  approvedById           String?
-  rejectedAt             DateTime?
-  rejectedById           String?
-  rejectionReason        String?
-  fulfilledAt            DateTime?
-  fulfilledById          String?
-  notes                  String?
-  updatedAt              DateTime          @updatedAt
+  id                  String           @id @default(uuid())
+  rewardId            String
+  memberId            String
+  creditTransactionId String?          @unique
+  status              RedemptionStatus @default(PENDING)
+  requestedAt         DateTime         @default(now())
+  approvedAt          DateTime?
+  approvedById        String?
+  rejectedAt          DateTime?
+  rejectedById        String?
+  rejectionReason     String?
+  fulfilledAt         DateTime?
+  fulfilledById       String?
+  notes               String?
+  updatedAt           DateTime         @updatedAt
 
   // Relations
   reward            RewardItem         @relation(fields: [rewardId], references: [id], onDelete: Cascade)
@@ -687,22 +744,22 @@ enum ShoppingStatus {
 }
 
 model ShoppingItem {
-  id           String           @id @default(uuid())
-  listId       String
-  name         String
-  quantity     Int              @default(1)
-  unit         String?
-  category     String?
-  priority     ShoppingPriority @default(NORMAL)
-  status       ShoppingStatus   @default(PENDING)
+  id            String           @id @default(uuid())
+  listId        String
+  name          String
+  quantity      Int              @default(1)
+  unit          String?
+  category      String?
+  priority      ShoppingPriority @default(NORMAL)
+  status        ShoppingStatus   @default(PENDING)
   requestedById String
-  addedById    String
+  addedById     String
   purchasedById String?
-  purchasedAt  DateTime?
-  projectId    String?          // Optional link to project
-  notes        String?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  purchasedAt   DateTime?
+  projectId     String? // Optional link to project
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   // Relations
   list        ShoppingList  @relation(fields: [listId], references: [id], onDelete: Cascade)
@@ -739,26 +796,39 @@ model CalendarEvent {
   externalId  String?
   color       String?
   isAllDay    Boolean   @default(false)
-  projectId   String?   // Optional link to project
+  projectId   String? // Optional link to project
   createdById String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Calendar sync fields (Google Calendar, external subscriptions)
+  calendarConnectionId   String?
+  externalSubscriptionId String?
+  googleEventId          String? // Google's event ID
+  lastSyncedAt           DateTime? // Last time synced with external calendar
+  syncHash               String? // Hash of event data to detect changes
+
   // Relations
-  family      Family                    @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  createdBy   FamilyMember              @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  project     Project?                  @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  assignments CalendarEventAssignment[]
+  family               Family                        @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdBy            FamilyMember                  @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  project              Project?                      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignments          CalendarEventAssignment[]
+  calendarConnection   CalendarConnection?           @relation(fields: [calendarConnectionId], references: [id], onDelete: SetNull)
+  externalSubscription ExternalCalendarSubscription? @relation(fields: [externalSubscriptionId], references: [id], onDelete: SetNull)
 
   @@index([familyId, startTime, endTime])
   @@index([projectId])
+  @@index([googleEventId])
+  @@index([calendarConnectionId])
+  @@index([externalSubscriptionId])
+  @@index([syncHash])
   @@map("calendar_events")
 }
 
 model CalendarEventAssignment {
-  id      String @id @default(uuid())
-  eventId String
-  memberId String
+  id        String   @id @default(uuid())
+  eventId   String
+  memberId  String
   createdAt DateTime @default(now())
 
   // Relations
@@ -768,6 +838,139 @@ model CalendarEventAssignment {
   @@unique([eventId, memberId])
   @@index([memberId])
   @@map("calendar_event_assignments")
+}
+
+// ============================================
+// CALENDAR SYNC (Google Calendar, External Subscriptions)
+// ============================================
+
+enum CalendarProvider {
+  GOOGLE
+  OUTLOOK
+  APPLE
+}
+
+enum SyncStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+  DISCONNECTED
+}
+
+enum SyncDirection {
+  IMPORT // External -> App
+  EXPORT // App -> External
+  BOTH
+}
+
+model CalendarConnection {
+  id       String           @id @default(uuid())
+  memberId String
+  familyId String
+  provider CalendarProvider @default(GOOGLE)
+
+  // OAuth Credentials (encrypted)
+  accessToken    String // Encrypted at rest
+  refreshToken   String // Encrypted at rest
+  tokenExpiresAt DateTime
+
+  // Google Calendar specific
+  googleCalendarId String? // e.g., "primary" or specific calendar ID
+  googleEmail      String? // Associated Google account email
+
+  // Sync tracking
+  syncToken            String? // Google's sync token for incremental sync
+  lastSyncAt           DateTime?
+  lastSuccessfulSyncAt DateTime?
+  nextSyncAt           DateTime?
+  syncStatus           SyncStatus @default(ACTIVE)
+  syncError            String? // Last error message
+
+  // Settings
+  syncEnabled      Boolean @default(true)
+  importFromGoogle Boolean @default(true) // Import Google events to app
+  exportToGoogle   Boolean @default(true) // Export app events to Google
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  member   FamilyMember      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  family   Family            @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  events   CalendarEvent[]
+  syncLogs CalendarSyncLog[]
+
+  @@unique([memberId, provider]) // One connection per provider per member
+  @@index([memberId])
+  @@index([familyId])
+  @@index([syncStatus, nextSyncAt]) // For cron job queries
+  @@map("calendar_connections")
+}
+
+model ExternalCalendarSubscription {
+  id          String  @id @default(uuid())
+  familyId    String
+  name        String // User-friendly name (e.g., "School Calendar")
+  url         String // iCal/webcal URL
+  description String?
+  color       String  @default("#9CA3AF") // Gray default
+
+  // Sync tracking
+  lastSyncAt           DateTime?
+  lastSuccessfulSyncAt DateTime?
+  nextSyncAt           DateTime?
+  syncStatus           SyncStatus @default(ACTIVE)
+  syncError            String?
+  etag                 String? // HTTP ETag for caching
+
+  // Settings
+  isActive        Boolean @default(true)
+  refreshInterval Int     @default(1440) // Minutes (default 24 hours)
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  family    Family            @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdBy FamilyMember      @relation("SubscriptionCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  events    CalendarEvent[]
+  syncLogs  CalendarSyncLog[]
+
+  @@index([familyId])
+  @@index([isActive, nextSyncAt]) // For cron job queries
+  @@map("external_calendar_subscriptions")
+}
+
+model CalendarSyncLog {
+  id       String @id @default(uuid())
+  familyId String
+
+  // Connection info (one of these will be set)
+  calendarConnectionId   String?
+  externalSubscriptionId String?
+
+  // Sync details
+  syncDirection SyncDirection
+  status        String // SUCCESS, PARTIAL, FAILED
+  eventsAdded   Int           @default(0)
+  eventsUpdated Int           @default(0)
+  eventsDeleted Int           @default(0)
+  eventsSkipped Int           @default(0)
+  errorMessage  String?
+  duration      Int? // Milliseconds
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  family       Family                        @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  connection   CalendarConnection?           @relation(fields: [calendarConnectionId], references: [id], onDelete: SetNull)
+  subscription ExternalCalendarSubscription? @relation(fields: [externalSubscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([familyId, createdAt])
+  @@index([calendarConnectionId])
+  @@index([externalSubscriptionId])
+  @@map("calendar_sync_logs")
 }
 
 // ============================================
@@ -788,26 +991,26 @@ enum InviteStatus {
 }
 
 model GuestInvite {
-  id           String           @id @default(uuid())
-  familyId     String
-  invitedById  String
-  guestName    String
-  guestEmail   String?
-  accessLevel  GuestAccessLevel
-  inviteCode   String           @unique
-  inviteToken  String           @unique
-  expiresAt    DateTime
-  maxUses      Int              @default(1)
-  useCount     Int              @default(0)
-  status       InviteStatus     @default(PENDING)
+  id             String           @id @default(uuid())
+  familyId       String
+  invitedById    String
+  guestName      String
+  guestEmail     String?
+  accessLevel    GuestAccessLevel
+  inviteCode     String           @unique
+  inviteToken    String           @unique
+  expiresAt      DateTime
+  maxUses        Int              @default(1)
+  useCount       Int              @default(0)
+  status         InviteStatus     @default(PENDING)
   lastAccessedAt DateTime?
-  createdAt    DateTime         @default(now())
-  revokedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  revokedAt      DateTime?
 
   // Relations
-  family      Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  invitedBy   FamilyMember   @relation(fields: [invitedById], references: [id], onDelete: Cascade)
-  sessions    GuestSession[]
+  family    Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  invitedBy FamilyMember   @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  sessions  GuestSession[]
 
   @@index([familyId, status])
   @@index([inviteCode])
@@ -816,12 +1019,12 @@ model GuestInvite {
 }
 
 model GuestSession {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   guestInviteId String
-  sessionToken  String   @unique
+  sessionToken  String    @unique
   ipAddress     String
   userAgent     String
-  startedAt     DateTime @default(now())
+  startedAt     DateTime  @default(now())
   expiresAt     DateTime
   endedAt       DateTime?
 
@@ -838,20 +1041,20 @@ model GuestSession {
 // ============================================
 
 model KioskSession {
-  id                String    @id @default(uuid())
-  familyId          String
-  deviceId          String    @unique
-  sessionToken      String    @unique @default(uuid())
-  isActive          Boolean   @default(true)
-  currentMemberId   String?
-  lastActivityAt    DateTime  @default(now())
-  autoLockMinutes   Int       @default(15)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id              String   @id @default(uuid())
+  familyId        String
+  deviceId        String   @unique
+  sessionToken    String   @unique @default(uuid())
+  isActive        Boolean  @default(true)
+  currentMemberId String?
+  lastActivityAt  DateTime @default(now())
+  autoLockMinutes Int      @default(15)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
-  family            Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  currentMember     FamilyMember? @relation(fields: [currentMemberId], references: [id], onDelete: SetNull)
+  family        Family        @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  currentMember FamilyMember? @relation(fields: [currentMemberId], references: [id], onDelete: SetNull)
 
   @@index([familyId])
   @@index([deviceId])
@@ -871,7 +1074,7 @@ model KioskSettings {
   updatedAt           DateTime @updatedAt
 
   // Relations
-  family              Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
   @@map("kiosk_settings")
 }
@@ -954,6 +1157,11 @@ enum AuditAction {
   SCREENTIME_LOGGED
   SCREENTIME_ADJUSTED
   GRACE_PERIOD_USED
+  SCREENTIME_TYPE_CREATED
+  SCREENTIME_TYPE_UPDATED
+  SCREENTIME_TYPE_ARCHIVED
+  SCREENTIME_TYPE_DELETED
+  SCREENTIME_ALLOWANCE_UPDATED
 
   // Routines
   ROUTINE_CREATED
@@ -1181,9 +1389,9 @@ model PushSubscription {
   id        String   @id @default(uuid())
   userId    String
   endpoint  String   @unique // Web Push endpoint URL
-  p256dh    String   // Public key for encryption
-  auth      String   // Auth secret for encryption
-  userAgent String?  // Browser/device info
+  p256dh    String // Public key for encryption
+  auth      String // Auth secret for encryption
+  userAgent String? // Browser/device info
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1196,23 +1404,23 @@ model PushSubscription {
 
 // Notification preferences per user
 model NotificationPreference {
-  id                      String   @id @default(uuid())
-  userId                  String   @unique
+  id                     String   @id @default(uuid())
+  userId                 String   @unique
   // Enabled notification types (array of NotificationType values)
-  enabledTypes            String[] @default([])
+  enabledTypes           String[] @default([])
   // Quiet hours configuration
-  quietHoursEnabled       Boolean  @default(false)
-  quietHoursStart         String?  // HH:MM format (e.g., "22:00")
-  quietHoursEnd           String?  // HH:MM format (e.g., "07:00")
+  quietHoursEnabled      Boolean  @default(false)
+  quietHoursStart        String? // HH:MM format (e.g., "22:00")
+  quietHoursEnd          String? // HH:MM format (e.g., "07:00")
   // Push notification settings
-  pushEnabled             Boolean  @default(true)
-  inAppEnabled            Boolean  @default(true)
+  pushEnabled            Boolean  @default(true)
+  inAppEnabled           Boolean  @default(true)
   // Specific notification type preferences
-  leftoverExpiringHours   Int      @default(24) // Hours before expiration to notify
-  documentExpiringDays    Int      @default(90) // Days before expiration to notify
-  carpoolReminderMinutes  Int      @default(30) // Minutes before carpool to notify
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  leftoverExpiringHours  Int      @default(24) // Hours before expiration to notify
+  documentExpiringDays   Int      @default(90) // Days before expiration to notify
+  carpoolReminderMinutes Int      @default(30) // Minutes before carpool to notify
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   // Relations
   user FamilyMember @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1261,14 +1469,14 @@ model Achievement {
 }
 
 model UserAchievement {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   userId        String
   achievementId String
-  progress      Int      @default(0)
-  isCompleted   Boolean  @default(false)
+  progress      Int       @default(0)
+  isCompleted   Boolean   @default(false)
   completedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   // Relations
   user        FamilyMember @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1287,16 +1495,16 @@ enum StreakType {
 }
 
 model Streak {
-  id                String     @id @default(uuid())
-  userId            String
-  type              StreakType
-  currentCount      Int        @default(0)
-  longestCount      Int        @default(0)
-  lastActivityDate  DateTime?
-  isActive          Boolean    @default(true)
-  frozenUntil       DateTime? // Streak protection/freeze
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  id               String     @id @default(uuid())
+  userId           String
+  type             StreakType
+  currentCount     Int        @default(0)
+  longestCount     Int        @default(0)
+  lastActivityDate DateTime?
+  isActive         Boolean    @default(true)
+  frozenUntil      DateTime? // Streak protection/freeze
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   // Relations
   user FamilyMember @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1307,15 +1515,15 @@ model Streak {
 }
 
 model LeaderboardEntry {
-  id         String   @id @default(uuid())
-  userId     String
-  familyId   String
-  period     String // "weekly", "monthly", "all-time"
-  periodKey  String // "2025-W01", "2025-01", "all-time"
-  score      Int      @default(0)
-  rank       Int?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(uuid())
+  userId    String
+  familyId  String
+  period    String // "weekly", "monthly", "all-time"
+  periodKey String // "2025-W01", "2025-01", "all-time"
+  score     Int      @default(0)
+  rank      Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   user   FamilyMember @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1418,15 +1626,15 @@ model BudgetPeriod {
 // ============================================
 
 model Routine {
-  id          String              @id @default(uuid())
-  familyId    String
-  name        String
-  type        RoutineType
-  isWeekday   Boolean             @default(true)
-  isWeekend   Boolean             @default(true)
-  assignedTo  String?             // Specific child, or null for all
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  id         String      @id @default(uuid())
+  familyId   String
+  name       String
+  type       RoutineType
+  isWeekday  Boolean     @default(true)
+  isWeekend  Boolean     @default(true)
+  assignedTo String? // Specific child, or null for all
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
   // Relations
   family      Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
@@ -1439,12 +1647,12 @@ model Routine {
 }
 
 model RoutineStep {
-  id               String   @id @default(uuid())
+  id               String  @id @default(uuid())
   routineId        String
   name             String
-  icon             String?  // Emoji or icon name
+  icon             String? // Emoji or icon name
   estimatedMinutes Int?
-  sortOrder        Int      @default(0)
+  sortOrder        Int     @default(0)
 
   // Relations
   routine Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
@@ -1479,17 +1687,17 @@ enum RoutineType {
 }
 
 model CommunicationPost {
-  id        String         @id @default(uuid())
+  id        String    @id @default(uuid())
   familyId  String
   type      PostType
   title     String?
   content   String
   imageUrl  String?
-  isPinned  Boolean        @default(false)
+  isPinned  Boolean   @default(false)
   expiresAt DateTime?
   authorId  String
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   family    Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
   author    FamilyMember   @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
@@ -1528,11 +1736,11 @@ enum PostType {
 // ============================================================
 
 model MealPlan {
-  id        String          @id @default(uuid())
+  id        String   @id @default(uuid())
   familyId  String
-  weekStart DateTime        // Monday of the week
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  weekStart DateTime // Monday of the week
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   family Family          @relation(fields: [familyId], references: [id], onDelete: Cascade)
   meals  MealPlanEntry[]
@@ -1544,15 +1752,15 @@ model MealPlan {
 }
 
 model MealPlanEntry {
-  id         String    @id @default(uuid())
+  id         String   @id @default(uuid())
   mealPlanId String
-  date       DateTime  // Specific day
+  date       DateTime // Specific day
   mealType   MealType
-  recipeId   String?   // Future: link to Recipe model
-  customName String?   // If not using a recipe
+  recipeId   String? // Future: link to Recipe model
+  customName String? // If not using a recipe
   notes      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
 
@@ -1573,19 +1781,19 @@ enum MealType {
 // ============================================
 
 model Leftover {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   familyId        String
   name            String
-  mealPlanEntryId String?  // Link to original meal if applicable
-  quantity        String?  // "Half a lasagna", "2 servings"
-  storedAt        DateTime @default(now())
+  mealPlanEntryId String? // Link to original meal if applicable
+  quantity        String? // "Half a lasagna", "2 servings"
+  storedAt        DateTime  @default(now())
   expiresAt       DateTime // Auto-calculated based on default (3 days) + manual override
   usedAt          DateTime?
   tossedAt        DateTime?
   notes           String?
   createdBy       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   // Relations
   family  Family       @relation(fields: [familyId], references: [id], onDelete: Cascade)
@@ -1602,24 +1810,24 @@ model Leftover {
 // ============================================
 
 model Recipe {
-  id              String   @id @default(uuid())
+  id              String          @id @default(uuid())
   familyId        String
   name            String
   description     String?
   prepTimeMinutes Int?
   cookTimeMinutes Int?
-  servings        Int      @default(4)
-  difficulty      Difficulty @default(MEDIUM)
+  servings        Int             @default(4)
+  difficulty      Difficulty      @default(MEDIUM)
   imageUrl        String?
-  sourceUrl       String?  // If imported from web
-  instructions    String   // JSON array of steps
+  sourceUrl       String? // If imported from web
+  instructions    String // JSON array of steps
   notes           String?
-  isFavorite      Boolean  @default(false)
+  isFavorite      Boolean         @default(false)
   category        RecipeCategory?
   dietaryTags     DietaryTag[]
   createdBy       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   // Relations
   family      Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
@@ -1637,7 +1845,7 @@ model RecipeIngredient {
   id        String  @id @default(uuid())
   recipeId  String
   name      String
-  quantity  Float?  // Optional - some ingredients like "Salt to taste" don't have quantity
+  quantity  Float? // Optional - some ingredients like "Salt to taste" don't have quantity
   unit      String? // Optional - cups, tbsp, lbs, oz, etc.
   notes     String? // "diced", "room temperature"
   sortOrder Int     @default(0)
@@ -1652,7 +1860,7 @@ model RecipeRating {
   id        String   @id @default(uuid())
   recipeId  String
   memberId  String
-  rating    Int      // 1-5 stars
+  rating    Int // 1-5 stars
   notes     String?
   createdAt DateTime @default(now())
 
@@ -1693,16 +1901,16 @@ enum DietaryTag {
 // ============================================
 
 model Pet {
-  id          String          @id @default(uuid())
-  familyId    String
-  name        String
-  species     PetSpecies
-  breed       String?
-  birthday    DateTime?
-  imageUrl    String?
-  notes       String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id        String     @id @default(uuid())
+  familyId  String
+  name      String
+  species   PetSpecies
+  breed     String?
+  birthday  DateTime?
+  imageUrl  String?
+  notes     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   // Relations
   family      Family          @relation(fields: [familyId], references: [id], onDelete: Cascade)
@@ -1716,14 +1924,14 @@ model Pet {
 }
 
 model PetFeeding {
-  id        String       @id @default(uuid())
+  id        String   @id @default(uuid())
   petId     String
-  fedAt     DateTime     @default(now())
+  fedAt     DateTime @default(now())
   fedBy     String
   foodType  String?
   amount    String?
   notes     String?
-  createdAt DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   // Relations
   pet    Pet          @relation(fields: [petId], references: [id], onDelete: Cascade)
@@ -1739,8 +1947,8 @@ model PetMedication {
   petId            String
   medicationName   String
   dosage           String
-  frequency        String    // "Daily", "Twice daily", "As needed"
-  minIntervalHours Int?      // For countdown timer
+  frequency        String // "Daily", "Twice daily", "As needed"
+  minIntervalHours Int? // For countdown timer
   lastGivenAt      DateTime?
   lastGivenBy      String?
   nextDoseAt       DateTime? // Calculated field
@@ -1750,7 +1958,7 @@ model PetMedication {
   updatedAt        DateTime  @updatedAt
 
   // Relations
-  pet  Pet                 @relation(fields: [petId], references: [id], onDelete: Cascade)
+  pet   Pet                 @relation(fields: [petId], references: [id], onDelete: Cascade)
   doses PetMedicationDose[]
 
   @@index([petId])
@@ -1759,13 +1967,13 @@ model PetMedication {
 }
 
 model PetMedicationDose {
-  id               String         @id @default(uuid())
-  medicationId     String
-  givenAt          DateTime       @default(now())
-  givenBy          String
-  dosage           String
-  notes            String?
-  createdAt        DateTime       @default(now())
+  id           String   @id @default(uuid())
+  medicationId String
+  givenAt      DateTime @default(now())
+  givenBy      String
+  dosage       String
+  notes        String?
+  createdAt    DateTime @default(now())
 
   // Relations
   medication PetMedication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
@@ -1776,17 +1984,17 @@ model PetMedicationDose {
 }
 
 model PetVetVisit {
-  id         String    @id @default(uuid())
-  petId      String
-  visitDate  DateTime
-  reason     String
-  diagnosis  String?
-  treatment  String?
-  cost       Float?
-  nextVisit  DateTime?
-  notes      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id        String    @id @default(uuid())
+  petId     String
+  visitDate DateTime
+  reason    String
+  diagnosis String?
+  treatment String?
+  cost      Float?
+  nextVisit DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   // Relations
   pet Pet @relation(fields: [petId], references: [id], onDelete: Cascade)
@@ -1800,7 +2008,7 @@ model PetWeight {
   id         String   @id @default(uuid())
   petId      String
   weight     Float
-  unit       String   // lbs or kg
+  unit       String // lbs or kg
   recordedAt DateTime @default(now())
   notes      String?
 
@@ -1835,7 +2043,7 @@ model InventoryItem {
   category          InventoryCategory
   location          InventoryLocation
   currentQuantity   Float             @default(0)
-  unit              String            // count, oz, lbs, liters, etc.
+  unit              String // count, oz, lbs, liters, etc.
   lowStockThreshold Float?
   expiresAt         DateTime?
   barcode           String?
@@ -1882,7 +2090,7 @@ enum InventoryLocation {
 // ============================================
 
 model MaintenanceItem {
-  id              String                  @id @default(uuid())
+  id              String              @id @default(uuid())
   familyId        String
   name            String
   description     String?
@@ -1893,8 +2101,8 @@ model MaintenanceItem {
   nextDueAt       DateTime?
   estimatedCost   Float?
   notes           String?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   // Relations
   family      Family                  @relation(fields: [familyId], references: [id], onDelete: Cascade)
@@ -1907,9 +2115,9 @@ model MaintenanceItem {
 }
 
 model MaintenanceCompletion {
-  id                String          @id @default(uuid())
+  id                String   @id @default(uuid())
   maintenanceItemId String
-  completedAt       DateTime        @default(now())
+  completedAt       DateTime @default(now())
   completedBy       String
   cost              Float?
   serviceProvider   String?
@@ -1950,26 +2158,26 @@ enum Season {
 // ============================================
 
 model TransportSchedule {
-  id          String    @id @default(uuid())
-  familyId    String
-  memberId    String
-  dayOfWeek   Int       // 0-6 (Sunday-Saturday)
-  time        String    // HH:MM format (24-hour)
-  type        TransportType
-  locationId  String?
-  driverId    String?
-  carpoolId   String?
-  notes       String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String        @id @default(uuid())
+  familyId   String
+  memberId   String
+  dayOfWeek  Int // 0-6 (Sunday-Saturday)
+  time       String // HH:MM format (24-hour)
+  type       TransportType
+  locationId String?
+  driverId   String?
+  carpoolId  String?
+  notes      String?
+  isActive   Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   // Relations
-  family    Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  member    FamilyMember        @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  location  TransportLocation?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  driver    TransportDriver?    @relation(fields: [driverId], references: [id], onDelete: SetNull)
-  carpool   CarpoolGroup?       @relation(fields: [carpoolId], references: [id], onDelete: SetNull)
+  family   Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  member   FamilyMember       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  location TransportLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  driver   TransportDriver?   @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  carpool  CarpoolGroup?      @relation(fields: [carpoolId], references: [id], onDelete: SetNull)
 
   @@index([familyId])
   @@index([memberId])
@@ -1978,12 +2186,12 @@ model TransportSchedule {
 }
 
 model TransportLocation {
-  id        String              @id @default(uuid())
+  id        String   @id @default(uuid())
   familyId  String
   name      String
   address   String?
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   family    Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
@@ -1994,13 +2202,13 @@ model TransportLocation {
 }
 
 model TransportDriver {
-  id           String              @id @default(uuid())
+  id           String   @id @default(uuid())
   familyId     String
   name         String
   phone        String?
-  relationship String?             // "Mom", "Dad", "Grandma", "Carpool Parent"
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  relationship String? // "Mom", "Dad", "Grandma", "Carpool Parent"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
   family    Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
@@ -2011,11 +2219,11 @@ model TransportDriver {
 }
 
 model CarpoolGroup {
-  id        String              @id @default(uuid())
+  id        String   @id @default(uuid())
   familyId  String
   name      String
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   family    Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
@@ -2027,12 +2235,12 @@ model CarpoolGroup {
 }
 
 model CarpoolMember {
-  id        String       @id @default(uuid())
+  id        String   @id @default(uuid())
   carpoolId String
   name      String
   phone     String?
   email     String?
-  createdAt DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   // Relations
   carpool CarpoolGroup @relation(fields: [carpoolId], references: [id], onDelete: Cascade)
@@ -2051,29 +2259,29 @@ enum TransportType {
 // ============================================
 
 model Document {
-  id             String                @id @default(uuid())
+  id             String           @id @default(uuid())
   familyId       String
   name           String
   category       DocumentCategory
-  fileUrl        String                // S3/MinIO URL or local path
-  fileSize       Int                   // Bytes
+  fileUrl        String // S3/MinIO URL or local path
+  fileSize       Int // Bytes
   mimeType       String
-  documentNumber String?               // Masked in UI (show last 4 only)
+  documentNumber String? // Masked in UI (show last 4 only)
   issuedDate     DateTime?
   expiresAt      DateTime?
-  tags           String[]              // Array of tags for search
+  tags           String[] // Array of tags for search
   notes          String?
   uploadedBy     String
-  accessList     String[]              // Array of member IDs who can view
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  accessList     String[] // Array of member IDs who can view
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   // Relations
-  family      Family                  @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  uploader    FamilyMember            @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
-  versions    DocumentVersion[]
-  shareLinks  DocumentShareLink[]
-  accessLogs  DocumentAccessLog[]
+  family     Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  uploader   FamilyMember        @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  versions   DocumentVersion[]
+  shareLinks DocumentShareLink[]
+  accessLogs DocumentAccessLog[]
 
   @@index([familyId])
   @@index([category])
@@ -2102,14 +2310,14 @@ model DocumentShareLink {
   documentId     String
   token          String    @unique
   expiresAt      DateTime
-  password       String?   // Hashed
+  password       String? // Hashed
   accessCount    Int       @default(0)
-  maxAccess      Int?      // Limit number of accesses
+  maxAccess      Int? // Limit number of accesses
   createdBy      String
   createdAt      DateTime  @default(now())
   lastAccessedAt DateTime? // Last time the link was accessed
   revokedAt      DateTime? // When the link was revoked
-  revokedBy      String?   // Who revoked the link
+  revokedBy      String? // Who revoked the link
 
   // Relations
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
@@ -2120,13 +2328,13 @@ model DocumentShareLink {
 }
 
 model DocumentAccessLog {
-  id             String       @id @default(uuid())
-  documentId     String
-  accessedBy     String?      // Null for external/anonymous access via share link
-  accessedAt     DateTime     @default(now())
-  ipAddress      String?
-  userAgent      String?      // Browser user agent string
-  viaShareLink   String?      // ID of share link if accessed externally
+  id           String   @id @default(uuid())
+  documentId   String
+  accessedBy   String? // Null for external/anonymous access via share link
+  accessedAt   DateTime @default(now())
+  ipAddress    String?
+  userAgent    String? // Browser user agent string
+  viaShareLink String? // ID of share link if accessed externally
 
   // Relations
   document Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
@@ -2138,13 +2346,13 @@ model DocumentAccessLog {
 }
 
 enum DocumentCategory {
-  IDENTITY    // Passports, birth certificates, SSN cards
-  MEDICAL     // Insurance cards, vaccination records
-  FINANCIAL   // Bank statements, tax documents
-  HOUSEHOLD   // Warranties, manuals, receipts
-  EDUCATION   // Report cards, transcripts, diplomas
-  LEGAL       // Wills, powers of attorney, contracts
-  PETS        // Vet records, licenses
+  IDENTITY // Passports, birth certificates, SSN cards
+  MEDICAL // Insurance cards, vaccination records
+  FINANCIAL // Bank statements, tax documents
+  HOUSEHOLD // Warranties, manuals, receipts
+  EDUCATION // Report cards, transcripts, diplomas
+  LEGAL // Wills, powers of attorney, contracts
+  PETS // Vet records, licenses
   OTHER
 }
 
@@ -2153,20 +2361,20 @@ enum DocumentCategory {
 // ============================================
 
 model MedicationSafety {
-  id                  String             @id @default(uuid())
+  id                  String    @id @default(uuid())
   memberId            String
   medicationName      String
-  activeIngredient    String?            // For cross-medication checking
-  minIntervalHours    Int                // Minimum hours between doses
-  maxDosesPerDay      Int?               // Daily limit
+  activeIngredient    String? // For cross-medication checking
+  minIntervalHours    Int // Minimum hours between doses
+  maxDosesPerDay      Int? // Daily limit
   lastDoseAt          DateTime?
-  nextDoseAvailableAt DateTime?          // Calculated field
-  notifyWhenReady     Boolean            @default(true)
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  nextDoseAvailableAt DateTime? // Calculated field
+  notifyWhenReady     Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   // Relations
-  member FamilyMember      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member FamilyMember     @relation(fields: [memberId], references: [id], onDelete: Cascade)
   doses  MedicationDose[]
 
   @@index([memberId])
@@ -2175,15 +2383,15 @@ model MedicationSafety {
 }
 
 model MedicationDose {
-  id                   String           @id @default(uuid())
-  medicationSafetyId   String
-  givenAt              DateTime         @default(now())
-  givenBy              String
-  dosage               String
-  notes                String?
-  wasOverride          Boolean          @default(false)
-  overrideReason       String?
-  overrideApprovedBy   String?
+  id                 String   @id @default(uuid())
+  medicationSafetyId String
+  givenAt            DateTime @default(now())
+  givenBy            String
+  dosage             String
+  notes              String?
+  wasOverride        Boolean  @default(false)
+  overrideReason     String?
+  overrideApprovedBy String?
 
   // Relations
   medicationSafety MedicationSafety @relation(fields: [medicationSafetyId], references: [id], onDelete: Cascade)
@@ -2198,18 +2406,18 @@ model MedicationDose {
 // ============================================
 
 model HealthEvent {
-  id          String          @id @default(uuid())
-  memberId    String
-  eventType   HealthEventType
-  startedAt   DateTime        @default(now())
-  endedAt     DateTime?
-  severity    Int?            // 1-10 scale
-  notes       String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id        String          @id @default(uuid())
+  memberId  String
+  eventType HealthEventType
+  startedAt DateTime        @default(now())
+  endedAt   DateTime?
+  severity  Int? // 1-10 scale
+  notes     String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   // Relations
-  member      FamilyMember    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member      FamilyMember       @relation(fields: [memberId], references: [id], onDelete: Cascade)
   symptoms    HealthSymptom[]
   medications HealthMedication[]
 
@@ -2220,12 +2428,12 @@ model HealthEvent {
 }
 
 model HealthSymptom {
-  id             String       @id @default(uuid())
-  healthEventId  String
-  symptomType    SymptomType
-  severity       Int          // 1-10
-  notes          String?
-  recordedAt     DateTime     @default(now())
+  id            String      @id @default(uuid())
+  healthEventId String
+  symptomType   SymptomType
+  severity      Int // 1-10
+  notes         String?
+  recordedAt    DateTime    @default(now())
 
   // Relations
   healthEvent HealthEvent @relation(fields: [healthEventId], references: [id], onDelete: Cascade)
@@ -2236,13 +2444,13 @@ model HealthSymptom {
 }
 
 model HealthMedication {
-  id             String      @id @default(uuid())
+  id             String    @id @default(uuid())
   healthEventId  String
   medicationName String
   dosage         String
   givenAt        DateTime
   givenBy        String
-  nextDoseAt     DateTime?   // For countdown timer
+  nextDoseAt     DateTime? // For countdown timer
   notes          String?
 
   // Relations
@@ -2255,11 +2463,11 @@ model HealthMedication {
 }
 
 model TemperatureLog {
-  id          String       @id @default(uuid())
+  id          String     @id @default(uuid())
   memberId    String
-  temperature Float        // In Fahrenheit
-  method      TempMethod   // ORAL, RECTAL, ARMPIT, EAR, FOREHEAD
-  recordedAt  DateTime     @default(now())
+  temperature Float // In Fahrenheit
+  method      TempMethod // ORAL, RECTAL, ARMPIT, EAR, FOREHEAD
+  recordedAt  DateTime   @default(now())
   notes       String?
 
   // Relations
@@ -2271,15 +2479,15 @@ model TemperatureLog {
 }
 
 model MedicalProfile {
-  id          String       @id @default(uuid())
-  memberId    String       @unique
+  id          String   @id @default(uuid())
+  memberId    String   @unique
   bloodType   String?
-  allergies   String[]     // Array of allergy strings
-  conditions  String[]     // Array of medical conditions
-  medications String[]     // Long-term medications
-  weight      Float?       // For dosage calculations
-  weightUnit  String?      // lbs or kg
-  updatedAt   DateTime     @updatedAt
+  allergies   String[] // Array of allergy strings
+  conditions  String[] // Array of medical conditions
+  medications String[] // Long-term medications
+  weight      Float? // For dosage calculations
+  weightUnit  String? // lbs or kg
+  updatedAt   DateTime @updatedAt
 
   // Relations
   member FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -2349,9 +2557,9 @@ model AutomationRule {
   familyId    String
   name        String
   description String?
-  trigger     Json     // { type: TriggerType, config: {...} }
-  conditions  Json?    // Optional: { operator: 'AND'|'OR', rules: [...] }
-  actions     Json     // Array: [{ type: ActionType, config: {...} }]
+  trigger     Json // { type: TriggerType, config: {...} }
+  conditions  Json? // Optional: { operator: 'AND'|'OR', rules: [...] }
+  actions     Json // Array: [{ type: ActionType, config: {...} }]
   isEnabled   Boolean  @default(true)
   createdById String
   createdAt   DateTime @default(now())
@@ -2371,9 +2579,9 @@ model RuleExecution {
   id         String   @id @default(uuid())
   ruleId     String
   success    Boolean
-  result     Json?    // { actionsCompleted: number, errors: [], results: [] }
+  result     Json? // { actionsCompleted: number, errors: [], results: [] }
   error      String?
-  metadata   Json?    // Trigger context, matched conditions, etc.
+  metadata   Json? // Trigger context, matched conditions, etc.
   executedAt DateTime @default(now())
 
   // Relations
@@ -2403,8 +2611,8 @@ model Project {
   updatedAt   DateTime      @updatedAt
 
   // Relations
-  family   Family        @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  creator  FamilyMember  @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  family   Family          @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  creator  FamilyMember    @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Cascade)
   tasks    ProjectTask[]
   shopping ShoppingItem[]
   events   CalendarEvent[]
@@ -2415,18 +2623,19 @@ model Project {
 }
 
 model ProjectTask {
-  id             String       @id @default(uuid())
+  id             String     @id @default(uuid())
   projectId      String
   name           String
   description    String?
-  status         TaskStatus   @default(PENDING)
+  notes          String?
+  status         TaskStatus @default(PENDING)
   assigneeId     String?
   dueDate        DateTime?
   estimatedHours Float?
   actualHours    Float?
-  sortOrder      Int          @default(0)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  sortOrder      Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   // Relations
   project      Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)

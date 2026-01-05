@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ invites });
   } catch (error) {
-    console.error('Error fetching guest invites:', error);
+    logger.error('Error fetching guest invites:', error);
     return NextResponse.json(
       { error: 'Failed to fetch guest invites' },
       { status: 500 }

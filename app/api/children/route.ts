@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -20,7 +21,7 @@ export async function GET() {
 
     return NextResponse.json(children);
   } catch (error) {
-    console.error('Children API error:', error);
+    logger.error('Children API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch children' },
       { status: 500 }

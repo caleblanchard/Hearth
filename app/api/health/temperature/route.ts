@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { TempMethod } from '@/app/generated/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_METHODS: TempMethod[] = ['ORAL', 'RECTAL', 'ARMPIT', 'EAR', 'FOREHEAD'];
 
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ logs }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching temperature logs:', error);
+    logger.error('Error fetching temperature logs:', error);
     return NextResponse.json(
       { error: 'Failed to fetch temperature logs' },
       { status: 500 }
@@ -169,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ log }, { status: 201 });
   } catch (error) {
-    console.error('Error logging temperature:', error);
+    logger.error('Error logging temperature:', error);
     return NextResponse.json(
       { error: 'Failed to log temperature' },
       { status: 500 }

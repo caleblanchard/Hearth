@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { sanitizeString } from '@/lib/input-sanitization';
+import { parsePaginationParams, createPaginationResponse } from '@/lib/pagination';
+import { parseJsonBody } from '@/lib/request-validation';
 
 const VALID_STATUSES = ['ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
 
@@ -31,27 +35,37 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
-    const projects = await prisma.project.findMany({
-      where,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            tasks: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Parse pagination
+    const { page, limit } = parsePaginationParams(request.nextUrl.searchParams);
+    const skip = (page - 1) * limit;
 
-    return NextResponse.json({ projects });
+    // Fetch projects with pagination
+    const [projects, total] = await Promise.all([
+      prisma.project.findMany({
+        where,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              tasks: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.project.count({ where }),
+    ]);
+
+    return NextResponse.json(createPaginationResponse(projects, page, limit, total));
   } catch (error) {
-    console.error('Error fetching projects:', error);
+    logger.error('Error fetching projects', error);
     return NextResponse.json(
       { error: 'Failed to fetch projects' },
       { status: 500 }
@@ -75,7 +89,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    // Validate and parse JSON body
+    const bodyResult = await parseJsonBody(request);
+    if (!bodyResult.success) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status }
+      );
+    }
     const {
       name,
       description,
@@ -84,15 +105,19 @@ export async function POST(request: NextRequest) {
       dueDate,
       budget,
       notes,
-    } = body;
+    } = bodyResult.data;
 
-    // Validate required fields
-    if (!name || !name.trim()) {
+    // Sanitize and validate input
+    const sanitizedName = sanitizeString(name);
+    if (!sanitizedName || sanitizedName.trim().length === 0) {
       return NextResponse.json(
         { error: 'Name is required' },
         { status: 400 }
       );
     }
+
+    const sanitizedDescription = description ? sanitizeString(description) : null;
+    const sanitizedNotes = notes ? sanitizeString(notes) : null;
 
     // Validate status if provided
     if (status && !VALID_STATUSES.includes(status)) {
@@ -126,13 +151,13 @@ export async function POST(request: NextRequest) {
     const project = await prisma.project.create({
       data: {
         familyId: session.user.familyId,
-        name: name.trim(),
-        description: description?.trim() || null,
+        name: sanitizedName,
+        description: sanitizedDescription,
         status: status || 'ACTIVE',
         startDate: startDate ? new Date(startDate) : null,
         dueDate: dueDate ? new Date(dueDate) : null,
-        budget: budget !== undefined && budget !== null ? parseFloat(budget) : null,
-        notes: notes?.trim() || null,
+        budget: budget !== undefined && budget !== null ? parseFloat(String(budget)) : null,
+        notes: sanitizedNotes,
         createdById: session.user.id,
       },
     });
@@ -157,7 +182,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating project:', error);
+    logger.error('Error creating project', error);
     return NextResponse.json(
       { error: 'Failed to create project' },
       { status: 500 }

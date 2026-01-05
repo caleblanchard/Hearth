@@ -6,6 +6,7 @@ import {
   UserCircleIcon,
   ChartBarIcon,
   BeakerIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 
 export default function HealthPage() {
@@ -18,6 +19,13 @@ export default function HealthPage() {
       icon: UserCircleIcon,
       path: '/dashboard/health/profile',
       color: 'blue',
+    },
+    {
+      name: 'Medication Safety',
+      description: 'Track medications with safety interlock to prevent double-dosing',
+      icon: ShieldCheckIcon,
+      path: '/dashboard/medications',
+      color: 'green',
     },
     {
       name: 'Temperature History',

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { ConfirmModal } from '@/components/ui/Modal';
 
 interface HealthEvent {
   id: string;
@@ -65,6 +66,7 @@ export default function HealthEventDetailPage() {
     nextDoseHours: '4',
     notes: '',
   });
+  const [endEventConfirmModal, setEndEventConfirmModal] = useState({ isOpen: false });
 
   useEffect(() => {
     loadEvent();
@@ -160,10 +162,10 @@ export default function HealthEventDetailPage() {
   };
 
   const handleEndEvent = async () => {
-    if (!confirm('Are you sure you want to mark this health event as ended?')) {
-      return;
-    }
+    setEndEventConfirmModal({ isOpen: true });
+  };
 
+  const confirmEndEvent = async () => {
     try {
       const response = await fetch(`/api/health/events/${eventId}`, {
         method: 'PATCH',
@@ -176,6 +178,8 @@ export default function HealthEventDetailPage() {
       }
     } catch (err) {
       setError('Failed to end health event');
+    } finally {
+      setEndEventConfirmModal({ isOpen: false });
     }
   };
 
@@ -626,6 +630,18 @@ export default function HealthEventDetailPage() {
           </div>
         </div>
       )}
+
+      {/* End Event Confirmation Modal */}
+      <ConfirmModal
+        isOpen={endEventConfirmModal.isOpen}
+        onClose={() => setEndEventConfirmModal({ isOpen: false })}
+        onConfirm={confirmEndEvent}
+        title="End Health Event"
+        message="Are you sure you want to mark this health event as ended?"
+        confirmText="End Event"
+        cancelText="Cancel"
+        confirmColor="blue"
+      />
     </div>
   );
 }

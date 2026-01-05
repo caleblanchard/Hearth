@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // GET /api/rules/executions
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('Error fetching executions:', error);
+    logger.error('Error fetching executions:', error);
     return NextResponse.json(
       { error: 'Failed to fetch executions' },
       { status: 500 }

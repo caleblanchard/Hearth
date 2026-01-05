@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ drivers });
   } catch (error) {
-    console.error('Error fetching transport drivers:', error);
+    logger.error('Error fetching transport drivers:', error);
     return NextResponse.json(
       { error: 'Failed to fetch transport drivers' },
       { status: 500 }
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating transport driver:', error);
+    logger.error('Error creating transport driver:', error);
     return NextResponse.json(
       { error: 'Failed to create transport driver' },
       { status: 500 }

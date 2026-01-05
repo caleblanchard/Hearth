@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { hash } from 'bcrypt';
 import { BCRYPT_ROUNDS } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
@@ -120,7 +121,7 @@ export async function POST(request: Request) {
       member: newMember,
     });
   } catch (error) {
-    console.error('Error creating family member:', error);
+    logger.error('Error creating family member:', error);
     return NextResponse.json({ error: 'Failed to create family member' }, { status: 500 });
   }
 }

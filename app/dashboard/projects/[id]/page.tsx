@@ -14,6 +14,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
+import { ConfirmModal } from '@/components/ui/Modal';
 
 interface Task {
   id: string;
@@ -58,6 +59,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [taskFilter, setTaskFilter] = useState<string>('all');
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false });
 
   useEffect(() => {
     fetchProject();
@@ -80,10 +82,10 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   };
 
   const handleDeleteProject = async () => {
-    if (!confirm('Are you sure you want to delete this project? This will also delete all tasks.')) {
-      return;
-    }
+    setDeleteConfirmModal({ isOpen: true });
+  };
 
+  const confirmDeleteProject = async () => {
     try {
       const res = await fetch(`/api/projects/${params.id}`, {
         method: 'DELETE',
@@ -91,9 +93,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
       if (res.ok) {
         router.push('/dashboard/projects');
+      } else {
+        setDeleteConfirmModal({ isOpen: false });
       }
     } catch (error) {
       console.error('Error deleting project:', error);
+      setDeleteConfirmModal({ isOpen: false });
     }
   };
 
@@ -400,6 +405,18 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirmModal.isOpen}
+        onClose={() => setDeleteConfirmModal({ isOpen: false })}
+        onConfirm={confirmDeleteProject}
+        title="Delete Project"
+        message="Are you sure you want to delete this project? This will also delete all tasks."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="red"
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -80,7 +81,7 @@ export async function POST(
       message: 'Rating saved successfully',
     });
   } catch (error) {
-    console.error('Error saving rating:', error);
+    logger.error('Error saving rating:', error);
     return NextResponse.json({ error: 'Failed to save rating' }, { status: 500 });
   }
 }
@@ -129,7 +130,7 @@ export async function DELETE(
       throw error;
     }
   } catch (error) {
-    console.error('Error removing rating:', error);
+    logger.error('Error removing rating:', error);
     return NextResponse.json({ error: 'Failed to remove rating' }, { status: 500 });
   }
 }

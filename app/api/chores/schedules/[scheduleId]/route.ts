@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: Request,
@@ -103,7 +104,7 @@ export async function PATCH(
       message: 'Schedule updated successfully',
     });
   } catch (error) {
-    console.error('Error updating schedule:', error);
+    logger.error('Error updating schedule:', error);
     return NextResponse.json({ error: 'Failed to update schedule' }, { status: 500 });
   }
 }

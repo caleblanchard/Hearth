@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: Request,
@@ -76,7 +77,7 @@ export async function PATCH(
       event: result,
     });
   } catch (error) {
-    console.error('Error updating event:', error);
+    logger.error('Error updating event:', error);
     return NextResponse.json({ error: 'Failed to update event' }, { status: 500 });
   }
 }
@@ -112,7 +113,7 @@ export async function DELETE(
       message: 'Event deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting event:', error);
+    logger.error('Error deleting event:', error);
     return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });
   }
 }

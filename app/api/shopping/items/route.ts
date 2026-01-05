@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { sanitizeString, sanitizeInteger } from '@/lib/input-sanitization';
+import { parseJsonBody } from '@/lib/request-validation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,14 +13,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, category, quantity, unit, priority, notes } = await request.json();
+    // Validate and parse JSON body
+    const bodyResult = await parseJsonBody(request);
+    if (!bodyResult.success) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status }
+      );
+    }
+    const { name, category, quantity, unit, priority, notes } = bodyResult.data;
 
-    if (!name || !name.trim()) {
+    // Sanitize and validate input
+    const sanitizedName = sanitizeString(name);
+    if (!sanitizedName || sanitizedName.trim().length === 0) {
       return NextResponse.json(
         { error: 'Item name is required' },
         { status: 400 }
       );
     }
+
+    const sanitizedCategory = category ? sanitizeString(category) : null;
+    const sanitizedUnit = unit ? sanitizeString(unit) : null;
+    const sanitizedNotes = notes ? sanitizeString(notes) : null;
+    const sanitizedQuantity = quantity ? sanitizeInteger(quantity, 1) : 1;
+    
+    if (sanitizedQuantity === null) {
+      return NextResponse.json(
+        { error: 'Quantity must be a positive integer' },
+        { status: 400 }
+      );
+    }
+
+    const validPriorities = ['NORMAL', 'NEEDED_SOON', 'URGENT'];
+    const sanitizedPriority = priority && validPriorities.includes(priority) ? priority : 'NORMAL';
 
     const { familyId } = session.user;
 
@@ -43,13 +71,13 @@ export async function POST(request: NextRequest) {
     const item = await prisma.shoppingItem.create({
       data: {
         listId: shoppingList.id,
-        name: name.trim(),
-        category: category || null,
-        quantity: quantity || 1,
-        unit: unit || null,
-        priority: priority || 'NORMAL',
+        name: sanitizedName,
+        category: sanitizedCategory,
+        quantity: sanitizedQuantity,
+        unit: sanitizedUnit,
+        priority: sanitizedPriority,
         status: 'PENDING',
-        notes: notes || null,
+        notes: sanitizedNotes,
         requestedById: session.user.id,
         addedById: session.user.id,
       },
@@ -78,7 +106,7 @@ export async function POST(request: NextRequest) {
       message: 'Item added to shopping list',
     });
   } catch (error) {
-    console.error('Add shopping item error:', error);
+    logger.error('Add shopping item error:', error);
     return NextResponse.json(
       { error: 'Failed to add item' },
       { status: 500 }

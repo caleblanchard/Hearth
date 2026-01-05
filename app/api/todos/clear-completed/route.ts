@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function DELETE() {
   try {
@@ -26,7 +27,7 @@ export async function DELETE() {
       count: result.count,
     });
   } catch (error) {
-    console.error('Clear completed todos error:', error);
+    logger.error('Clear completed todos error:', error);
     return NextResponse.json(
       { error: 'Failed to clear completed todos' },
       { status: 500 }

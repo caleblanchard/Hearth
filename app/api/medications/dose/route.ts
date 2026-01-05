@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { onMedicationGiven } from '@/lib/rules-engine/hooks';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
         session.user.familyId
       );
     } catch (error) {
-      console.error('Rules engine hook error:', error);
+      logger.error('Rules engine hook error:', error);
       // Don't fail the dose logging if rules engine fails
     }
 
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
       message: 'Dose logged successfully',
     });
   } catch (error) {
-    console.error('Error logging medication dose:', error);
+    logger.error('Error logging medication dose:', error);
     return NextResponse.json(
       { error: 'Failed to log medication dose' },
       { status: 500 }

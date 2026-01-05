@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import crypto from 'crypto';
+import { logger } from '@/lib/logger';
 
 const VALID_ACCESS_LEVELS = ['VIEW_ONLY', 'LIMITED', 'CAREGIVER'];
 
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating guest invite:', error);
+    logger.error('Error creating guest invite:', error);
     return NextResponse.json(
       { error: 'Failed to create guest invite' },
       { status: 500 }

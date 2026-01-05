@@ -16,6 +16,12 @@ jest.mock('@/lib/logger', () => ({
   },
 }))
 
+// Mock screentime-utils (for dynamic import in dashboard route)
+jest.mock('@/lib/screentime-utils', () => ({
+  calculateRemainingTime: jest.fn(),
+  getWeekStart: jest.fn(),
+}))
+
 // NOW import the route after mocks are set up
 import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/dashboard/route'
@@ -23,6 +29,7 @@ import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { ChoreStatus, TodoStatus } from '@/app/generated/prisma'
 
 const { auth } = require('@/lib/auth')
+const { calculateRemainingTime } = require('@/lib/screentime-utils')
 
 describe('/api/dashboard', () => {
   beforeEach(() => {
@@ -124,6 +131,53 @@ describe('/api/dashboard', () => {
       prismaMock.shoppingList.findMany.mockResolvedValue([mockShoppingList] as any)
       prismaMock.todoItem.findMany.mockResolvedValue(mockTodos as any)
       prismaMock.calendarEvent.findMany.mockResolvedValue(mockEvents as any)
+      prismaMock.projectTask.findMany.mockResolvedValue([])
+      
+      // Mock screen time allowances and calculateRemainingTime
+      prismaMock.screenTimeAllowance.findMany.mockResolvedValue([
+        {
+          id: 'allowance-1',
+          screenTimeTypeId: 'type-1',
+          allowanceMinutes: 120,
+          period: 'WEEKLY',
+          screenTimeType: {
+            id: 'type-1',
+            name: 'Educational',
+            description: 'Educational apps',
+          },
+        },
+      ] as any)
+      
+      calculateRemainingTime.mockResolvedValue({
+        remainingMinutes: 60,
+        usedMinutes: 30,
+        rolloverMinutes: 0,
+        periodStart: today,
+        periodEnd: tomorrow,
+      })
+      
+      // Mock screen time allowances and calculateRemainingTime
+      prismaMock.screenTimeAllowance.findMany.mockResolvedValue([
+        {
+          id: 'allowance-1',
+          screenTimeTypeId: 'type-1',
+          allowanceMinutes: 120,
+          period: 'WEEKLY',
+          screenTimeType: {
+            id: 'type-1',
+            name: 'Educational',
+            description: 'Educational apps',
+          },
+        },
+      ] as any)
+      
+      calculateRemainingTime.mockResolvedValue({
+        remainingMinutes: 60,
+        usedMinutes: 30,
+        rolloverMinutes: 0,
+        periodStart: today,
+        periodEnd: tomorrow,
+      })
 
       const request = new NextRequest('http://localhost/api/dashboard')
       const response = await GET(request)
@@ -135,6 +189,14 @@ describe('/api/dashboard', () => {
         currentBalance: 60,
         weeklyAllocation: 120,
         weekStartDate: today,
+        allowances: expect.arrayContaining([
+          expect.objectContaining({
+            screenTimeTypeId: 'type-1',
+            screenTimeTypeName: 'Educational',
+            allowanceMinutes: 120,
+            remainingMinutes: 60,
+          }),
+        ]),
       })
       expect(data.credits).toEqual({
         current: 100,
@@ -185,6 +247,7 @@ describe('/api/dashboard', () => {
       prismaMock.creditBalance.findUnique.mockResolvedValue(null)
       prismaMock.shoppingList.findMany.mockResolvedValue([])
       prismaMock.todoItem.findMany.mockResolvedValue([])
+      prismaMock.projectTask.findMany.mockResolvedValue([])
 
       const mockEvents = [
         {
@@ -208,6 +271,9 @@ describe('/api/dashboard', () => {
       ]
 
       prismaMock.calendarEvent.findMany.mockResolvedValue(mockEvents as any)
+      
+      // Mock screen time allowances (empty for this test)
+      prismaMock.screenTimeAllowance.findMany.mockResolvedValue([])
 
       const request = new NextRequest('http://localhost/api/dashboard')
       const response = await GET(request)

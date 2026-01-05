@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AlertModal, ConfirmModal } from '@/components/ui/Modal';
 
 interface AutomationRule {
   id: string;
@@ -27,6 +28,24 @@ export default function RulesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [error, setError] = useState<string | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    isOpen: boolean;
+    ruleId: string | null;
+  }>({
+    isOpen: false,
+    ruleId: null,
+  });
 
   useEffect(() => {
     fetchRules();
@@ -66,15 +85,20 @@ export default function RulesPage() {
         rule.id === ruleId ? { ...rule, isEnabled: !currentState } : rule
       ));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to toggle rule');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Failed to toggle rule',
+        type: 'error',
+      });
     }
   };
 
-  const deleteRule = async (ruleId: string) => {
-    if (!confirm('Are you sure you want to delete this rule? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteClick = (ruleId: string) => {
+    setDeleteConfirmModal({ isOpen: true, ruleId });
+  };
 
+  const deleteRule = async (ruleId: string) => {
     try {
       const response = await fetch(`/api/rules/${ruleId}`, {
         method: 'DELETE',
@@ -86,8 +110,15 @@ export default function RulesPage() {
 
       // Remove from local state
       setRules(rules.filter(rule => rule.id !== ruleId));
+      setDeleteConfirmModal({ isOpen: false, ruleId: null });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete rule');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Failed to delete rule',
+        type: 'error',
+      });
+      setDeleteConfirmModal({ isOpen: false, ruleId: null });
     }
   };
 
@@ -304,7 +335,7 @@ export default function RulesPage() {
                         Edit
                       </Link>
                       <button
-                        onClick={() => deleteRule(rule.id)}
+                        onClick={() => handleDeleteClick(rule.id)}
                         className="text-error hover:text-error/80"
                       >
                         Delete
@@ -317,6 +348,27 @@ export default function RulesPage() {
           </div>
         )}
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirmModal.isOpen}
+        onClose={() => setDeleteConfirmModal({ isOpen: false, ruleId: null })}
+        onConfirm={() => deleteConfirmModal.ruleId && deleteRule(deleteConfirmModal.ruleId)}
+        title="Delete Rule"
+        message="Are you sure you want to delete this rule? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="red"
+      />
     </div>
   );
 }

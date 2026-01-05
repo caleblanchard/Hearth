@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const DEFAULT_EXPIRY_DAYS = 3;
 
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ leftovers });
   } catch (error) {
-    console.error('Error fetching leftovers:', error);
+    logger.error('Error fetching leftovers:', error);
     return NextResponse.json(
       { error: 'Failed to fetch leftovers' },
       { status: 500 }
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating leftover:', error);
+    logger.error('Error creating leftover:', error);
     return NextResponse.json(
       { error: 'Failed to create leftover' },
       { status: 500 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -63,7 +64,7 @@ export async function GET() {
       requests: requestsWithBalance,
     });
   } catch (error) {
-    console.error('Error fetching pending grace requests:', error);
+    logger.error('Error fetching pending grace requests:', error);
     return NextResponse.json(
       { error: 'Failed to fetch pending grace requests' },
       { status: 500 }

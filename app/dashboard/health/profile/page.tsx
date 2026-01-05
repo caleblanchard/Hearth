@@ -8,6 +8,7 @@ import {
   XMarkIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
+import { AlertModal } from '@/components/ui/Modal';
 
 interface MedicalProfile {
   id: string;
@@ -41,6 +42,17 @@ export default function MedicalProfilePage() {
   const [profile, setProfile] = useState<MedicalProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
 
   // Form state
   const [bloodType, setBloodType] = useState<string>('');
@@ -143,14 +155,29 @@ export default function MedicalProfilePage() {
       if (res.ok) {
         const data = await res.json();
         setProfile(data.profile);
-        alert('Medical profile updated successfully');
+        setAlertModal({
+          isOpen: true,
+          title: 'Success',
+          message: 'Medical profile updated successfully',
+          type: 'success',
+        });
       } else {
         const error = await res.json();
-        alert(error.error || 'Failed to update medical profile');
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: error.error || 'Failed to update medical profile',
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('Error saving medical profile:', error);
-      alert('Failed to update medical profile');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to update medical profile',
+        type: 'error',
+      });
     } finally {
       setSaving(false);
     }

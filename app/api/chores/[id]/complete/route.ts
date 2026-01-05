@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { sendPushNotificationToUsers } from '@/lib/push-notifications';
 
 export async function POST(
   request: NextRequest,
@@ -137,12 +138,15 @@ export async function POST(
       // Notifications are non-critical, so failures don't block the chore completion
       if (parents.length > 0) {
         try {
+          const parentIds = parents.map((parent) => parent.id);
+          
+          // Create in-app notifications
           await prisma.notification.createMany({
             data: parents.map((parent) => ({
               userId: parent.id,
               type: 'CHORE_COMPLETED',
-              title: 'Chore completed',
-              message: `${session.user.name} completed: ${choreInstance.choreSchedule.choreDefinition.name}`,
+              title: 'Chore Needs Approval',
+              message: `${session.user.name} completed "${choreInstance.choreSchedule.choreDefinition.name}" and is waiting for your approval`,
               actionUrl: '/dashboard/approvals',
               metadata: {
                 choreInstanceId,
@@ -151,6 +155,28 @@ export async function POST(
               } as any,
             })),
           });
+
+          // Send push notifications to parents
+          await sendPushNotificationToUsers(
+            parentIds,
+            'CHORE_COMPLETED',
+            {
+              title: 'Chore Needs Approval',
+              body: `${session.user.name} completed "${choreInstance.choreSchedule.choreDefinition.name}"`,
+              data: {
+                url: '/dashboard/approvals',
+                choreInstanceId,
+                choreName: choreInstance.choreSchedule.choreDefinition.name,
+              },
+              tag: `chore-approval-${choreInstanceId}`,
+              actions: [
+                {
+                  action: 'approve',
+                  title: 'Review',
+                },
+              ],
+            }
+          );
         } catch (notificationError) {
           // Log error but don't fail the chore completion
           logger.error('Failed to create notifications for chore completion', notificationError, {

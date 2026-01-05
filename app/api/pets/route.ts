@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_SPECIES = [
   'DOG',
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ pets });
   } catch (error) {
-    console.error('Error fetching pets:', error);
+    logger.error('Error fetching pets:', error);
     return NextResponse.json({ error: 'Failed to fetch pets' }, { status: 500 });
   }
 }
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error adding pet:', error);
+    logger.error('Error adding pet:', error);
     return NextResponse.json({ error: 'Failed to add pet' }, { status: 500 });
   }
 }

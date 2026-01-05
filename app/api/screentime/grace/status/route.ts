@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateGraceSettings, checkGraceEligibility } from '@/lib/screentime-grace';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
       settings,
     });
   } catch (error) {
-    console.error('Error fetching grace status:', error);
+    logger.error('Error fetching grace status:', error);
     return NextResponse.json(
       { error: 'Failed to fetch grace status' },
       { status: 500 }

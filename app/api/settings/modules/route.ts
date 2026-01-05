@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { ModuleId } from '@/app/generated/prisma';
+import { logger } from '@/lib/logger';
 
 // All configurable modules (excludes RULES_ENGINE per requirements)
 const CONFIGURABLE_MODULES: ModuleId[] = [
@@ -185,7 +186,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ modules, categories }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching module configurations:', error);
+    logger.error('Error fetching module configurations:', error);
     return NextResponse.json(
       { error: 'Failed to fetch module configurations' },
       { status: 500 }
@@ -266,7 +267,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ config }, { status: 200 });
   } catch (error) {
-    console.error('Error updating module configuration:', error);
+    logger.error('Error updating module configuration:', error);
     return NextResponse.json(
       { error: 'Failed to update module configuration' },
       { status: 500 }

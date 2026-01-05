@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_CATEGORIES = [
   'HVAC',
@@ -63,7 +64,7 @@ export async function GET(
 
     return NextResponse.json({ item });
   } catch (error) {
-    console.error('Error fetching maintenance item:', error);
+    logger.error('Error fetching maintenance item:', error);
     return NextResponse.json(
       { error: 'Failed to fetch maintenance item' },
       { status: 500 }
@@ -174,7 +175,7 @@ export async function PATCH(
       message: 'Maintenance item updated successfully',
     });
   } catch (error) {
-    console.error('Error updating maintenance item:', error);
+    logger.error('Error updating maintenance item:', error);
     return NextResponse.json(
       { error: 'Failed to update maintenance item' },
       { status: 500 }
@@ -240,7 +241,7 @@ export async function DELETE(
       message: 'Maintenance item deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting maintenance item:', error);
+    logger.error('Error deleting maintenance item:', error);
     return NextResponse.json(
       { error: 'Failed to delete maintenance item' },
       { status: 500 }

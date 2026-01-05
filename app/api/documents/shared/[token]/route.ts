@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
@@ -101,7 +102,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Error accessing shared document:', error);
+    logger.error('Error accessing shared document:', error);
     return NextResponse.json(
       { error: 'Failed to access shared document' },
       { status: 500 }

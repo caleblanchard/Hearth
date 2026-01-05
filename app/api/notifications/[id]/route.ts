@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
@@ -38,7 +39,7 @@ export async function PATCH(
 
     return NextResponse.json({ notification: updated });
   } catch (error) {
-    console.error('Mark notification read error:', error);
+    logger.error('Mark notification read error:', error);
     return NextResponse.json(
       { error: 'Failed to mark notification as read' },
       { status: 500 }
@@ -78,7 +79,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Delete notification error:', error);
+    logger.error('Delete notification error:', error);
     return NextResponse.json(
       { error: 'Failed to delete notification' },
       { status: 500 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -275,7 +276,7 @@ export async function GET(request: NextRequest) {
       trends: dailyTrends,
     });
   } catch (error) {
-    console.error('Family reports error:', error);
+    logger.error('Family reports error:', error);
     return NextResponse.json(
       { error: 'Failed to generate family report' },
       { status: 500 }

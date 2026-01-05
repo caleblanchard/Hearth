@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
@@ -60,7 +61,7 @@ export async function PATCH(
       message: 'Reward updated successfully',
     });
   } catch (error) {
-    console.error('Update reward error:', error);
+    logger.error('Update reward error:', error);
     return NextResponse.json(
       { error: 'Failed to update reward' },
       { status: 500 }
@@ -115,7 +116,7 @@ export async function DELETE(
       message: 'Reward deleted successfully',
     });
   } catch (error) {
-    console.error('Delete reward error:', error);
+    logger.error('Delete reward error:', error);
     return NextResponse.json(
       { error: 'Failed to delete reward' },
       { status: 500 }

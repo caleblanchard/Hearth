@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Pill, AlertCircle } from 'lucide-react';
+import { AlertModal } from '@/components/ui/Modal';
 
 interface Medication {
   id: string;
@@ -24,10 +26,22 @@ interface MedicationWidgetData {
 }
 
 export default function MedicationWidget({ memberId }: { memberId?: string } = {}) {
+  const router = useRouter();
   const [data, setData] = useState<MedicationWidgetData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [markingDose, setMarkingDose] = useState<string | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error',
+  });
 
   useEffect(() => {
     fetchMedications();
@@ -81,7 +95,12 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
       await fetchMedications();
     } catch (err) {
       console.error('Error marking medication as taken:', err);
-      alert(err instanceof Error ? err.message : 'Failed to log dose');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Failed to log dose',
+        type: 'error',
+      });
     } finally {
       setMarkingDose(null);
     }
@@ -128,7 +147,7 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/medications')}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Pill className="w-5 h-5" />
@@ -160,6 +179,7 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
             return (
               <div
                 key={medication.id}
+                onClick={(e) => e.stopPropagation()}
                 className={`border rounded-lg p-3 ${
                   isOverdue
                     ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20'
@@ -209,6 +229,15 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
           })}
         </div>
       )}
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

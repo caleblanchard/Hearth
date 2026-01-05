@@ -147,6 +147,7 @@ export default function Sidebar() {
       name: 'Settings',
       items: [
         { name: 'Module Settings', path: '/dashboard/settings/modules', icon: Cog6ToothIcon },
+        { name: 'Calendar Settings', path: '/dashboard/settings/calendars', icon: CalendarDaysIcon, moduleId: 'CALENDAR' },
         { name: 'Automation Rules', path: '/dashboard/rules', icon: BoltIcon, moduleId: 'RULES_ENGINE' },
         { name: 'Reports', path: '/dashboard/reports', icon: ChartBarIcon },
         { name: 'Approvals', path: '/dashboard/approvals', icon: CheckBadgeIcon },

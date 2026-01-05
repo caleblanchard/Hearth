@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { validateRuleConfiguration } from '@/lib/rules-engine/validation';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // GET /api/rules/[id]
@@ -135,7 +136,7 @@ export async function GET(
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error fetching rule:', error);
+    logger.error('Error fetching rule:', error);
     return NextResponse.json(
       { error: 'Failed to fetch rule' },
       { status: 500 }
@@ -306,7 +307,7 @@ export async function PATCH(
       rule: updatedRule,
     });
   } catch (error) {
-    console.error('Error updating rule:', error);
+    logger.error('Error updating rule:', error);
     return NextResponse.json(
       { error: 'Failed to update rule' },
       { status: 500 }
@@ -381,7 +382,7 @@ export async function DELETE(
       message: 'Rule deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting rule:', error);
+    logger.error('Error deleting rule:', error);
     return NextResponse.json(
       { error: 'Failed to delete rule' },
       { status: 500 }

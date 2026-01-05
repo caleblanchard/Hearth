@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_CATEGORIES = [
   'FOOD_PANTRY',
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    console.error('Error fetching inventory items:', error);
+    logger.error('Error fetching inventory items:', error);
     return NextResponse.json(
       { error: 'Failed to fetch inventory items' },
       { status: 500 }
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error adding inventory item:', error);
+    logger.error('Error adding inventory item:', error);
     return NextResponse.json(
       { error: 'Failed to add inventory item' },
       { status: 500 }

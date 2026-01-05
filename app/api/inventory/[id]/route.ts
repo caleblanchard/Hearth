@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { onInventoryUpdated } from '@/lib/rules-engine/hooks';
+import { logger } from '@/lib/logger';
 
 const VALID_CATEGORIES = [
   'FOOD_PANTRY',
@@ -56,7 +57,7 @@ export async function GET(
 
     return NextResponse.json({ item });
   } catch (error) {
-    console.error('Error fetching inventory item:', error);
+    logger.error('Error fetching inventory item:', error);
     return NextResponse.json(
       { error: 'Failed to fetch inventory item' },
       { status: 500 }
@@ -180,7 +181,7 @@ export async function PATCH(
         session.user.familyId
       );
     } catch (error) {
-      console.error('Rules engine hook error:', error);
+      logger.error('Rules engine hook error:', error);
       // Don't fail the update if rules engine fails
     }
 
@@ -189,7 +190,7 @@ export async function PATCH(
       message: 'Inventory item updated successfully',
     });
   } catch (error) {
-    console.error('Error updating inventory item:', error);
+    logger.error('Error updating inventory item:', error);
     return NextResponse.json(
       { error: 'Failed to update inventory item' },
       { status: 500 }
@@ -255,7 +256,7 @@ export async function DELETE(
       message: 'Inventory item deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting inventory item:', error);
+    logger.error('Error deleting inventory item:', error);
     return NextResponse.json(
       { error: 'Failed to delete inventory item' },
       { status: 500 }

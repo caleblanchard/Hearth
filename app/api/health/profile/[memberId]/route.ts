@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
@@ -44,7 +45,7 @@ export async function GET(
 
     return NextResponse.json({ profile }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching medical profile:', error);
+    logger.error('Error fetching medical profile:', error);
     return NextResponse.json(
       { error: 'Failed to fetch medical profile' },
       { status: 500 }
@@ -142,7 +143,7 @@ export async function PATCH(
 
     return NextResponse.json({ profile }, { status: 200 });
   } catch (error) {
-    console.error('Error updating medical profile:', error);
+    logger.error('Error updating medical profile:', error);
     return NextResponse.json(
       { error: 'Failed to update medical profile' },
       { status: 500 }

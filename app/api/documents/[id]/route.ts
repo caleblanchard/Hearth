@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const VALID_CATEGORIES = [
   'IDENTITY', 'MEDICAL', 'FINANCIAL', 'HOUSEHOLD',
@@ -77,7 +78,7 @@ export async function GET(
 
     return NextResponse.json({ document });
   } catch (error) {
-    console.error('Error fetching document:', error);
+    logger.error('Error fetching document:', error);
     return NextResponse.json(
       { error: 'Failed to fetch document' },
       { status: 500 }
@@ -181,7 +182,7 @@ export async function PATCH(
       message: 'Document updated successfully',
     });
   } catch (error) {
-    console.error('Error updating document:', error);
+    logger.error('Error updating document:', error);
     return NextResponse.json(
       { error: 'Failed to update document' },
       { status: 500 }
@@ -247,7 +248,7 @@ export async function DELETE(
       message: 'Document deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting document:', error);
+    logger.error('Error deleting document:', error);
     return NextResponse.json(
       { error: 'Failed to delete document' },
       { status: 500 }

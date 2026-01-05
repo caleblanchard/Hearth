@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -99,7 +100,7 @@ export async function POST(
 
     return NextResponse.json({ medication }, { status: 201 });
   } catch (error) {
-    console.error('Error adding medication:', error);
+    logger.error('Error adding medication:', error);
     return NextResponse.json(
       { error: 'Failed to add medication' },
       { status: 500 }
