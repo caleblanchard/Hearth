@@ -17,8 +17,8 @@ services:
       - certbot-certs:/etc/letsencrypt
     networks:
       - hearth-network
-    depends_on:
-      - certbot
+    # Note: depends_on removed - nginx can start without certbot
+    # Certbot will generate certs in background
     command: >
       sh -c "nginx -g 'daemon off;'"
 
@@ -30,34 +30,9 @@ services:
       - certbot-www:/var/www/certbot
       - certbot-certs:/etc/letsencrypt
       - ./nginx/certs:/etc/nginx/certs
+      - ./scripts/certbot-init.sh:/usr/local/bin/certbot-init.sh:ro
     entrypoint: /bin/sh
-    command: >
-      -c "
-        # Wait for nginx to be ready
-        sleep 15 &&
-        # Request certificate if it doesn't exist
-        if [ ! -f /etc/letsencrypt/live/hearth.blanchardsd.com/fullchain.pem ]; then
-          echo 'Requesting SSL certificate...' &&
-          certbot certonly --webroot \
-            --webroot-path=/var/www/certbot \
-            --email admin@blanchardsd.com \
-            --agree-tos \
-            --no-eff-email \
-            --non-interactive \
-            -d hearth.blanchardsd.com &&
-          echo 'Certificate obtained, copying to nginx certs directory...' &&
-          cp /etc/letsencrypt/live/hearth.blanchardsd.com/fullchain.pem /etc/nginx/certs/hearth.blanchardsd.com.crt &&
-          cp /etc/letsencrypt/live/hearth.blanchardsd.com/privkey.pem /etc/nginx/certs/hearth.blanchardsd.com.key &&
-          echo 'Certificates copied. Reload nginx manually: docker exec nginx-reverse-proxy nginx -s reload'
-        else
-          echo 'Certificate already exists, skipping generation.'
-        fi &&
-        # Set up auto-renewal cron job
-        echo '0 3 * * * certbot renew --quiet --deploy-hook \"cp /etc/letsencrypt/live/hearth.blanchardsd.com/fullchain.pem /etc/nginx/certs/hearth.blanchardsd.com.crt && cp /etc/letsencrypt/live/hearth.blanchardsd.com/privkey.pem /etc/nginx/certs/hearth.blanchardsd.com.key && docker exec nginx-reverse-proxy nginx -s reload\"' | crontab - &&
-        echo 'Cron job configured for auto-renewal' &&
-        # Keep container running for cron
-        crond -f -d 8
-      "
+    command: /usr/local/bin/certbot-init.sh
 
 volumes:
   certbot-www:
