@@ -18,7 +18,7 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'DependencyType') THEN
-        CREATE TYPE "DependencyType" AS ENUM ('FINISH_TO_START', 'START_TO_START', 'FINISH_TO_FINISH', 'START_TO_FINISH');
+        CREATE TYPE "DependencyType" AS ENUM ('FINISH_TO_START', 'START_TO_START', 'BLOCKING');
     END IF;
 END $$;
 
