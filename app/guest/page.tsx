@@ -45,6 +45,8 @@ export default function GuestRedeemPage() {
       // Store session token in localStorage
       if (data.session?.sessionToken) {
         localStorage.setItem('guestSessionToken', data.session.sessionToken);
+        // Also set it in sessionStorage for cross-tab sync
+        sessionStorage.setItem('guestSessionToken', data.session.sessionToken);
       }
 
       // Redirect to dashboard after a short delay

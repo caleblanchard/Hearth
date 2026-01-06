@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { signIn, getSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import ParentLoginForm from '@/components/auth/ParentLoginForm';
 import ChildPinLogin from '@/components/auth/ChildPinLogin';
@@ -288,6 +289,14 @@ function SignInContent() {
               >
                 Child Login
               </button>
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <Link
+                  href="/guest"
+                  className="block w-full text-center text-ember-700 dark:text-ember-500 hover:text-ember-500 dark:hover:text-ember-300 font-medium py-2 text-sm transition-colors"
+                >
+                  Guest Access →
+                </Link>
+              </div>
             </div>
           )}
 

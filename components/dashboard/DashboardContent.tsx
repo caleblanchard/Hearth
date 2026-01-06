@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useGuestSession } from '@/hooks/useGuestSession';
 import { MapPinIcon } from '@heroicons/react/24/outline';
 import TransportWidget from '@/components/dashboard/widgets/TransportWidget';
 import MedicationWidget from '@/components/dashboard/widgets/MedicationWidget';
@@ -84,16 +85,29 @@ interface DashboardData {
 
 export default function DashboardContent() {
   const { data: session } = useSession();
+  const { guestSession, loading: guestLoading } = useGuestSession();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [enabledModules, setEnabledModules] = useState<Set<string>>(new Set());
 
+  // Redirect if no session (user or guest)
+  useEffect(() => {
+    if (!guestLoading && !session?.user && !guestSession) {
+      router.push('/auth/signin');
+    }
+  }, [session, guestSession, guestLoading, router]);
+
   useEffect(() => {
     async function fetchEnabledModules() {
       try {
-        const res = await fetch('/api/settings/modules/enabled');
+        const headers: HeadersInit = {};
+        if (guestSession?.sessionToken) {
+          headers['x-guest-session-token'] = guestSession.sessionToken;
+        }
+        
+        const res = await fetch('/api/settings/modules/enabled', { headers });
         if (res.ok) {
           const data = await res.json();
           setEnabledModules(new Set(data.enabledModules));
@@ -111,7 +125,12 @@ export default function DashboardContent() {
 
     async function fetchDashboard() {
       try {
-        const response = await fetch('/api/dashboard');
+        const headers: HeadersInit = {};
+        if (guestSession?.sessionToken) {
+          headers['x-guest-session-token'] = guestSession.sessionToken;
+        }
+        
+        const response = await fetch('/api/dashboard', { headers });
         if (!response.ok) {
           throw new Error('Failed to fetch dashboard data');
         }
@@ -124,11 +143,11 @@ export default function DashboardContent() {
       }
     }
 
-    if (session) {
+    if (session || guestSession) {
       fetchEnabledModules();
       fetchDashboard();
     }
-  }, [session]);
+  }, [session, guestSession]);
 
   if (loading) {
     return (

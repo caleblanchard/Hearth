@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { authenticateRequest, getFamilyId } from '@/lib/api-auth';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -7,13 +7,48 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authResult = await authenticateRequest(request);
 
-    if (!session?.user) {
+    if (!authResult.authenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { familyId, id: memberId } = session.user;
+    // Guests can view dashboard but with limited data
+    if (authResult.isGuest) {
+      // For guests, return limited dashboard data
+      const familyId = getFamilyId(authResult);
+      
+      // Get basic family info only
+      const family = await prisma.family.findUnique({
+        where: { id: familyId },
+        select: {
+          name: true,
+          members: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              role: true,
+            },
+          },
+        },
+      });
+
+      return NextResponse.json({
+        chores: [],
+        screenTime: null,
+        credits: null,
+        shopping: null,
+        todos: [],
+        events: [],
+        projectTasks: [],
+        family: family,
+        isGuest: true,
+        guestAccessLevel: authResult.guest?.accessLevel,
+      });
+    }
+
+    const { familyId, id: memberId } = authResult.user!;
 
     // Fetch all pending/rejected chores for the user (regardless of due date)
     // This ensures chores show up even if dueDate isn't set correctly or instances weren't generated for today
@@ -177,7 +212,7 @@ export async function GET(request: NextRequest) {
 
     // Filter events that are assigned to the user
     const myEvents = calendarEvents.filter(event =>
-      event.assignments.length > 0 || session.user.role === 'PARENT'
+      event.assignments.length > 0 || authResult.user!.role === 'PARENT'
     );
 
     // Fetch project tasks assigned to the user
@@ -266,6 +301,7 @@ export async function GET(request: NextRequest) {
         projectId: task.projectId,
         projectName: task.project.name,
       })),
+      isGuest: false,
     });
   } catch (error) {
     logger.error('Dashboard API error', error);

@@ -1,5 +1,6 @@
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
+import GuestStatusBanner from '@/components/dashboard/GuestStatusBanner';
 
 export default function DashboardLayout({
   children,
@@ -13,6 +14,9 @@ export default function DashboardLayout({
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-h-screen">
+        {/* Guest Status Banner */}
+        <GuestStatusBanner />
+
         {/* Top bar */}
         <TopBar />
 

@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import { useGuestSession } from '@/hooks/useGuestSession';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -44,10 +45,15 @@ const PAGE_TITLES: Record<string, string> = {
 
 export default function TopBar() {
   const { data: session } = useSession();
+  const { guestSession, endSession } = useGuestSession();
   const pathname = usePathname();
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/auth/signin' });
+    if (guestSession) {
+      await endSession();
+    } else {
+      await signOut({ callbackUrl: '/auth/signin' });
+    }
   };
 
   // Get page title - check exact match first, then check patterns for dynamic routes
@@ -88,15 +94,22 @@ export default function TopBar() {
           <NotificationBell />
 
           {/* User badge */}
-          {session?.user && (
+          {(session?.user || guestSession) && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-canvas-100 dark:bg-slate-700 rounded-lg">
               <div className="w-8 h-8 bg-ember-700 dark:bg-ember-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                {session.user.name?.charAt(0) || 'U'}
+                {guestSession 
+                  ? guestSession.guestName.charAt(0)
+                  : session?.user?.name?.charAt(0) || 'U'}
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {session.user.name}
+                  {guestSession ? guestSession.guestName : session?.user?.name}
                 </p>
+                {guestSession && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Guest ({guestSession.accessLevel.replace('_', ' ')})
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -107,7 +120,9 @@ export default function TopBar() {
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
           >
             <ArrowRightOnRectangleIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">Sign Out</span>
+            <span className="hidden sm:inline">
+              {guestSession ? 'End Session' : 'Sign Out'}
+            </span>
           </button>
         </div>
       </div>

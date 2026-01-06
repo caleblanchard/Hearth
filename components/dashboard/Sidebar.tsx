@@ -156,6 +156,7 @@ export default function Sidebar() {
         { name: 'Allowance', path: '/dashboard/allowance/manage', icon: CurrencyDollarIcon },
         { name: 'Screen Time', path: '/dashboard/screentime/manage', icon: ClockIcon },
         { name: 'Family', path: '/dashboard/family', icon: UsersIcon },
+        { name: 'Guest Access', path: '/dashboard/guests', icon: UsersIcon },
       ],
     });
   }

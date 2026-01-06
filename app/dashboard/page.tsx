@@ -5,8 +5,11 @@ import DashboardContent from '@/components/dashboard/DashboardContent';
 export default async function DashboardPage() {
   const session = await auth();
 
+  // Note: Guest session validation happens client-side via useGuestSession hook
+  // Server-side we only check for NextAuth session
   if (!session?.user) {
-    redirect('/auth/signin');
+    // Don't redirect here - let client-side handle guest sessions
+    // The GuestStatusBanner and DashboardContent will handle guest authentication
   }
 
   return (

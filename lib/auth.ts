@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { compare } from 'bcrypt';
 import prisma from './prisma';
 import { Role } from '@/app/generated/prisma';
+import { validateGuestSession, type GuestSessionInfo } from './guest-session';
 
 export const config = {
   providers: [
@@ -132,3 +133,34 @@ export const config = {
 } satisfies NextAuthConfig;
 
 export const { handlers, auth, signIn, signOut } = NextAuth(config);
+
+/**
+ * Get current session (either NextAuth session or guest session)
+ * This is a helper function that checks both authentication methods
+ */
+export async function getSession(
+  headers?: Headers
+): Promise<
+  | { type: 'user'; session: Awaited<ReturnType<typeof auth>> }
+  | { type: 'guest'; session: GuestSessionInfo }
+  | { type: 'none' }
+> {
+  // First try NextAuth session
+  const nextAuthSession = await auth();
+  if (nextAuthSession?.user) {
+    return { type: 'user', session: nextAuthSession };
+  }
+
+  // Then try guest session if headers are provided
+  if (headers) {
+    const guestSessionToken = headers.get('x-guest-session-token');
+    if (guestSessionToken) {
+      const guestSession = await validateGuestSession(guestSessionToken);
+      if (guestSession) {
+        return { type: 'guest', session: guestSession };
+      }
+    }
+  }
+
+  return { type: 'none' };
+}
