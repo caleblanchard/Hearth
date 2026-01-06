@@ -84,7 +84,7 @@ interface DashboardData {
 }
 
 export default function DashboardContent() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { guestSession, loading: guestLoading } = useGuestSession();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -92,12 +92,17 @@ export default function DashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const [enabledModules, setEnabledModules] = useState<Set<string>>(new Set());
 
-  // Redirect if no session (user or guest)
+  // Redirect if no session (user or guest) - but only after both are done loading
   useEffect(() => {
-    if (!guestLoading && !session?.user && !guestSession) {
+    // Wait for both session and guest session to finish loading
+    const sessionLoading = sessionStatus === 'loading';
+    const stillLoading = sessionLoading || guestLoading;
+    
+    // Only redirect if we're done loading and there's no session (user or guest)
+    if (!stillLoading && !session?.user && !guestSession) {
       router.push('/auth/signin');
     }
-  }, [session, guestSession, guestLoading, router]);
+  }, [session, sessionStatus, guestSession, guestLoading, router]);
 
   useEffect(() => {
     async function fetchEnabledModules() {
@@ -143,11 +148,23 @@ export default function DashboardContent() {
       }
     }
 
-    if (session || guestSession) {
-      fetchEnabledModules();
-      fetchDashboard();
+    // Wait for session to finish loading before fetching data
+    const sessionLoading = sessionStatus === 'loading';
+    const stillLoading = sessionLoading || guestLoading;
+    
+    // Don't fetch if we're still loading or if there's no session
+    if (stillLoading) {
+      return;
     }
-  }, [session, guestSession]);
+    
+    // If no session (user or guest), don't fetch (redirect will happen)
+    if (!session?.user && !guestSession) {
+      return;
+    }
+
+    fetchEnabledModules();
+    fetchDashboard();
+  }, [session, sessionStatus, guestSession, guestLoading]);
 
   if (loading) {
     return (
