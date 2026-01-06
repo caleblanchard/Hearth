@@ -68,8 +68,9 @@ services:
       - WEATHER_API_KEY=${WEATHER_API_KEY:-}
       # App
       - NODE_ENV=production
-    ports:
-      - "${APP_PORT:-3000}:3000"
+    # Port mapping removed - accessed via nginx reverse proxy
+    # ports:
+    #   - "${APP_PORT:-3000}:3000"
     volumes:
       - hearth-uploads:/app/uploads  # Fallback for local storage if needed
     depends_on:
