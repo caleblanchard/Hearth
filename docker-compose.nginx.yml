@@ -11,7 +11,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/certs:/etc/nginx/certs:rw
       - ./nginx/logs:/var/log/nginx
       - certbot-www:/var/www/certbot
       - certbot-certs:/etc/letsencrypt
@@ -30,28 +30,33 @@ services:
       - certbot-www:/var/www/certbot
       - certbot-certs:/etc/letsencrypt
       - ./nginx/certs:/etc/nginx/certs
-    entrypoint: >
-      sh -c "
+    entrypoint: /bin/sh
+    command: >
+      -c "
         # Wait for nginx to be ready
-        sleep 10 &&
+        sleep 15 &&
         # Request certificate if it doesn't exist
         if [ ! -f /etc/letsencrypt/live/hearth.blanchardsd.com/fullchain.pem ]; then
+          echo 'Requesting SSL certificate...' &&
           certbot certonly --webroot \
             --webroot-path=/var/www/certbot \
             --email admin@blanchardsd.com \
             --agree-tos \
             --no-eff-email \
+            --non-interactive \
             -d hearth.blanchardsd.com &&
-          # Copy certificates to nginx certs directory
+          echo 'Certificate obtained, copying to nginx certs directory...' &&
           cp /etc/letsencrypt/live/hearth.blanchardsd.com/fullchain.pem /etc/nginx/certs/hearth.blanchardsd.com.crt &&
           cp /etc/letsencrypt/live/hearth.blanchardsd.com/privkey.pem /etc/nginx/certs/hearth.blanchardsd.com.key &&
-          # Reload nginx
-          nginx -s reload || true
+          echo 'Certificates copied. Reload nginx manually: docker exec nginx-reverse-proxy nginx -s reload'
+        else
+          echo 'Certificate already exists, skipping generation.'
         fi &&
         # Set up auto-renewal cron job
-        echo '0 0 * * * certbot renew --quiet --deploy-hook \"cp /etc/letsencrypt/live/hearth.blanchardsd.com/fullchain.pem /etc/nginx/certs/hearth.blanchardsd.com.crt && cp /etc/letsencrypt/live/hearth.blanchardsd.com/privkey.pem /etc/nginx/certs/hearth.blanchardsd.com.key && nginx -s reload\"' | crontab - &&
+        echo '0 3 * * * certbot renew --quiet --deploy-hook \"cp /etc/letsencrypt/live/hearth.blanchardsd.com/fullchain.pem /etc/nginx/certs/hearth.blanchardsd.com.crt && cp /etc/letsencrypt/live/hearth.blanchardsd.com/privkey.pem /etc/nginx/certs/hearth.blanchardsd.com.key && docker exec nginx-reverse-proxy nginx -s reload\"' | crontab - &&
+        echo 'Cron job configured for auto-renewal' &&
         # Keep container running for cron
-        crond -f
+        crond -f -d 8
       "
 
 volumes:
