@@ -81,14 +81,19 @@ export default function CommunicationFeed({ initialFilter, refreshTrigger }: Com
 
       const data = await response.json();
 
+      // Handle pagination response structure: { data: Post[], pagination: {...} }
+      // or legacy structure: { posts: Post[], pagination: {...} }
+      const postsArray = data.data || data.posts || [];
+      const pagination = data.pagination || { hasMore: false, total: 0 };
+
       if (append) {
-        setPosts((prev) => [...prev, ...data.posts]);
+        setPosts((prev) => [...(prev || []), ...(Array.isArray(postsArray) ? postsArray : [])]);
       } else {
-        setPosts(data.posts);
+        setPosts(Array.isArray(postsArray) ? postsArray : []);
       }
 
-      setHasMore(data.pagination.hasMore);
-      setTotal(data.pagination.total);
+      setHasMore(pagination.hasMore || false);
+      setTotal(pagination.total || 0);
       setOffset(append ? offset + limit : limit);
     } catch (err) {
       setError('Failed to load posts. Please try again.');
@@ -149,7 +154,7 @@ export default function CommunicationFeed({ initialFilter, refreshTrigger }: Com
     return date.toLocaleDateString();
   };
 
-  if (loading && posts.length === 0) {
+  if (loading && (!posts || posts.length === 0)) {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="text-gray-500 dark:text-gray-400">Loading posts...</div>
@@ -165,7 +170,7 @@ export default function CommunicationFeed({ initialFilter, refreshTrigger }: Com
     );
   }
 
-  if (posts.length === 0) {
+  if (!posts || posts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center">
         <div className="text-gray-500 dark:text-gray-400 mb-2">No posts yet</div>
@@ -235,7 +240,7 @@ export default function CommunicationFeed({ initialFilter, refreshTrigger }: Com
 
       {/* Posts */}
       <div className="space-y-4">
-        {posts.map((post) => (
+        {(posts || []).map((post) => (
           <div
             key={post.id}
             data-testid="post-item"

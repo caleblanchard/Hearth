@@ -262,9 +262,12 @@ class HybridRateLimiter {
 }
 
 // Create rate limiters for different endpoint types
-export const apiRateLimiter = new HybridRateLimiter(60000, 100); // 100 requests per minute
-export const authRateLimiter = new HybridRateLimiter(60000, 5); // 5 requests per minute for auth
-export const cronRateLimiter = new HybridRateLimiter(60000, 10); // 10 requests per minute for cron
+// API: 500 requests per minute (8.3 req/sec) - allows for normal web navigation with multiple tabs
+export const apiRateLimiter = new HybridRateLimiter(60000, 500);
+// Auth: 10 requests per minute - prevents brute force while allowing retries
+export const authRateLimiter = new HybridRateLimiter(60000, 10);
+// Cron: 20 requests per minute - allows for multiple cron jobs
+export const cronRateLimiter = new HybridRateLimiter(60000, 20);
 
 /**
  * Get client identifier from request

@@ -37,7 +37,15 @@ interface Recipe {
 }
 
 interface RecipesResponse {
-  recipes: Recipe[];
+  recipes?: Recipe[];
+  data?: Recipe[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total?: number;
+    totalPages?: number;
+    hasMore: boolean;
+  };
 }
 
 export default function RecipesList() {
@@ -69,7 +77,10 @@ export default function RecipesList() {
       }
 
       const data: RecipesResponse = await response.json();
-      setRecipes(data.recipes);
+      // Handle pagination response structure: { data: Recipe[], pagination: {...} }
+      // or legacy structure: { recipes: Recipe[] }
+      const recipesArray = data.data || data.recipes || [];
+      setRecipes(Array.isArray(recipesArray) ? recipesArray : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load recipes');
     } finally {
@@ -174,7 +185,7 @@ export default function RecipesList() {
       </div>
 
       {/* Recipes Grid */}
-      {recipes.length === 0 ? (
+      {!recipes || recipes.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <p className="text-gray-500 dark:text-gray-400">
             {favoritesOnly || categoryFilter
@@ -184,7 +195,7 @@ export default function RecipesList() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {recipes.map((recipe) => (
+          {(recipes || []).map((recipe) => (
             <div
               key={recipe.id}
               className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow cursor-pointer"
