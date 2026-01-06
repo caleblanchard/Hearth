@@ -249,9 +249,9 @@ export function instantiateTemplate(
   }
 
   // Deep clone the template
-  let trigger = JSON.parse(JSON.stringify(template.trigger));
-  let conditions = template.conditions ? JSON.parse(JSON.stringify(template.conditions)) : null;
-  let actions = JSON.parse(JSON.stringify(template.actions));
+  const trigger = JSON.parse(JSON.stringify(template.trigger));
+  const conditions = template.conditions ? JSON.parse(JSON.stringify(template.conditions)) : null;
+  const actions = JSON.parse(JSON.stringify(template.actions));
 
   // Apply customizations using dot notation paths
   if (customizations) {

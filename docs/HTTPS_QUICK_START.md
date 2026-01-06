@@ -13,7 +13,7 @@ This is a condensed guide for quickly setting up HTTPS. For detailed instruction
 ### 1. Generate Self-Signed Certificate (Optional but Recommended)
 
 ```bash
-cd /path/to/HouseholdERP
+cd /path/to/Hearth
 ./scripts/generate-self-signed-cert.sh
 ```
 

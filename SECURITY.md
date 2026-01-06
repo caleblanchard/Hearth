@@ -1,6 +1,6 @@
 # Security Features
 
-This document outlines the security measures implemented in the HouseholdERP application.
+This document outlines the security measures implemented in the Hearth application.
 
 ## CSRF Protection
 

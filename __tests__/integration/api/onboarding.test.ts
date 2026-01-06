@@ -293,6 +293,9 @@ describe('POST /api/onboarding/setup', () => {
       data: {
         name: 'Test Family',
         timezone: 'America/New_York',
+        location: null,
+        latitude: null,
+        longitude: null,
       },
     });
 

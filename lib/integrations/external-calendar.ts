@@ -328,7 +328,7 @@ export function parseICalData(icalData: string): ParsedEvent[] {
           
           // Iterate through occurrences until we exceed our end date
           let occurrence: ICAL.Time | null = null;
-          let maxIterations = 10000; // Safety limit to prevent infinite loops
+          const maxIterations = 10000; // Safety limit to prevent infinite loops
           let iterations = 0;
           
           while (iterations < maxIterations) {

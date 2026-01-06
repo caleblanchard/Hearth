@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { hash } from 'bcrypt';
 import { BCRYPT_ROUNDS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
+import { ModuleId } from '@/app/generated/prisma';
 
 export async function POST(request: Request) {
   try {
@@ -138,10 +139,10 @@ export async function POST(request: Request) {
       // Create module access entries for each allowed module
       // Only allow modules that are enabled at the family level
       const moduleAccessData = allowedModules
-        .filter((moduleId: string) => enabledModuleIds.has(moduleId))
+        .filter((moduleId: string) => enabledModuleIds.has(moduleId as ModuleId))
         .map((moduleId: string) => ({
           memberId: newMember.id,
-          moduleId,
+          moduleId: moduleId as ModuleId,
           hasAccess: true,
         }));
 

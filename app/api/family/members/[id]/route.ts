@@ -131,10 +131,10 @@ export async function PATCH(
       // Create new module access entries for each allowed module
       // Only allow modules that are enabled at the family level
       const moduleAccessData = allowedModules
-        .filter((moduleId: string) => enabledModuleIds.has(moduleId))
+        .filter((moduleId: string) => enabledModuleIds.has(moduleId as ModuleId))
         .map((moduleId: string) => ({
           memberId: id,
-          moduleId,
+          moduleId: moduleId as ModuleId,
           hasAccess: true,
         }));
 

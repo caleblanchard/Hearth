@@ -86,7 +86,8 @@ export default function PetsList() {
       // Reload pets to show updated data
       await loadPets();
       // Show success feedback
-      setSuccessMessage(`${pet.name} fed successfully!`);
+      const pet = pets.find(p => p.id === petId);
+      setSuccessMessage(`${pet?.name || 'Pet'} fed successfully!`);
       setTimeout(() => {
         setFeedingPet(null);
         setSuccessMessage(null);

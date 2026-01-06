@@ -105,7 +105,7 @@ export async function POST(
       data: {
         familyId: session.user.familyId,
         memberId: session.user.id,
-        action: 'PET_MEDICATION_ADDED',
+        action: 'PET_MEDICATION_GIVEN',
         result: 'SUCCESS',
         metadata: {
           petId: pet.id,

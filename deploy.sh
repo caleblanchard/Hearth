@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# HouseholdERP Quick Deployment Script
+# Hearth Quick Deployment Script
 #
 # This script automates the deployment process
 # Usage: ./deploy.sh
@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}"
 echo "╔═══════════════════════════════════════════════════════════╗"
 echo "║                                                           ║"
-echo "║           HouseholdERP - Deployment Script               ║"
+echo "║           Hearth - Deployment Script               ║"
 echo "║                                                           ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"

@@ -5,6 +5,8 @@
  * Fails fast if required variables are missing or invalid.
  */
 
+import { logger } from './logger';
+
 interface EnvConfig {
   // Database
   DATABASE_URL: string;
@@ -127,7 +129,6 @@ export function getEnvConfig(): EnvConfig {
   
   // Log warnings but don't fail
   if (result.warnings.length > 0) {
-    const { logger } = require('./logger');
     logger.warn('Environment variable warnings:', { warnings: result.warnings });
   }
   

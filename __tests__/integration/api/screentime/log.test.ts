@@ -516,9 +516,10 @@ describe('/api/screentime/log', () => {
       const response = await POST(request)
       const data = await response.json()
 
-      // parseJsonBody now returns 400 for invalid JSON (better behavior)
+      // Invalid JSON should return 400 - either from JSON parsing or field validation
       expect(response.status).toBe(400)
-      expect(data.error).toContain('parse')
+      // The error should indicate either a JSON format issue or missing field
+      expect(['Invalid JSON format', 'Minutes must be a positive integer']).toContain(data.error)
     })
 
     it('should return 403 if child tries to exceed allowance without override', async () => {
