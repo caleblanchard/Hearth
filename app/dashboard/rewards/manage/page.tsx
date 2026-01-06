@@ -57,7 +57,9 @@ export default function ManageRewardsPage() {
       const response = await fetch('/api/rewards');
       if (response.ok) {
         const data = await response.json();
-        setRewards(data.rewards || []);
+        // Handle paginated response structure
+        const rewardsArray = data.data || data.rewards || [];
+        setRewards(Array.isArray(rewardsArray) ? rewardsArray : []);
       }
     } catch (error) {
       console.error('Failed to fetch rewards:', error);

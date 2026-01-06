@@ -81,7 +81,9 @@ export default function TodosPage() {
       const response = await fetch(`/api/todos?filter=${apiFilter}`);
       if (response.ok) {
         const data = await response.json();
-        setTodos(data.todos || []);
+        // Handle paginated response structure
+        const todosArray = data.data || data.todos || [];
+        setTodos(Array.isArray(todosArray) ? todosArray : []);
         if (data.currentUserId) {
           setCurrentUserId(data.currentUserId);
         }

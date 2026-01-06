@@ -18,6 +18,7 @@ interface Allowance {
   screenTimeTypeName: string;
   allowanceMinutes: number;
   period: 'DAILY' | 'WEEKLY';
+  remainingMinutes?: number;
 }
 
 interface FamilyMember {
@@ -311,28 +312,56 @@ export default function FamilyScreenTimeManagement() {
                     </div>
                     {member.allowances && member.allowances.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">
                           Type-Specific Allowances:
                         </p>
-                        <div className="space-y-1">
-                          {member.allowances.slice(0, 3).map((allowance) => (
-                            <div
-                              key={allowance.id}
-                              className="flex justify-between text-xs"
-                            >
-                              <span className="text-gray-600 dark:text-gray-400">
-                                {allowance.screenTimeTypeName}
-                              </span>
-                              <span className="text-gray-900 dark:text-white">
-                                {formatTime(allowance.allowanceMinutes)}/{allowance.period === 'DAILY' ? 'day' : 'week'}
-                              </span>
-                            </div>
-                          ))}
-                          {member.allowances.length > 3 && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              +{member.allowances.length - 3} more
-                            </p>
-                          )}
+                        <div className="space-y-2">
+                          {member.allowances.map((allowance) => {
+                            const remaining = allowance.remainingMinutes ?? allowance.allowanceMinutes;
+                            const used = allowance.allowanceMinutes - remaining;
+                            const percentage = allowance.allowanceMinutes > 0
+                              ? (remaining / allowance.allowanceMinutes) * 100
+                              : 0;
+                            const isLow = percentage < 20;
+                            
+                            return (
+                              <div
+                                key={allowance.id}
+                                className="space-y-1"
+                              >
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="text-gray-600 dark:text-gray-400 font-medium">
+                                    {allowance.screenTimeTypeName}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`font-semibold ${
+                                      isLow
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-green-600 dark:text-green-400'
+                                    }`}>
+                                      {formatTime(remaining)}
+                                    </span>
+                                    <span className="text-gray-500 dark:text-gray-400">
+                                      / {formatTime(allowance.allowanceMinutes)}
+                                    </span>
+                                    <span className="text-gray-400 dark:text-gray-500 text-[10px]">
+                                      {allowance.period === 'DAILY' ? '/day' : '/week'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                  <div
+                                    className={`h-1.5 rounded-full transition-all ${
+                                      isLow
+                                        ? 'bg-red-600 dark:bg-red-400'
+                                        : 'bg-green-600 dark:text-green-400'
+                                    }`}
+                                    style={{ width: `${Math.min(100, percentage)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

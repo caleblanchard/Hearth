@@ -97,20 +97,24 @@ export async function POST(request: Request) {
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
       weekStart.setHours(0, 0, 0, 0);
 
+      // Create screen time settings with 0 allocation
+      // Screen time should only come from type-specific allowances configured in settings
       await prisma.screenTimeSettings.create({
         data: {
           memberId: newMember.id,
-          weeklyAllocationMinutes: 420, // 7 hours default
+          weeklyAllocationMinutes: 0, // No general allocation - only type-specific allowances
           resetDay: 'SUNDAY',
           rolloverType: 'NONE',
           isActive: true,
         },
       });
 
+      // Create balance with 0 initial balance
+      // Balance will be managed through type-specific allowances
       await prisma.screenTimeBalance.create({
         data: {
           memberId: newMember.id,
-          currentBalanceMinutes: 420,
+          currentBalanceMinutes: 0,
           weekStartDate: weekStart,
         },
       });

@@ -145,7 +145,9 @@ export default function ManageChoresPage() {
       const response = await fetch('/api/chores');
       if (response.ok) {
         const data = await response.json();
-        setChores(data.chores || []);
+        // Handle paginated response structure
+        const choresArray = data.data || data.chores || [];
+        setChores(Array.isArray(choresArray) ? choresArray : []);
       }
     } catch (error) {
       console.error('Failed to fetch chores:', error);

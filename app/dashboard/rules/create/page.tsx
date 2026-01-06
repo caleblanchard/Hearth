@@ -91,7 +91,9 @@ function CreateRuleContent() {
 
         if (choresRes?.ok) {
           const data = await choresRes.json();
-          setChoreDefinitions(data.chores || []);
+          // Handle paginated response structure
+          const choresArray = data.data || data.chores || [];
+          setChoreDefinitions(Array.isArray(choresArray) ? choresArray : []);
         }
 
         if (medicationsRes?.ok) {
@@ -101,7 +103,9 @@ function CreateRuleContent() {
 
         if (routinesRes?.ok) {
           const data = await routinesRes.json();
-          setRoutines(data.routines || []);
+          // Handle paginated response structure
+          const routinesArray = data.data || data.routines || [];
+          setRoutines(Array.isArray(routinesArray) ? routinesArray : []);
         }
 
         if (inventoryRes?.ok) {

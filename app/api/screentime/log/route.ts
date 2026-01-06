@@ -229,10 +229,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Update balance (for backward compatibility)
+      // Note: With type-specific allowances only, this balance stays at 0
+      // It's kept for backward compatibility but not used for enforcement
       const updatedBalance = await tx.screenTimeBalance.update({
         where: { memberId },
         data: {
-          currentBalanceMinutes: Math.max(0, balance.currentBalanceMinutes - minutes),
+          // Don't decrement general balance - screen time is managed by type-specific allowances only
+          currentBalanceMinutes: balance.currentBalanceMinutes,
         },
       });
 
