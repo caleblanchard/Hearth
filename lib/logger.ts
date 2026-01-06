@@ -58,6 +58,39 @@ function sanitizeContext(context?: LogContext): LogContext {
 class Logger {
   private isDevelopment = process.env.NODE_ENV === 'development';
   private isProduction = process.env.NODE_ENV === 'production';
+  private isEdgeRuntime = typeof process === 'undefined' || typeof process.stderr === 'undefined';
+
+  /**
+   * Safe write to stderr (Edge Runtime compatible)
+   */
+  private writeToStderr(data: string): void {
+    if (this.isEdgeRuntime) {
+      // Edge Runtime: use console.error
+      console.error(data);
+    } else if (process.stderr?.write) {
+      // Node.js Runtime: use process.stderr
+      process.stderr.write(data + '\n');
+    } else {
+      // Fallback
+      console.error(data);
+    }
+  }
+
+  /**
+   * Safe write to stdout (Edge Runtime compatible)
+   */
+  private writeToStdout(data: string): void {
+    if (this.isEdgeRuntime) {
+      // Edge Runtime: use console methods
+      console.log(data);
+    } else if (process.stdout?.write) {
+      // Node.js Runtime: use process.stdout
+      process.stdout.write(data + '\n');
+    } else {
+      // Fallback
+      console.log(data);
+    }
+  }
 
   /**
    * Log an error message
@@ -84,8 +117,9 @@ class Logger {
 
     // In production, write to stderr (captured by process managers)
     // In development, use console.error for better formatting
+    const logString = JSON.stringify(logData);
     if (this.isProduction) {
-      process.stderr.write(JSON.stringify(logData) + '\n');
+      this.writeToStderr(logString);
     } else {
       console.error(JSON.stringify(logData, null, 2));
     }
@@ -103,8 +137,9 @@ class Logger {
       ...sanitizedContext,
     };
 
+    const logString = JSON.stringify(logData);
     if (this.isProduction) {
-      process.stderr.write(JSON.stringify(logData) + '\n');
+      this.writeToStderr(logString);
     } else {
       console.warn(JSON.stringify(logData, null, 2));
     }
@@ -125,8 +160,9 @@ class Logger {
 
     // Only log info in development or if LOG_LEVEL includes info
     if (this.isDevelopment || process.env.LOG_LEVEL === 'info' || process.env.LOG_LEVEL === 'debug') {
+      const logString = JSON.stringify(logData);
       if (this.isProduction) {
-        process.stdout.write(JSON.stringify(logData) + '\n');
+        this.writeToStdout(logString);
       } else {
         console.info(JSON.stringify(logData, null, 2));
       }
@@ -146,8 +182,9 @@ class Logger {
         ...sanitizedContext,
       };
       
+      const logString = JSON.stringify(logData);
       if (this.isProduction) {
-        process.stdout.write(JSON.stringify(logData) + '\n');
+        this.writeToStdout(logString);
       } else {
         console.debug(JSON.stringify(logData, null, 2));
       }
