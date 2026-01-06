@@ -137,18 +137,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth(config);
 /**
  * Get current session (either NextAuth session or guest session)
  * This is a helper function that checks both authentication methods
+ * Note: Named differently from Next.js middleware getSession to avoid conflicts
  */
-export async function getSession(
+export async function getAuthSession(
   headers?: Headers
 ): Promise<
-  | { type: 'user'; session: Awaited<ReturnType<typeof auth>> }
+  | { type: 'user'; session: { user: { id: string; role: Role; familyId: string; familyName: string; name: string | null; email: string | null } } | null }
   | { type: 'guest'; session: GuestSessionInfo }
   | { type: 'none' }
 > {
   // First try NextAuth session
   const nextAuthSession = await auth();
   if (nextAuthSession?.user) {
-    return { type: 'user', session: nextAuthSession };
+    return { type: 'user', session: nextAuthSession as { user: { id: string; role: Role; familyId: string; familyName: string; name: string | null; email: string | null } } };
   }
 
   // Then try guest session if headers are provided
