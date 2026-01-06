@@ -29,7 +29,7 @@ export async function GET() {
     // Get screen time data for each member
     const membersWithData = await Promise.all(
       members.map(async (member) => {
-        const [balance, settings, recentUsage] = await Promise.all([
+        const [balance, settings, recentUsage, allowances] = await Promise.all([
           prisma.screenTimeBalance.findUnique({
             where: { memberId: member.id },
           }),
@@ -48,6 +48,18 @@ export async function GET() {
               amountMinutes: true,
             },
           }),
+          prisma.screenTimeAllowance.findMany({
+            where: { memberId: member.id },
+            include: {
+              screenTimeType: {
+                select: {
+                  id: true,
+                  name: true,
+                  isActive: true,
+                },
+              },
+            },
+          }),
         ]);
 
         const weeklyUsage = recentUsage.reduce(
@@ -61,6 +73,13 @@ export async function GET() {
           weeklyAllocation: settings?.weeklyAllocationMinutes || 0,
           weeklyUsage,
           weekStartDate: balance?.weekStartDate,
+          allowances: allowances.map((a) => ({
+            id: a.id,
+            screenTimeTypeId: a.screenTimeTypeId,
+            screenTimeTypeName: a.screenTimeType.name,
+            allowanceMinutes: a.allowanceMinutes,
+            period: a.period,
+          })),
         };
       })
     );

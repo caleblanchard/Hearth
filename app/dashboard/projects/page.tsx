@@ -52,7 +52,10 @@ export default function ProjectsPage() {
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        setProjects(data.projects);
+        // Handle pagination response structure: { data: Project[], pagination: {...} }
+        // or legacy structure: { projects: Project[] }
+        const projectsArray = data.data || data.projects || [];
+        setProjects(Array.isArray(projectsArray) ? projectsArray : []);
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -168,7 +171,7 @@ export default function ProjectsPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 dark:border-ember-500 mx-auto"></div>
           <p className="text-gray-600 dark:text-gray-400 mt-4">Loading projects...</p>
         </div>
-      ) : projects.length === 0 ? (
+      ) : !projects || projects.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <FolderIcon className="h-16 w-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
@@ -198,7 +201,7 @@ export default function ProjectsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
+          {(projects || []).map((project) => (
             <div
               key={project.id}
               onClick={() => router.push(`/dashboard/projects/${project.id}`)}

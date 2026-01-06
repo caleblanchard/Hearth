@@ -114,6 +114,10 @@ export default function Sidebar() {
       items: [
         { name: 'Rewards', path: '/dashboard/rewards', icon: GiftIcon, moduleId: 'CREDITS' },
         { name: 'Screen Time', path: '/dashboard/screentime', icon: ClockIcon, moduleId: 'SCREEN_TIME' },
+        ...(session?.user?.role === 'PARENT' 
+          ? [{ name: 'Family Screen Time', path: '/dashboard/screentime/manage-family', icon: UsersIcon, moduleId: 'SCREEN_TIME' }]
+          : []
+        ),
         { name: 'Financial', path: '/dashboard/financial', icon: ChartBarIcon, moduleId: 'FINANCIAL' },
         { name: 'Transactions', path: '/dashboard/financial/transactions', icon: ReceiptPercentIcon, moduleId: 'FINANCIAL' },
         { name: 'Savings Goals', path: '/dashboard/financial/savings', icon: BanknotesIcon, moduleId: 'FINANCIAL' },
@@ -154,7 +158,7 @@ export default function Sidebar() {
         { name: 'Manage Chores', path: '/dashboard/chores/manage', icon: WrenchScrewdriverIcon },
         { name: 'Manage Rewards', path: '/dashboard/rewards/manage', icon: GiftIcon },
         { name: 'Allowance', path: '/dashboard/allowance/manage', icon: CurrencyDollarIcon },
-        { name: 'Screen Time', path: '/dashboard/screentime/manage', icon: ClockIcon },
+        { name: 'Screen Time Settings', path: '/dashboard/screentime/manage', icon: ClockIcon },
         { name: 'Family', path: '/dashboard/family', icon: UsersIcon },
         { name: 'Guest Access', path: '/dashboard/guests', icon: UsersIcon },
       ],
