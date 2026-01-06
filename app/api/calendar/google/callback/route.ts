@@ -6,6 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { GoogleCalendarClient } from '@/lib/integrations/google-calendar';
@@ -59,9 +61,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Get family member info
-    const familyMember = await prisma.familyMember.findFirst({
+    // session.user.id is the FamilyMember ID from the auth system
+    const familyMember = await prisma.familyMember.findUnique({
       where: {
-        userId: session.user.id,
+        id: session.user.id,
       },
     });
 

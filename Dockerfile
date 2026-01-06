@@ -50,6 +50,8 @@ COPY --from=deps /app/app/generated ./app/generated
 # Set build-time environment variables
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+# Increase Node.js memory limit for large builds
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Build the application
 RUN npm run build

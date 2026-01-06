@@ -7,6 +7,8 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 import { GoogleCalendarClient } from '@/lib/integrations/google-calendar';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';

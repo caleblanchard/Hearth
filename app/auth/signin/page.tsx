@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { signIn, getSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import ParentLoginForm from '@/components/auth/ParentLoginForm';
 import ChildPinLogin from '@/components/auth/ChildPinLogin';
 
-export default function SignInPage() {
+function SignInContent() {
   // Use sessionStorage to persist mode across page reloads/navigations
   const getInitialMode = (): 'select' | 'parent' | 'child' => {
     if (typeof window !== 'undefined') {
@@ -346,5 +346,20 @@ export default function SignInPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ember-300/30 via-canvas-50 to-canvas-100 dark:from-gray-900 dark:via-slate-900 dark:to-slate-800">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   );
 }

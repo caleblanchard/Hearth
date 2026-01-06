@@ -354,7 +354,7 @@ export default function TemplatesPage() {
                     Close
                   </button>
                   <button
-                    onClick={handleCreateFromTemplate}
+                    onClick={() => handleCreateFromTemplate()}
                     className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-md transition-colors"
                   >
                     Use This Template

@@ -53,7 +53,9 @@ export async function validateRequestSize(
     return { valid: true, actualSize };
   } catch (error) {
     // If we can't read the body, log and allow (will fail later if too large)
-    logger.warn('Could not validate request body size', error);
+    logger.warn('Could not validate request body size', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return { valid: true };
   }
 }
@@ -80,7 +82,9 @@ export async function parseJsonBody<T = any>(
     }
   } catch (error) {
     // If size validation fails, continue anyway (might be test environment)
-    logger.debug('Could not validate request size, continuing', error);
+    logger.debug('Could not validate request size, continuing', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   try {
@@ -139,7 +143,9 @@ export async function parseJsonBody<T = any>(
       const data = await request.json() as T;
       return { success: true, data };
     } catch (jsonError) {
-      logger.error('Error parsing JSON body', error);
+      logger.error('Error parsing JSON body', {
+        error: jsonError instanceof Error ? jsonError.message : String(jsonError),
+      });
       return {
         success: false,
         error: 'Failed to parse request body',

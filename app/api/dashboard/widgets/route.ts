@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getKioskSession } from '@/lib/kiosk-session';
 import { logger } from '@/lib/logger';
+
+export const dynamic = 'force-dynamic';
 import { GET as GetTransport } from '@/app/api/transport/today/route';
 import { GET as GetMedications } from '@/app/api/medications/route';
 import { GET as GetMaintenance } from '@/app/api/maintenance/upcoming/route';

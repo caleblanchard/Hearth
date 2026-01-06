@@ -25,9 +25,10 @@ export async function GET(
     }
 
     // Get family member info
-    const familyMember = await prisma.familyMember.findFirst({
+    // session.user.id is the FamilyMember ID from the auth system
+    const familyMember = await prisma.familyMember.findUnique({
       where: {
-        userId: session.user.id,
+        id: session.user.id,
       },
     });
 
@@ -92,9 +93,10 @@ export async function PATCH(
     }
 
     // Get family member info
-    const familyMember = await prisma.familyMember.findFirst({
+    // session.user.id is the FamilyMember ID from the auth system
+    const familyMember = await prisma.familyMember.findUnique({
       where: {
-        userId: session.user.id,
+        id: session.user.id,
       },
     });
 
@@ -200,9 +202,10 @@ export async function DELETE(
     }
 
     // Get family member info
-    const familyMember = await prisma.familyMember.findFirst({
+    // session.user.id is the FamilyMember ID from the auth system
+    const familyMember = await prisma.familyMember.findUnique({
       where: {
-        userId: session.user.id,
+        id: session.user.id,
       },
     });
 

@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -87,7 +89,8 @@ export async function GET(request: NextRequest) {
           };
         } catch (error) {
           // If calculation fails, return basic info
-          logger.warn('Failed to calculate remaining time for allowance', error, {
+          logger.warn('Failed to calculate remaining time for allowance', {
+            error: error instanceof Error ? error.message : String(error),
             allowanceId: allowance.id,
             memberId,
           });

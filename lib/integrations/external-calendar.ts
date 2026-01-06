@@ -164,15 +164,18 @@ export function parseICalData(icalData: string): ParsedEvent[] {
               tzid: tzid,
             });
             // Register with ICAL.TimezoneService if available
-            if (ICAL.TimezoneService && typeof ICAL.TimezoneService.register === 'function') {
-              ICAL.TimezoneService.register(tzid, timezone);
+            if (ICAL.TimezoneService && typeof ICAL.TimezoneService.register === 'function' && typeof tzid === 'string') {
+              // ICAL.TimezoneService.register expects (timezone, tzid) based on type definitions
+              (ICAL.TimezoneService.register as any)(timezone, tzid);
               logger.info(`Registered timezone: ${tzid}`);
             } else {
               // Fallback: ICAL.js should still use the timezone from the component
               logger.debug(`Timezone service not available, but ICAL.js should use timezone from component: ${tzid}`);
             }
           } catch (tzError) {
-            logger.warn(`Failed to register timezone ${tzid}:`, tzError);
+            logger.warn(`Failed to register timezone ${tzid}`, {
+              error: tzError instanceof Error ? tzError.message : String(tzError),
+            });
           }
         }
       }
@@ -202,30 +205,35 @@ export function parseICalData(icalData: string): ParsedEvent[] {
       const event = new ICAL.Event(vevent);
 
       // Get UID (required for deduplication)
-      const uid = vevent.getFirstPropertyValue('uid') || event.uid;
+      const uidProp = vevent.getFirstPropertyValue('uid');
+      const uid = (typeof uidProp === 'string' ? uidProp : null) || (event.uid && typeof event.uid === 'string' ? event.uid : null);
       if (!uid) {
         logger.warn('Skipping event without UID');
         continue;
       }
 
       // Get title
-      const summary = vevent.getFirstPropertyValue('summary') || event.summary || 'Untitled Event';
+      const summaryProp = vevent.getFirstPropertyValue('summary');
+      const summary = (typeof summaryProp === 'string' ? summaryProp : null) || (event.summary && typeof event.summary === 'string' ? event.summary : null) || 'Untitled Event';
 
       // Get description
-      const description = vevent.getFirstPropertyValue('description') || event.description || null;
+      const descriptionProp = vevent.getFirstPropertyValue('description');
+      const description = (typeof descriptionProp === 'string' ? descriptionProp : null) || (event.description && typeof event.description === 'string' ? event.description : null) || null;
 
       // Get location
-      const location = vevent.getFirstPropertyValue('location') || event.location || null;
+      const locationProp = vevent.getFirstPropertyValue('location');
+      const location = (typeof locationProp === 'string' ? locationProp : null) || (event.location && typeof event.location === 'string' ? event.location : null) || null;
 
       // Get URL
-      const url = vevent.getFirstPropertyValue('url') || event.url || null;
+      const urlProp = vevent.getFirstPropertyValue('url');
+      const url = typeof urlProp === 'string' ? urlProp : null;
 
       // Get recurrence rule
       const rrule = vevent.getFirstPropertyValue('rrule') || null;
 
       // Get last modified
       const lastModifiedProp = vevent.getFirstPropertyValue('last-modified');
-      const lastModified = lastModifiedProp ? new Date(lastModifiedProp) : null;
+      const lastModified = lastModifiedProp && typeof lastModifiedProp === 'string' ? new Date(lastModifiedProp) : null;
 
       // Get start and end times with proper timezone handling
       const startDate = event.startDate;
@@ -283,7 +291,7 @@ export function parseICalData(icalData: string): ParsedEvent[] {
       // Check if this is a recurring event
       if (event.isRecurring()) {
         logger.info(`Processing recurring event: ${summary}`, {
-          uid: uid.substring(0, 50),
+          uid: typeof uid === 'string' ? uid.substring(0, 50) : String(uid).substring(0, 50),
           hasRRule: !!rrule,
           baseStartTime: startTime.toISOString(),
           rruleString: rrule ? JSON.stringify(rrule) : null,
@@ -595,7 +603,7 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
       sampleEvents: parsedEvents.slice(0, 5).map(e => ({
         title: e.title,
         startTime: e.startTime.toISOString(),
-        uid: e.uid.substring(0, 30),
+        uid: typeof e.uid === 'string' ? e.uid.substring(0, 30) : String(e.uid).substring(0, 30),
       })),
     });
 
@@ -656,11 +664,11 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
       }
 
       if (existingEvent) {
-        // Check if event needs update (compare last modified or times)
+        // Check if event needs update (compare updatedAt or times)
         const needsUpdate =
-          !existingEvent.lastModifiedAt ||
+          !existingEvent.updatedAt ||
           (parsedEvent.lastModified &&
-            new Date(existingEvent.lastModifiedAt) < parsedEvent.lastModified) ||
+            new Date(existingEvent.updatedAt) < parsedEvent.lastModified) ||
           existingEvent.startTime.getTime() !== parsedEvent.startTime.getTime() ||
           existingEvent.endTime.getTime() !== parsedEvent.endTime.getTime() ||
           existingEvent.title !== parsedEvent.title;

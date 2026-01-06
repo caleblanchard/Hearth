@@ -337,7 +337,7 @@ export class GoogleCalendarClient {
 
     return {
       googleEventId: response.data.id!,
-      htmlLink: response.data.htmlLink,
+      htmlLink: response.data.htmlLink || undefined,
     };
   }
 

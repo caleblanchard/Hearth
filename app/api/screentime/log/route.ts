@@ -50,7 +50,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const deviceType = rawDeviceType ? sanitizeString(rawDeviceType) : 'OTHER';
+    const rawDeviceTypeStr = rawDeviceType ? sanitizeString(rawDeviceType) : null;
+    // Validate deviceType is a valid enum value, default to 'OTHER'
+    const validDeviceTypes = ['TV', 'TABLET', 'PHONE', 'COMPUTER', 'GAMING', 'OTHER'] as const;
+    const deviceType: typeof validDeviceTypes[number] | null = (rawDeviceTypeStr && validDeviceTypes.includes(rawDeviceTypeStr as any)) 
+      ? (rawDeviceTypeStr as typeof validDeviceTypes[number])
+      : 'OTHER';
     const notes = rawNotes ? sanitizeString(rawNotes) : null;
     const overrideReason = rawOverrideReason ? sanitizeString(rawOverrideReason) : null;
 
@@ -238,7 +243,7 @@ export async function POST(request: NextRequest) {
           type: 'SPENT',
           amountMinutes: -minutes,
           balanceAfter: updatedBalance.currentBalanceMinutes,
-          deviceType: deviceType || 'OTHER',
+          deviceType: deviceType,
           screenTimeTypeId,
         notes: notes || null,
         wasOverride: isOverride || false,
@@ -298,18 +303,19 @@ export async function POST(request: NextRequest) {
     
     // Handle specific transaction errors
     if (error instanceof Error) {
-      if (error.message === 'EXCEEDS_ALLOWANCE' || error.status === 403) {
+      const customError = error as any;
+      if (error.message === 'EXCEEDS_ALLOWANCE' || customError.status === 403) {
         return NextResponse.json(
-          error.data || {
+          customError.data || {
             error: 'This would exceed your allowance. Parent override required.',
             wouldExceed: true,
           },
           { status: 403 }
         );
       }
-      if (error.message === 'OVERRIDE_REASON_REQUIRED' || error.status === 400) {
+      if (error.message === 'OVERRIDE_REASON_REQUIRED' || customError.status === 400) {
         return NextResponse.json(
-          error.data || {
+          customError.data || {
             error: 'Override reason is required when exceeding allowance',
           },
           { status: 400 }

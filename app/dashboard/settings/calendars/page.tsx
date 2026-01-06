@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmModal } from '@/components/ui/Modal';
@@ -38,7 +38,7 @@ interface ExternalCalendarSubscription {
   };
 }
 
-export default function CalendarSettingsPage() {
+function CalendarSettingsContent() {
   const { data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -848,5 +848,20 @@ export default function CalendarSettingsPage() {
         confirmColor="red"
       />
     </div>
+  );
+}
+
+export default function CalendarSettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <CalendarSettingsContent />
+    </Suspense>
   );
 }

@@ -77,6 +77,8 @@ interface ScreenTimeType {
   id: string;
   name: string;
   description: string | null;
+  isActive: boolean;
+  isArchived: boolean;
 }
 
 interface AllowanceWithRemaining {
@@ -698,7 +700,7 @@ export default function ScreenTimePage() {
                 const totalForType = remaining.usedMinutes + remaining.remainingMinutes;
                 const percentage = totalForType > 0
                   ? ((remaining.usedMinutes / totalForType) * 100).toFixed(1)
-                  : 0;
+                  : '0';
 
                 return (
                   <div key={allowance.id}>
@@ -715,7 +717,7 @@ export default function ScreenTimePage() {
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
                         className="bg-ember-700 dark:bg-ember-500 h-2 rounded-full"
-                        style={{ width: `${Math.min(100, parseFloat(percentage))}%` }}
+                        style={{ width: `${Math.min(100, parseFloat(String(percentage)))}%` }}
                       />
                     </div>
                   </div>

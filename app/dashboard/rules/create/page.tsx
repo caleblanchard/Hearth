@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -55,7 +55,7 @@ interface FamilyMember {
   role: string;
 }
 
-export default function CreateRulePage() {
+function CreateRuleContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [name, setName] = useState('');
@@ -948,5 +948,20 @@ export default function CreateRulePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function CreateRulePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <CreateRuleContent />
+    </Suspense>
   );
 }

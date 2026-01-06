@@ -125,6 +125,8 @@ export async function POST(request: Request) {
     if (!difficulty || !['EASY', 'MEDIUM', 'HARD'].includes(difficulty)) {
       return NextResponse.json({ error: 'Difficulty must be EASY, MEDIUM, or HARD' }, { status: 400 });
     }
+    // Type assertion: we've validated it's one of the enum values
+    const difficultyEnum = difficulty as 'EASY' | 'MEDIUM' | 'HARD';
 
     // Schedule validation
     if (!schedule) {
@@ -174,10 +176,10 @@ export async function POST(request: Request) {
           name,
           description,
           creditValue,
-          difficulty,
+          difficulty: difficultyEnum,
           estimatedMinutes,
-          minimumAge: minimumAge || null,
-          iconName: iconName || null,
+          minimumAge: minimumAge || undefined,
+          iconName: iconName || undefined,
           isActive: true,
         },
       });

@@ -26,6 +26,16 @@ interface DashboardData {
     currentBalance: number;
     weeklyAllocation: number;
     weekStartDate: string;
+    allowances?: Array<{
+      id: string;
+      screenTimeTypeId: string;
+      allowanceMinutes: number;
+      remainingMinutes: number;
+      screenTimeType: {
+        id: string;
+        name: string;
+      };
+    }>;
   } | null;
   credits: {
     current: number;

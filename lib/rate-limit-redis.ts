@@ -142,8 +142,10 @@ class RedisRateLimiter {
         remaining: this.maxRequests - count - 1,
         resetTime,
       };
-    } catch (error) {
-      logger.error('Redis rate limit check failed', error);
+      } catch (error) {
+        logger.error('Redis rate limit check failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       // Fail open - allow request if Redis fails
       return {
         allowed: true,
@@ -208,7 +210,9 @@ class HybridRateLimiter {
       });
 
       client.on('error', (error) => {
-        logger.error('Redis connection error', error);
+        logger.error('Redis connection error', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         this.useRedis = false;
       });
 
@@ -228,7 +232,9 @@ class HybridRateLimiter {
       
       logger.info('Using Redis for distributed rate limiting');
     } catch (error) {
-      logger.warn('Failed to initialize Redis, using in-memory rate limiting', error);
+      logger.warn('Failed to initialize Redis, using in-memory rate limiting', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       this.useRedis = false;
     }
   }
@@ -238,7 +244,9 @@ class HybridRateLimiter {
       try {
         return await this.redisLimiter.check(identifier);
       } catch (error) {
-        logger.warn('Redis rate limit check failed, falling back to memory', error);
+        logger.warn('Redis rate limit check failed, falling back to memory', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         this.useRedis = false;
       }
     }

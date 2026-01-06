@@ -88,6 +88,8 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
   const [error, setError] = useState('');
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false });
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title?: string; message?: string; type?: 'error' | 'success' }>({ isOpen: false });
 
   useEffect(() => {
     fetchRecipe();
@@ -451,8 +453,8 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
       <AlertModal
         isOpen={alertModal.isOpen}
         onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
-        title={alertModal.title}
-        message={alertModal.message}
+        title={alertModal.title || 'Alert'}
+        message={alertModal.message || ''}
         type={alertModal.type}
       />
     </div>
