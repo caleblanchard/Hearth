@@ -130,10 +130,17 @@ export default function ScreenTimePage() {
 
   const fetchBalance = async () => {
     try {
+      // Balance is now calculated from allowances, so we'll get it from allowances
+      // This function is kept for backward compatibility but balance is calculated from allowances
       const response = await fetch('/api/dashboard');
       if (response.ok) {
         const data = await response.json();
-        setBalance(data.screenTime?.currentBalance || 0);
+        // Calculate total remaining from allowances
+        const totalRemaining = data.screenTime?.allowances?.reduce(
+          (sum: number, a: any) => sum + (a.remainingMinutes || 0),
+          0
+        ) || 0;
+        setBalance(totalRemaining);
       }
     } catch (error) {
       console.error('Failed to fetch balance:', error);
@@ -296,7 +303,8 @@ export default function ScreenTimePage() {
           title: 'Time Logged',
           message: data.message,
         });
-        setBalance(data.balance);
+        // Balance is now calculated from allowances, refresh allowances to get updated balance
+        // setBalance is handled by fetchBalance which calculates from allowances
         setCustomMinutes('');
         setOverrideReason('');
         setShowOverrideModal(false);

@@ -3,7 +3,7 @@
 # This script runs inside the Certbot container
 
 DOMAIN="hearth.blanchardsd.com"
-EMAIL="admin@blanchardsd.com"
+EMAIL="caleb@blanchardsd.com"
 WEBROOT="/var/www/certbot"
 CERTS_DIR="/etc/letsencrypt/live/$DOMAIN"
 NGINX_CERTS_DIR="/etc/nginx/certs"

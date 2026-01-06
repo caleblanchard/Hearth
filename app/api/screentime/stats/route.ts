@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { calculateRemainingTime } from '@/lib/screentime-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -100,30 +101,70 @@ export async function GET(request: NextRequest) {
       minutes,
     }));
 
-    // Get current balance
-    const balance = await prisma.screenTimeBalance.findUnique({
-      where: { memberId: targetMemberId },
-      select: {
-        currentBalanceMinutes: true,
-        weekStartDate: true,
+    // Get all allowances for this member
+    const allowances = await prisma.screenTimeAllowance.findMany({
+      where: {
+        memberId: targetMemberId,
+        screenTimeType: {
+          isActive: true,
+          isArchived: false,
+        },
+      },
+      include: {
+        screenTimeType: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
-    // Get settings
-    const settings = await prisma.screenTimeSettings.findUnique({
-      where: { memberId: targetMemberId },
-      select: {
-        weeklyAllocationMinutes: true,
-      },
-    });
+    // Calculate remaining time for each allowance and totals
+    const allowancesWithRemaining = await Promise.all(
+      allowances.map(async (allowance) => {
+        try {
+          const remaining = await calculateRemainingTime(targetMemberId, allowance.screenTimeTypeId);
+          return {
+            ...allowance,
+            remaining: remaining,
+          };
+        } catch (error) {
+          logger.warn('Failed to calculate remaining time for allowance in stats', {
+            error: error instanceof Error ? error.message : String(error),
+            allowanceId: allowance.id,
+            memberId: targetMemberId,
+          });
+          return {
+            ...allowance,
+            remaining: {
+              remainingMinutes: allowance.allowanceMinutes,
+              usedMinutes: 0,
+              rolloverMinutes: 0,
+              periodStart: new Date(),
+              periodEnd: new Date(),
+            },
+          };
+        }
+      })
+    );
+
+    // Calculate totals from type-specific allowances
+    const totalRemaining = allowancesWithRemaining.reduce(
+      (sum, a) => sum + a.remaining.remainingMinutes,
+      0
+    );
+    const totalWeeklyAllocation = allowancesWithRemaining
+      .filter((a) => a.period === 'WEEKLY')
+      .reduce((sum, a) => sum + a.allowanceMinutes, 0);
 
     return NextResponse.json({
       summary: {
         totalMinutes,
         totalHours: Math.floor(totalMinutes / 60),
         averagePerDay: dailyTrend.length > 0 ? Math.round(totalMinutes / dailyTrend.length) : 0,
-        currentBalance: balance?.currentBalanceMinutes || 0,
-        weeklyAllocation: settings?.weeklyAllocationMinutes || 0,
+        currentBalance: totalRemaining,
+        weeklyAllocation: totalWeeklyAllocation,
       },
       deviceBreakdown: deviceData,
       dailyTrend,

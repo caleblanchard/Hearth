@@ -72,7 +72,11 @@ export default function FamilyPage() {
     password: '',
     pin: '',
     avatarUrl: '',
+    allowedModules: [] as string[],
   });
+
+  const [enabledModules, setEnabledModules] = useState<string[]>([]);
+  const [memberModules, setMemberModules] = useState<Record<string, string[]>>({});
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -111,9 +115,44 @@ export default function FamilyPage() {
     }
   };
 
+  const fetchEnabledModules = async () => {
+    try {
+      const response = await fetch('/api/settings/modules/enabled');
+      if (response.ok) {
+        const data = await response.json();
+        setEnabledModules(data.enabledModules || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch enabled modules:', error);
+    }
+  };
+
+  const fetchMemberModules = async (memberId: string) => {
+    try {
+      const response = await fetch(`/api/family/members/${memberId}/modules`);
+      if (response.ok) {
+        const data = await response.json();
+        setMemberModules(prev => ({
+          ...prev,
+          [memberId]: data.allowedModules || [],
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch member modules:', error);
+    }
+  };
+
   useEffect(() => {
     fetchFamily();
+    fetchEnabledModules();
   }, []);
+
+  useEffect(() => {
+    // Fetch modules for member when editing
+    if (editMemberModal && editMemberModal.role === 'CHILD') {
+      fetchMemberModules(editMemberModal.id);
+    }
+  }, [editMemberModal]);
 
   const handleSaveSettings = async () => {
     setSavingSettings(true);
@@ -208,12 +247,26 @@ export default function FamilyPage() {
       return;
     }
 
+    if (newMember.role === 'CHILD' && newMember.allowedModules.length === 0) {
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Missing Information',
+        message: 'Please select at least one module for the child to access',
+      });
+      return;
+    }
+
     setSavingMember(true);
     try {
       const response = await fetch('/api/family/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMember),
+        body: JSON.stringify({
+          ...newMember,
+          // Only send allowedModules for children
+          allowedModules: newMember.role === 'CHILD' ? newMember.allowedModules : undefined,
+        }),
       });
 
       const data = await response.json();
@@ -234,6 +287,7 @@ export default function FamilyPage() {
           password: '',
           pin: '',
           avatarUrl: '',
+          allowedModules: [],
         });
         await fetchFamily();
       } else {
@@ -260,6 +314,16 @@ export default function FamilyPage() {
   const handleUpdateMember = async () => {
     if (!editMemberModal) return;
 
+    if (editMemberModal.role === 'CHILD' && (memberModules[editMemberModal.id] || []).length === 0) {
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Missing Information',
+        message: 'Please select at least one module for the child to access',
+      });
+      return;
+    }
+
     setSavingMember(true);
     try {
       const response = await fetch(`/api/family/members/${editMemberModal.id}`, {
@@ -270,6 +334,10 @@ export default function FamilyPage() {
           email: editMemberModal.email,
           birthDate: editMemberModal.birthDate,
           avatarUrl: editMemberModal.avatarUrl,
+          // Only send allowedModules for children
+          allowedModules: editMemberModal.role === 'CHILD' 
+            ? (memberModules[editMemberModal.id] || [])
+            : undefined,
         }),
       });
 
@@ -822,6 +890,51 @@ export default function FamilyPage() {
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
             />
           </div>
+          {newMember.role === 'CHILD' && enabledModules.length > 0 && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                Module Access *
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Select which modules this child can access. Only modules enabled at the family level are available.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto p-2 border border-gray-200 dark:border-gray-700 rounded-lg">
+                {enabledModules.map((moduleId) => (
+                  <label
+                    key={moduleId}
+                    className="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={newMember.allowedModules.includes(moduleId)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setNewMember({
+                            ...newMember,
+                            allowedModules: [...newMember.allowedModules, moduleId],
+                          });
+                        } else {
+                          setNewMember({
+                            ...newMember,
+                            allowedModules: newMember.allowedModules.filter(m => m !== moduleId),
+                          });
+                        }
+                      }}
+                      className="rounded border-gray-300 text-ember-700 focus:ring-ember-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      {moduleId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {newMember.allowedModules.length === 0 && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                  Please select at least one module
+                </p>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex gap-3 mt-6">
           <button
@@ -896,6 +1009,52 @@ export default function FamilyPage() {
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
               />
             </div>
+            {editMemberModal.role === 'CHILD' && enabledModules.length > 0 && (
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Module Access *
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Select which modules this child can access. Only modules enabled at the family level are available.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto p-2 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  {enabledModules.map((moduleId) => (
+                    <label
+                      key={moduleId}
+                      className="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={(memberModules[editMemberModal.id] || []).includes(moduleId)}
+                        onChange={(e) => {
+                          const currentModules = memberModules[editMemberModal.id] || [];
+                          if (e.target.checked) {
+                            setMemberModules({
+                              ...memberModules,
+                              [editMemberModal.id]: [...currentModules, moduleId],
+                            });
+                          } else {
+                            setMemberModules({
+                              ...memberModules,
+                              [editMemberModal.id]: currentModules.filter(m => m !== moduleId),
+                            });
+                          }
+                        }}
+                        className="rounded border-gray-300 text-ember-700 focus:ring-ember-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                        {moduleId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {(memberModules[editMemberModal.id] || []).length === 0 && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                    Please select at least one module
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex gap-3 mt-6">
             <button

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { sanitizeString } from '@/lib/input-sanitization';
+import { calculateRemainingTime } from '@/lib/screentime-utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,14 +23,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { memberId, amountMinutes, reason } = body;
+    const { memberId, screenTimeTypeId: rawScreenTimeTypeId, amountMinutes, reason } = body;
 
-    if (!memberId || amountMinutes === undefined || amountMinutes === 0) {
+    if (!memberId || !rawScreenTimeTypeId || amountMinutes === undefined || amountMinutes === 0) {
       return NextResponse.json(
-        { error: 'Member ID and non-zero amount required' },
+        { error: 'Member ID, screen time type ID, and non-zero amount required' },
         { status: 400 }
       );
     }
+
+    const screenTimeTypeId = sanitizeString(rawScreenTimeTypeId);
 
     // Verify member belongs to same family
     const targetMember = await prisma.familyMember.findUnique({
@@ -40,46 +44,81 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
-    // Get current balance
-    const balance = await prisma.screenTimeBalance.findUnique({
-      where: { memberId },
+    // Verify screen time type exists and belongs to family
+    const screenTimeType = await prisma.screenTimeType.findFirst({
+      where: {
+        id: screenTimeTypeId,
+        familyId: session.user.familyId,
+        isArchived: false,
+      },
     });
 
-    if (!balance) {
+    if (!screenTimeType) {
       return NextResponse.json(
-        { error: 'Screen time not configured for this member' },
+        { error: 'Screen time type not found' },
+        { status: 404 }
+      );
+    }
+
+    // Verify allowance exists for this member and type
+    const allowance = await prisma.screenTimeAllowance.findUnique({
+      where: {
+        memberId_screenTimeTypeId: {
+          memberId,
+          screenTimeTypeId,
+        },
+      },
+    });
+
+    if (!allowance) {
+      return NextResponse.json(
+        { error: 'No screen time allowance configured for this member and type' },
         { status: 400 }
       );
     }
 
-    // Validate adjustment amount - prevent negative balances
-    if (amountMinutes < 0 && Math.abs(amountMinutes) > balance.currentBalanceMinutes) {
+    // Calculate current remaining time for this type
+    const currentRemaining = await calculateRemainingTime(memberId, screenTimeTypeId);
+
+    // Validate adjustment amount - prevent negative remaining time
+    if (amountMinutes < 0 && Math.abs(amountMinutes) > currentRemaining.remainingMinutes) {
       return NextResponse.json(
         {
-          error: 'Insufficient balance',
-          message: `Cannot remove ${Math.abs(amountMinutes)} minutes. Current balance: ${balance.currentBalanceMinutes} minutes.`,
+          error: 'Insufficient remaining time',
+          message: `Cannot remove ${Math.abs(amountMinutes)} minutes. Current remaining: ${currentRemaining.remainingMinutes} minutes for ${screenTimeType.name}.`,
         },
         { status: 400 }
       );
     }
 
-    const newBalance = Math.max(0, balance.currentBalanceMinutes + amountMinutes);
-
-    // Update balance
-    const updatedBalance = await prisma.screenTimeBalance.update({
+    // Get or create balance (for backward compatibility)
+    let balance = await prisma.screenTimeBalance.findUnique({
       where: { memberId },
-      data: {
-        currentBalanceMinutes: newBalance,
-      },
     });
 
-    // Log transaction
+    if (!balance) {
+      const { getWeekStart } = await import('@/lib/screentime-utils');
+      const weekStart = await getWeekStart(new Date(), session.user.familyId);
+      balance = await prisma.screenTimeBalance.create({
+        data: {
+          memberId,
+          currentBalanceMinutes: 0,
+          weekStartDate: weekStart,
+        },
+      });
+    }
+
+    // Calculate new remaining time after adjustment
+    const newRemaining = Math.max(0, currentRemaining.remainingMinutes + amountMinutes);
+
+    // Log transaction with screen time type
     await prisma.screenTimeTransaction.create({
       data: {
         memberId,
         type: 'ADJUSTMENT',
         amountMinutes,
-        balanceAfter: newBalance,
+        balanceAfter: balance.currentBalanceMinutes, // Keep general balance unchanged
+        screenTimeTypeId,
         reason: reason || `Manual adjustment by ${session.user.name}`,
         createdById: session.user.id,
       },
@@ -95,8 +134,11 @@ export async function POST(request: NextRequest) {
         result: 'SUCCESS',
         metadata: {
           targetMemberId: memberId,
+          screenTimeTypeId,
+          screenTimeTypeName: screenTimeType.name,
           amountMinutes,
-          newBalance,
+          remainingBefore: currentRemaining.remainingMinutes,
+          remainingAfter: newRemaining,
           reason,
         },
       },
@@ -113,11 +155,13 @@ export async function POST(request: NextRequest) {
         userId: memberId,
         type: 'SCREENTIME_ADJUSTED',
         title: 'Screen time updated',
-        message: `${timeStr} ${action} ${amountMinutes > 0 ? 'to' : 'from'} your screen time balance.${reason ? ` ${reason}` : ''}`,
+        message: `${timeStr} ${action} ${amountMinutes > 0 ? 'to' : 'from'} your ${screenTimeType.name} screen time.${reason ? ` ${reason}` : ''}`,
         actionUrl: '/dashboard/screentime',
         metadata: {
+          screenTimeTypeId,
+          screenTimeTypeName: screenTimeType.name,
           amountMinutes,
-          newBalance,
+          remainingAfter: newRemaining,
           reason: reason || 'No reason provided',
           adjustedBy: session.user.name,
         },
@@ -126,8 +170,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      balance: updatedBalance.currentBalanceMinutes,
-      message: `Adjusted ${targetMember.name}'s balance by ${amountMinutes} minutes. New balance: ${newBalance} minutes.`,
+      remainingMinutes: newRemaining,
+      message: `Adjusted ${targetMember.name}'s ${screenTimeType.name} screen time by ${amountMinutes} minutes. New remaining: ${newRemaining} minutes.`,
     });
   } catch (error) {
     logger.error('Screen time adjustment error:', error);

@@ -4,6 +4,30 @@ import prisma from '@/lib/prisma';
 import { hash } from 'bcrypt';
 import { BCRYPT_ROUNDS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
+import { ModuleId } from '@/app/generated/prisma';
+
+// All modules that should be enabled by default (if no config exists)
+const DEFAULT_ENABLED_MODULES: ModuleId[] = [
+  'CHORES',
+  'SCREEN_TIME',
+  'CREDITS',
+  'SHOPPING',
+  'CALENDAR',
+  'TODOS',
+  'ROUTINES',
+  'MEAL_PLANNING',
+  'RECIPES',
+  'INVENTORY',
+  'HEALTH',
+  'PROJECTS',
+  'COMMUNICATION',
+  'TRANSPORT',
+  'PETS',
+  'MAINTENANCE',
+  'DOCUMENTS',
+  'FINANCIAL',
+  'LEADERBOARD',
+];
 
 export async function PATCH(
   request: Request,
@@ -18,7 +42,7 @@ export async function PATCH(
 
     const { id } = params;
     const body = await request.json();
-    const { name, email, birthDate, avatarUrl, password, pin, isActive } = body;
+    const { name, email, birthDate, avatarUrl, password, pin, isActive, allowedModules } = body;
 
     // Verify the member belongs to the same family
     const member = await prisma.familyMember.findUnique({
@@ -76,6 +100,50 @@ export async function PATCH(
         createdAt: true,
       },
     });
+
+    // Update module access for children if provided
+    if (member.role === 'CHILD' && allowedModules !== undefined && Array.isArray(allowedModules)) {
+      // Get all configured modules (both enabled and disabled)
+      const allConfigs = await prisma.moduleConfiguration.findMany({
+        where: { familyId: session.user.familyId },
+        select: { moduleId: true, isEnabled: true },
+      });
+
+      // Build enabled modules list (similar to /api/settings/modules/enabled)
+      const configuredModuleIds = new Set(allConfigs.map((c) => c.moduleId));
+      const enabledConfiguredIds = allConfigs
+        .filter((c) => c.isEnabled)
+        .map((c) => c.moduleId);
+
+      // Add default-enabled modules that haven't been configured yet
+      const familyEnabledModules = [
+        ...enabledConfiguredIds,
+        ...DEFAULT_ENABLED_MODULES.filter((m) => !configuredModuleIds.has(m)),
+      ];
+
+      const enabledModuleIds = new Set(familyEnabledModules);
+
+      // Delete all existing module access for this member
+      await prisma.memberModuleAccess.deleteMany({
+        where: { memberId: id },
+      });
+
+      // Create new module access entries for each allowed module
+      // Only allow modules that are enabled at the family level
+      const moduleAccessData = allowedModules
+        .filter((moduleId: string) => enabledModuleIds.has(moduleId))
+        .map((moduleId: string) => ({
+          memberId: id,
+          moduleId,
+          hasAccess: true,
+        }));
+
+      if (moduleAccessData.length > 0) {
+        await prisma.memberModuleAccess.createMany({
+          data: moduleAccessData,
+        });
+      }
+    }
 
     return NextResponse.json({
       message: 'Family member updated successfully',

@@ -117,8 +117,8 @@ export async function calculateRemainingTime(
     periodEnd.setUTCDate(periodEnd.getUTCDate() + 7);
   }
 
-  // Get all transactions for this type in the current period
-  const transactions = await prisma.screenTimeTransaction.findMany({
+  // Get all SPENT transactions for this type in the current period
+  const spentTransactions = await prisma.screenTimeTransaction.findMany({
     where: {
       memberId,
       screenTimeTypeId,
@@ -133,7 +133,28 @@ export async function calculateRemainingTime(
     },
   });
 
-  const usedMinutes = transactions.reduce((sum, t) => sum + Math.abs(t.amountMinutes), 0);
+  // Get all ADJUSTMENT transactions for this type in the current period
+  const adjustmentTransactions = await prisma.screenTimeTransaction.findMany({
+    where: {
+      memberId,
+      screenTimeTypeId,
+      type: 'ADJUSTMENT',
+      createdAt: {
+        gte: periodStart,
+        lt: periodEnd,
+      },
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  });
+
+  // Calculate used minutes (from SPENT transactions)
+  const usedMinutes = spentTransactions.reduce((sum, t) => sum + Math.abs(t.amountMinutes), 0);
+  
+  // Calculate adjustment minutes (positive adjustments add time, negative remove time)
+  // Note: amountMinutes is already positive for additions and negative for removals
+  const adjustmentMinutes = adjustmentTransactions.reduce((sum, t) => sum + t.amountMinutes, 0);
 
   // Calculate rollover from previous period
   let rolloverMinutes = 0;
@@ -176,7 +197,9 @@ export async function calculateRemainingTime(
     }
   }
 
-  const remainingMinutes = Math.max(0, allowance.allowanceMinutes + rolloverMinutes - usedMinutes);
+  // Calculate remaining: allowance + rollover - used + adjustments
+  // Adjustments: positive values add time, negative values remove time
+  const remainingMinutes = Math.max(0, allowance.allowanceMinutes + rolloverMinutes - usedMinutes + adjustmentMinutes);
 
   return {
     remainingMinutes,

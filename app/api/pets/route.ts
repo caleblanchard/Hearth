@@ -27,12 +27,41 @@ export async function GET(request: NextRequest) {
       where: {
         familyId: session.user.familyId,
       },
+      include: {
+        feedings: {
+          orderBy: {
+            fedAt: 'desc',
+          },
+          take: 1,
+          include: {
+            member: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: {
         name: 'asc',
       },
     });
 
-    return NextResponse.json({ pets });
+    // Format pets with last feeding info
+    const petsWithLastFeeding = pets.map(pet => ({
+      id: pet.id,
+      name: pet.name,
+      species: pet.species,
+      breed: pet.breed,
+      birthday: pet.birthday,
+      imageUrl: pet.imageUrl,
+      notes: pet.notes,
+      lastFedAt: pet.feedings[0]?.fedAt || null,
+      lastFedBy: pet.feedings[0]?.member?.name || null,
+    }));
+
+    return NextResponse.json({ pets: petsWithLastFeeding });
   } catch (error) {
     logger.error('Error fetching pets:', error);
     return NextResponse.json({ error: 'Failed to fetch pets' }, { status: 500 });

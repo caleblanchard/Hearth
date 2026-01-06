@@ -226,7 +226,7 @@ async function main() {
     data: [
       {
         memberId: alice.id,
-        weeklyAllocationMinutes: 420, // 7 hours per week
+        weeklyAllocationMinutes: 0, // No general allocation - only type-specific allowances
         resetDay: 'SUNDAY',
         rolloverType: 'CAPPED',
         rolloverCapMinutes: 60,
@@ -234,7 +234,7 @@ async function main() {
       },
       {
         memberId: bob.id,
-        weeklyAllocationMinutes: 300, // 5 hours per week
+        weeklyAllocationMinutes: 0, // No general allocation - only type-specific allowances
         resetDay: 'SUNDAY',
         rolloverType: 'NONE',
         isActive: true,

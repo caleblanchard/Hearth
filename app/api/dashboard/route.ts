@@ -252,10 +252,13 @@ export async function GET(request: NextRequest) {
         dueDate: chore.dueDate,
         requiresApproval: chore.choreSchedule.requiresApproval,
       })),
-      screenTime: screenTimeBalance ? {
-        currentBalance: screenTimeBalance.currentBalanceMinutes,
-        weeklyAllocation: screenTimeBalance.member.screenTimeSettings?.weeklyAllocationMinutes || 0,
-        weekStartDate: screenTimeBalance.weekStartDate,
+      screenTime: allowancesWithRemaining.length > 0 ? {
+        // Calculate totals from type-specific allowances
+        currentBalance: allowancesWithRemaining.reduce((sum, a) => sum + a.remainingMinutes, 0),
+        weeklyAllocation: allowancesWithRemaining
+          .filter((a) => a.period === 'WEEKLY')
+          .reduce((sum, a) => sum + a.allowanceMinutes, 0),
+        weekStartDate: screenTimeBalance?.weekStartDate,
         allowances: allowancesWithRemaining,
       } : null,
       credits: creditBalance ? {

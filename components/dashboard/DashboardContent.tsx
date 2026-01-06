@@ -306,31 +306,6 @@ export default function DashboardContent() {
               </p>
             )}
           </div>
-        ) : data.screenTime ? (
-          <div>
-            <div className="mb-2">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600 dark:text-gray-400">Weekly Balance</span>
-                <span className="text-gray-900 dark:text-white font-medium">
-                  {data.screenTime.currentBalance} / {data.screenTime.weeklyAllocation} min
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div
-                  className="bg-green-600 h-2 rounded-full transition-all"
-                  style={{
-                    width: `${Math.min(
-                      (data.screenTime.currentBalance / data.screenTime.weeklyAllocation) * 100,
-                      100
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-3">
-              {Math.floor(data.screenTime.currentBalance / 60)}h {data.screenTime.currentBalance % 60}m remaining this week
-            </p>
-          </div>
         ) : (
           <p className="text-gray-600 dark:text-gray-400 text-sm">
             Balance not configured yet.

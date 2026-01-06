@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, email, role, birthDate, password, pin, avatarUrl } = body;
+    const { name, email, role, birthDate, password, pin, avatarUrl, allowedModules } = body;
 
     // Validation
     if (!name || !role) {
@@ -118,6 +118,38 @@ export async function POST(request: Request) {
           weekStartDate: weekStart,
         },
       });
+    }
+
+    // For children, set up module access if provided
+    if (role === 'CHILD' && allowedModules && Array.isArray(allowedModules)) {
+      // Get family-level enabled modules
+      const familyModules = await prisma.moduleConfiguration.findMany({
+        where: {
+          familyId: session.user.familyId,
+          isEnabled: true,
+        },
+        select: {
+          moduleId: true,
+        },
+      });
+
+      const enabledModuleIds = new Set(familyModules.map(m => m.moduleId));
+
+      // Create module access entries for each allowed module
+      // Only allow modules that are enabled at the family level
+      const moduleAccessData = allowedModules
+        .filter((moduleId: string) => enabledModuleIds.has(moduleId))
+        .map((moduleId: string) => ({
+          memberId: newMember.id,
+          moduleId,
+          hasAccess: true,
+        }));
+
+      if (moduleAccessData.length > 0) {
+        await prisma.memberModuleAccess.createMany({
+          data: moduleAccessData,
+        });
+      }
     }
 
     return NextResponse.json({

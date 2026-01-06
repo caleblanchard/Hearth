@@ -35,6 +35,7 @@ interface FamilyMember {
 
 interface AdjustmentForm {
   memberId: string;
+  screenTimeTypeId: string;
   amountMinutes: number;
   reason: string;
 }
@@ -47,6 +48,7 @@ export default function FamilyScreenTimeManagement() {
   const [adjusting, setAdjusting] = useState<string | null>(null);
   const [adjustmentForm, setAdjustmentForm] = useState<AdjustmentForm>({
     memberId: '',
+    screenTimeTypeId: '',
     amountMinutes: 0,
     reason: '',
   });
@@ -103,8 +105,10 @@ export default function FamilyScreenTimeManagement() {
   };
 
   const handleQuickAdjust = (memberId: string, amount: number) => {
+    // For quick adjust, we need to show the modal to select type
     setAdjustmentForm({
       memberId,
+      screenTimeTypeId: '',
       amountMinutes: amount,
       reason: `Quick adjustment: ${amount > 0 ? 'Added' : 'Removed'} ${Math.abs(amount)} minutes`,
     });
@@ -112,12 +116,12 @@ export default function FamilyScreenTimeManagement() {
   };
 
   const handleAdjust = async () => {
-    if (!adjustmentForm.memberId || adjustmentForm.amountMinutes === 0) {
+    if (!adjustmentForm.memberId || !adjustmentForm.screenTimeTypeId || adjustmentForm.amountMinutes === 0) {
       setAlertModal({
         isOpen: true,
         type: 'warning',
         title: 'Invalid Input',
-        message: 'Please select a member and enter a non-zero amount',
+        message: 'Please select a member, screen time type, and enter a non-zero amount',
       });
       return;
     }
@@ -129,6 +133,7 @@ export default function FamilyScreenTimeManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           memberId: adjustmentForm.memberId,
+          screenTimeTypeId: adjustmentForm.screenTimeTypeId,
           amountMinutes: adjustmentForm.amountMinutes,
           reason: adjustmentForm.reason || undefined,
         }),
@@ -144,7 +149,7 @@ export default function FamilyScreenTimeManagement() {
           message: data.message || 'Screen time adjusted successfully',
         });
         setShowAdjustmentModal(false);
-        setAdjustmentForm({ memberId: '', amountMinutes: 0, reason: '' });
+        setAdjustmentForm({ memberId: '', screenTimeTypeId: '', amountMinutes: 0, reason: '' });
         // Refresh data
         await fetchFamilyScreenTime();
       } else {
@@ -410,6 +415,7 @@ export default function FamilyScreenTimeManagement() {
                       onClick={() => {
                         setAdjustmentForm({
                           memberId: member.id,
+                          screenTimeTypeId: '',
                           amountMinutes: 0,
                           reason: '',
                         });
@@ -445,7 +451,7 @@ export default function FamilyScreenTimeManagement() {
               <select
                 value={adjustmentForm.memberId}
                 onChange={(e) =>
-                  setAdjustmentForm({ ...adjustmentForm, memberId: e.target.value })
+                  setAdjustmentForm({ ...adjustmentForm, memberId: e.target.value, screenTimeTypeId: '' })
                 }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
@@ -457,6 +463,36 @@ export default function FamilyScreenTimeManagement() {
                 ))}
               </select>
             </div>
+
+            {/* Screen Time Type Selection */}
+            {adjustmentForm.memberId && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Screen Time Type *
+                </label>
+                <select
+                  value={adjustmentForm.screenTimeTypeId}
+                  onChange={(e) =>
+                    setAdjustmentForm({ ...adjustmentForm, screenTimeTypeId: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">Select a screen time type...</option>
+                  {members
+                    .find((m) => m.id === adjustmentForm.memberId)
+                    ?.allowances?.map((allowance) => (
+                      <option key={allowance.id} value={allowance.screenTimeTypeId}>
+                        {allowance.screenTimeTypeName} ({formatTime(allowance.remainingMinutes || 0)} remaining)
+                      </option>
+                    ))}
+                </select>
+                {members.find((m) => m.id === adjustmentForm.memberId)?.allowances?.length === 0 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    No screen time types configured for this member
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Amount */}
             <div className="mb-4">
@@ -523,18 +559,25 @@ export default function FamilyScreenTimeManagement() {
             </div>
 
             {/* Preview */}
-            {adjustmentForm.memberId && adjustmentForm.amountMinutes !== 0 && (
+            {adjustmentForm.memberId && adjustmentForm.screenTimeTypeId && adjustmentForm.amountMinutes !== 0 && (
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <p className="text-sm text-blue-900 dark:text-blue-100">
                   <strong>Preview:</strong> {adjustmentForm.amountMinutes > 0 ? 'Add' : 'Remove'}{' '}
                   {formatTime(Math.abs(adjustmentForm.amountMinutes))} to{' '}
-                  {members.find((m) => m.id === adjustmentForm.memberId)?.name}
+                  {members.find((m) => m.id === adjustmentForm.memberId)?.name}'s{' '}
+                  {members
+                    .find((m) => m.id === adjustmentForm.memberId)
+                    ?.allowances?.find((a) => a.screenTimeTypeId === adjustmentForm.screenTimeTypeId)
+                    ?.screenTimeTypeName || 'screen time'}
                   {adjustmentForm.amountMinutes < 0 && (
                     <>
                       {' '}
-                      (current balance:{' '}
+                      (current remaining:{' '}
                       {formatTime(
-                        members.find((m) => m.id === adjustmentForm.memberId)?.currentBalance || 0
+                        members
+                          .find((m) => m.id === adjustmentForm.memberId)
+                          ?.allowances?.find((a) => a.screenTimeTypeId === adjustmentForm.screenTimeTypeId)
+                          ?.remainingMinutes || 0
                       )}
                       )
                     </>
@@ -550,6 +593,7 @@ export default function FamilyScreenTimeManagement() {
                 disabled={
                   adjusting !== null ||
                   !adjustmentForm.memberId ||
+                  !adjustmentForm.screenTimeTypeId ||
                   adjustmentForm.amountMinutes === 0
                 }
                 className="flex-1 px-4 py-2 bg-ember-700 hover:bg-ember-600 disabled:bg-ember-400 text-white rounded-lg font-medium transition-colors"

@@ -12,6 +12,8 @@ interface Pet {
   birthday: string | null;
   imageUrl: string | null;
   notes: string | null;
+  lastFedAt?: string | null;
+  lastFedBy?: string | null;
 }
 
 interface PetsResponse {
@@ -26,6 +28,7 @@ export default function PetsList() {
   const [error, setError] = useState<string | null>(null);
   const [feedingPet, setFeedingPet] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     species: 'DOG',
@@ -80,8 +83,14 @@ export default function PetsList() {
         throw new Error('Failed to log feeding');
       }
 
-      // Success feedback could be added here
-      setTimeout(() => setFeedingPet(null), 1000);
+      // Reload pets to show updated data
+      await loadPets();
+      // Show success feedback
+      setSuccessMessage(`${pet.name} fed successfully!`);
+      setTimeout(() => {
+        setFeedingPet(null);
+        setSuccessMessage(null);
+      }, 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to log feeding');
       setFeedingPet(null);
@@ -192,9 +201,16 @@ export default function PetsList() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Family Pets
-        </h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Family Pets
+          </h2>
+          {successMessage && (
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+              {successMessage}
+            </p>
+          )}
+        </div>
         {session?.user?.role === 'PARENT' && (
           <button
             onClick={() => setShowAddDialog(true)}
@@ -243,6 +259,16 @@ export default function PetsList() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
                   {pet.notes}
                 </p>
+              )}
+
+              {/* Last Fed Info */}
+              {pet.lastFedAt && (
+                <div className="mb-4 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <p className="text-xs text-green-700 dark:text-green-300 text-center">
+                    <strong>Last fed:</strong> {new Date(pet.lastFedAt).toLocaleString()}
+                    {pet.lastFedBy && ` by ${pet.lastFedBy}`}
+                  </p>
+                </div>
               )}
 
               {/* Actions */}

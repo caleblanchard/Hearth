@@ -29,7 +29,7 @@ interface PetFeeding {
   foodType: string | null;
   amount: string | null;
   notes: string | null;
-  member: {
+  member?: {
     id: string;
     name: string;
   };
@@ -81,6 +81,9 @@ export default function PetDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showMedicationModal, setShowMedicationModal] = useState(false);
+  const [showVetVisitModal, setShowVetVisitModal] = useState(false);
+  const [showWeightModal, setShowWeightModal] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -97,6 +100,32 @@ export default function PetDetailPage() {
     title: string;
     message: string;
   }>({ isOpen: false, type: 'success', title: '', message: '' });
+
+  const [medicationForm, setMedicationForm] = useState({
+    medicationName: '',
+    dosage: '',
+    frequency: '',
+    minIntervalHours: '',
+    notes: '',
+    isActive: true,
+  });
+
+  const [vetVisitForm, setVetVisitForm] = useState({
+    visitDate: new Date().toISOString().split('T')[0],
+    reason: '',
+    diagnosis: '',
+    treatment: '',
+    cost: '',
+    nextVisit: '',
+    notes: '',
+  });
+
+  const [weightForm, setWeightForm] = useState({
+    weight: '',
+    unit: 'lbs',
+    recordedAt: new Date().toISOString().split('T')[0],
+    notes: '',
+  });
 
   const loadPetData = async () => {
     setLoading(true);
@@ -127,9 +156,33 @@ export default function PetDetailPage() {
         notes: petData.pet.notes || '',
       });
 
-      // Fetch related data (feedings, medications, vet visits, weights)
-      // Note: These endpoints may need to be created if they don't exist
-      // For now, we'll just load the pet details
+      // Fetch feeding history
+      const feedingsResponse = await fetch(`/api/pets/${petId}/feed`);
+      if (feedingsResponse.ok) {
+        const feedingsData = await feedingsResponse.json();
+        setFeedings(feedingsData.feedings || []);
+      }
+
+      // Fetch medications
+      const medicationsResponse = await fetch(`/api/pets/${petId}/medications`);
+      if (medicationsResponse.ok) {
+        const medicationsData = await medicationsResponse.json();
+        setMedications(medicationsData.medications || []);
+      }
+
+      // Fetch vet visits
+      const vetVisitsResponse = await fetch(`/api/pets/${petId}/vet-visits`);
+      if (vetVisitsResponse.ok) {
+        const vetVisitsData = await vetVisitsResponse.json();
+        setVetVisits(vetVisitsData.vetVisits || []);
+      }
+
+      // Fetch weights
+      const weightsResponse = await fetch(`/api/pets/${petId}/weights`);
+      if (weightsResponse.ok) {
+        const weightsData = await weightsResponse.json();
+        setWeights(weightsData.weights || []);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load pet');
     } finally {
@@ -388,14 +441,266 @@ export default function PetDetailPage() {
           </div>
         </div>
 
-        {/* Placeholder for future sections */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Care History
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Feeding history, medications, vet visits, and weight tracking will be displayed here.
-          </p>
+        {/* Feeding History */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Feeding History
+            </h2>
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch(`/api/pets/${petId}/feed`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}),
+                  });
+                  if (response.ok) {
+                    await loadPetData(); // Reload to show new feeding
+                    setAlertModal({
+                      isOpen: true,
+                      type: 'success',
+                      title: 'Success!',
+                      message: 'Feeding logged successfully',
+                    });
+                  }
+                } catch (err) {
+                  setAlertModal({
+                    isOpen: true,
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to log feeding',
+                  });
+                }
+              }}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              🍽️ Log Feeding
+            </button>
+          </div>
+          {feedings.length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400 text-center py-8">
+              No feeding history yet. Click "Log Feeding" to record when {pet.name} was fed.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {feedings.map((feeding) => (
+                <div
+                  key={feeding.id}
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          Fed by {feeding.member?.name || 'Unknown'}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(feeding.fedAt).toLocaleString()}
+                        </span>
+                      </div>
+                      {feeding.foodType && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <strong>Food:</strong> {feeding.foodType}
+                        </p>
+                      )}
+                      {feeding.amount && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <strong>Amount:</strong> {feeding.amount}
+                        </p>
+                      )}
+                      {feeding.notes && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                          <strong>Notes:</strong> {feeding.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Medications */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Medications
+            </h2>
+            <button
+              onClick={() => setShowMedicationModal(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              + Add Medication
+            </button>
+          </div>
+          {medications.length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400 text-center py-8">
+              No medications recorded yet.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {medications.map((medication) => (
+                <div
+                  key={medication.id}
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg font-medium text-gray-900 dark:text-white">
+                          {medication.medicationName}
+                        </span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          medication.isActive
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>
+                          {medication.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Dosage:</strong> {medication.dosage}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Frequency:</strong> {medication.frequency}
+                      </p>
+                      {medication.lastGivenAt && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <strong>Last given:</strong> {new Date(medication.lastGivenAt).toLocaleString()}
+                        </p>
+                      )}
+                      {medication.nextDoseAt && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <strong>Next dose:</strong> {new Date(medication.nextDoseAt).toLocaleString()}
+                        </p>
+                      )}
+                      {medication.notes && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                          <strong>Notes:</strong> {medication.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Vet Visits */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Vet Visits
+            </h2>
+            <button
+              onClick={() => setShowVetVisitModal(true)}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              + Add Vet Visit
+            </button>
+          </div>
+          {vetVisits.length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400 text-center py-8">
+              No vet visits recorded yet.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {vetVisits.map((visit) => (
+                <div
+                  key={visit.id}
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg font-medium text-gray-900 dark:text-white">
+                          {new Date(visit.visitDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Reason:</strong> {visit.reason}
+                      </p>
+                      {visit.diagnosis && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <strong>Diagnosis:</strong> {visit.diagnosis}
+                        </p>
+                      )}
+                      {visit.treatment && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <strong>Treatment:</strong> {visit.treatment}
+                        </p>
+                      )}
+                      {visit.cost && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <strong>Cost:</strong> ${visit.cost.toFixed(2)}
+                        </p>
+                      )}
+                      {visit.nextVisit && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <strong>Next visit:</strong> {new Date(visit.nextVisit).toLocaleDateString()}
+                        </p>
+                      )}
+                      {visit.notes && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                          <strong>Notes:</strong> {visit.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Weight Tracking */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Weight Tracking
+            </h2>
+            <button
+              onClick={() => setShowWeightModal(true)}
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              + Add Weight
+            </button>
+          </div>
+          {weights.length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400 text-center py-8">
+              No weight records yet.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {weights.map((weight) => (
+                <div
+                  key={weight.id}
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg font-medium text-gray-900 dark:text-white">
+                          {weight.weight} {weight.unit}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(weight.recordedAt).toLocaleString()}
+                        </span>
+                      </div>
+                      {weight.notes && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                          <strong>Notes:</strong> {weight.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Edit Modal */}
@@ -523,6 +828,478 @@ export default function PetDetailPage() {
           message={alertModal.message}
           type={alertModal.type}
         />
+
+      {/* Add Medication Modal */}
+      <Modal
+        isOpen={showMedicationModal}
+        onClose={() => {
+          setShowMedicationModal(false);
+          setMedicationForm({
+            medicationName: '',
+            dosage: '',
+            frequency: '',
+            minIntervalHours: '',
+            notes: '',
+            isActive: true,
+          });
+        }}
+        title="Add Medication"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Medication Name *
+            </label>
+            <input
+              type="text"
+              value={medicationForm.medicationName}
+              onChange={(e) => setMedicationForm({ ...medicationForm, medicationName: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              placeholder="e.g., Heartworm Prevention"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Dosage *
+            </label>
+            <input
+              type="text"
+              value={medicationForm.dosage}
+              onChange={(e) => setMedicationForm({ ...medicationForm, dosage: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              placeholder="e.g., 1 tablet"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Frequency *
+            </label>
+            <select
+              value={medicationForm.frequency}
+              onChange={(e) => setMedicationForm({ ...medicationForm, frequency: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">Select frequency</option>
+              <option value="Daily">Daily</option>
+              <option value="Twice daily">Twice daily</option>
+              <option value="Every 12 hours">Every 12 hours</option>
+              <option value="Every 8 hours">Every 8 hours</option>
+              <option value="Weekly">Weekly</option>
+              <option value="Monthly">Monthly</option>
+              <option value="As needed">As needed</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Minimum Interval (hours, optional)
+            </label>
+            <input
+              type="number"
+              value={medicationForm.minIntervalHours}
+              onChange={(e) => setMedicationForm({ ...medicationForm, minIntervalHours: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              placeholder="e.g., 24"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Notes
+            </label>
+            <textarea
+              value={medicationForm.notes}
+              onChange={(e) => setMedicationForm({ ...medicationForm, notes: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              rows={3}
+              placeholder="Additional notes..."
+            />
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={medicationForm.isActive}
+              onChange={(e) => setMedicationForm({ ...medicationForm, isActive: e.target.checked })}
+              className="rounded border-gray-300 text-ember-700 focus:ring-ember-500"
+            />
+            <label htmlFor="isActive" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+              Active medication
+            </label>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => {
+                setShowMedicationModal(false);
+                setMedicationForm({
+                  medicationName: '',
+                  dosage: '',
+                  frequency: '',
+                  minIntervalHours: '',
+                  notes: '',
+                  isActive: true,
+                });
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch(`/api/pets/${petId}/medications`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      ...medicationForm,
+                      minIntervalHours: medicationForm.minIntervalHours ? parseInt(medicationForm.minIntervalHours) : null,
+                    }),
+                  });
+                  if (response.ok) {
+                    await loadPetData();
+                    setShowMedicationModal(false);
+                    setMedicationForm({
+                      medicationName: '',
+                      dosage: '',
+                      frequency: '',
+                      minIntervalHours: '',
+                      notes: '',
+                      isActive: true,
+                    });
+                    setAlertModal({
+                      isOpen: true,
+                      type: 'success',
+                      title: 'Success!',
+                      message: 'Medication added successfully',
+                    });
+                  } else {
+                    const data = await response.json();
+                    setAlertModal({
+                      isOpen: true,
+                      type: 'error',
+                      title: 'Error',
+                      message: data.error || 'Failed to add medication',
+                    });
+                  }
+                } catch (err) {
+                  setAlertModal({
+                    isOpen: true,
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to add medication',
+                  });
+                }
+              }}
+              disabled={!medicationForm.medicationName || !medicationForm.dosage || !medicationForm.frequency}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
+            >
+              Add Medication
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Vet Visit Modal */}
+      <Modal
+        isOpen={showVetVisitModal}
+        onClose={() => {
+          setShowVetVisitModal(false);
+          setVetVisitForm({
+            visitDate: new Date().toISOString().split('T')[0],
+            reason: '',
+            diagnosis: '',
+            treatment: '',
+            cost: '',
+            nextVisit: '',
+            notes: '',
+          });
+        }}
+        title="Add Vet Visit"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Visit Date *
+            </label>
+            <input
+              type="date"
+              value={vetVisitForm.visitDate}
+              onChange={(e) => setVetVisitForm({ ...vetVisitForm, visitDate: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Reason for Visit *
+            </label>
+            <input
+              type="text"
+              value={vetVisitForm.reason}
+              onChange={(e) => setVetVisitForm({ ...vetVisitForm, reason: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              placeholder="e.g., Annual checkup"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Diagnosis
+            </label>
+            <input
+              type="text"
+              value={vetVisitForm.diagnosis}
+              onChange={(e) => setVetVisitForm({ ...vetVisitForm, diagnosis: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              placeholder="e.g., Healthy"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Treatment
+            </label>
+            <textarea
+              value={vetVisitForm.treatment}
+              onChange={(e) => setVetVisitForm({ ...vetVisitForm, treatment: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              rows={3}
+              placeholder="Treatment details..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Cost ($)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={vetVisitForm.cost}
+              onChange={(e) => setVetVisitForm({ ...vetVisitForm, cost: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Next Visit Date
+            </label>
+            <input
+              type="date"
+              value={vetVisitForm.nextVisit}
+              onChange={(e) => setVetVisitForm({ ...vetVisitForm, nextVisit: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Notes
+            </label>
+            <textarea
+              value={vetVisitForm.notes}
+              onChange={(e) => setVetVisitForm({ ...vetVisitForm, notes: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              rows={3}
+              placeholder="Additional notes..."
+            />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => {
+                setShowVetVisitModal(false);
+                setVetVisitForm({
+                  visitDate: new Date().toISOString().split('T')[0],
+                  reason: '',
+                  diagnosis: '',
+                  treatment: '',
+                  cost: '',
+                  nextVisit: '',
+                  notes: '',
+                });
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch(`/api/pets/${petId}/vet-visits`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(vetVisitForm),
+                  });
+                  if (response.ok) {
+                    await loadPetData();
+                    setShowVetVisitModal(false);
+                    setVetVisitForm({
+                      visitDate: new Date().toISOString().split('T')[0],
+                      reason: '',
+                      diagnosis: '',
+                      treatment: '',
+                      cost: '',
+                      nextVisit: '',
+                      notes: '',
+                    });
+                    setAlertModal({
+                      isOpen: true,
+                      type: 'success',
+                      title: 'Success!',
+                      message: 'Vet visit logged successfully',
+                    });
+                  } else {
+                    const data = await response.json();
+                    setAlertModal({
+                      isOpen: true,
+                      type: 'error',
+                      title: 'Error',
+                      message: data.error || 'Failed to log vet visit',
+                    });
+                  }
+                } catch (err) {
+                  setAlertModal({
+                    isOpen: true,
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to log vet visit',
+                  });
+                }
+              }}
+              disabled={!vetVisitForm.visitDate || !vetVisitForm.reason}
+              className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 rounded-lg transition-colors"
+            >
+              Log Visit
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Weight Modal */}
+      <Modal
+        isOpen={showWeightModal}
+        onClose={() => {
+          setShowWeightModal(false);
+          setWeightForm({
+            weight: '',
+            unit: 'lbs',
+            recordedAt: new Date().toISOString().split('T')[0],
+            notes: '',
+          });
+        }}
+        title="Add Weight Record"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Weight *
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={weightForm.weight}
+              onChange={(e) => setWeightForm({ ...weightForm, weight: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              placeholder="e.g., 25.5"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Unit *
+            </label>
+            <select
+              value={weightForm.unit}
+              onChange={(e) => setWeightForm({ ...weightForm, unit: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+            >
+              <option value="lbs">Pounds (lbs)</option>
+              <option value="kg">Kilograms (kg)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Date Recorded *
+            </label>
+            <input
+              type="date"
+              value={weightForm.recordedAt}
+              onChange={(e) => setWeightForm({ ...weightForm, recordedAt: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Notes
+            </label>
+            <textarea
+              value={weightForm.notes}
+              onChange={(e) => setWeightForm({ ...weightForm, notes: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              rows={3}
+              placeholder="Additional notes..."
+            />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => {
+                setShowWeightModal(false);
+                setWeightForm({
+                  weight: '',
+                  unit: 'lbs',
+                  recordedAt: new Date().toISOString().split('T')[0],
+                  notes: '',
+                });
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch(`/api/pets/${petId}/weights`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(weightForm),
+                  });
+                  if (response.ok) {
+                    await loadPetData();
+                    setShowWeightModal(false);
+                    setWeightForm({
+                      weight: '',
+                      unit: 'lbs',
+                      recordedAt: new Date().toISOString().split('T')[0],
+                      notes: '',
+                    });
+                    setAlertModal({
+                      isOpen: true,
+                      type: 'success',
+                      title: 'Success!',
+                      message: 'Weight logged successfully',
+                    });
+                  } else {
+                    const data = await response.json();
+                    setAlertModal({
+                      isOpen: true,
+                      type: 'error',
+                      title: 'Error',
+                      message: data.error || 'Failed to log weight',
+                    });
+                  }
+                } catch (err) {
+                  setAlertModal({
+                    isOpen: true,
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to log weight',
+                  });
+                }
+              }}
+              disabled={!weightForm.weight || !weightForm.unit}
+              className="px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 rounded-lg transition-colors"
+            >
+              Log Weight
+            </button>
+          </div>
+        </div>
+      </Modal>
       </div>
     </div>
   );

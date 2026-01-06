@@ -66,12 +66,31 @@ export async function GET(request: NextRequest) {
       .map((c) => c.moduleId);
 
     // Add default-enabled modules that haven't been configured yet
-    const enabledModules = [
+    const familyEnabledModules = [
       ...enabledConfiguredIds,
       ...DEFAULT_ENABLED_MODULES.filter((m) => !configuredModuleIds.has(m)),
     ];
 
-    return NextResponse.json({ enabledModules }, { status: 200 });
+    // For children, filter by their member-specific access
+    if (session.user.role === 'CHILD') {
+      const memberAccess = await prisma.memberModuleAccess.findMany({
+        where: {
+          memberId: session.user.id,
+          hasAccess: true,
+        },
+        select: {
+          moduleId: true,
+        },
+      });
+
+      const allowedModuleIds = new Set(memberAccess.map(a => a.moduleId));
+      const enabledModules = familyEnabledModules.filter(m => allowedModuleIds.has(m));
+
+      return NextResponse.json({ enabledModules }, { status: 200 });
+    }
+
+    // For parents, return all family-enabled modules
+    return NextResponse.json({ enabledModules: familyEnabledModules }, { status: 200 });
   } catch (error) {
     logger.error('Error fetching enabled modules:', error);
     return NextResponse.json(

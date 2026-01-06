@@ -142,6 +142,7 @@ model FamilyMember {
   budgets                              Budget[]
   routinesAssigned                     Routine[]
   routineCompletions                   RoutineCompletion[]
+  moduleAccess                         MemberModuleAccess[]
   postsAuthored                        CommunicationPost[]            @relation("PostAuthor")
   postReactions                        PostReaction[]
   leftoversCreated                     Leftover[]
@@ -211,6 +212,21 @@ model ModuleConfiguration {
 
   @@unique([familyId, moduleId])
   @@map("module_configurations")
+}
+
+model MemberModuleAccess {
+  id        String   @id @default(uuid())
+  memberId  String
+  moduleId  ModuleId
+  hasAccess Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  member FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, moduleId])
+  @@map("member_module_access")
 }
 
 // ============================================

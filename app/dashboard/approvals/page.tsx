@@ -35,14 +35,36 @@ interface PendingGraceRequest {
   currentBalance: number;
 }
 
+interface PendingRedemption {
+  id: string;
+  status: string;
+  requestedAt: string;
+  notes?: string;
+  reward: {
+    id: string;
+    name: string;
+    description?: string;
+    costCredits: number;
+    category: string;
+  };
+  member: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+}
+
 export default function ApprovalsPage() {
   const [chores, setChores] = useState<PendingChore[]>([]);
   const [graceRequests, setGraceRequests] = useState<PendingGraceRequest[]>([]);
+  const [redemptions, setRedemptions] = useState<PendingRedemption[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [processingGraceId, setProcessingGraceId] = useState<string | null>(null);
+  const [processingRedemptionId, setProcessingRedemptionId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectingRedemptionId, setRejectingRedemptionId] = useState<string | null>(null);
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -80,9 +102,25 @@ export default function ApprovalsPage() {
     }
   };
 
+  const fetchPendingRedemptions = async () => {
+    try {
+      const response = await fetch('/api/rewards/redemptions');
+      if (response.ok) {
+        const data = await response.json();
+        setRedemptions(data.redemptions || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch pending redemptions:', error);
+    }
+  };
+
   useEffect(() => {
     const fetchAll = async () => {
-      await Promise.all([fetchPendingChores(), fetchPendingGraceRequests()]);
+      await Promise.all([
+        fetchPendingChores(),
+        fetchPendingGraceRequests(),
+        fetchPendingRedemptions(),
+      ]);
       setLoading(false);
     };
     fetchAll();
@@ -258,6 +296,96 @@ export default function ApprovalsPage() {
     }
   };
 
+  const handleApproveRedemption = async (redemptionId: string) => {
+    setProcessingRedemptionId(redemptionId);
+    try {
+      const response = await fetch(`/api/rewards/redemptions/${redemptionId}/approve`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Success',
+          message: data.message || 'Redemption approved successfully',
+          type: 'success',
+        });
+        await fetchPendingRedemptions();
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: data.error || 'Failed to approve redemption',
+          type: 'error',
+        });
+      }
+    } catch (error) {
+      console.error('Error approving redemption:', error);
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to approve redemption',
+        type: 'error',
+      });
+    } finally {
+      setProcessingRedemptionId(null);
+    }
+  };
+
+  const handleRejectRedemption = async (redemptionId: string) => {
+    if (!rejectReason.trim()) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Validation Error',
+        message: 'Please provide a reason for rejection',
+        type: 'warning',
+      });
+      return;
+    }
+
+    setProcessingRedemptionId(redemptionId);
+    try {
+      const response = await fetch(`/api/rewards/redemptions/${redemptionId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: rejectReason }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Success',
+          message: data.message || 'Redemption rejected successfully',
+          type: 'success',
+        });
+        setRejectReason('');
+        setRejectingRedemptionId(null);
+        await fetchPendingRedemptions();
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: data.error || 'Failed to reject redemption',
+          type: 'error',
+        });
+      }
+    } catch (error) {
+      console.error('Error rejecting redemption:', error);
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to reject redemption',
+        type: 'error',
+      });
+    } finally {
+      setProcessingRedemptionId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8">
@@ -285,9 +413,130 @@ export default function ApprovalsPage() {
             Approvals
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Review and approve grace requests and completed chores
+            Review and approve grace requests, reward redemptions, and completed chores
           </p>
         </div>
+
+        {/* Pending Reward Redemptions */}
+        {redemptions.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <SparklesIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              Reward Redemptions ({redemptions.length})
+            </h2>
+            <div className="space-y-4">
+              {redemptions.map((redemption) => (
+                <div
+                  key={redemption.id}
+                  className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg shadow-md p-6"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                          {redemption.member.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {redemption.member.name}
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Requested {new Date(redemption.requestedAt).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mb-3">
+                        <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-1">
+                          {redemption.reward.name}
+                        </h4>
+                        {redemption.reward.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            {redemption.reward.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-4">
+                          <span className="text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
+                            <CurrencyDollarIcon className="h-4 w-4" />
+                            {redemption.reward.costCredits} credits
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                            {redemption.reward.category.toLowerCase()}
+                          </span>
+                        </div>
+                      </div>
+                      {redemption.notes && (
+                        <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded">
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            <strong>Notes:</strong> {redemption.notes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3">
+                    {rejectingRedemptionId === redemption.id ? (
+                      <div className="flex-1 flex gap-3">
+                        <input
+                          type="text"
+                          placeholder="Reason for rejection..."
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                        />
+                        <button
+                          onClick={() => handleRejectRedemption(redemption.id)}
+                          disabled={processingRedemptionId === redemption.id}
+                          className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors duration-200"
+                        >
+                          {processingRedemptionId === redemption.id ? 'Rejecting...' : 'Confirm Reject'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setRejectingRedemptionId(null);
+                            setRejectReason('');
+                          }}
+                          className="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white font-semibold rounded-lg transition-colors duration-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleApproveRedemption(redemption.id)}
+                          disabled={processingRedemptionId === redemption.id}
+                          className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
+                        >
+                          {processingRedemptionId === redemption.id ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              Approving...
+                            </>
+                          ) : (
+                            <>
+                              <CheckIcon className="h-5 w-5" />
+                              Approve
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setRejectingRedemptionId(redemption.id)}
+                          disabled={processingRedemptionId === redemption.id}
+                          className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
+                        >
+                          <XMarkIcon className="h-5 w-5" />
+                          Reject
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Pending Grace Requests */}
         {graceRequests.length > 0 && (
