@@ -50,9 +50,12 @@ jobs:
           # Temporarily build only for AMD64 until we set up native ARM64 runners
           # ARM64 builds fail under QEMU emulation due to native npm module issues
           platforms: linux/amd64
+          build-args: |
+            NEXT_PUBLIC_BUILD_VERSION=${{ steps.meta.outputs.version }}
+            NEXT_PUBLIC_BUILD_DATE=${{ github.event.head_commit.timestamp }}
 
       - name: Update Docker Hub description
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}

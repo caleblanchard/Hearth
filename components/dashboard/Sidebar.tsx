@@ -282,7 +282,7 @@ export default function Sidebar() {
       {/* Sidebar Footer */}
       {isOpen && session?.user && (
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-ember-700 dark:bg-ember-500 rounded-full flex items-center justify-center text-white font-bold">
               {session.user.name?.charAt(0) || 'U'}
             </div>
@@ -294,6 +294,11 @@ export default function Sidebar() {
                 {session.user.role}
               </p>
             </div>
+          </div>
+          <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
+              v{process.env.NEXT_PUBLIC_BUILD_VERSION || '0.1.0-dev'}
+            </p>
           </div>
         </div>
       )}
