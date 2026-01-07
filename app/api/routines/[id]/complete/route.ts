@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { onRoutineCompleted } from '@/lib/rules-engine/hooks';
 import { logger } from '@/lib/logger';
+import { shouldSkipRoutine } from '@/lib/sick-mode';
 
 export async function POST(
   request: NextRequest,
@@ -72,6 +73,17 @@ export async function POST(
           { status: 403 }
         );
       }
+    }
+
+    // Check if routine should be skipped due to sick mode
+    const shouldSkip = await shouldSkipRoutine(memberId, routine.type);
+    if (shouldSkip) {
+      logger.info(`Routine ${routine.id} (${routine.type}) skipped for member ${memberId} - in sick mode`);
+      return NextResponse.json({
+        message: `${routine.type === 'MORNING' ? 'Morning' : 'Bedtime'} routine is skipped while in sick mode`,
+        skippedDueToSickMode: true,
+        completion: null,
+      }, { status: 200 });
     }
 
     // Create completion record with today's date (normalized to midnight)

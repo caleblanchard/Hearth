@@ -54,6 +54,22 @@ async function main() {
     },
   });
 
+  // Mark onboarding as complete so we skip onboarding flow
+  console.log('✓ Marking onboarding as complete...');
+  await prisma.systemConfig.upsert({
+    where: { id: 'system' },
+    update: {
+      onboardingComplete: true,
+      setupCompletedAt: new Date(),
+    },
+    create: {
+      id: 'system',
+      onboardingComplete: true,
+      setupCompletedAt: new Date(),
+      version: '0.1.0',
+    },
+  });
+
   // Create parent account
   console.log('👤 Creating parent account...');
   const parentPasswordHash = await hash('password123', 12);
@@ -421,6 +437,7 @@ async function main() {
   console.log('✨ Seeding completed!');
   console.log('\n📊 Test Data Summary:');
   console.log('-------------------');
+  console.log('✓ Onboarding marked as complete (will skip onboarding flow)');
   console.log('Family: The Smith Family');
   console.log('\nAccounts:');
   console.log('  Parent: sarah@example.com / password123');

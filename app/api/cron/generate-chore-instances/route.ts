@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getNextDueDates, getNextAssignee, startOfDay, endOfDay } from '@/lib/chore-scheduler';
 import { logger } from '@/lib/logger';
+import { isMemberInSickMode } from '@/lib/sick-mode';
 
 // This endpoint is called by Vercel Cron daily to generate chore instances
 export async function GET(request: Request) {
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
     const startDate = new Date();
     let created = 0;
     let skipped = 0;
+    let skippedDueToSickMode = 0;
     const errors: string[] = [];
 
     // Fetch all active chore schedules
@@ -84,6 +86,14 @@ export async function GET(request: Request) {
             // FIXED: Always assign to first person in list
             assigneeId = schedule.assignments[0].memberId;
 
+            // Check if member is in sick mode
+            const inSickMode = await isMemberInSickMode(assigneeId);
+            if (inSickMode) {
+              skippedDueToSickMode++;
+              logger.info(`Skipping chore instance for member ${assigneeId} - in sick mode`);
+              continue;
+            }
+
             // Create single instance
             await prisma.choreInstance.create({
               data: {
@@ -116,6 +126,14 @@ export async function GET(request: Request) {
               continue;
             }
 
+            // Check if member is in sick mode
+            const inSickMode = await isMemberInSickMode(assigneeId);
+            if (inSickMode) {
+              skippedDueToSickMode++;
+              logger.info(`Skipping chore instance for member ${assigneeId} - in sick mode`);
+              continue;
+            }
+
             // Create single instance
             await prisma.choreInstance.create({
               data: {
@@ -143,6 +161,14 @@ export async function GET(request: Request) {
               });
 
               if (!memberInstance) {
+                // Check if member is in sick mode
+                const inSickMode = await isMemberInSickMode(assignment.memberId);
+                if (inSickMode) {
+                  skippedDueToSickMode++;
+                  logger.info(`Skipping opt-in chore for member ${assignment.memberId} - in sick mode`);
+                  continue;
+                }
+
                 await prisma.choreInstance.create({
                   data: {
                     choreScheduleId: schedule.id,
@@ -170,6 +196,7 @@ export async function GET(request: Request) {
         schedulesProcessed: schedules.length,
         instancesCreated: created,
         instancesSkipped: skipped,
+        skippedDueToSickMode,
         errors: errors.length,
       },
       errors: errors.length > 0 ? errors : undefined,

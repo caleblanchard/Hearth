@@ -12,9 +12,11 @@ import {
   StarIcon,
   PencilIcon,
   TrashIcon,
+  CalendarIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon, StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { AlertModal, ConfirmModal } from '@/components/ui/Modal';
+import AddToMealModal from '@/components/meals/AddToMealModal';
 
 interface Ingredient {
   id: string;
@@ -90,6 +92,7 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
   const [hoverRating, setHoverRating] = useState(0);
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false });
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title?: string; message?: string; type?: 'error' | 'success' }>({ isOpen: false });
+  const [showAddToMealModal, setShowAddToMealModal] = useState(false);
 
   useEffect(() => {
     fetchRecipe();
@@ -253,6 +256,13 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAddToMealModal(true)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title="Add to Meal Plan"
+              >
+                <CalendarIcon className="h-6 w-6 text-gray-400 hover:text-ember-700" />
+              </button>
               <button
                 onClick={toggleFavorite}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -457,6 +467,16 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
         message={alertModal.message || ''}
         type={alertModal.type}
       />
+
+      {/* Add to Meal Modal */}
+      {recipe && (
+        <AddToMealModal
+          isOpen={showAddToMealModal}
+          onClose={() => setShowAddToMealModal(false)}
+          recipeId={recipe.id}
+          recipeName={recipe.name}
+        />
+      )}
     </div>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
+import { ConfirmModal } from '@/components/ui/Modal';
+import { useToast } from '@/components/ui/Toast';
 import {
   ShoppingCartIcon,
   HomeIcon,
@@ -54,6 +55,7 @@ export default function ShoppingListPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [filter, setFilter] = useState('ACTIVE'); // ACTIVE, ALL, PURCHASED
   const [editingItem, setEditingItem] = useState<ShoppingItem | null>(null);
+  const { showToast } = useToast();
   const router = useRouter();
 
   // Form state
@@ -73,13 +75,6 @@ export default function ShoppingListPage() {
     itemName: string;
     isClearAll?: boolean;
   }>({ isOpen: false, itemId: '', itemName: '', isClearAll: false });
-
-  const [alertModal, setAlertModal] = useState<{
-    isOpen: boolean;
-    type: 'success' | 'error' | 'warning';
-    title: string;
-    message: string;
-  }>({ isOpen: false, type: 'success', title: '', message: '' });
 
   const fetchItems = async () => {
     try {
@@ -101,12 +96,7 @@ export default function ShoppingListPage() {
 
   const handleAddItem = async () => {
     if (!newItem.name.trim()) {
-      setAlertModal({
-        isOpen: true,
-        type: 'warning',
-        title: 'Missing Information',
-        message: 'Please enter an item name',
-      });
+      showToast('error', 'Please enter an item name');
       return;
     }
 
@@ -121,12 +111,7 @@ export default function ShoppingListPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: data.message || 'Item added to shopping list',
-        });
+        showToast('success', data.message || 'Item added to shopping list! 🛒');
         setNewItem({
           name: '',
           category: 'GROCERIES',
@@ -138,21 +123,11 @@ export default function ShoppingListPage() {
         setShowAddForm(false);
         await fetchItems();
       } else {
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to add item',
-        });
+        showToast('error', data.error || 'Failed to add item');
       }
     } catch (error) {
       console.error('Error adding item:', error);
-      setAlertModal({
-        isOpen: true,
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to add item',
-      });
+      showToast('error', 'Failed to add item');
     } finally {
       setAdding(false);
     }
@@ -170,21 +145,11 @@ export default function ShoppingListPage() {
         await fetchItems();
       } else {
         const data = await response.json();
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to update item',
-        });
+        showToast('error', data.error || 'Failed to update item');
       }
     } catch (error) {
       console.error('Error updating item:', error);
-      setAlertModal({
-        isOpen: true,
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to update item',
-      });
+      showToast('error', 'Failed to update item');
     }
   };
 
@@ -213,30 +178,15 @@ export default function ShoppingListPage() {
       });
 
       if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: 'Item removed from shopping list',
-        });
+        showToast('success', 'Item removed from shopping list! 🗑️');
         await fetchItems();
       } else {
         const data = await response.json();
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to delete item',
-        });
+        showToast('error', data.error || 'Failed to delete item');
       }
     } catch (error) {
       console.error('Error deleting item:', error);
-      setAlertModal({
-        isOpen: true,
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to delete item',
-      });
+      showToast('error', 'Failed to delete item');
     }
   };
 
@@ -263,21 +213,11 @@ export default function ShoppingListPage() {
 
       await Promise.all(deletePromises);
 
-      setAlertModal({
-        isOpen: true,
-        type: 'success',
-        title: 'Success!',
-        message: `Cleared ${purchasedItems.length} purchased item${purchasedItems.length !== 1 ? 's' : ''}`,
-      });
+      showToast('success', `Cleared ${purchasedItems.length} purchased item${purchasedItems.length !== 1 ? 's' : ''}! ✓`);
       await fetchItems();
     } catch (error) {
       console.error('Error clearing purchased items:', error);
-      setAlertModal({
-        isOpen: true,
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to clear purchased items',
-      });
+      showToast('error', 'Failed to clear purchased items');
     }
   };
 
@@ -298,12 +238,7 @@ export default function ShoppingListPage() {
     if (!editingItem) return;
 
     if (!newItem.name.trim()) {
-      setAlertModal({
-        isOpen: true,
-        type: 'warning',
-        title: 'Missing Information',
-        message: 'Please enter an item name',
-      });
+      showToast('error', 'Please enter an item name');
       return;
     }
 
@@ -325,12 +260,7 @@ export default function ShoppingListPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: data.message || 'Item updated successfully',
-        });
+        showToast('success', data.message || 'Item updated successfully! ✓');
         setNewItem({
           name: '',
           category: 'GROCERIES',
@@ -343,21 +273,11 @@ export default function ShoppingListPage() {
         setEditingItem(null);
         await fetchItems();
       } else {
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to update item',
-        });
+        showToast('error', data.error || 'Failed to update item');
       }
     } catch (error) {
       console.error('Error updating item:', error);
-      setAlertModal({
-        isOpen: true,
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to update item',
-      });
+      showToast('error', 'Failed to update item');
     } finally {
       setAdding(false);
     }
@@ -639,15 +559,6 @@ export default function ShoppingListPage() {
         confirmText={confirmModal.isClearAll ? 'Clear All' : 'Remove'}
         cancelText="Cancel"
         confirmColor="red"
-      />
-
-      {/* Alert Modal */}
-      <AlertModal
-        isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
-        title={alertModal.title}
-        message={alertModal.message}
-        type={alertModal.type}
       />
     </div>
   );

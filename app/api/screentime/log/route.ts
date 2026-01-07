@@ -6,6 +6,7 @@ import { wouldExceedAllowance, calculateRemainingTime, getWeekStart } from '@/li
 import { logger } from '@/lib/logger';
 import { sanitizeString, sanitizeInteger } from '@/lib/input-sanitization';
 import { parseJsonBody } from '@/lib/request-validation';
+import { shouldPauseScreenTimeTracking } from '@/lib/sick-mode';
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,6 +69,18 @@ export async function POST(request: NextRequest) {
         { error: 'Invalid date format' },
         { status: 400 }
       );
+    }
+
+    // Check if screen time tracking should be paused due to sick mode
+    const pauseTracking = await shouldPauseScreenTimeTracking(memberId);
+    if (pauseTracking) {
+      logger.info(`Screen time tracking paused for member ${memberId} - in sick mode`);
+      return NextResponse.json({
+        message: 'Screen time tracking is paused while in sick mode',
+        pausedDueToSickMode: true,
+        transaction: null,
+        balance: null,
+      }, { status: 200 });
     }
 
     // Verify screen time type belongs to family

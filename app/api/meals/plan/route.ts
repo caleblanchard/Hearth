@@ -74,6 +74,11 @@ export async function GET(request: NextRequest) {
       },
       include: {
         meals: {
+          include: {
+            dishes: {
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
           orderBy: [
             { date: 'asc' },
             { mealType: 'asc' },
@@ -104,7 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { date, mealType, customName, notes, recipeId } = body;
+    const { date, mealType, customName, notes, recipeId, dishes } = body;
 
     // Validate required fields
     if (!date) {
@@ -128,9 +133,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!customName && !recipeId) {
+    // Validate that either legacy fields or dishes array is provided
+    if (!customName && !recipeId && (!dishes || dishes.length === 0)) {
       return NextResponse.json(
-        { error: 'Either customName or recipeId must be provided' },
+        { error: 'Either customName, recipeId, or dishes array must be provided' },
         { status: 400 }
       );
     }
@@ -169,9 +175,50 @@ export async function POST(request: NextRequest) {
         mealPlanId: mealPlan.id,
         date: mealDate,
         mealType: mealType as MealType,
-        customName: customName?.trim() || null,
+        customName: customName?.trim() || null, // DEPRECATED - for backward compatibility
         notes: notes?.trim() || null,
-        recipeId: recipeId || null,
+        recipeId: recipeId || null, // DEPRECATED - for backward compatibility
+      },
+    });
+
+    // Create dishes if provided
+    if (dishes && dishes.length > 0) {
+      for (let i = 0; i < dishes.length; i++) {
+        const dish = dishes[i];
+        let dishName = dish.dishName;
+
+        // If recipeId provided, fetch recipe name
+        if (dish.recipeId && !dishName) {
+          const recipe = await prisma.recipe.findUnique({
+            where: { id: dish.recipeId },
+            select: { name: true, familyId: true },
+          });
+
+          if (recipe && recipe.familyId === session.user.familyId) {
+            dishName = recipe.name;
+          }
+        }
+
+        if (dishName) {
+          await prisma.mealPlanDish.create({
+            data: {
+              mealEntryId: entry.id,
+              recipeId: dish.recipeId || null,
+              dishName,
+              sortOrder: i,
+            },
+          });
+        }
+      }
+    }
+
+    // Fetch entry with dishes for response
+    const entryWithDishes = await prisma.mealPlanEntry.findUnique({
+      where: { id: entry.id },
+      include: {
+        dishes: {
+          orderBy: { sortOrder: 'asc' },
+        },
       },
     });
 
@@ -192,7 +239,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        entry,
+        entry: entryWithDishes,
         message: 'Meal entry created successfully',
       },
       { status: 201 }

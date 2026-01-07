@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { format } from 'date-fns';
 import { Modal, ConfirmModal, AlertModal } from '@/components/ui/Modal';
+import { useToast } from '@/components/ui/Toast';
 
 const TIMEZONES = [
   'America/New_York',
@@ -17,6 +18,23 @@ const TIMEZONES = [
 
 const WEEK_START_DAYS = ['SUNDAY', 'MONDAY'];
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD'];
+
+const COUNTRIES = [
+  { code: 'US', name: 'United States' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'NZ', name: 'New Zealand' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'CN', name: 'China' },
+  { code: 'IN', name: 'India' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'MX', name: 'Mexico' },
+];
 
 interface FamilyMember {
   id: string;
@@ -45,6 +63,7 @@ interface Family {
 
 export default function FamilyPage() {
   const { data: session } = useSession();
+  const { showToast } = useToast();
   const [family, setFamily] = useState<Family | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingSettings, setEditingSettings] = useState(false);
@@ -59,6 +78,15 @@ export default function FamilyPage() {
     latitude: null as number | null,
     longitude: null as number | null,
   });
+
+  // Geocoding state
+  const [geocodingMethod, setGeocodingMethod] = useState<'zip' | 'city'>('zip');
+  const [zipCode, setZipCode] = useState('');
+  const [cityName, setCityName] = useState('');
+  const [country, setCountry] = useState('US');
+  const [lookingUp, setLookingUp] = useState(false);
+  const [geocodeResults, setGeocodeResults] = useState<any[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [addMemberModal, setAddMemberModal] = useState(false);
   const [editMemberModal, setEditMemberModal] = useState<FamilyMember | null>(null);
@@ -153,6 +181,84 @@ export default function FamilyPage() {
       fetchMemberModules(editMemberModal.id);
     }
   }, [editMemberModal]);
+
+  const handleGeocodeLookup = async () => {
+    setLookingUp(true);
+    setGeocodeResults([]);
+    
+    try {
+      const params = new URLSearchParams();
+      if (geocodingMethod === 'zip') {
+        if (!zipCode.trim()) {
+          showToast('error', 'Please enter a zip code');
+          setLookingUp(false);
+          return;
+        }
+        params.append('zip', zipCode.trim());
+        params.append('country', country);
+      } else {
+        if (!cityName.trim()) {
+          showToast('error', 'Please enter a city name');
+          setLookingUp(false);
+          return;
+        }
+        params.append('city', cityName.trim());
+        params.append('country', country);
+      }
+
+      const response = await fetch(`/api/geocoding?${params.toString()}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        showToast('error', data.error || 'Failed to look up location');
+        setLookingUp(false);
+        return;
+      }
+
+      // Handle zip code result (single location)
+      if (geocodingMethod === 'zip') {
+        setFamilySettings({
+          ...familySettings,
+          location: `${data.name}, ${data.state || data.country}`,
+          latitude: data.lat,
+          longitude: data.lon,
+        });
+        showToast('success', `Found ${data.name}! ✓`);
+      } else {
+        // Handle city name results (array of matches)
+        if (data.results.length === 1) {
+          const result = data.results[0];
+          setFamilySettings({
+            ...familySettings,
+            location: `${result.name}, ${result.state || result.country}`,
+            latitude: result.lat,
+            longitude: result.lon,
+          });
+          showToast('success', `Found ${result.name}! ✓`);
+        } else {
+          // Multiple matches - show user choice
+          setGeocodeResults(data.results);
+          showToast('info', `Found ${data.results.length} locations - please choose one`);
+        }
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      showToast('error', 'Failed to look up location');
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
+  const handleSelectGeocodeResult = (result: any) => {
+    setFamilySettings({
+      ...familySettings,
+      location: `${result.name}, ${result.state || result.country}`,
+      latitude: result.lat,
+      longitude: result.lon,
+    });
+    setGeocodeResults([]);
+    showToast('success', `Location set to ${result.name}! ✓`);
+  };
 
   const handleSaveSettings = async () => {
     setSavingSettings(true);
@@ -576,64 +682,218 @@ export default function FamilyPage() {
                   Location (for Weather Widget)
                 </h3>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Location Name (City, State or Address)
-                    </label>
-                    <input
-                      type="text"
-                      value={familySettings.location}
-                      onChange={(e) => setFamilySettings({ ...familySettings, location: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-                      placeholder="e.g., New York, NY"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Latitude
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={familySettings.latitude ?? ''}
-                        onChange={(e) => setFamilySettings({ 
-                          ...familySettings, 
-                          latitude: e.target.value ? parseFloat(e.target.value) : null 
-                        })}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-                        placeholder="e.g., 40.7128"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Longitude
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={familySettings.longitude ?? ''}
-                        onChange={(e) => setFamilySettings({ 
-                          ...familySettings, 
-                          longitude: e.target.value ? parseFloat(e.target.value) : null 
-                        })}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-                        placeholder="e.g., -74.0060"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Enter your location coordinates for accurate weather data. You can find coordinates using{' '}
-                    <a 
-                      href="https://www.latlong.net/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-ember-700 dark:text-ember-500 hover:underline"
+                  
+                  {/* Geocoding Method Selector */}
+                  <div className="flex gap-4 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setGeocodingMethod('zip')}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        geocodingMethod === 'zip'
+                          ? 'bg-ember-700 text-white'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      }`}
                     >
-                      latlong.net
-                    </a>
-                    {' '}or search for your city.
-                  </p>
+                      Zip/Postal Code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGeocodingMethod('city')}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        geocodingMethod === 'city'
+                          ? 'bg-ember-700 text-white'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      City Name
+                    </button>
+                  </div>
+
+                  {/* Zip Code Input */}
+                  {geocodingMethod === 'zip' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Zip/Postal Code
+                        </label>
+                        <input
+                          type="text"
+                          value={zipCode}
+                          onChange={(e) => setZipCode(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleGeocodeLookup()}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                          placeholder="e.g., 90210 or SW1A 1AA"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Country
+                        </label>
+                        <select
+                          value={country}
+                          onChange={(e) => setCountry(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                        >
+                          {COUNTRIES.map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* City Name Input */}
+                  {geocodingMethod === 'city' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          City Name
+                        </label>
+                        <input
+                          type="text"
+                          value={cityName}
+                          onChange={(e) => setCityName(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleGeocodeLookup()}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                          placeholder="e.g., London or New York"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Country
+                        </label>
+                        <select
+                          value={country}
+                          onChange={(e) => setCountry(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                        >
+                          {COUNTRIES.map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Look Up Button */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleGeocodeLookup}
+                      disabled={lookingUp}
+                      className="px-6 py-2 bg-ember-700 hover:bg-ember-500 disabled:bg-ember-400 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      {lookingUp ? 'Looking up...' : 'Look Up Coordinates'}
+                    </button>
+                  </div>
+
+                  {/* Multiple Results Selection */}
+                  {geocodeResults.length > 0 && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
+                        Multiple locations found - please choose one:
+                      </p>
+                      <div className="space-y-2">
+                        {geocodeResults.map((result, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleSelectGeocodeResult(result)}
+                            className="w-full text-left px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
+                          >
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {result.name}
+                            </span>
+                            {result.state && (
+                              <span className="text-gray-600 dark:text-gray-400">, {result.state}</span>
+                            )}
+                            <span className="text-gray-600 dark:text-gray-400"> ({result.country})</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-500 ml-2">
+                              {result.lat.toFixed(4)}, {result.lon.toFixed(4)}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Current Location Display */}
+                  {familySettings.latitude && familySettings.longitude && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <p className="text-sm font-medium text-green-900 dark:text-green-200">
+                        ✓ Location set: {familySettings.location}
+                      </p>
+                      <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                        Coordinates: {familySettings.latitude.toFixed(4)}, {familySettings.longitude.toFixed(4)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Advanced Manual Entry */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="text-sm text-ember-700 dark:text-ember-500 hover:underline"
+                    >
+                      {showAdvanced ? '▼ Hide' : '▶'} Advanced: Manual Coordinate Entry
+                    </button>
+                    {showAdvanced && (
+                      <div className="mt-4 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Location Name
+                          </label>
+                          <input
+                            type="text"
+                            value={familySettings.location}
+                            onChange={(e) => setFamilySettings({ ...familySettings, location: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                            placeholder="e.g., New York, NY"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Latitude
+                            </label>
+                            <input
+                              type="number"
+                              step="any"
+                              value={familySettings.latitude ?? ''}
+                              onChange={(e) => setFamilySettings({ 
+                                ...familySettings, 
+                                latitude: e.target.value ? parseFloat(e.target.value) : null 
+                              })}
+                              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                              placeholder="e.g., 40.7128"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Longitude
+                            </label>
+                            <input
+                              type="number"
+                              step="any"
+                              value={familySettings.longitude ?? ''}
+                              onChange={(e) => setFamilySettings({ 
+                                ...familySettings, 
+                                longitude: e.target.value ? parseFloat(e.target.value) : null 
+                              })}
+                              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                              placeholder="e.g., -74.0060"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                 </div>
               </div>
 

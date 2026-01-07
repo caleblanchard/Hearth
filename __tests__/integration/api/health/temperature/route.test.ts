@@ -395,5 +395,167 @@ describe('/api/health/temperature', () => {
         },
       });
     });
+
+    describe('Sick Mode Auto-Trigger', () => {
+      it('should auto-trigger sick mode when temperature exceeds threshold', async () => {
+        mockAuth.mockResolvedValue(mockParentSession as any);
+        prismaMock.familyMember.findUnique.mockResolvedValue({
+          id: 'child-test-123',
+        familyId: 'family-test-123',
+      } as any);
+      prismaMock.temperatureLog.create.mockResolvedValue({
+        id: 'temp-log-1',
+        memberId: 'child-test-123',
+        temperature: 101.5,
+        method: 'ORAL',
+        recordedAt: new Date(),
+      } as any);
+      prismaMock.sickModeSettings.findUnique.mockResolvedValue({
+        id: 'settings-1',
+        familyId: 'family-test-123',
+        autoEnableOnTemperature: true,
+        temperatureThreshold: 100.4,
+      } as any);
+      prismaMock.sickModeInstance.findFirst.mockResolvedValue(null);
+      prismaMock.healthEvent.findFirst.mockResolvedValue(null);
+      prismaMock.healthEvent.create.mockResolvedValue({
+        id: 'health-event-1',
+        memberId: 'child-test-123',
+        eventType: 'ILLNESS',
+      } as any);
+      prismaMock.sickModeInstance.create.mockResolvedValue({
+        id: 'sick-mode-1',
+        memberId: 'child-test-123',
+        triggeredBy: 'AUTO_FROM_HEALTH_EVENT',
+      } as any);
+
+      const request = new NextRequest('http://localhost:3000/api/health/temperature', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: 'child-test-123',
+          temperature: 101.5,
+          method: 'ORAL',
+        }),
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data.sickModeTriggered).toBe(true);
+      expect(prismaMock.sickModeInstance.create).toHaveBeenCalled();
+    });
+
+    it('should not auto-trigger if temperature is below threshold', async () => {
+      mockAuth.mockResolvedValue(mockParentSession as any);
+      prismaMock.familyMember.findUnique.mockResolvedValue({
+        id: 'child-test-123',
+        familyId: 'family-test-123',
+      } as any);
+      prismaMock.temperatureLog.create.mockResolvedValue({
+        id: 'temp-log-1',
+        memberId: 'child-test-123',
+        temperature: 99.5,
+        method: 'ORAL',
+        recordedAt: new Date(),
+      } as any);
+      prismaMock.sickModeSettings.findUnique.mockResolvedValue({
+        id: 'settings-1',
+        familyId: 'family-test-123',
+        autoEnableOnTemperature: true,
+        temperatureThreshold: 100.4,
+      } as any);
+
+      const request = new NextRequest('http://localhost:3000/api/health/temperature', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: 'child-test-123',
+          temperature: 99.5,
+          method: 'ORAL',
+        }),
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data.sickModeTriggered).toBe(false);
+      expect(prismaMock.sickModeInstance.create).not.toHaveBeenCalled();
+    });
+
+    it('should not auto-trigger if setting is disabled', async () => {
+      mockAuth.mockResolvedValue(mockParentSession as any);
+      prismaMock.familyMember.findUnique.mockResolvedValue({
+        id: 'child-test-123',
+        familyId: 'family-test-123',
+      } as any);
+      prismaMock.temperatureLog.create.mockResolvedValue({
+        id: 'temp-log-1',
+        memberId: 'child-test-123',
+        temperature: 101.5,
+        method: 'ORAL',
+        recordedAt: new Date(),
+      } as any);
+      prismaMock.sickModeSettings.findUnique.mockResolvedValue({
+        id: 'settings-1',
+        familyId: 'family-test-123',
+        autoEnableOnTemperature: false,
+        temperatureThreshold: 100.4,
+      } as any);
+
+      const request = new NextRequest('http://localhost:3000/api/health/temperature', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: 'child-test-123',
+          temperature: 101.5,
+          method: 'ORAL',
+        }),
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data.sickModeTriggered).toBe(false);
+      expect(prismaMock.sickModeInstance.create).not.toHaveBeenCalled();
+    });
+
+    it('should not auto-trigger if sick mode already active', async () => {
+      mockAuth.mockResolvedValue(mockParentSession as any);
+      prismaMock.familyMember.findUnique.mockResolvedValue({
+        id: 'child-test-123',
+        familyId: 'family-test-123',
+      } as any);
+      prismaMock.temperatureLog.create.mockResolvedValue({
+        id: 'temp-log-1',
+        memberId: 'child-test-123',
+        temperature: 101.5,
+        method: 'ORAL',
+        recordedAt: new Date(),
+      } as any);
+      prismaMock.sickModeSettings.findUnique.mockResolvedValue({
+        id: 'settings-1',
+        familyId: 'family-test-123',
+        autoEnableOnTemperature: true,
+        temperatureThreshold: 100.4,
+      } as any);
+      prismaMock.sickModeInstance.findFirst.mockResolvedValue({
+        id: 'existing-sick-mode',
+        isActive: true,
+      } as any);
+
+      const request = new NextRequest('http://localhost:3000/api/health/temperature', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: 'child-test-123',
+          temperature: 101.5,
+          method: 'ORAL',
+        }),
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data.sickModeTriggered).toBe(false);
+      expect(prismaMock.sickModeInstance.create).not.toHaveBeenCalled();
+    });
+  });
   });
 });

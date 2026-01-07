@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { calculateRemainingTime } from '@/lib/screentime-utils';
+import { getScreenTimeBonus } from '@/lib/sick-mode';
 
 export async function GET(request: NextRequest) {
   try {
@@ -158,6 +159,10 @@ export async function GET(request: NextRequest) {
       .filter((a) => a.period === 'WEEKLY')
       .reduce((sum, a) => sum + a.allowanceMinutes, 0);
 
+    // Check for sick mode bonus
+    const sickModeBonus = await getScreenTimeBonus(targetMemberId);
+    const effectiveBalance = totalRemaining + sickModeBonus;
+
     return NextResponse.json({
       summary: {
         totalMinutes,
@@ -165,6 +170,8 @@ export async function GET(request: NextRequest) {
         averagePerDay: dailyTrend.length > 0 ? Math.round(totalMinutes / dailyTrend.length) : 0,
         currentBalance: totalRemaining,
         weeklyAllocation: totalWeeklyAllocation,
+        sickModeBonus,
+        effectiveBalance,
       },
       deviceBreakdown: deviceData,
       dailyTrend,

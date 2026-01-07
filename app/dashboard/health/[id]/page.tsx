@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { ConfirmModal } from '@/components/ui/Modal';
+import StartSickModeButton from '@/components/sick-mode/StartSickModeButton';
 
 interface HealthEvent {
   id: string;
@@ -271,14 +272,24 @@ export default function HealthEventDetailPage() {
               Tracking health information for {event.member.name}
             </p>
           </div>
-          {!event.endedAt && session?.user?.role === 'PARENT' && (
-            <button
-              onClick={handleEndEvent}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-            >
-              End Event
-            </button>
-          )}
+          <div className="flex gap-3">
+            {!event.endedAt && event.eventType === 'ILLNESS' && session?.user?.role === 'PARENT' && (
+              <StartSickModeButton 
+                memberId={event.memberId}
+                memberName={event.member.name}
+                healthEventId={event.id}
+                onStarted={loadEvent}
+              />
+            )}
+            {!event.endedAt && session?.user?.role === 'PARENT' && (
+              <button
+                onClick={handleEndEvent}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+              >
+                End Event
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

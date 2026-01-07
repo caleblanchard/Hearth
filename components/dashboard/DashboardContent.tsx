@@ -11,6 +11,7 @@ import MaintenanceWidget from '@/components/dashboard/widgets/MaintenanceWidget'
 import InventoryWidget from '@/components/dashboard/widgets/InventoryWidget';
 import WeatherWidget from '@/components/dashboard/widgets/WeatherWidget';
 import CommunicationWidget from '@/components/dashboard/widgets/CommunicationWidget';
+import SickModeBanner from '@/components/sick-mode/SickModeBanner';
 
 interface DashboardData {
   chores: Array<{
@@ -193,7 +194,13 @@ export default function DashboardContent() {
   const pendingChores = data.chores.filter(c => c.status === 'PENDING').length;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <>
+      {/* Sick Mode Banner */}
+      <div className="mb-6">
+        <SickModeBanner />
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {/* Chores Card */}
       {enabledModules.has('CHORES') && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/chores')}>
@@ -630,5 +637,6 @@ export default function DashboardContent() {
         </div>
       )}
     </div>
+    </>
   );
 }

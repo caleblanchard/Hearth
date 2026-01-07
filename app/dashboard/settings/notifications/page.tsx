@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useToast } from '@/components/ui/Toast';
 
 interface NotificationPreferences {
   enabledTypes: string[];
@@ -48,7 +49,7 @@ export default function NotificationSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     // Check if push notifications are supported
@@ -84,13 +85,13 @@ export default function NotificationSettingsPage() {
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Preferences saved successfully!' });
+        showToast('success', 'Preferences saved successfully! ✓');
       } else {
         const data = await response.json();
-        setMessage({ type: 'error', text: data.error || 'Failed to save preferences' });
+        showToast('error', data.error || 'Failed to save preferences');
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to save preferences' });
+      showToast('error', 'Failed to save preferences');
     } finally {
       setSaving(false);
     }
@@ -113,11 +114,11 @@ export default function NotificationSettingsPage() {
 
       if (response.ok) {
         setPushSubscribed(true);
-        setMessage({ type: 'success', text: 'Push notifications enabled!' });
+        showToast('success', 'Push notifications enabled! 🔔');
       }
     } catch (error) {
       console.error('Failed to subscribe to push:', error);
-      setMessage({ type: 'error', text: 'Failed to enable push notifications' });
+      showToast('error', 'Failed to enable push notifications');
     }
   };
 
@@ -137,7 +138,7 @@ export default function NotificationSettingsPage() {
         });
 
         setPushSubscribed(false);
-        setMessage({ type: 'success', text: 'Push notifications disabled' });
+        showToast('success', 'Push notifications disabled');
       }
     } catch (error) {
       console.error('Failed to unsubscribe from push:', error);
@@ -168,18 +169,6 @@ export default function NotificationSettingsPage() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Notification Settings</h1>
-
-      {message && (
-        <div
-          className={`mb-6 p-4 rounded-lg ${
-            message.type === 'success'
-              ? 'bg-green-100 text-green-800 border border-green-200'
-              : 'bg-red-100 text-red-800 border border-red-200'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
 
       {/* Push Notifications */}
       {pushSupported && (

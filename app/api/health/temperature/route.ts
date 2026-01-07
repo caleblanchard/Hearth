@@ -168,7 +168,82 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ log }, { status: 201 });
+    // Check if sick mode should be auto-triggered
+    const settings = await prisma.sickModeSettings.findUnique({
+      where: { familyId: session.user.familyId },
+    });
+
+    let sickModeTriggered = false;
+    if (
+      settings?.autoEnableOnTemperature &&
+      temperature >= Number(settings.temperatureThreshold)
+    ) {
+      // Check if sick mode is already active for this member
+      const existingSickMode = await prisma.sickModeInstance.findFirst({
+        where: {
+          memberId,
+          isActive: true,
+        },
+      });
+
+      if (!existingSickMode) {
+        // Find or create a health event for this illness
+        let healthEvent = await prisma.healthEvent.findFirst({
+          where: {
+            memberId,
+            eventType: 'ILLNESS',
+            endedAt: null,
+          },
+          orderBy: {
+            startedAt: 'desc',
+          },
+        });
+
+        if (!healthEvent) {
+          healthEvent = await prisma.healthEvent.create({
+            data: {
+              memberId,
+              eventType: 'ILLNESS',
+              severity: 7,
+              notes: `Fever detected: ${temperature}°F`,
+            },
+          });
+        }
+
+        // Auto-trigger sick mode
+        const sickModeInstance = await prisma.sickModeInstance.create({
+          data: {
+            familyId: session.user.familyId,
+            memberId,
+            triggeredBy: 'AUTO_FROM_HEALTH_EVENT',
+            healthEventId: healthEvent.id,
+            notes: `Auto-triggered by fever: ${temperature}°F`,
+            isActive: true,
+          },
+        });
+
+        // Log audit event for auto-trigger
+        await prisma.auditLog.create({
+          data: {
+            familyId: session.user.familyId,
+            memberId: session.user.id,
+            action: 'SICK_MODE_AUTO_TRIGGERED',
+            entityType: 'SickModeInstance',
+            entityId: sickModeInstance.id,
+            result: 'SUCCESS',
+            metadata: {
+              temperature,
+              threshold: Number(settings.temperatureThreshold),
+              sickMemberId: memberId,
+            },
+          },
+        });
+
+        sickModeTriggered = true;
+      }
+    }
+
+    return NextResponse.json({ log, sickModeTriggered }, { status: 201 });
   } catch (error) {
     logger.error('Error logging temperature:', error);
     return NextResponse.json(

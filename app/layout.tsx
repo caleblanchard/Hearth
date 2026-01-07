@@ -3,6 +3,7 @@ import './globals.css';
 import SessionProvider from '@/components/SessionProvider';
 import ServiceWorkerRegistration from './components/ServiceWorkerRegistration';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import { ToastProvider } from '@/components/ui/Toast';
 
 export const metadata: Metadata = {
   title: 'Hearth - Household ERP',
@@ -63,8 +64,10 @@ export default function RootLayout({
       <body className="antialiased">
         <ServiceWorkerRegistration />
         <SessionProvider>
-          {children}
-          <PWAInstallPrompt />
+          <ToastProvider>
+            {children}
+            <PWAInstallPrompt />
+          </ToastProvider>
         </SessionProvider>
       </body>
     </html>

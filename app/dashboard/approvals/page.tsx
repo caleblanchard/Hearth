@@ -1,388 +1,182 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { SparklesIcon, CurrencyDollarIcon, CheckIcon, XMarkIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { AlertModal } from '@/components/ui/Modal';
+import { useState, useEffect } from 'react';
+import { ApprovalCard } from '@/components/approvals/ApprovalCard';
+import { ApprovalItem } from '@/types/approvals';
+import { useToast } from '@/components/ui/Toast';
 
-interface PendingChore {
-  id: string;
-  name: string;
-  description?: string;
-  creditValue: number;
-  difficulty: string;
-  assignedTo: {
-    id: string;
-    name: string;
-    avatarUrl?: string;
-  };
-  completedBy: {
-    id: string;
-    name: string;
-  };
-  completedAt: string;
-  notes?: string;
-  photoUrl?: string;
-}
-
-interface PendingGraceRequest {
-  id: string;
-  memberId: string;
-  memberName: string;
-  minutesGranted: number;
-  reason?: string;
-  requestedAt: string;
-  currentBalance: number;
-}
-
-interface PendingRedemption {
-  id: string;
-  status: string;
-  requestedAt: string;
-  notes?: string;
-  reward: {
-    id: string;
-    name: string;
-    description?: string;
-    costCredits: number;
-    category: string;
-  };
-  member: {
-    id: string;
-    name: string;
-    avatarUrl?: string;
-  };
-}
+type FilterType = 'ALL' | 'CHORE_COMPLETION' | 'REWARD_REDEMPTION';
 
 export default function ApprovalsPage() {
-  const [chores, setChores] = useState<PendingChore[]>([]);
-  const [graceRequests, setGraceRequests] = useState<PendingGraceRequest[]>([]);
-  const [redemptions, setRedemptions] = useState<PendingRedemption[]>([]);
+  const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState<string | null>(null);
-  const [processingGraceId, setProcessingGraceId] = useState<string | null>(null);
-  const [processingRedemptionId, setProcessingRedemptionId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [rejectingRedemptionId, setRejectingRedemptionId] = useState<string | null>(null);
-  const [alertModal, setAlertModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    type: 'success' | 'error' | 'info' | 'warning';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    type: 'info',
-  });
-  const router = useRouter();
+  const [filter, setFilter] = useState<FilterType>('ALL');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const { showToast } = useToast();
 
-  const fetchPendingChores = async () => {
+  const fetchApprovals = async () => {
     try {
-      const response = await fetch('/api/chores/pending-approval');
-      if (response.ok) {
-        const data = await response.json();
-        setChores(data.chores || []);
+      setLoading(true);
+      const url = filter === 'ALL' 
+        ? '/api/approvals' 
+        : `/api/approvals?type=${filter}`;
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch approvals');
       }
-    } catch (error) {
-      console.error('Failed to fetch pending chores:', error);
-    }
-  };
 
-  const fetchPendingGraceRequests = async () => {
-    try {
-      const response = await fetch('/api/screentime/grace/pending');
-      if (response.ok) {
-        const data = await response.json();
-        setGraceRequests(data.requests || []);
-      }
+      const data = await response.json();
+      setApprovals(data.approvals || []);
     } catch (error) {
-      console.error('Failed to fetch pending grace requests:', error);
-    }
-  };
-
-  const fetchPendingRedemptions = async () => {
-    try {
-      const response = await fetch('/api/rewards/redemptions');
-      if (response.ok) {
-        const data = await response.json();
-        setRedemptions(data.redemptions || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch pending redemptions:', error);
+      console.error('Error fetching approvals:', error);
+      showToast('error', 'Failed to load approvals');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const fetchAll = async () => {
-      await Promise.all([
-        fetchPendingChores(),
-        fetchPendingGraceRequests(),
-        fetchPendingRedemptions(),
-      ]);
-      setLoading(false);
-    };
-    fetchAll();
-  }, []);
+    fetchApprovals();
+  }, [filter]);
 
-  const handleApprove = async (choreId: string) => {
-    setProcessingId(choreId);
+  const handleApprove = async (id: string) => {
     try {
-      const response = await fetch(`/api/chores/${choreId}/approve`, {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          title: 'Success',
-          message: data.message,
-          type: 'success',
-        });
-        await fetchPendingChores();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          title: 'Error',
-          message: data.error || 'Failed to approve chore',
-          type: 'error',
-        });
-      }
-    } catch (error) {
-      console.error('Error approving chore:', error);
-      setAlertModal({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to approve chore',
-        type: 'error',
-      });
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleReject = async (choreId: string) => {
-    if (!rejectReason.trim()) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Validation Error',
-        message: 'Please provide a reason for rejection',
-        type: 'warning',
-      });
-      return;
-    }
-
-    setProcessingId(choreId);
-    try {
-      const response = await fetch(`/api/chores/${choreId}/reject`, {
+      const response = await fetch('/api/approvals/bulk-approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: rejectReason }),
+        body: JSON.stringify({ itemIds: [id] })
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error('Failed to approve item');
+      }
 
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          title: 'Success',
-          message: data.message,
-          type: 'success',
-        });
-        setRejectReason('');
-        setRejectingId(null);
-        await fetchPendingChores();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          title: 'Error',
-          message: data.error || 'Failed to reject chore',
-          type: 'error',
-        });
+      const result = await response.json();
+      
+      if (result.success.length > 0) {
+        showToast('success', 'Approved successfully! ✓');
+        await fetchApprovals();
+      } else if (result.failed.length > 0) {
+        showToast('error', result.failed[0].reason);
       }
     } catch (error) {
-      console.error('Error rejecting chore:', error);
-      setAlertModal({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to reject chore',
-        type: 'error',
-      });
-    } finally {
-      setProcessingId(null);
+      console.error('Error approving:', error);
+      showToast('error', 'Failed to approve item');
     }
   };
 
-  const handleApproveGrace = async (graceLogId: string) => {
-    setProcessingGraceId(graceLogId);
+  const handleDeny = async (id: string) => {
     try {
-      const response = await fetch('/api/screentime/grace/approve', {
+      const response = await fetch('/api/approvals/bulk-deny', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ graceLogId, approved: true }),
+        body: JSON.stringify({ itemIds: [id] })
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error('Failed to deny item');
+      }
 
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          title: 'Success',
-          message: 'Grace request approved!',
-          type: 'success',
-        });
-        await fetchPendingGraceRequests();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          title: 'Error',
-          message: data.error || 'Failed to approve grace request',
-          type: 'error',
-        });
+      const result = await response.json();
+      
+      if (result.success.length > 0) {
+        showToast('success', 'Denied successfully');
+        await fetchApprovals();
+      } else if (result.failed.length > 0) {
+        showToast('error', result.failed[0].reason);
       }
     } catch (error) {
-      console.error('Error approving grace request:', error);
-      setAlertModal({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to approve grace request',
-        type: 'error',
-      });
-    } finally {
-      setProcessingGraceId(null);
+      console.error('Error denying:', error);
+      showToast('error', 'Failed to deny item');
     }
   };
 
-  const handleDenyGrace = async (graceLogId: string) => {
-    setProcessingGraceId(graceLogId);
+  const handleSelect = (id: string, selected: boolean) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(id);
+      } else {
+        newSet.delete(id);
+      }
+      return newSet;
+    });
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+
+    setBulkProcessing(true);
     try {
-      const response = await fetch('/api/screentime/grace/approve', {
+      const response = await fetch('/api/approvals/bulk-approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ graceLogId, approved: false }),
+        body: JSON.stringify({ itemIds: Array.from(selectedIds) })
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          title: 'Success',
-          message: 'Grace request denied',
-          type: 'success',
-        });
-        await fetchPendingGraceRequests();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          title: 'Error',
-          message: data.error || 'Failed to deny grace request',
-          type: 'error',
-        });
+      if (!response.ok) {
+        throw new Error('Failed to bulk approve');
       }
+
+      const result = await response.json();
+      
+      showToast('success', `Approved ${result.success.length} item(s) ✓`);
+      
+      if (result.failed.length > 0) {
+        showToast('error', `${result.failed.length} item(s) failed to approve`);
+      }
+
+      setSelectedIds(new Set());
+      await fetchApprovals();
     } catch (error) {
-      console.error('Error denying grace request:', error);
-      setAlertModal({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to deny grace request',
-        type: 'error',
-      });
+      console.error('Error bulk approving:', error);
+      showToast('error', 'Failed to bulk approve items');
     } finally {
-      setProcessingGraceId(null);
+      setBulkProcessing(false);
     }
   };
 
-  const handleApproveRedemption = async (redemptionId: string) => {
-    setProcessingRedemptionId(redemptionId);
+  const handleBulkDeny = async () => {
+    if (selectedIds.size === 0) return;
+
+    setBulkProcessing(true);
     try {
-      const response = await fetch(`/api/rewards/redemptions/${redemptionId}/approve`, {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          title: 'Success',
-          message: data.message || 'Redemption approved successfully',
-          type: 'success',
-        });
-        await fetchPendingRedemptions();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          title: 'Error',
-          message: data.error || 'Failed to approve redemption',
-          type: 'error',
-        });
-      }
-    } catch (error) {
-      console.error('Error approving redemption:', error);
-      setAlertModal({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to approve redemption',
-        type: 'error',
-      });
-    } finally {
-      setProcessingRedemptionId(null);
-    }
-  };
-
-  const handleRejectRedemption = async (redemptionId: string) => {
-    if (!rejectReason.trim()) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Validation Error',
-        message: 'Please provide a reason for rejection',
-        type: 'warning',
-      });
-      return;
-    }
-
-    setProcessingRedemptionId(redemptionId);
-    try {
-      const response = await fetch(`/api/rewards/redemptions/${redemptionId}/reject`, {
+      const response = await fetch('/api/approvals/bulk-deny', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: rejectReason }),
+        body: JSON.stringify({ itemIds: Array.from(selectedIds) })
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          title: 'Success',
-          message: data.message || 'Redemption rejected successfully',
-          type: 'success',
-        });
-        setRejectReason('');
-        setRejectingRedemptionId(null);
-        await fetchPendingRedemptions();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          title: 'Error',
-          message: data.error || 'Failed to reject redemption',
-          type: 'error',
-        });
+      if (!response.ok) {
+        throw new Error('Failed to bulk deny');
       }
+
+      const result = await response.json();
+      
+      showToast('success', `Denied ${result.success.length} item(s)`);
+      
+      if (result.failed.length > 0) {
+        showToast('error', `${result.failed.length} item(s) failed to deny`);
+      }
+
+      setSelectedIds(new Set());
+      await fetchApprovals();
     } catch (error) {
-      console.error('Error rejecting redemption:', error);
-      setAlertModal({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to reject redemption',
-        type: 'error',
-      });
+      console.error('Error bulk denying:', error);
+      showToast('error', 'Failed to bulk deny items');
     } finally {
-      setProcessingRedemptionId(null);
+      setBulkProcessing(false);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === approvals.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(approvals.map(a => a.id)));
     }
   };
 
@@ -391,371 +185,113 @@ export default function ApprovalsPage() {
       <div className="p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         </div>
       </div>
     );
   }
 
-  const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  };
-
   return (
     <div className="p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
+      <div className="max-w-5xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Approvals
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Approval Queue
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Review and approve grace requests, reward redemptions, and completed chores
+          <p className="text-gray-600">
+            Review and approve pending chore completions and reward redemptions
           </p>
         </div>
 
-        {/* Pending Reward Redemptions */}
-        {redemptions.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <SparklesIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              Reward Redemptions ({redemptions.length})
-            </h2>
-            <div className="space-y-4">
-              {redemptions.map((redemption) => (
-                <div
-                  key={redemption.id}
-                  className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg shadow-md p-6"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white text-lg font-bold">
-                          {redemption.member.name.charAt(0)}
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            {redemption.member.name}
-                          </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Requested {new Date(redemption.requestedAt).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mb-3">
-                        <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-1">
-                          {redemption.reward.name}
-                        </h4>
-                        {redemption.reward.description && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            {redemption.reward.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4">
-                          <span className="text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
-                            <CurrencyDollarIcon className="h-4 w-4" />
-                            {redemption.reward.costCredits} credits
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                            {redemption.reward.category.toLowerCase()}
-                          </span>
-                        </div>
-                      </div>
-                      {redemption.notes && (
-                        <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded">
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            <strong>Notes:</strong> {redemption.notes}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-3">
-                    {rejectingRedemptionId === redemption.id ? (
-                      <div className="flex-1 flex gap-3">
-                        <input
-                          type="text"
-                          placeholder="Reason for rejection..."
-                          value={rejectReason}
-                          onChange={(e) => setRejectReason(e.target.value)}
-                          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-                        />
-                        <button
-                          onClick={() => handleRejectRedemption(redemption.id)}
-                          disabled={processingRedemptionId === redemption.id}
-                          className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors duration-200"
-                        >
-                          {processingRedemptionId === redemption.id ? 'Rejecting...' : 'Confirm Reject'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setRejectingRedemptionId(null);
-                            setRejectReason('');
-                          }}
-                          className="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white font-semibold rounded-lg transition-colors duration-200"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleApproveRedemption(redemption.id)}
-                          disabled={processingRedemptionId === redemption.id}
-                          className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
-                        >
-                          {processingRedemptionId === redemption.id ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                              Approving...
-                            </>
-                          ) : (
-                            <>
-                              <CheckIcon className="h-5 w-5" />
-                              Approve
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => setRejectingRedemptionId(redemption.id)}
-                          disabled={processingRedemptionId === redemption.id}
-                          className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
-                        >
-                          <XMarkIcon className="h-5 w-5" />
-                          Reject
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <label htmlFor="filter" className="text-sm font-medium text-gray-700">
+              Filter:
+            </label>
+            <select
+              id="filter"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as FilterType)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="ALL">All Types</option>
+              <option value="CHORE_COMPLETION">Chores Only</option>
+              <option value="REWARD_REDEMPTION">Rewards Only</option>
+            </select>
+            
+            {approvals.length > 0 && (
+              <button
+                onClick={handleSelectAll}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                {selectedIds.size === approvals.length ? 'Deselect All' : 'Select All'}
+              </button>
+            )}
           </div>
-        )}
 
-        {/* Pending Grace Requests */}
-        {graceRequests.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <ClockIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-              Screen Time Grace Requests ({graceRequests.length})
-            </h2>
-            <div className="space-y-4">
-              {graceRequests.map((request) => (
-                <div
-                  key={request.id}
-                  className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg shadow-md p-6"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 bg-yellow-600 rounded-full flex items-center justify-center text-white text-lg font-bold">
-                          {request.memberName.charAt(0)}
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            {request.memberName}
-                          </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Requested {new Date(request.requestedAt).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 mb-3">
-                        <span className="text-yellow-600 dark:text-yellow-400 font-semibold">
-                          +{formatTime(request.minutesGranted)} grace time
-                        </span>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Current balance: {formatTime(request.currentBalance)}
-                        </span>
-                      </div>
-                      {request.reason && (
-                        <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded">
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            <strong>Reason:</strong> {request.reason}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleApproveGrace(request.id)}
-                      disabled={processingGraceId === request.id}
-                      className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
-                    >
-                      {processingGraceId === request.id ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          Approving...
-                        </>
-                      ) : (
-                        <>
-                          <CheckIcon className="h-5 w-5" />
-                          Approve
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleDenyGrace(request.id)}
-                      disabled={processingGraceId === request.id}
-                      className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
-                    >
-                      {processingGraceId === request.id ? 'Denying...' : (
-                        <>
-                          <XMarkIcon className="h-5 w-5" />
-                          Deny
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
+              <span className="text-sm font-medium text-gray-700">
+                {selectedIds.size} selected
+              </span>
+              <button
+                onClick={handleBulkApprove}
+                disabled={bulkProcessing}
+                className="px-4 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              >
+                {bulkProcessing ? 'Processing...' : 'Approve All'}
+              </button>
+              <button
+                onClick={handleBulkDeny}
+                disabled={bulkProcessing}
+                className="px-4 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              >
+                {bulkProcessing ? 'Processing...' : 'Deny All'}
+              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Pending Chores List */}
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-          Chore Approvals
-        </h2>
-        {chores.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
-            <SparklesIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              No chores pending approval!
+        {approvals.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              All caught up!
+            </h3>
+            <p className="text-gray-600">
+              No pending approvals at the moment.
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {chores.map((chore) => (
-              <div
-                key={chore.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                      {chore.name}
-                    </h3>
-                    {chore.description && (
-                      <p className="text-gray-600 dark:text-gray-400 mb-3">
-                        {chore.description}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-ember-700 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                          {chore.assignedTo.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {chore.assignedTo.name}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Completed {new Date(chore.completedAt).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-ember-700 dark:text-ember-500 font-medium">
-                        {chore.difficulty}
-                      </span>
-                      <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
-                        <CurrencyDollarIcon className="h-4 w-4" />
-                        {chore.creditValue} credits
-                      </span>
-                    </div>
-                    {chore.notes && (
-                      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded">
-                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                          <strong>Notes:</strong> {chore.notes}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3">
-                  {rejectingId === chore.id ? (
-                    <div className="flex-1 flex gap-3">
-                      <input
-                        type="text"
-                        placeholder="Reason for rejection..."
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-                      />
-                      <button
-                        onClick={() => handleReject(chore.id)}
-                        disabled={processingId === chore.id}
-                        className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors duration-200"
-                      >
-                        {processingId === chore.id ? 'Rejecting...' : 'Confirm Reject'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setRejectingId(null);
-                          setRejectReason('');
-                        }}
-                        className="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white font-semibold rounded-lg transition-colors duration-200"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleApprove(chore.id)}
-                        disabled={processingId === chore.id}
-                        className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
-                      >
-                        {processingId === chore.id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Approving...
-                          </>
-                        ) : (
-                          <>
-                            <CheckIcon className="h-5 w-5" />
-                            Approve
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setRejectingId(chore.id)}
-                        disabled={processingId === chore.id}
-                        className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
-                      >
-                        <XMarkIcon className="h-5 w-5" />
-                        Reject
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+            {approvals.map((approval) => (
+              <ApprovalCard
+                key={approval.id}
+                approval={approval}
+                onApprove={handleApprove}
+                onDeny={handleDeny}
+                onSelect={handleSelect}
+                isSelected={selectedIds.has(approval.id)}
+              />
             ))}
           </div>
         )}
       </div>
-
-      {/* Alert Modal */}
-      <AlertModal
-        isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
-        title={alertModal.title}
-        message={alertModal.message}
-        type={alertModal.type}
-      />
     </div>
   );
 }

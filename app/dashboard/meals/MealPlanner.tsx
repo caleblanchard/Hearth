@@ -3,6 +3,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { MealType } from '@/app/generated/prisma';
+import RecipeAutocomplete from '@/components/meals/RecipeAutocomplete';
+import { PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+
+interface MealPlanDish {
+  id: string;
+  dishName: string;
+  recipeId: string | null;
+  sortOrder: number;
+}
 
 interface MealPlanEntry {
   id: string;
@@ -11,6 +20,7 @@ interface MealPlanEntry {
   customName: string | null;
   notes: string | null;
   recipeId: string | null;
+  dishes: MealPlanDish[];
 }
 
 interface MealPlan {
@@ -42,6 +52,11 @@ export default function MealPlanner() {
   });
   const [hoveredEntry, setHoveredEntry] = useState<string | null>(null);
   const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('MONDAY');
+  
+  // New dish state
+  const [addingDishToEntry, setAddingDishToEntry] = useState<string | null>(null);
+  const [newDishName, setNewDishName] = useState('');
+  const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
 
   // Get days array based on week start day
   const days = useMemo(() => {
@@ -139,7 +154,7 @@ export default function MealPlanner() {
   // Navigate to previous week
   const goToPreviousWeek = () => {
     const currentWeek = new Date(weekStart);
-    currentWeek.setDate(currentWeek.getDate() - 7);
+    currentWeek.setUTCDate(currentWeek.getUTCDate() - 7);
     const newWeek = formatDate(currentWeek);
     loadMealPlan(newWeek);
   };
@@ -147,7 +162,7 @@ export default function MealPlanner() {
   // Navigate to next week
   const goToNextWeek = () => {
     const currentWeek = new Date(weekStart);
-    currentWeek.setDate(currentWeek.getDate() + 7);
+    currentWeek.setUTCDate(currentWeek.getUTCDate() + 7);
     const newWeek = formatDate(currentWeek);
     loadMealPlan(newWeek);
   };
@@ -170,7 +185,7 @@ export default function MealPlanner() {
   const getDateForDay = (dayIndex: number): string => {
     if (!weekStart) return '';
     const date = new Date(weekStart);
-    date.setDate(date.getDate() + dayIndex);
+    date.setUTCDate(date.getUTCDate() + dayIndex);
     return formatDate(date);
   };
 
@@ -216,8 +231,15 @@ export default function MealPlanner() {
         body: JSON.stringify({
           date: selectedDate,
           mealType: selectedMealType,
-          customName: formData.customName,
           notes: formData.notes || null,
+          dishes: formData.customName.trim()
+            ? [
+                {
+                  dishName: formData.customName.trim(),
+                  recipeId: selectedRecipe?.id || null,
+                },
+              ]
+            : [],
         }),
       });
 
@@ -226,6 +248,8 @@ export default function MealPlanner() {
       }
 
       setShowAddDialog(false);
+      setSelectedRecipe(null);
+      setFormData({ customName: '', notes: '' });
       loadMealPlan(weekStart);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create meal');
@@ -280,6 +304,107 @@ export default function MealPlanner() {
     }
   };
 
+  // Add dish to existing meal
+  const handleAddDish = async (entryId: string) => {
+    if (!newDishName.trim()) return;
+
+    try {
+      const response = await fetch('/api/meals/plan/dishes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mealEntryId: entryId,
+          dishName: newDishName.trim(),
+          recipeId: selectedRecipe?.id || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add dish');
+      }
+
+      setAddingDishToEntry(null);
+      setNewDishName('');
+      setSelectedRecipe(null);
+      loadMealPlan(weekStart);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add dish');
+    }
+  };
+
+  // Delete dish
+  const handleDeleteDish = async (dishId: string) => {
+    try {
+      const response = await fetch(`/api/meals/plan/dishes/${dishId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete dish');
+      }
+
+      loadMealPlan(weekStart);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete dish');
+    }
+  };
+
+  // Move dish up
+  const handleMoveDishUp = async (entry: MealPlanEntry, dishIndex: number) => {
+    if (dishIndex === 0) return;
+
+    const dish = entry.dishes[dishIndex];
+    const prevDish = entry.dishes[dishIndex - 1];
+
+    try {
+      // Swap sort orders
+      await fetch(`/api/meals/plan/dishes/${dish.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sortOrder: dishIndex - 1 }),
+      });
+
+      await fetch(`/api/meals/plan/dishes/${prevDish.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sortOrder: dishIndex }),
+      });
+
+      loadMealPlan(weekStart);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reorder dish');
+    }
+  };
+
+  // Move dish down
+  const handleMoveDishDown = async (entry: MealPlanEntry, dishIndex: number) => {
+    if (dishIndex >= entry.dishes.length - 1) return;
+
+    const dish = entry.dishes[dishIndex];
+    const nextDish = entry.dishes[dishIndex + 1];
+
+    try {
+      // Swap sort orders
+      await fetch(`/api/meals/plan/dishes/${dish.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sortOrder: dishIndex + 1 }),
+      });
+
+      await fetch(`/api/meals/plan/dishes/${nextDish.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sortOrder: dishIndex }),
+      });
+
+      loadMealPlan(weekStart);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reorder dish');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -309,7 +434,7 @@ export default function MealPlanner() {
         </button>
 
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Week of {weekStart ? new Date(weekStart).toLocaleDateString() : ''}
+          Week of {weekStart ? new Date(weekStart + 'T00:00:00.000Z').toLocaleDateString('en-US', { timeZone: 'UTC' }) : ''}
         </h2>
 
         <button
@@ -337,7 +462,7 @@ export default function MealPlanner() {
                   <div>{day}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {getDateForDay(index) &&
-                      new Date(getDateForDay(index)).getDate()}
+                      new Date(getDateForDay(index) + 'T00:00:00.000Z').getUTCDate()}
                   </div>
                 </th>
               ))}
@@ -357,28 +482,131 @@ export default function MealPlanner() {
                   return (
                     <td
                       key={`${mealType}-${day}`}
-                      className="p-3 text-center border-l border-gray-200 dark:border-gray-700"
+                      className="p-2 align-top border-l border-gray-200 dark:border-gray-700"
                     >
                       {entry ? (
-                        <div
-                          className="relative cursor-pointer p-2 rounded bg-info/10 dark:bg-info/20 hover:bg-info/20 dark:hover:bg-info/30"
-                          onClick={() => openEditDialog(entry)}
-                          onMouseEnter={() => setHoveredEntry(entry.id)}
-                          onMouseLeave={() => setHoveredEntry(null)}
-                        >
-                          <div className="text-sm text-gray-900 dark:text-gray-100">
-                            {entry.customName}
-                          </div>
-                          {entry.notes && hoveredEntry === entry.id && (
-                            <div className="absolute z-10 mt-2 p-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg">
-                              {entry.notes}
+                        <div className="space-y-2">
+                          {/* Dishes List */}
+                          {entry.dishes && entry.dishes.length > 0 ? (
+                            <div className="space-y-1">
+                              {entry.dishes
+                                .sort((a, b) => a.sortOrder - b.sortOrder)
+                                .map((dish, dishIndex) => (
+                                  <div
+                                    key={dish.id}
+                                    className="group relative p-2 rounded bg-info/10 dark:bg-info/20 hover:bg-info/20 dark:hover:bg-info/30 text-left"
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm text-gray-900 dark:text-gray-100 break-words">
+                                          {dish.dishName}
+                                        </div>
+                                        {dish.recipeId && (
+                                          <div className="text-xs text-info mt-0.5">
+                                            (recipe)
+                                          </div>
+                                        )}
+                                      </div>
+                                      {/* Reorder and delete buttons (show on hover) */}
+                                      <div className="opacity-0 group-hover:opacity-100 flex gap-0.5 flex-shrink-0">
+                                        {dishIndex > 0 && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleMoveDishUp(entry, dishIndex);
+                                            }}
+                                            className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                                            title="Move up"
+                                          >
+                                            <ChevronUpIcon className="h-3 w-3" />
+                                          </button>
+                                        )}
+                                        {dishIndex < entry.dishes.length - 1 && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleMoveDishDown(entry, dishIndex);
+                                            }}
+                                            className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                                            title="Move down"
+                                          >
+                                            <ChevronDownIcon className="h-3 w-3" />
+                                          </button>
+                                        )}
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteDish(dish.id);
+                                          }}
+                                          className="p-0.5 hover:bg-red-200 dark:hover:bg-red-600 rounded"
+                                          title="Delete dish"
+                                        >
+                                          <TrashIcon className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          ) : entry.customName ? (
+                            // Legacy: Show customName if no dishes
+                            <div className="p-2 rounded bg-info/10 dark:bg-info/20 text-sm text-gray-900 dark:text-gray-100">
+                              {entry.customName}
+                            </div>
+                          ) : null}
+                          
+                          {/* Add Dish Button/Input */}
+                          {addingDishToEntry === entry.id ? (
+                            <div className="space-y-1">
+                              <RecipeAutocomplete
+                                value={newDishName}
+                                onChange={(name, recipe) => {
+                                  setNewDishName(name);
+                                  setSelectedRecipe(recipe);
+                                }}
+                                placeholder="Dish name..."
+                                autoFocus
+                              />
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => handleAddDish(entry.id)}
+                                  className="flex-1 px-2 py-1 text-xs bg-ember-700 hover:bg-ember-500 text-white rounded"
+                                >
+                                  Add
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setAddingDishToEntry(null);
+                                    setNewDishName('');
+                                    setSelectedRecipe(null);
+                                  }}
+                                  className="px-2 py-1 text-xs bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 rounded"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setAddingDishToEntry(entry.id)}
+                              className="w-full px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex items-center justify-center gap-1"
+                            >
+                              <PlusIcon className="h-3 w-3" />
+                              Add Dish
+                            </button>
+                          )}
+                          
+                          {/* Notes indicator */}
+                          {entry.notes && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 italic truncate">
+                              Note: {entry.notes}
                             </div>
                           )}
                         </div>
                       ) : (
                         <button
                           onClick={() => openAddDialog(dayIndex, mealType)}
-                          className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                          className="w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                           aria-label="Add meal"
                         >
                           + Add
@@ -418,17 +646,15 @@ export default function MealPlanner() {
                   htmlFor="meal-name"
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  Meal Name
+                  Dish Name
                 </label>
-                <input
-                  id="meal-name"
-                  type="text"
+                <RecipeAutocomplete
                   value={formData.customName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customName: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  aria-label="Meal name"
+                  onChange={(name, recipe) => {
+                    setFormData({ ...formData, customName: name });
+                    setSelectedRecipe(recipe);
+                  }}
+                  placeholder="Search recipes or enter dish name..."
                 />
               </div>
               <div>

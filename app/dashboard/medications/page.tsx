@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { PlusIcon } from '@heroicons/react/24/outline';
+import { useToast } from '@/components/ui/Toast';
 
 interface MedicationDose {
   id: string;
@@ -53,10 +54,9 @@ export default function MedicationsPage() {
   const [notes, setNotes] = useState('');
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { showToast } = useToast();
   const [addFormData, setAddFormData] = useState({
     memberId: '',
     medicationName: '',
@@ -97,8 +97,7 @@ export default function MedicationsPage() {
       const data = await response.json();
       setMedications(data.medications);
     } catch (err) {
-      console.error(err);
-      setError('Failed to load medications');
+      console.error('Failed to load medications:', err);
     } finally {
       setLoading(false);
     }
@@ -166,25 +165,23 @@ export default function MedicationsPage() {
 
       if (!response.ok) {
         if (data.locked) {
-          setError(`Cannot log dose: ${data.error}. Next dose available in ${data.hoursRemaining} hours.`);
+          showToast('error', `Cannot log dose: ${data.error}. Next dose available in ${data.hoursRemaining} hours.`);
         } else {
-          setError(data.error || 'Failed to log dose');
+          showToast('error', data.error || 'Failed to log dose');
         }
         return;
       }
 
-      setSuccess(`Dose logged successfully for ${medication.member.name}`);
+      showToast('success', `Dose logged successfully for ${medication.member.name}! 💊`);
       setDosage('');
       setNotes('');
       setOverrideReason('');
       setSelectedMed(null);
       setShowOverrideModal(false);
       await loadMedications();
-
-      setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       console.error(err);
-      setError('Failed to log dose');
+      showToast('error', 'Failed to log dose');
     }
   };
 
@@ -220,11 +217,11 @@ export default function MedicationsPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Failed to create medication');
+        showToast('error', data.error || 'Failed to create medication');
         return;
       }
 
-      setSuccess('Medication added successfully');
+      showToast('success', 'Medication added successfully! ✓');
       setShowAddModal(false);
       setAddFormData({
         memberId: '',
@@ -235,10 +232,9 @@ export default function MedicationsPage() {
         notifyWhenReady: true,
       });
       await loadMedications();
-      setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       console.error(err);
-      setError('Failed to create medication');
+      showToast('error', 'Failed to create medication');
     } finally {
       setSaving(false);
     }
@@ -273,24 +269,6 @@ export default function MedicationsPage() {
           </button>
         )}
       </div>
-
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
-          <p className="text-red-800 dark:text-red-300">{error}</p>
-          <button
-            onClick={() => setError(null)}
-            className="text-red-600 dark:text-red-400 text-sm mt-2 underline"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
-          <p className="text-green-800 dark:text-green-300">{success}</p>
-        </div>
-      )}
 
       {medications.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">

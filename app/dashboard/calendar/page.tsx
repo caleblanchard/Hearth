@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Modal, ConfirmModal, AlertModal } from '@/components/ui/Modal';
+import MealDetailModal from '@/components/meals/MealDetailModal';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -11,6 +12,7 @@ import {
   CalendarIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
+import { CakeIcon } from '@heroicons/react/24/solid';
 
 interface CalendarEvent {
   id: string;
@@ -21,6 +23,8 @@ interface CalendarEvent {
   location?: string;
   color: string;
   isAllDay: boolean;
+  isMeal?: boolean;
+  mealData?: any;
   createdBy: {
     id: string;
     name: string;
@@ -56,6 +60,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
+  const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('MONDAY');
 
   const [eventForm, setEventForm] = useState({
     title: '',
@@ -80,6 +85,9 @@ export default function CalendarPage() {
     title: string;
     message: string;
   }>({ isOpen: false, type: 'success', title: '', message: '' });
+
+  const [selectedMeal, setSelectedMeal] = useState<any>(null);
+  const [showMealModal, setShowMealModal] = useState(false);
 
   const weekScrollRef = useRef<HTMLDivElement>(null);
   const dayScrollRef = useRef<HTMLDivElement>(null);
@@ -113,36 +121,144 @@ export default function CalendarPage() {
         endDate = new Date(year, month + 1, 0, 23, 59, 59);
       }
 
+      // Fetch regular calendar events
       const response = await fetch(
         `/api/calendar/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
       );
+      
+      let calendarEvents: CalendarEvent[] = [];
       if (response.ok) {
         const data = await response.json();
-        console.log('[Calendar] Fetched events:', {
-          total: data.events?.length || 0,
-          externalSubscriptionEvents: data.events?.filter((e: any) => e.externalSubscriptionId).length || 0,
-          sampleEvents: data.events?.slice(0, 5).map((e: any) => ({
-            title: e.title,
-            startTime: e.startTime,
-            externalSubscriptionId: e.externalSubscriptionId,
-            externalId: e.externalId,
-            id: e.id,
-          })),
-          allExternalEvents: data.events?.filter((e: any) => e.externalSubscriptionId).map((e: any) => ({
-            title: e.title,
-            startTime: e.startTime,
-            externalSubscriptionId: e.externalSubscriptionId,
-          })),
-        });
-        setEvents(data.events || []);
+        calendarEvents = data.events || [];
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('[Calendar] Failed to fetch events:', response.status, errorData);
       }
+
+      // Fetch meal plan events
+      const mealEvents = await fetchMealEvents(startDate, endDate);
+
+      // Combine events
+      setEvents([...calendarEvents, ...mealEvents]);
     } catch (error) {
       console.error('Failed to fetch events:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMealEvents = async (startDate: Date, endDate: Date): Promise<CalendarEvent[]> => {
+    try {
+      // Get week start based on family setting
+      const getWeekStart = (d: Date): Date => {
+        const date = new Date(d);
+        date.setUTCHours(0, 0, 0, 0);
+        const day = date.getUTCDay();
+        
+        if (weekStartDay === 'SUNDAY') {
+          // Get Sunday of the week
+          const diff = date.getUTCDate() - day;
+          date.setUTCDate(diff);
+        } else {
+          // Get Monday of the week
+          const diff = date.getUTCDate() - day + (day === 0 ? -6 : 1);
+          date.setUTCDate(diff);
+        }
+        
+        return date;
+      };
+
+      const weekStart = getWeekStart(startDate);
+      const weekStr = weekStart.toISOString().split('T')[0];
+
+      const response = await fetch(`/api/meals/plan?week=${weekStr}`);
+      if (!response.ok) return [];
+
+      const data = await response.json();
+      if (!data.mealPlan || !data.mealPlan.meals) return [];
+
+      // Filter meals within date range and convert to calendar events
+      const mealEvents: CalendarEvent[] = [];
+      
+      for (const meal of data.mealPlan.meals) {
+        const mealDate = new Date(meal.date);
+        
+        // Compare dates by day (ignore time) to avoid timezone issues
+        const mealDay = new Date(mealDate.getUTCFullYear(), mealDate.getUTCMonth(), mealDate.getUTCDate());
+        const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        
+        // Skip if outside date range
+        if (mealDay < startDay || mealDay > endDay) continue;
+
+        // Skip if no dishes
+        if (!meal.dishes || meal.dishes.length === 0) {
+          // Fallback to customName for legacy meals
+          if (!meal.customName) continue;
+        }
+
+        // Get meal time based on type
+        const { hour, duration } = getMealTime(meal.mealType);
+        
+        // Create date in LOCAL timezone (not UTC) so it displays at correct time
+        const mealDateObj = new Date(mealDate);
+        const localDate = new Date(
+          mealDateObj.getUTCFullYear(),
+          mealDateObj.getUTCMonth(),
+          mealDateObj.getUTCDate(),
+          hour,
+          0,
+          0,
+          0
+        );
+        
+        const startTime = localDate;
+        const endTime = new Date(localDate);
+        endTime.setHours(hour + duration, 0, 0, 0);
+
+        // Use first dish name or customName
+        const title = meal.dishes && meal.dishes.length > 0
+          ? meal.dishes[0].dishName
+          : meal.customName || meal.mealType;
+
+        mealEvents.push({
+          id: `meal-${meal.id}`,
+          title: title,
+          description: meal.notes || undefined,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          location: undefined,
+          color: '#f97316', // Orange for meals
+          isAllDay: false,
+          isMeal: true,
+          mealData: meal,
+          createdBy: {
+            id: 'system',
+            name: 'Meal Plan',
+          },
+          assignments: [],
+        });
+      }
+
+      return mealEvents;
+    } catch (error) {
+      console.error('Failed to fetch meal events:', error);
+      return [];
+    }
+  };
+
+  const getMealTime = (mealType: string): { hour: number; duration: number } => {
+    switch (mealType) {
+      case 'BREAKFAST':
+        return { hour: 7, duration: 1 };
+      case 'LUNCH':
+        return { hour: 12, duration: 1 };
+      case 'DINNER':
+        return { hour: 18, duration: 1 }; // 6 PM
+      case 'SNACK':
+        return { hour: 15, duration: 1 }; // 3 PM
+      default:
+        return { hour: 12, duration: 1 };
     }
   };
 
@@ -152,6 +268,10 @@ export default function CalendarPage() {
       if (response.ok) {
         const data = await response.json();
         setFamilyMembers(data.family.members.filter((m: any) => m.isActive));
+        
+        // Also get week start setting
+        const weekStartSetting = data.family?.settings?.weekStartDay || 'MONDAY';
+        setWeekStartDay(weekStartSetting);
       }
     } catch (error) {
       console.error('Failed to fetch family members:', error);
@@ -352,6 +472,13 @@ export default function CalendarPage() {
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
+    // If it's a meal event, open meal modal instead
+    if (event.isMeal && event.mealData) {
+      setSelectedMeal(event.mealData);
+      setShowMealModal(true);
+      return;
+    }
+
     // Convert UTC times to local time for datetime-local inputs
     // datetime-local inputs expect local time, not UTC
     // When we create a Date from a UTC string, JavaScript automatically converts it to local time
@@ -670,7 +797,9 @@ export default function CalendarPage() {
                             style={{ backgroundColor: event.color || '#9CA3AF' }}
                             title={event.title}
                           >
-                            {event.isAllDay ? (
+                            {event.isMeal ? (
+                              <CakeIcon className="h-3 w-3 flex-shrink-0" />
+                            ) : event.isAllDay ? (
                               <CalendarIcon className="h-3 w-3 flex-shrink-0" />
                             ) : (
                               <ClockIcon className="h-3 w-3 flex-shrink-0" />
@@ -696,16 +825,18 @@ export default function CalendarPage() {
         {view === 'week' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden flex flex-col">
             {/* Week day headers - fixed */}
-            <div className="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <div className="p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <span>Time</span>
-                <button
-                  onClick={scrollToNow}
-                  className="text-xs px-2 py-1 bg-ember-700 hover:bg-ember-500 text-white rounded transition-colors"
-                  title="Scroll to current time"
-                >
-                  Now
-                </button>
+            <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0 gap-px bg-gray-200 dark:bg-gray-700" style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}>
+              <div className="p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900">
+                <div className="flex flex-col gap-1">
+                  <span>Time</span>
+                  <button
+                    onClick={scrollToNow}
+                    className="text-xs px-2 py-0.5 bg-ember-700 hover:bg-ember-500 text-white rounded transition-colors self-start"
+                    title="Scroll to current time"
+                  >
+                    Now
+                  </button>
+                </div>
               </div>
               {weekDays.map((day, index) => {
                 const weekDaysList = getWeekDays();
@@ -719,7 +850,7 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={day}
-                    className={`p-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 ${
+                    className={`p-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 ${
                       isToday ? 'bg-ember-50 dark:bg-ember-900' : ''
                     }`}
                   >
@@ -734,9 +865,9 @@ export default function CalendarPage() {
 
             {/* Week grid with time slots - scrollable */}
             <div className="overflow-y-auto flex-1" ref={weekScrollRef} style={{ maxHeight: 'calc(100vh - 300px)' }}>
-              <div className="grid grid-cols-8 relative">
+              <div className="grid relative gap-px bg-gray-200 dark:bg-gray-700" style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}>
                 {/* Time column - sticky */}
-                <div className="border-r border-gray-200 dark:border-gray-700 sticky left-0 bg-white dark:bg-gray-800 z-20">
+                <div className="sticky left-0 bg-white dark:bg-gray-800 z-20">
                   {Array.from({ length: 24 }, (_, i) => (
                     <div
                       key={i}
@@ -786,7 +917,7 @@ export default function CalendarPage() {
                     <div
                       key={dayIndex}
                       onClick={() => handleDayClick(date)}
-                      className={`border-r border-gray-200 dark:border-gray-700 relative ${
+                      className={`relative bg-white dark:bg-gray-800 ${
                         isToday ? 'bg-ember-50/20 dark:bg-ember-900/20' : ''
                       }`}
                     >
@@ -818,7 +949,9 @@ export default function CalendarPage() {
                               title={`${event.title}${event.isAllDay ? '' : ` - ${new Date(event.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}`}
                             >
                               <div className="flex items-center gap-1">
-                                {event.isAllDay ? (
+                                {event.isMeal ? (
+                                  <CakeIcon className="h-3 w-3 flex-shrink-0" />
+                                ) : event.isAllDay ? (
                                   <CalendarIcon className="h-3 w-3 flex-shrink-0" />
                                 ) : (
                                   <ClockIcon className="h-3 w-3 flex-shrink-0" />
@@ -943,7 +1076,9 @@ export default function CalendarPage() {
                           title={`${event.title}${event.isAllDay ? '' : ` - ${new Date(event.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${new Date(event.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}`}
                         >
                           <div className="flex items-center gap-2">
-                            {event.isAllDay ? (
+                            {event.isMeal ? (
+                              <CakeIcon className="h-4 w-4 flex-shrink-0" />
+                            ) : event.isAllDay ? (
                               <CalendarIcon className="h-4 w-4 flex-shrink-0" />
                             ) : (
                               <ClockIcon className="h-4 w-4 flex-shrink-0" />
@@ -1158,6 +1293,16 @@ export default function CalendarPage() {
         title={alertModal.title}
         message={alertModal.message}
         type={alertModal.type}
+      />
+
+      {/* Meal Detail Modal */}
+      <MealDetailModal
+        isOpen={showMealModal}
+        onClose={() => {
+          setShowMealModal(false);
+          setSelectedMeal(null);
+        }}
+        mealEntry={selectedMeal}
       />
     </div>
   );

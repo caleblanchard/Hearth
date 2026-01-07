@@ -58,6 +58,8 @@ model Family {
   calendarConnections           CalendarConnection[]
   externalCalendarSubscriptions ExternalCalendarSubscription[]
   calendarSyncLogs              CalendarSyncLog[]
+  sickModeInstances             SickModeInstance[]
+  sickModeSettings              SickModeSettings?
 
   @@map("families")
 }
@@ -163,6 +165,8 @@ model FamilyMember {
   projectTasksAssigned                 ProjectTask[]
   calendarConnections                  CalendarConnection[]
   externalCalendarSubscriptionsCreated ExternalCalendarSubscription[] @relation("SubscriptionCreator")
+  sickModeInstancesAsSick              SickModeInstance[]             @relation("SickModeMember")
+  sickModeInstancesEnded               SickModeInstance[]             @relation("SickModeEndedBy")
 
   @@index([familyId])
   @@index([email])
@@ -1279,6 +1283,12 @@ enum AuditAction {
   TEMPERATURE_LOGGED
   MEDICAL_PROFILE_UPDATED
 
+  // Sick Mode
+  SICK_MODE_STARTED
+  SICK_MODE_ENDED
+  SICK_MODE_SETTINGS_UPDATED
+  SICK_MODE_AUTO_TRIGGERED
+
   // Shopping
   SHOPPING_ITEM_ADDED
   SHOPPING_ITEM_UPDATED
@@ -1772,17 +1782,35 @@ model MealPlanEntry {
   mealPlanId String
   date       DateTime // Specific day
   mealType   MealType
-  recipeId   String? // Future: link to Recipe model
-  customName String? // If not using a recipe
+  recipeId   String? // DEPRECATED: Use dishes relation instead
+  customName String? // DEPRECATED: Use dishes relation instead
   notes      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  mealPlan MealPlan       @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  dishes   MealPlanDish[]
 
   @@index([mealPlanId])
   @@index([date])
   @@map("meal_plan_entries")
+}
+
+model MealPlanDish {
+  id            String   @id @default(uuid())
+  mealEntryId   String
+  recipeId      String? // Optional link to Recipe
+  dishName      String // Name of dish (copied from recipe or custom)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mealEntry MealPlanEntry @relation(fields: [mealEntryId], references: [id], onDelete: Cascade)
+  recipe    Recipe?       @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+
+  @@index([mealEntryId])
+  @@index([recipeId])
+  @@map("meal_plan_dishes")
 }
 
 enum MealType {
@@ -1850,6 +1878,7 @@ model Recipe {
   creator     FamilyMember       @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   ingredients RecipeIngredient[]
   ratings     RecipeRating[]
+  mealDishes  MealPlanDish[]
 
   @@index([familyId])
   @@index([category])
@@ -2433,9 +2462,10 @@ model HealthEvent {
   updatedAt DateTime        @updatedAt
 
   // Relations
-  member      FamilyMember       @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  symptoms    HealthSymptom[]
-  medications HealthMedication[]
+  member           FamilyMember       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  symptoms         HealthSymptom[]
+  medications      HealthMedication[]
+  sickModeInstance SickModeInstance[]
 
   @@index([memberId])
   @@index([startedAt])
@@ -2541,6 +2571,61 @@ enum TempMethod {
   ARMPIT
   EAR
   FOREHEAD
+}
+
+// ============================================
+// SICK MODE (GLOBAL FAMILY STATE)
+// ============================================
+
+enum SickModeTrigger {
+  MANUAL
+  AUTO_FROM_HEALTH_EVENT
+}
+
+model SickModeInstance {
+  id            String           @id @default(uuid())
+  familyId      String
+  memberId      String // Who is sick
+  startedAt     DateTime         @default(now())
+  endedAt       DateTime?
+  endedById     String? // Who ended it
+  triggeredBy   SickModeTrigger
+  healthEventId String? // If auto-triggered
+  notes         String?
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  family      Family        @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  member      FamilyMember  @relation("SickModeMember", fields: [memberId], references: [id], onDelete: Cascade)
+  endedBy     FamilyMember? @relation("SickModeEndedBy", fields: [endedById], references: [id], onDelete: SetNull)
+  healthEvent HealthEvent?  @relation(fields: [healthEventId], references: [id], onDelete: SetNull)
+
+  @@index([familyId, isActive])
+  @@index([memberId, isActive])
+  @@map("sick_mode_instances")
+}
+
+model SickModeSettings {
+  id                        String   @id @default(uuid())
+  familyId                  String   @unique
+  autoEnableOnTemperature   Boolean  @default(true)
+  temperatureThreshold      Decimal  @default(100.4) // Fahrenheit
+  autoDisableAfter24Hours   Boolean  @default(false)
+  pauseChores               Boolean  @default(true)
+  pauseScreenTimeTracking   Boolean  @default(true)
+  screenTimeBonus           Int      @default(120) // Extra minutes
+  skipMorningRoutine        Boolean  @default(true)
+  skipBedtimeRoutine        Boolean  @default(false)
+  muteNonEssentialNotifs    Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  // Relations
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@map("sick_mode_settings")
 }
 
 enum ProjectStatus {
