@@ -229,11 +229,11 @@ export function ApprovalCard({
                     <dt className="font-medium text-gray-700">Priority:</dt>
                     <dd className="text-gray-600">{approval.priority}</dd>
                   </div>
-                  {approval.details && Object.keys(approval.details).length > 0 && (
+                  {approval.metadata && Object.keys(approval.metadata).length > 0 && (
                     <div>
                       <dt className="font-medium text-gray-700">Additional Details:</dt>
                       <dd className="text-gray-600">
-                        {Object.entries(approval.details)
+                        {Object.entries(approval.metadata)
                           .filter(([key]) => key !== 'photoUrl')
                           .map(([key, value]) => (
                             <div key={key} className="ml-2">

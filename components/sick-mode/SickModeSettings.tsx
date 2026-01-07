@@ -45,7 +45,6 @@ export default function SickModeSettings() {
     if (!settings) return;
 
     setSaving(true);
-    setMessage(null);
 
     try {
       const response = await fetch('/api/family/sick-mode/settings', {
@@ -57,13 +56,13 @@ export default function SickModeSettings() {
       if (response.ok) {
         const data = await response.json();
         setSettings(data.settings);
-        setMessage({ type: 'success', text: 'Settings saved successfully!' });
+        showToast('success', 'Settings saved successfully! ✓');
       } else {
         const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Failed to save settings' });
+        showToast('error', error.error || 'Failed to save settings');
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'An error occurred while saving' });
+      showToast('error', 'An error occurred while saving');
     } finally {
       setSaving(false);
     }
