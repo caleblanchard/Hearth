@@ -134,12 +134,12 @@ export default function MedicationsPage() {
 
   const handleLogDose = async (medication: Medication, override: boolean = false) => {
     if (!dosage.trim()) {
-      setError('Please enter dosage');
+      showToast('error', 'Please enter dosage');
       return;
     }
 
     if (override && !overrideReason.trim()) {
-      setError('Override reason is required');
+      showToast('error', 'Override reason is required');
       return;
     }
 
@@ -188,17 +188,15 @@ export default function MedicationsPage() {
   const openOverrideModal = (medId: string) => {
     setSelectedMed(medId);
     setShowOverrideModal(true);
-    setError(null);
   };
 
   const handleAddMedication = async () => {
     if (!addFormData.memberId || !addFormData.medicationName || !addFormData.minIntervalHours) {
-      setError('Member, medication name, and minimum interval are required');
+      showToast('error', 'Member, medication name, and minimum interval are required');
       return;
     }
 
     setSaving(true);
-    setError(null);
 
     try {
       const response = await fetch('/api/medications', {
@@ -670,7 +668,6 @@ export default function MedicationsPage() {
                     maxDosesPerDay: '',
                     notifyWhenReady: true,
                   });
-                  setError(null);
                 }}
                 className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
               >
