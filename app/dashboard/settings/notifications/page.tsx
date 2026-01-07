@@ -75,7 +75,6 @@ export default function NotificationSettingsPage() {
 
   const savePreferences = async () => {
     setSaving(true);
-    setMessage(null);
 
     try {
       const response = await fetch('/api/notifications/preferences', {
