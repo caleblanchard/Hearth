@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import TopBar from '@/components/dashboard/TopBar'
 import { useSession, signOut } from 'next-auth/react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 // Mock next-auth
 jest.mock('next-auth/react', () => ({
@@ -13,6 +13,7 @@ jest.mock('next-auth/react', () => ({
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn(),
+  useRouter: jest.fn(),
 }))
 
 // Mock NotificationBell
@@ -23,9 +24,15 @@ jest.mock('@/components/notifications/NotificationBell', () => {
 })
 
 describe('TopBar', () => {
+  const mockRouter = {
+    push: jest.fn(),
+    back: jest.fn(),
+  };
+  
   beforeEach(() => {
     jest.clearAllMocks()
     ;(usePathname as jest.Mock).mockReturnValue('/dashboard')
+    ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
     ;(signOut as jest.Mock).mockResolvedValue(undefined)
   })
 

@@ -26,6 +26,10 @@ RUN npx prisma generate
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Accept build arguments for version info
+ARG NEXT_PUBLIC_BUILD_VERSION
+ARG NEXT_PUBLIC_BUILD_DATE
+
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
@@ -52,6 +56,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 # Increase Node.js memory limit for large builds
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+# Pass version info to Next.js build (must be set as ENV for Next.js to embed them)
+ENV NEXT_PUBLIC_BUILD_VERSION=$NEXT_PUBLIC_BUILD_VERSION
+ENV NEXT_PUBLIC_BUILD_DATE=$NEXT_PUBLIC_BUILD_DATE
 
 # Build the application
 RUN npm run build

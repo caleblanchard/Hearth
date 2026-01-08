@@ -180,9 +180,6 @@ describe('RulesList Component', () => {
   });
 
   it('should delete rule with confirmation', async () => {
-    // Mock window.confirm
-    global.confirm = jest.fn(() => true);
-
     // Reset and set up fresh mocks
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
@@ -210,13 +207,22 @@ describe('RulesList Component', () => {
       expect(screen.getByText('Weekly Allowance')).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    // Click delete button
+    // Click delete button - opens confirmation modal
     const deleteButtons = screen.getAllByText(/delete/i);
     fireEvent.click(deleteButtons[0]);
 
-    expect(global.confirm).toHaveBeenCalledWith(
-      'Are you sure you want to delete this rule? This action cannot be undone.'
+    // Wait for modal confirmation message
+    await waitFor(() => {
+      expect(screen.getByText(/are you sure/i)).toBeInTheDocument();
+    });
+    
+    // Find and click the confirm delete button in the modal
+    const allButtons = screen.getAllByRole('button');
+    const confirmButton = allButtons.find(btn => 
+      btn.textContent === 'Delete' && btn.className.includes('bg-red')
     );
+    expect(confirmButton).toBeDefined();
+    fireEvent.click(confirmButton!);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
@@ -227,8 +233,6 @@ describe('RulesList Component', () => {
   });
 
   it('should not delete rule if confirmation is cancelled', async () => {
-    global.confirm = jest.fn(() => false);
-
     render(<RulesPage />);
 
     await waitFor(() => {
@@ -238,11 +242,21 @@ describe('RulesList Component', () => {
     const deleteButtons = screen.getAllByText(/delete/i);
     fireEvent.click(deleteButtons[0]);
 
-    expect(global.confirm).toHaveBeenCalled();
-
-    // fetch should only be called once for initial load, not for delete
+    // Wait for modal to appear
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(/are you sure/i)).toBeInTheDocument();
+    });
+    
+    // Click cancel button instead of delete
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    fireEvent.click(cancelButton);
+
+    // fetch should only be called for initial load (rules and enabled modules), not for delete
+    await waitFor(() => {
+      expect(global.fetch).not.toHaveBeenCalledWith(
+        expect.stringContaining('/api/rules/rule-1'),
+        expect.objectContaining({ method: 'DELETE' })
+      );
     });
   });
 

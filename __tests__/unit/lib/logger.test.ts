@@ -4,6 +4,8 @@ describe('lib/logger.ts', () => {
   let consoleWarnSpy: jest.SpyInstance
   let consoleInfoSpy: jest.SpyInstance
   let consoleDebugSpy: jest.SpyInstance
+  let stderrWriteSpy: jest.SpyInstance
+  let stdoutWriteSpy: jest.SpyInstance
 
   beforeEach(() => {
     originalEnv = process.env.NODE_ENV
@@ -11,6 +13,8 @@ describe('lib/logger.ts', () => {
     consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
     consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {})
     consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {})
+    stderrWriteSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true)
   })
 
   afterEach(() => {
@@ -19,6 +23,8 @@ describe('lib/logger.ts', () => {
     consoleWarnSpy.mockRestore()
     consoleInfoSpy.mockRestore()
     consoleDebugSpy.mockRestore()
+    stderrWriteSpy.mockRestore()
+    stdoutWriteSpy.mockRestore()
     jest.resetModules()
   })
 
@@ -29,8 +35,8 @@ describe('lib/logger.ts', () => {
 
       logger.error('Test error message')
 
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
-      const logCall = consoleErrorSpy.mock.calls[0][0]
+      expect(stderrWriteSpy).toHaveBeenCalledTimes(1)
+      const logCall = stderrWriteSpy.mock.calls[0][0]
       const logData = JSON.parse(logCall)
       expect(logData.level).toBe('error')
       expect(logData.message).toBe('Test error message')
@@ -61,7 +67,7 @@ describe('lib/logger.ts', () => {
       const error = new Error('Test error')
       logger.error('Error occurred', error)
 
-      const logCall = consoleErrorSpy.mock.calls[0][0]
+      const logCall = stderrWriteSpy.mock.calls[0][0]
       const logData = JSON.parse(logCall)
       expect(logData.error.stack).toBeUndefined()
     })
@@ -72,7 +78,7 @@ describe('lib/logger.ts', () => {
 
       logger.error('Error occurred', { code: 'ERR001', details: 'Something went wrong' })
 
-      const logCall = consoleErrorSpy.mock.calls[0][0]
+      const logCall = stderrWriteSpy.mock.calls[0][0]
       const logData = JSON.parse(logCall)
       expect(logData.error.code).toBe('ERR001')
       expect(logData.error.details).toBe('Something went wrong')
@@ -84,7 +90,7 @@ describe('lib/logger.ts', () => {
 
       logger.error('Error occurred', undefined, { userId: 'user-1', action: 'login' })
 
-      const logCall = consoleErrorSpy.mock.calls[0][0]
+      const logCall = stderrWriteSpy.mock.calls[0][0]
       const logData = JSON.parse(logCall)
       expect(logData.userId).toBe('user-1')
       expect(logData.action).toBe('login')
@@ -98,8 +104,8 @@ describe('lib/logger.ts', () => {
 
       logger.warn('Test warning')
 
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
-      const logCall = consoleWarnSpy.mock.calls[0][0]
+      expect(stderrWriteSpy).toHaveBeenCalledTimes(1)
+      const logCall = stderrWriteSpy.mock.calls[0][0]
       const logData = JSON.parse(logCall)
       expect(logData.level).toBe('warn')
       expect(logData.message).toBe('Test warning')
@@ -112,7 +118,7 @@ describe('lib/logger.ts', () => {
 
       logger.warn('Warning message', { resource: 'api', endpoint: '/test' })
 
-      const logCall = consoleWarnSpy.mock.calls[0][0]
+      const logCall = stderrWriteSpy.mock.calls[0][0]
       const logData = JSON.parse(logCall)
       expect(logData.resource).toBe('api')
       expect(logData.endpoint).toBe('/test')

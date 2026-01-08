@@ -114,7 +114,7 @@ describe('/api/approvals', () => {
       const mockRedemption = {
         id: 'xyz-456-uuid',
         status: 'PENDING',
-        requestedAt: new Date('2026-01-07T11:00:00Z'), // Recent, so LOW priority
+        requestedAt: new Date(Date.now() - 25 * 60 * 60 * 1000), // 25 hours ago = HIGH priority
         member: {
           id: 'child-2',
           name: 'Bob',
@@ -122,7 +122,7 @@ describe('/api/approvals', () => {
         },
         reward: {
           name: 'Ice Cream Trip',
-          costCredits: 50, // <100, not high enough for HIGH priority
+          costCredits: 50, // <100, not high enough for HIGH priority alone
           familyId: 'family-test-123',
         },
       };
@@ -146,7 +146,7 @@ describe('/api/approvals', () => {
         familyMemberName: 'Bob',
         familyMemberAvatarUrl: '/avatars/bob.jpg',
         title: 'Ice Cream Trip',
-        priority: 'LOW', // LOW because recent and <100 credits
+        priority: 'HIGH', // HIGH because >24 hours old
       });
       expect(data.approvals[0].metadata).toMatchObject({
         costCredits: 50,

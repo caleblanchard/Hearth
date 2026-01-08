@@ -47,7 +47,7 @@ describe('GET /api/communication', () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.posts).toEqual([]);
+    expect(data.data).toEqual([]);
   });
 
   it('should return all family posts', async () => {
@@ -120,8 +120,8 @@ describe('GET /api/communication', () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.posts).toHaveLength(2);
-    expect(data.posts[0].isPinned).toBe(true);
+    expect(data.data).toHaveLength(2);
+    expect(data.data[0].isPinned).toBe(true);
   });
 
   it('should filter posts by type', async () => {
@@ -175,7 +175,7 @@ describe('GET /api/communication', () => {
     prismaMock.communicationPost.findMany.mockResolvedValue([]);
     prismaMock.communicationPost.count.mockResolvedValue(50);
 
-    const request = new Request('http://localhost/api/communication?limit=10&offset=20', {
+    const request = new Request('http://localhost/api/communication?limit=10&page=3', {
       method: 'GET',
     }) as NextRequest;
 

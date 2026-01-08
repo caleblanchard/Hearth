@@ -60,7 +60,12 @@ describe('/api/pets', () => {
     });
 
     it('should return all pets for family', async () => {
-      prismaMock.pet.findMany.mockResolvedValue(mockPets as any);
+      const mockPetsWithFeedings = mockPets.map(pet => ({
+        ...pet,
+        feedings: [],
+      }));
+      
+      prismaMock.pet.findMany.mockResolvedValue(mockPetsWithFeedings as any);
 
       const request = new NextRequest('http://localhost:3000/api/pets');
       const response = await GET(request);
@@ -74,6 +79,22 @@ describe('/api/pets', () => {
       expect(prismaMock.pet.findMany).toHaveBeenCalledWith({
         where: {
           familyId: 'family-test-123',
+        },
+        include: {
+          feedings: {
+            orderBy: {
+              fedAt: 'desc',
+            },
+            take: 1,
+            include: {
+              member: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: {
           name: 'asc',
@@ -94,7 +115,13 @@ describe('/api/pets', () => {
 
     it('should allow children to view pets', async () => {
       auth.mockResolvedValue(mockChildSession());
-      prismaMock.pet.findMany.mockResolvedValue(mockPets as any);
+      
+      const mockPetsWithFeedings = mockPets.map(pet => ({
+        ...pet,
+        feedings: [],
+      }));
+      
+      prismaMock.pet.findMany.mockResolvedValue(mockPetsWithFeedings as any);
 
       const request = new NextRequest('http://localhost:3000/api/pets');
       const response = await GET(request);

@@ -89,10 +89,26 @@ describe('/api/calendar/events', () => {
       expect(prismaMock.calendarEvent.findMany).toHaveBeenCalledWith({
         where: {
           familyId: session.user.familyId,
-          startTime: {
-            gte: new Date('2025-01-01'),
-            lte: new Date('2025-01-31'),
-          },
+          OR: [
+            {
+              startTime: {
+                gte: new Date('2025-01-01'),
+                lte: new Date('2025-01-31'),
+              },
+            },
+            {
+              endTime: {
+                gte: new Date('2025-01-01'),
+                lte: new Date('2025-01-31'),
+              },
+            },
+            {
+              AND: [
+                { startTime: { lte: new Date('2025-01-01') } },
+                { endTime: { gte: new Date('2025-01-31') } },
+              ],
+            },
+          ],
         },
         include: expect.any(Object),
         orderBy: { startTime: 'asc' },

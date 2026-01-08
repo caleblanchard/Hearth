@@ -4,28 +4,31 @@
  */
 
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock';
-import { mockAuth } from '@/lib/test-utils/auth-mock';
+import { mockParentSession } from '@/lib/test-utils/auth-mock';
 import { createNotification } from '@/lib/notifications';
 
 // Mock NextAuth
-jest.mock('@/lib/auth', () => ({ auth: mockAuth }));
+jest.mock('@/lib/auth', () => ({
+  auth: jest.fn(),
+}));
 
 // Mock Prisma
 jest.mock('@/lib/prisma', () => ({ default: prismaMock }));
 
-const mockSession = {
+const { auth } = require('@/lib/auth');
+
+const mockSession = mockParentSession({
   user: {
     id: 'parent-1',
-    role: 'PARENT',
     familyId: 'family-1',
   },
-  expires: new Date(Date.now() + 86400000).toISOString(),
-};
+});
 
 describe('Notification Muting - Sick Mode Integration', () => {
   beforeEach(() => {
     resetPrismaMock();
     jest.clearAllMocks();
+    auth.mockResolvedValue(mockSession);
   });
 
   describe('Non-Essential Notifications', () => {

@@ -3,33 +3,40 @@
  */
 
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock';
-import { mockAuth } from '@/lib/test-utils/auth-mock';
+import { mockChildSession } from '@/lib/test-utils/auth-mock';
 
 // Mock NextAuth
-jest.mock('@/lib/auth', () => ({ auth: mockAuth }));
+jest.mock('@/lib/auth', () => ({
+  auth: jest.fn(),
+}));
 
 // Mock Prisma
 jest.mock('@/lib/prisma', () => ({ default: prismaMock }));
 
-const mockSession = {
+// Mock screentime-utils
+const mockCalculateRemainingTime = jest.fn();
+jest.mock('@/lib/screentime-utils', () => ({
+  calculateRemainingTime: mockCalculateRemainingTime,
+}));
+
+const { auth } = require('@/lib/auth');
+
+const mockSession = mockChildSession({
   user: {
     id: 'child-1',
-    role: 'CHILD',
     familyId: 'family-1',
   },
-  expires: new Date(Date.now() + 86400000).toISOString(),
-};
+});
 
 describe('Screen Time Bonus - Sick Mode Integration', () => {
   beforeEach(() => {
     resetPrismaMock();
     jest.clearAllMocks();
-    jest.resetModules();
-    mockAuth.mockResolvedValue(mockSession as any);
   });
 
   describe('GET /api/screentime/stats', () => {
     it('should include sick mode bonus in balance when active', async () => {
+      auth.mockResolvedValue(mockSession);
       const { GET } = await import('@/app/api/screentime/stats/route');
 
       // Mock screen time allowances
@@ -53,15 +60,13 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
       ] as any);
 
       // Mock calculateRemainingTime
-      jest.doMock('@/lib/screentime-utils', () => ({
-        calculateRemainingTime: jest.fn().mockResolvedValue({
-          remainingMinutes: 60,
-          usedMinutes: 0,
-          rolloverMinutes: 0,
-          periodStart: new Date(),
-          periodEnd: new Date(),
-        }),
-      }));
+      mockCalculateRemainingTime.mockResolvedValue({
+        remainingMinutes: 60,
+        usedMinutes: 0,
+        rolloverMinutes: 0,
+        periodStart: new Date(),
+        periodEnd: new Date(),
+      });
 
       // Mock active sick mode with 30 minute bonus
       prismaMock.sickModeInstance.findFirst.mockResolvedValue({
@@ -106,6 +111,7 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
     });
 
     it('should not include bonus when sick mode is inactive', async () => {
+      auth.mockResolvedValue(mockSession);
       const { GET } = await import('@/app/api/screentime/stats/route');
 
       prismaMock.screenTimeTransaction.findMany.mockResolvedValue([] as any);
@@ -127,15 +133,13 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
         },
       ] as any);
 
-      jest.doMock('@/lib/screentime-utils', () => ({
-        calculateRemainingTime: jest.fn().mockResolvedValue({
-          remainingMinutes: 60,
-          usedMinutes: 0,
-          rolloverMinutes: 0,
-          periodStart: new Date(),
-          periodEnd: new Date(),
-        }),
-      }));
+      mockCalculateRemainingTime.mockResolvedValue({
+        remainingMinutes: 60,
+        usedMinutes: 0,
+        rolloverMinutes: 0,
+        periodStart: new Date(),
+        periodEnd: new Date(),
+      });
 
       // No active sick mode
       prismaMock.sickModeInstance.findFirst.mockResolvedValue(null);
@@ -150,6 +154,7 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
     });
 
     it('should not include bonus when bonus is 0', async () => {
+      auth.mockResolvedValue(mockSession);
       const { GET } = await import('@/app/api/screentime/stats/route');
 
       prismaMock.screenTimeTransaction.findMany.mockResolvedValue([] as any);
@@ -171,15 +176,13 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
         },
       ] as any);
 
-      jest.doMock('@/lib/screentime-utils', () => ({
-        calculateRemainingTime: jest.fn().mockResolvedValue({
-          remainingMinutes: 60,
-          usedMinutes: 0,
-          rolloverMinutes: 0,
-          periodStart: new Date(),
-          periodEnd: new Date(),
-        }),
-      }));
+      mockCalculateRemainingTime.mockResolvedValue({
+        remainingMinutes: 60,
+        usedMinutes: 0,
+        rolloverMinutes: 0,
+        periodStart: new Date(),
+        periodEnd: new Date(),
+      });
 
       // Active sick mode but no bonus configured
       prismaMock.sickModeInstance.findFirst.mockResolvedValue({

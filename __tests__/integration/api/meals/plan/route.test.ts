@@ -160,6 +160,11 @@ describe('GET /api/meals/plan', () => {
       },
       include: {
         meals: {
+          include: {
+            dishes: {
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
           orderBy: [
             { date: 'asc' },
             { mealType: 'asc' },
@@ -310,7 +315,7 @@ describe('POST /api/meals/plan', () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error).toMatch(/customName or recipeId/i);
+    expect(data.error).toMatch(/customName.*recipeId.*dishes/i);
   });
 
   it('should create meal plan entry successfully', async () => {
@@ -340,6 +345,10 @@ describe('POST /api/meals/plan', () => {
 
     prismaMock.mealPlan.upsert.mockResolvedValue(mockMealPlan as any);
     prismaMock.mealPlanEntry.create.mockResolvedValue(mockEntry as any);
+    prismaMock.mealPlanEntry.findUnique.mockResolvedValue({
+      ...mockEntry,
+      dishes: [],
+    } as any);
     prismaMock.auditLog.create.mockResolvedValue({} as any);
 
     const request = new Request('http://localhost/api/meals/plan', {

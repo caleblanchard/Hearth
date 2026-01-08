@@ -41,6 +41,13 @@ describe('/api/screentime/adjust', () => {
       name: 'Test Child',
       familyId: 'family-1',
     }
+    
+    const mockScreenTimeType = {
+      id: 'type-1',
+      familyId: 'family-test-123',
+      name: 'General',
+      isArchived: false,
+    }
 
     it('should return 403 if not a parent', async () => {
       const session = mockParentSession()
@@ -77,7 +84,7 @@ describe('/api/screentime/adjust', () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error).toBe('Member ID and non-zero amount required')
+      expect(data.error).toBe('Member ID, screen time type ID, and non-zero amount required')
     })
 
     it('should return 400 if amountMinutes is zero', async () => {
@@ -96,7 +103,7 @@ describe('/api/screentime/adjust', () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error).toBe('Member ID and non-zero amount required')
+      expect(data.error).toBe('Member ID, screen time type ID, and non-zero amount required')
     })
 
     it('should return 404 if member not found', async () => {
@@ -109,6 +116,7 @@ describe('/api/screentime/adjust', () => {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'nonexistent',
+          screenTimeTypeId: 'type-1',
           amountMinutes: 10,
         }),
       })
@@ -133,6 +141,7 @@ describe('/api/screentime/adjust', () => {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'child-1',
+          screenTimeTypeId: 'type-1',
           amountMinutes: 10,
         }),
       })
@@ -152,12 +161,25 @@ describe('/api/screentime/adjust', () => {
         ...mockMember,
         familyId: session.user.familyId,
       } as any)
+      
+      prismaMock.screenTimeType.findFirst.mockResolvedValue({
+        id: 'type-1',
+        familyId: session.user.familyId,
+        name: 'General',
+        isArchived: false,
+      } as any)
+      
       prismaMock.screenTimeBalance.findUnique.mockResolvedValue(null)
+      prismaMock.screenTimeBalance.create.mockResolvedValue({
+        memberId: 'child-1',
+        currentBalanceMinutes: 0,
+      } as any)
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'child-1',
+          screenTimeTypeId: 'type-1',
           amountMinutes: 10,
         }),
       })
@@ -165,8 +187,8 @@ describe('/api/screentime/adjust', () => {
       const response = await POST(request)
       const data = await response.json()
 
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Screen time not configured for this member')
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
     })
 
     it('should return 400 if trying to remove more than available balance', async () => {
@@ -177,6 +199,9 @@ describe('/api/screentime/adjust', () => {
         ...mockMember,
         familyId: session.user.familyId,
       } as any)
+      
+      prismaMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
+      
       prismaMock.screenTimeBalance.findUnique.mockResolvedValue({
         ...mockBalance,
         currentBalanceMinutes: 30, // Only 30 minutes available
@@ -186,6 +211,7 @@ describe('/api/screentime/adjust', () => {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'child-1',
+          screenTimeTypeId: 'type-1',
           amountMinutes: -50, // Trying to remove 50
         }),
       })
@@ -206,6 +232,9 @@ describe('/api/screentime/adjust', () => {
         ...mockMember,
         familyId: session.user.familyId,
       } as any)
+      
+      prismaMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
+      
       prismaMock.screenTimeBalance.findUnique.mockResolvedValue(mockBalance as any)
       prismaMock.screenTimeBalance.update.mockResolvedValue({
         ...mockBalance,
@@ -227,6 +256,7 @@ describe('/api/screentime/adjust', () => {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'child-1',
+          screenTimeTypeId: 'type-1',
           amountMinutes: 10,
           reason: 'Good behavior',
         }),
@@ -252,6 +282,9 @@ describe('/api/screentime/adjust', () => {
         ...mockMember,
         familyId: session.user.familyId,
       } as any)
+      
+      prismaMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
+      
       prismaMock.screenTimeBalance.findUnique.mockResolvedValue(mockBalance as any)
       prismaMock.screenTimeBalance.update.mockResolvedValue({
         ...mockBalance,
@@ -273,6 +306,7 @@ describe('/api/screentime/adjust', () => {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'child-1',
+          screenTimeTypeId: 'type-1',
           amountMinutes: -10,
           reason: 'Misbehavior',
         }),
@@ -294,6 +328,9 @@ describe('/api/screentime/adjust', () => {
         ...mockMember,
         familyId: session.user.familyId,
       } as any)
+      
+      prismaMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
+      
       prismaMock.screenTimeBalance.findUnique.mockResolvedValue({
         ...mockBalance,
         currentBalanceMinutes: 20,
@@ -304,6 +341,7 @@ describe('/api/screentime/adjust', () => {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'child-1',
+          screenTimeTypeId: 'type-1',
           amountMinutes: -30,
         }),
       })
@@ -340,6 +378,9 @@ describe('/api/screentime/adjust', () => {
         ...mockMember,
         familyId: session.user.familyId,
       } as any)
+      
+      prismaMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
+      
       prismaMock.screenTimeBalance.findUnique.mockResolvedValue(mockBalance as any)
       prismaMock.screenTimeBalance.update.mockResolvedValue({
         ...mockBalance,
@@ -363,6 +404,7 @@ describe('/api/screentime/adjust', () => {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'child-1',
+          screenTimeTypeId: 'type-1',
           amountMinutes: 10,
           reason: 'Bonus',
         }),
@@ -388,6 +430,9 @@ describe('/api/screentime/adjust', () => {
         ...mockMember,
         familyId: session.user.familyId,
       } as any)
+      
+      prismaMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
+      
       prismaMock.screenTimeBalance.findUnique.mockResolvedValue(mockBalance as any)
       prismaMock.screenTimeBalance.update.mockResolvedValue({
         ...mockBalance,
@@ -407,6 +452,7 @@ describe('/api/screentime/adjust', () => {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'child-1',
+          screenTimeTypeId: 'type-1',
           amountMinutes: 10,
           reason: 'Test',
         }),

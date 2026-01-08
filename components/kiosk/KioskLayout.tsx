@@ -60,7 +60,14 @@ export default function KioskLayout({ children, familyId }: KioskLayoutProps) {
 
   // Handle end session button
   const handleEndSession = async () => {
-    await endSession();
+    try {
+      await endSession();
+      // Redirect to home or kiosk setup page
+      window.location.href = '/dashboard';
+    } catch (error) {
+      console.error('Failed to end session:', error);
+      alert(error instanceof Error ? error.message : 'Failed to end kiosk session');
+    }
   };
 
   return (

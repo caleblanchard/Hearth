@@ -74,42 +74,38 @@ export async function GET(request: NextRequest) {
  * DELETE /api/kiosk/session
  *
  * End kiosk session
- * Only parents can end sessions
+ * Requires parent PIN verification via kiosk session
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Verify authentication
-    const session = await auth();
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Only parents can end kiosk sessions
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can end kiosk sessions' },
-        { status: 403 }
-      );
-    }
-
     // Get kiosk token from header
     const kioskToken = request.headers.get('X-Kiosk-Token');
     if (!kioskToken) {
       return NextResponse.json({ error: 'Missing kiosk token' }, { status: 400 });
     }
 
-    // Get kiosk session to verify family ownership
+    // Get kiosk session
     const kioskSession = await getKioskSession(kioskToken);
     if (!kioskSession) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    // Verify family ownership
-    if (kioskSession.familyId !== session.user.familyId) {
-      return NextResponse.json(
-        { error: 'Cannot end kiosk session from other families' },
-        { status: 403 }
-      );
+    // If there's a current member, verify they are a parent
+    if (kioskSession.currentMemberId) {
+      const member = await prisma.familyMember.findUnique({
+        where: { id: kioskSession.currentMemberId },
+        select: { role: true },
+      });
+
+      if (!member || member.role !== 'PARENT') {
+        return NextResponse.json(
+          { error: 'Only parents can end kiosk sessions' },
+          { status: 403 }
+        );
+      }
+    } else {
+      // If no one is logged in, anyone can end it (session is locked)
+      // This allows cleanup of abandoned sessions
     }
 
     // End session
@@ -118,8 +114,8 @@ export async function DELETE(request: NextRequest) {
     // Create audit log
     await prisma.auditLog.create({
       data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
+        familyId: kioskSession.familyId,
+        memberId: kioskSession.currentMemberId || undefined,
         action: 'KIOSK_SESSION_ENDED',
         entityType: 'KIOSK',
         entityId: kioskSession.id,
@@ -128,7 +124,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     logger.info('Kiosk session ended', {
-      familyId: session.user.familyId,
+      familyId: kioskSession.familyId,
       sessionId: kioskSession.id,
     });
 

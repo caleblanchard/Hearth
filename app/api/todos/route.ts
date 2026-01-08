@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse pagination
-    const { page, limit } = parsePaginationParams(request.nextUrl.searchParams);
+    const { page, limit } = parsePaginationParams(searchParams);
     const skip = (page - 1) * limit;
 
     // Fetch todos for the family with pagination

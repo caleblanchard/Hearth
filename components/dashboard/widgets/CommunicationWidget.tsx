@@ -47,7 +47,7 @@ export default function CommunicationWidget() {
         }
 
         const data = await response.json();
-        setPosts(data.posts || []);
+        setPosts(data.data || data.posts || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load posts');
       } finally {
@@ -56,6 +56,21 @@ export default function CommunicationWidget() {
     }
 
     fetchRecentPosts();
+
+    // Poll for new posts every 30 seconds
+    const pollInterval = setInterval(fetchRecentPosts, 30000);
+
+    // Also refresh when page regains focus
+    const handleFocus = () => {
+      fetchRecentPosts();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // Cleanup
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const getRelativeTime = (dateString: string): string => {

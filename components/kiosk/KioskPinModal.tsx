@@ -33,13 +33,14 @@ export default function KioskPinModal({
     if (isOpen) {
       const fetchMembers = async () => {
         try {
-          const response = await fetch(`/api/families/${familyId}/members`);
+          const response = await fetch(`/api/family`);
           if (response.ok) {
             const data = await response.json();
-            setMembers(data);
+            setMembers(data.family?.members || []);
           }
         } catch (error) {
           console.error('Failed to fetch family members:', error);
+          setError('Failed to load family members');
         }
       };
       fetchMembers();

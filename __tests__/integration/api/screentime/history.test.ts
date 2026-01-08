@@ -76,6 +76,12 @@ describe('/api/screentime/history', () => {
               name: true,
             },
           },
+          screenTimeType: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         take: 50,

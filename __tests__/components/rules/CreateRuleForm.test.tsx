@@ -6,13 +6,14 @@
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import CreateRulePage from '@/app/dashboard/rules/create/page';
 
 // Mock Next.js navigation
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
   useParams: jest.fn(() => ({})),
+  useSearchParams: jest.fn(),
 }));
 
 // Mock fetch
@@ -27,6 +28,7 @@ describe('CreateRuleForm Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
+    (useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams());
   });
 
   it('should render the form with all sections', () => {
