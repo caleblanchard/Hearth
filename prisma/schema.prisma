@@ -167,6 +167,7 @@ model FamilyMember {
   externalCalendarSubscriptionsCreated ExternalCalendarSubscription[] @relation("SubscriptionCreator")
   sickModeInstancesAsSick              SickModeInstance[]             @relation("SickModeMember")
   sickModeInstancesEnded               SickModeInstance[]             @relation("SickModeEndedBy")
+  dashboardLayout                      DashboardLayout?
 
   @@index([familyId])
   @@index([email])
@@ -231,6 +232,24 @@ model MemberModuleAccess {
 
   @@unique([memberId, moduleId])
   @@map("member_module_access")
+}
+
+// ============================================
+// DASHBOARD CUSTOMIZATION
+// ============================================
+
+model DashboardLayout {
+  id        String   @id @default(uuid())
+  memberId  String   @unique
+  layout    Json // Array of widget configurations with order, visibility, size
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  member FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@map("dashboard_layouts")
 }
 
 // ============================================

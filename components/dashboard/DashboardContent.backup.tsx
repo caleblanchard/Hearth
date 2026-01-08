@@ -13,9 +13,6 @@ import WeatherWidget from '@/components/dashboard/widgets/WeatherWidget';
 import CommunicationWidget from '@/components/dashboard/widgets/CommunicationWidget';
 import MealsWidget from '@/components/dashboard/widgets/MealsWidget';
 import SickModeBanner from '@/components/sick-mode/SickModeBanner';
-import DashboardCustomizer from '@/components/dashboard/DashboardCustomizer';
-import DashboardCustomizerButton from '@/components/dashboard/DashboardCustomizerButton';
-import { useDashboardLayout } from '@/hooks/useDashboardLayout';
 
 interface DashboardData {
   chores: Array<{
@@ -96,15 +93,6 @@ export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [enabledModules, setEnabledModules] = useState<Set<string>>(new Set());
-  const [isCustomizing, setIsCustomizing] = useState(false);
-  
-  // Dashboard layout customization
-  const {
-    layout,
-    availableWidgets,
-    saveLayout,
-    resetLayout,
-  } = useDashboardLayout();
 
   // Redirect if no session (user or guest) - but only after both are done loading
   useEffect(() => {
@@ -206,20 +194,6 @@ export default function DashboardContent() {
   const completedChores = data.chores.filter(c => c.status === 'COMPLETED' || c.status === 'APPROVED').length;
   const pendingChores = data.chores.filter(c => c.status === 'PENDING').length;
 
-  // Helper function to check if a widget is enabled in the layout
-  const isWidgetEnabled = (widgetId: string): boolean => {
-    if (!layout || layout.length === 0) return true; // If no layout, show all
-    const widget = layout.find(w => w.id === widgetId);
-    return widget?.enabled !== false; // Show if enabled or not found
-  };
-
-  // Helper function to get widget CSS order
-  const getWidgetStyle = (widgetId: string): React.CSSProperties => {
-    if (!layout || layout.length === 0) return {};
-    const widget = layout.find(w => w.id === widgetId);
-    return widget ? { order: widget.order } : {};
-  };
-
   return (
     <>
       {/* Sick Mode Banner */}
@@ -229,8 +203,8 @@ export default function DashboardContent() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {/* Chores Card */}
-      {enabledModules.has('CHORES') && isWidgetEnabled('chores') && (
-        <div style={getWidgetStyle('chores')} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/chores')}>
+      {enabledModules.has('CHORES') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/chores')}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Today's Chores
@@ -280,8 +254,8 @@ export default function DashboardContent() {
       )}
 
       {/* Screen Time Card */}
-      {enabledModules.has('SCREEN_TIME') && isWidgetEnabled('screentime') && (
-        <div style={getWidgetStyle('screentime')} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/screentime')}>
+      {enabledModules.has('SCREEN_TIME') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/screentime')}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Screen Time
@@ -349,8 +323,8 @@ export default function DashboardContent() {
       )}
 
       {/* Credits Card */}
-      {enabledModules.has('CREDITS') && isWidgetEnabled('credits') && (
-        <div style={getWidgetStyle('credits')} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+      {enabledModules.has('CREDITS') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Credits
@@ -389,8 +363,8 @@ export default function DashboardContent() {
       )}
 
       {/* Shopping List Card */}
-      {enabledModules.has('SHOPPING') && isWidgetEnabled('shopping') && (
-        <div style={getWidgetStyle('shopping')} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/shopping')}>
+      {enabledModules.has('SHOPPING') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/shopping')}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Shopping List
@@ -459,8 +433,8 @@ export default function DashboardContent() {
       )}
 
       {/* To-Do List Card */}
-      {enabledModules.has('TODOS') && isWidgetEnabled('todos') && (
-        <div style={getWidgetStyle('todos')} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/todos')}>
+      {enabledModules.has('TODOS') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/todos')}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             To-Do List
@@ -509,9 +483,8 @@ export default function DashboardContent() {
       )}
 
       {/* Calendar Card */}
-      {enabledModules.has('CALENDAR') && isWidgetEnabled('calendar') && (
+      {enabledModules.has('CALENDAR') && (
         <div 
-          style={getWidgetStyle('calendar')}
           className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
           onClick={() => router.push('/dashboard/calendar?view=week')}
         >
@@ -558,9 +531,8 @@ export default function DashboardContent() {
       )}
 
       {/* Project Tasks Card */}
-      {enabledModules.has('PROJECTS') && isWidgetEnabled('projects') && data.projectTasks && data.projectTasks.length > 0 && (
+      {enabledModules.has('PROJECTS') && data.projectTasks && data.projectTasks.length > 0 && (
         <div 
-          style={getWidgetStyle('projects')}
           className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
           onClick={() => router.push('/dashboard/projects')}
         >
@@ -627,71 +599,52 @@ export default function DashboardContent() {
       )}
 
       {/* Transport Widget - spans 2 columns on large screens */}
-      {enabledModules.has('TRANSPORT') && isWidgetEnabled('transport') && (
-        <div style={getWidgetStyle('transport')} className="md:col-span-2 lg:col-span-2">
+      {enabledModules.has('TRANSPORT') && (
+        <div className="md:col-span-2 lg:col-span-2">
           <TransportWidget memberId={session?.user?.id} />
         </div>
       )}
 
       {/* Communication Widget */}
-      {enabledModules.has('COMMUNICATION') && isWidgetEnabled('communication') && (
-        <div style={getWidgetStyle('communication')} className="md:col-span-1 lg:col-span-1">
+      {enabledModules.has('COMMUNICATION') && (
+        <div className="md:col-span-1 lg:col-span-1">
           <CommunicationWidget />
         </div>
       )}
 
       {/* Weather Widget - Always visible (not module-specific) */}
-      {isWidgetEnabled('weather') && (
-        <div style={getWidgetStyle('weather')} className="md:col-span-1 lg:col-span-1">
-          <WeatherWidget />
-        </div>
-      )}
+      <div className="md:col-span-1 lg:col-span-1">
+        <WeatherWidget />
+      </div>
 
       {/* Medication Widget */}
-      {enabledModules.has('HEALTH') && isWidgetEnabled('medication') && (
-        <div style={getWidgetStyle('medication')} className="md:col-span-1 lg:col-span-1">
+      {enabledModules.has('HEALTH') && (
+        <div className="md:col-span-1 lg:col-span-1">
           <MedicationWidget memberId={session?.user?.id} />
         </div>
       )}
 
       {/* Maintenance Widget */}
-      {enabledModules.has('MAINTENANCE') && isWidgetEnabled('maintenance') && (
-        <div style={getWidgetStyle('maintenance')} className="md:col-span-1 lg:col-span-1">
+      {enabledModules.has('MAINTENANCE') && (
+        <div className="md:col-span-1 lg:col-span-1">
           <MaintenanceWidget />
         </div>
       )}
 
       {/* Inventory Widget */}
-      {enabledModules.has('INVENTORY') && isWidgetEnabled('inventory') && (
-        <div style={getWidgetStyle('inventory')} className="md:col-span-1 lg:col-span-1">
+      {enabledModules.has('INVENTORY') && (
+        <div className="md:col-span-1 lg:col-span-1">
           <InventoryWidget />
         </div>
       )}
 
       {/* Meals Widget */}
-      {enabledModules.has('MEAL_PLANNING') && isWidgetEnabled('meals') && (
-        <div style={getWidgetStyle('meals')} className="md:col-span-1 lg:col-span-1">
+      {enabledModules.has('MEAL_PLANNING') && (
+        <div className="md:col-span-1 lg:col-span-1">
           <MealsWidget />
         </div>
       )}
     </div>
-    
-    {/* Dashboard Customizer Button - Only show for authenticated users */}
-    {session?.user && !guestSession && (
-      <DashboardCustomizerButton 
-        onClick={() => setIsCustomizing(true)} 
-      />
-    )}
-    
-    {/* Dashboard Customizer Modal */}
-    <DashboardCustomizer
-      isOpen={isCustomizing}
-      onClose={() => setIsCustomizing(false)}
-      widgets={layout}
-      availableWidgets={availableWidgets}
-      onSave={saveLayout}
-      onReset={resetLayout}
-    />
     </>
   );
 }

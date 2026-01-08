@@ -113,6 +113,15 @@ describe('DashboardContent', () => {
           }),
         })
       }
+      if (url.includes('/api/meals/plan')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            mealPlan: null,
+            weekStart: new Date().toISOString().split('T')[0],
+          }),
+        })
+      }
       return Promise.resolve({
         ok: true,
         json: async () => mockDashboardData,

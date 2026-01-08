@@ -220,10 +220,12 @@ describe('/api/dashboard', () => {
 
       prismaMock.choreInstance.findMany.mockResolvedValue([])
       prismaMock.screenTimeBalance.findUnique.mockResolvedValue(null)
+      prismaMock.screenTimeAllowance.findMany.mockResolvedValue([])
       prismaMock.creditBalance.findUnique.mockResolvedValue(null)
       prismaMock.shoppingList.findMany.mockResolvedValue([])
       prismaMock.todoItem.findMany.mockResolvedValue([])
       prismaMock.calendarEvent.findMany.mockResolvedValue([])
+      prismaMock.projectTask.findMany.mockResolvedValue([])
 
       const request = new NextRequest('http://localhost/api/dashboard')
       const response = await GET(request)
