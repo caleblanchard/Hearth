@@ -16,6 +16,7 @@ import SickModeBanner from '@/components/sick-mode/SickModeBanner';
 import DashboardCustomizer from '@/components/dashboard/DashboardCustomizer';
 import DashboardCustomizerButton from '@/components/dashboard/DashboardCustomizerButton';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
+import { DashboardCustomizeProvider } from '@/contexts/DashboardCustomizeContext';
 
 interface DashboardData {
   chores: Array<{
@@ -221,7 +222,7 @@ export default function DashboardContent() {
   };
 
   return (
-    <>
+    <DashboardCustomizeProvider onCustomize={() => setIsCustomizing(true)}>
       {/* Sick Mode Banner */}
       <div className="mb-6">
         <SickModeBanner />
@@ -692,6 +693,6 @@ export default function DashboardContent() {
       onSave={saveLayout}
       onReset={resetLayout}
     />
-    </>
+    </DashboardCustomizeProvider>
   );
 }

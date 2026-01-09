@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useDashboardCustomize } from '@/contexts/DashboardCustomizeContext';
 import {
   HomeIcon,
   CheckCircleIcon,
@@ -54,6 +55,7 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+  const customizeContext = useDashboardCustomize();
   const [isOpen, setIsOpen] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
@@ -276,6 +278,22 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Customize Dashboard - Mobile Only */}
+        {customizeContext && pathname === '/dashboard' && (
+          <div className="md:hidden pb-4 border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => {
+                customizeContext.openCustomizer();
+                setIsMobileOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors bg-ember-50 dark:bg-ember-900/20 text-ember-700 dark:text-ember-300 hover:bg-ember-100 dark:hover:bg-ember-900/30"
+            >
+              <Cog6ToothIcon className="h-5 w-5 flex-shrink-0" />
+              <span>Customize Dashboard</span>
+            </button>
+          </div>
+        )}
+        
         {navGroups.map(renderNavGroup)}
       </nav>
 
