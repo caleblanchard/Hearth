@@ -7,6 +7,9 @@ export interface FamilyRegistrationData {
   // Family info
   familyName: string
   timezone?: string
+  location?: string | null
+  latitude?: number | null
+  longitude?: number | null
 
   // Parent account info
   parentName: string
@@ -22,6 +25,8 @@ export interface RegistrationResult {
   familyId?: string
   memberId?: string
   userId?: string
+  family?: any
+  member?: any
   error?: string
 }
 
@@ -64,9 +69,9 @@ export async function registerFamily(
       .insert({
         name: data.familyName,
         timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-        subscription_tier: 'FREE',
-        max_members: 10,
-        is_active: true,
+        location: data.location || null,
+        latitude: data.latitude || null,
+        longitude: data.longitude || null,
       })
       .select()
       .single()
@@ -115,6 +120,8 @@ export async function registerFamily(
       familyId: family.id,
       memberId: member.id,
       userId: authData.user.id,
+      family: family,
+      member: member,
     }
   } catch (error) {
     console.error('Family registration error:', error)
