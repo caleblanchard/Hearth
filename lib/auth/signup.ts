@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createFamily } from '@/lib/data/families'
 import { createMember, setMemberPin } from '@/lib/data/members'
 
@@ -35,7 +36,8 @@ export interface RegistrationResult {
 export async function registerFamily(
   data: FamilyRegistrationData
 ): Promise<RegistrationResult> {
-  const supabase = createClient()
+  const supabase = await createClient()
+  const adminClient = createAdminClient() // Service role client to bypass RLS
 
   try {
     // Step 1: Create Supabase Auth user
@@ -56,31 +58,46 @@ export async function registerFamily(
       }
     }
 
-    // Step 2: Create family record
-    const family = await createFamily({
-      name: data.familyName,
-      timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      subscription_tier: 'FREE',
-      max_members: 10,
-      is_active: true,
-    })
+    // Step 2: Create family record (using admin client to bypass RLS)
+    const { data: family, error: familyError } = await adminClient
+      .from('families')
+      .insert({
+        name: data.familyName,
+        timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        subscription_tier: 'FREE',
+        max_members: 10,
+        is_active: true,
+      })
+      .select()
+      .single()
 
-    // Step 3: Create family member linked to auth user
-    const member = await createMember(family.id, {
-      auth_user_id: authData.user.id,
-      name: data.parentName,
-      email: data.email,
-      role: 'PARENT',
-      is_active: true,
-      avatar_url: null,
-      date_of_birth: null,
-      phone_number: null,
-      pin: null,
-      password_hash: null,
-      preferences: {},
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
+    if (familyError || !family) {
+      return {
+        success: false,
+        error: `Failed to create family: ${familyError?.message}`,
+      }
+    }
+
+    // Step 3: Create family member linked to auth user (using admin client)
+    const { data: member, error: memberError } = await adminClient
+      .from('family_members')
+      .insert({
+        family_id: family.id,
+        auth_user_id: authData.user.id,
+        name: data.parentName,
+        email: data.email,
+        role: 'PARENT',
+        is_active: true,
+      })
+      .select()
+      .single()
+
+    if (memberError || !member) {
+      return {
+        success: false,
+        error: `Failed to create member: ${memberError?.message}`,
+      }
+    }
 
     // Step 4: Set PIN if provided
     if (data.pin) {
@@ -112,10 +129,10 @@ export async function registerFamily(
  * Check if an email is already registered
  */
 export async function checkEmailAvailable(email: string): Promise<boolean> {
-  const supabase = createClient()
+  const adminClient = createAdminClient() // Use admin client since user isn't authenticated yet
 
   // Query family_members table for existing email
-  const { data, error } = await supabase
+  const { data, error } = await adminClient
     .from('family_members')
     .select('id')
     .eq('email', email)
