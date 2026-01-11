@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -45,7 +45,7 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();

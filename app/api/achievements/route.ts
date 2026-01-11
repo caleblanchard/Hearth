@@ -23,31 +23,31 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const targetUserId = searchParams.get('userId') || authContext.userId;
+    const targetMemberId = searchParams.get('memberId') || memberId;
 
     // Parents can view any child's achievements
-    if (targetUserId !== authContext.userId) {
-      const isParent = await isParentInFamily(memberId, familyId);
+    if (targetMemberId !== memberId) {
+      const isParent = await isParentInFamily(familyId);
       if (!isParent) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
 
     // Get all achievements with user progress
-    const achievements = await getAchievements();
-    const userAchievements = await getUserAchievements(targetUserId);
+    const achievements = await getAchievements(familyId);
+    const userAchievements = await getUserAchievements(targetMemberId);
 
     // Get user stats for progress calculation (simplified - would need proper data module functions)
     const { data: choresData } = await supabase
       .from('chore_completions')
       .select('id', { count: 'exact', head: true })
-      .eq('member_id', targetUserId)
+      .eq('member_id', targetMemberId)
       .eq('status', 'APPROVED');
 
     const { data: creditBalance } = await supabase
       .from('credit_balances')
       .select('lifetime_earned')
-      .eq('member_id', targetUserId)
+      .eq('member_id', targetMemberId)
       .single();
 
     const choresCompleted = choresData || 0;

@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();

@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -68,7 +68,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();

@@ -48,7 +48,7 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authContext = await getAuthContext();
@@ -155,7 +155,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authContext = await getAuthContext();

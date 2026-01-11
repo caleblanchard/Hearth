@@ -4,7 +4,7 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const supabase = await createClient();

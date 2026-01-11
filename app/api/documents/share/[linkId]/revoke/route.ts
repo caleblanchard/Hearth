@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ linkId: string } }
+  { params }: { params: Promise<{ linkId: string }> }
 ) {
   try {
     const supabase = await createClient();

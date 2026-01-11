@@ -10,7 +10,7 @@ function generateSessionToken(): string {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const supabase = await createClient();

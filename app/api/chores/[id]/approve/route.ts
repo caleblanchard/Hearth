@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authContext = await getAuthContext();

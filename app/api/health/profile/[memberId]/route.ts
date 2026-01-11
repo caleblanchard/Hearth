@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ memberId: string } }
+  { params }: { params: Promise<{ memberId: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -43,7 +43,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ memberId: string } }
+  { params }: { params: Promise<{ memberId: string }> }
 ) {
   try {
     const supabase = await createClient();
