@@ -471,3 +471,223 @@ export async function getScreenTimeStats(
     sessionCount: sessions?.length || 0,
   }
 }
+
+/**
+ * Adjust screen time allowance
+ */
+export async function adjustScreenTimeAllowance(
+  allowanceId: string,
+  adjustmentMinutes: number,
+  reason: string
+) {
+  const supabase = await createClient()
+
+  const { data: allowance } = await supabase
+    .from('screen_time_allowances')
+    .select('remaining_minutes')
+    .eq('id', allowanceId)
+    .single()
+
+  if (!allowance) throw new Error('Allowance not found')
+
+  const { data, error } = await supabase
+    .from('screen_time_allowances')
+    .update({
+      remaining_minutes: Math.max(0, (allowance.remaining_minutes || 0) + adjustmentMinutes),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', allowanceId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Approve grace period request
+ */
+export async function approveGracePeriod(gracePeriodId: string, approvedBy: string) {
+  return respondToGraceRequest(gracePeriodId, 'APPROVED', approvedBy)
+}
+
+/**
+ * Reject grace period request
+ */
+export async function rejectGracePeriod(gracePeriodId: string, rejectedBy: string) {
+  return respondToGraceRequest(gracePeriodId, 'REJECTED', rejectedBy)
+}
+
+/**
+ * Check grace eligibility
+ */
+export async function checkGraceEligibility(memberId: string) {
+  const supabase = await createClient()
+
+  // Get active grace settings
+  const { data: settings } = await supabase
+    .from('screen_time_grace_settings')
+    .select('*')
+    .eq('family_id', (await supabase.from('family_members').select('family_id').eq('id', memberId).single()).data?.family_id)
+    .eq('is_active', true)
+    .single()
+
+  if (!settings) {
+    return { eligible: false, reason: 'Grace periods not enabled' }
+  }
+
+  // Check if member has used grace today
+  const today = new Date().toISOString().split('T')[0]
+  const { count } = await supabase
+    .from('screen_time_grace_periods')
+    .select('*', { count: 'exact', head: true })
+    .eq('member_id', memberId)
+    .eq('status', 'APPROVED')
+    .gte('created_at', today)
+
+  const dailyLimit = settings.max_daily_grace_periods || 3
+  if ((count || 0) >= dailyLimit) {
+    return { eligible: false, reason: 'Daily grace limit reached' }
+  }
+
+  return { eligible: true }
+}
+
+/**
+ * Get family screen time overview
+ */
+export async function getFamilyScreenTimeOverview(familyId: string) {
+  const supabase = await createClient()
+
+  const { data: members } = await supabase
+    .from('family_members')
+    .select('id, name, avatar_url')
+    .eq('family_id', familyId)
+    .eq('is_active', true)
+
+  const overview = await Promise.all(
+    (members || []).map(async (member) => {
+      const allowances = await getMemberAllowances(member.id)
+      const stats = await getScreenTimeStats(
+        member.id,
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        new Date().toISOString()
+      )
+      return {
+        member,
+        allowances,
+        stats,
+      }
+    })
+  )
+
+  return overview
+}
+
+/**
+ * Get grace history for a member
+ */
+export async function getGraceHistory(memberId: string, days = 30) {
+  const supabase = await createClient()
+
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - days)
+
+  const { data, error } = await supabase
+    .from('screen_time_grace_periods')
+    .select('*')
+    .eq('member_id', memberId)
+    .gte('created_at', cutoffDate.toISOString())
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Get grace settings for a family
+ */
+export async function getGraceSettings(familyId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('screen_time_grace_settings')
+    .select('*')
+    .eq('family_id', familyId)
+    .eq('is_active', true)
+    .single()
+
+  if (error && error.code !== 'PGRST116') throw error
+  return data
+}
+
+/**
+ * Update grace settings
+ */
+export async function updateGraceSettings(
+  familyId: string,
+  settings: {
+    max_daily_grace_periods?: number
+    require_reason?: boolean
+    is_active?: boolean
+  }
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('screen_time_grace_settings')
+    .upsert({
+      family_id: familyId,
+      ...settings,
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Get screen time allowances (alias for getMemberAllowances)
+ */
+export async function getScreenTimeAllowances(memberId: string) {
+  return getMemberAllowances(memberId)
+}
+
+/**
+ * Get screen time history (alias for getSessionHistory)
+ */
+export async function getScreenTimeHistory(
+  memberId: string,
+  startDate?: string,
+  endDate?: string
+) {
+  return getSessionHistory(memberId, startDate, endDate)
+}
+
+/**
+ * Log screen time session
+ */
+export async function logScreenTimeSession(
+  memberId: string,
+  screenTimeTypeId: string,
+  minutesUsed: number
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('screen_time_sessions')
+    .insert({
+      member_id: memberId,
+      screen_time_type_id: screenTimeTypeId,
+      minutes_used: minutesUsed,
+      started_at: new Date().toISOString(),
+      ended_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}

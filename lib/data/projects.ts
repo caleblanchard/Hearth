@@ -226,3 +226,125 @@ export async function getOverdueProjectTasks(familyId: string) {
   if (error) throw error
   return data || []
 }
+
+/**
+ * Add task dependency
+ */
+export async function addTaskDependency(
+  taskId: string,
+  dependsOnTaskId: string
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('task_dependencies')
+    .insert({
+      task_id: taskId,
+      depends_on_task_id: dependsOnTaskId,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Remove task dependency
+ */
+export async function removeTaskDependency(dependencyId: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('task_dependencies')
+    .delete()
+    .eq('id', dependencyId)
+
+  if (error) throw error
+}
+
+/**
+ * Get task dependencies
+ */
+export async function getTaskDependencies(taskId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('task_dependencies')
+    .select('*')
+    .eq('task_id', taskId)
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Get a single project task
+ */
+export async function getProjectTask(taskId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('project_tasks')
+    .select('*')
+    .eq('id', taskId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Get project templates
+ */
+export async function getProjectTemplates(familyId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('project_templates')
+    .select('*')
+    .eq('family_id', familyId)
+    .order('name')
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Create project from template
+ */
+export async function createProjectFromTemplate(
+  templateId: string,
+  projectData: {
+    title: string
+    description?: string
+    familyId: string
+  }
+) {
+  const supabase = await createClient()
+
+  // Get template
+  const { data: template } = await supabase
+    .from('project_templates')
+    .select('*')
+    .eq('id', templateId)
+    .single()
+
+  if (!template) throw new Error('Template not found')
+
+  // Create project
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .insert({
+      title: projectData.title,
+      description: projectData.description || template.description,
+      family_id: projectData.familyId,
+      status: 'ACTIVE',
+    })
+    .select()
+    .single()
+
+  if (projectError) throw projectError
+
+  return project
+}

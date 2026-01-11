@@ -715,3 +715,90 @@ export async function handleGoogleCalendarCallback(
   if (error) throw error
   return data
 }
+
+/**
+ * Get calendar subscriptions for a family
+ */
+export async function getCalendarSubscriptions(familyId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('external_calendar_subscriptions')
+    .select('*')
+    .eq('family_id', familyId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Create calendar subscription
+ */
+export async function createCalendarSubscription(
+  familyId: string,
+  subscriptionData: {
+    name: string
+    url: string
+    sync_frequency?: string
+  }
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('external_calendar_subscriptions')
+    .insert({
+      family_id: familyId,
+      name: subscriptionData.name,
+      url: subscriptionData.url,
+      sync_frequency: subscriptionData.sync_frequency || 'DAILY',
+      is_active: true,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Update calendar subscription
+ */
+export async function updateCalendarSubscription(
+  subscriptionId: string,
+  updates: {
+    name?: string
+    url?: string
+    sync_frequency?: string
+    is_active?: boolean
+  }
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('external_calendar_subscriptions')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', subscriptionId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Delete calendar subscription
+ */
+export async function deleteCalendarSubscription(subscriptionId: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('external_calendar_subscriptions')
+    .delete()
+    .eq('id', subscriptionId)
+
+  if (error) throw error
+}
