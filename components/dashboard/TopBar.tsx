@@ -1,7 +1,8 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useSupabaseSession, signOut } from '@/hooks/useSupabaseSession';
+import { useMemberContext } from '@/hooks/useMemberContext';
+import { signOut } from '@/hooks/useSupabaseSession';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useGuestSession } from '@/hooks/useGuestSession';
@@ -44,7 +45,7 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 export default function TopBar() {
-  const { user } = useSupabaseSession();
+  const { user, member } = useMemberContext();
   const { guestSession, endSession } = useGuestSession();
   const pathname = usePathname();
 
@@ -99,11 +100,11 @@ export default function TopBar() {
               <div className="w-8 h-8 bg-ember-700 dark:bg-ember-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
                 {guestSession 
                   ? guestSession.guestName.charAt(0)
-                  : user?.user_metadata?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                  : member?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {guestSession ? guestSession.guestName : (user?.user_metadata?.name || user?.email)}
+                  {guestSession ? guestSession.guestName : (member?.name || user?.email)}
                 </p>
                 {guestSession && (
                   <p className="text-xs text-gray-500 dark:text-gray-400">

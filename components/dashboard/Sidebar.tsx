@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useMemberContext } from '@/hooks/useMemberContext';
 import { useDashboardCustomize } from '@/contexts/DashboardCustomizeContext';
 import {
   HomeIcon,
@@ -52,7 +52,7 @@ interface NavGroup {
 }
 
 export default function Sidebar() {
-  const { user } = useSupabaseSession();
+  const { user, member, loading: memberLoading } = useMemberContext();
   const router = useRouter();
   const pathname = usePathname();
   const customizeContext = useDashboardCustomize();
@@ -82,10 +82,10 @@ export default function Sidebar() {
         ]));
       }
     }
-    if (user) {
+    if (user && member) {
       fetchEnabledModules();
     }
-  }, [user]);
+  }, [user, member]);
 
   const toggleGroup = (groupName: string) => {
     const newExpanded = new Set(expandedGroups);
@@ -116,7 +116,7 @@ export default function Sidebar() {
       items: [
         { name: 'Rewards', path: '/dashboard/rewards', icon: GiftIcon, moduleId: 'CREDITS' },
         { name: 'Screen Time', path: '/dashboard/screentime', icon: ClockIcon, moduleId: 'SCREEN_TIME' },
-        ...(user?.user_metadata?.role === 'PARENT' 
+        ...(member?.role === 'PARENT' 
           ? [{ name: 'Family Screen Time', path: '/dashboard/screentime/manage-family', icon: UsersIcon, moduleId: 'SCREEN_TIME' }]
           : []
         ),
@@ -141,7 +141,7 @@ export default function Sidebar() {
   ];
 
   // Add parent-only settings group
-  if (user?.user_metadata?.role === 'PARENT') {
+  if (member?.role === 'PARENT') {
     navGroups.push({
       name: 'Kiosk',
       items: [
@@ -199,7 +199,7 @@ export default function Sidebar() {
       // If no moduleId, always show (like Dashboard, Profile, Family)
       if (!item.moduleId) return true;
       // RULES_ENGINE is always available to parents (non-configurable)
-      if (item.moduleId === 'RULES_ENGINE' && user?.user_metadata?.role === 'PARENT') {
+      if (item.moduleId === 'RULES_ENGINE' && member?.role === 'PARENT') {
         return true;
       }
       // Check if module is enabled
@@ -306,10 +306,10 @@ export default function Sidebar() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {user.name}
+                {member?.name || user?.email}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {user?.user_metadata?.role}
+                {member?.role}
               </p>
             </div>
           </div>

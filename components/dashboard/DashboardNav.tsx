@@ -1,6 +1,7 @@
 'use client';
 
-import { useSupabaseSession, signOut } from '@/hooks/useSupabaseSession';
+import { useMemberContext } from '@/hooks/useMemberContext';
+import { signOut } from '@/hooks/useSupabaseSession';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   HomeIcon,
@@ -17,7 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function DashboardNav() {
-  const { user } = useSupabaseSession();
+  const { user, member } = useMemberContext();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -34,7 +35,7 @@ export default function DashboardNav() {
   ];
 
   // Add parent-only items
-  if (user?.user_metadata?.role === 'PARENT') {
+  if (member?.role === 'PARENT') {
     navItems.push({ name: 'Approvals', path: '/dashboard/approvals', icon: CheckBadgeIcon });
     navItems.push({ name: 'Family', path: '/dashboard/family', icon: UsersIcon });
   }
@@ -82,10 +83,10 @@ export default function DashboardNav() {
           {/* User Info & Sign Out */}
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-700 dark:text-gray-300">
-              <span className="font-medium">{user?.name}</span>
-              {user?.user_metadata?.role && (
+              <span className="font-medium">{member?.name || user?.email}</span>
+              {member?.role && (
                 <span className="ml-2 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
-                  {user?.user_metadata?.role}
+                  {member.role}
                 </span>
               )}
             </div>
