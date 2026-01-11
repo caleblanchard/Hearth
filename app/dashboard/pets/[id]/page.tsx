@@ -194,7 +194,7 @@ export default function PetDetailPage() {
     if (petId && session) {
       loadPetData();
     }
-  }, [petId, session]);
+  }, [petId, user]);
 
   const handleUpdatePet = async () => {
     setSaving(true);

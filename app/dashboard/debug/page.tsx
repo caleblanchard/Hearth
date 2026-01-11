@@ -27,7 +27,7 @@ export default function DebugPage() {
     if (!loading && user) {
       fetchFamily();
     }
-  }, [status]);
+  }, [loading]);
 
   return (
     <div className="p-8 max-w-4xl mx-auto">

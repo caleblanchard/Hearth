@@ -50,7 +50,7 @@ export default function ModuleSettingsPage() {
     } else {
       setLoading(false);
     }
-  }, [session]);
+  }, [user]);
 
   const toggleModule = async (moduleId: string, currentlyEnabled: boolean) => {
     setUpdating((prev) => new Set(prev).add(moduleId));

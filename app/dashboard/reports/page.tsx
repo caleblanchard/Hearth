@@ -98,7 +98,7 @@ export default function ReportsPage() {
     if (user?.role !== 'PARENT') {
       router.push('/dashboard');
     }
-  }, [session, router]);
+  }, [user, router]);
 
   const fetchReportData = async (selectedPeriod: 'week' | 'month' = period) => {
     setLoading(true);
@@ -119,7 +119,7 @@ export default function ReportsPage() {
     if (user?.role === 'PARENT') {
       fetchReportData();
     }
-  }, [session]);
+  }, [user]);
 
   const handlePeriodChange = (newPeriod: 'week' | 'month') => {
     setPeriod(newPeriod);

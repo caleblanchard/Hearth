@@ -138,7 +138,7 @@ export default function ManageChoresPage() {
     if (session && user?.role !== 'PARENT') {
       router.push('/dashboard');
     }
-  }, [session, router]);
+  }, [user, router]);
 
   const fetchChores = async () => {
     try {

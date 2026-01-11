@@ -83,7 +83,7 @@ export default function HealthEventsList() {
       }
     };
     loadMembers();
-  }, [session]);
+  }, [user]);
 
   // Load health events
   const loadEvents = async () => {

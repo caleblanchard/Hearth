@@ -101,7 +101,7 @@ export default function ScreenTimeManagePage() {
     }
     
     loadData();
-  }, [session, status, router]);
+  }, [user, loading, router]);
 
   const loadData = async () => {
     try {

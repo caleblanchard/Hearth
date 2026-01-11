@@ -93,7 +93,7 @@ export default function MedicalProfilePage() {
     if (user) {
       fetchMembers();
     }
-  }, [session]);
+  }, [user]);
 
   // Fetch medical profile when member is selected
   useEffect(() => {

@@ -283,7 +283,7 @@ export default function CalendarPage() {
       fetchEvents(currentDate, view);
       fetchFamilyMembers();
     }
-  }, [session, currentDate, view]);
+  }, [user, currentDate, view]);
 
   // Update view when URL parameter changes or on initial load
   useEffect(() => {

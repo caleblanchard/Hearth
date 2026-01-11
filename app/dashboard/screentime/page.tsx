@@ -247,7 +247,7 @@ export default function ScreenTimePage() {
       ]);
     };
     loadData();
-  }, [session]);
+  }, [user]);
 
   const handleLogTime = async (minutes: number, override: boolean = false) => {
     if (minutes <= 0) {

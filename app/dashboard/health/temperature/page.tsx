@@ -77,7 +77,7 @@ export default function TemperatureHistoryPage() {
     if (user) {
       fetchMembers();
     }
-  }, [session]);
+  }, [user]);
 
   // Fetch temperature logs
   useEffect(() => {

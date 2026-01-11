@@ -65,7 +65,7 @@ export default function FamilyScreenTimeManagement() {
     if (user && user.role !== 'PARENT') {
       router.push('/dashboard/screentime');
     }
-  }, [session, router]);
+  }, [user, router]);
 
   const fetchFamilyScreenTime = async () => {
     try {
@@ -93,7 +93,7 @@ export default function FamilyScreenTimeManagement() {
     if (user?.role === 'PARENT') {
       fetchFamilyScreenTime();
     }
-  }, [session]);
+  }, [user]);
 
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
