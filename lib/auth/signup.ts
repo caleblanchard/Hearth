@@ -56,10 +56,25 @@ export async function registerFamily(
       },
     })
 
-    if (authError || !authData.user) {
+    if (authError) {
+      // Check if user already exists
+      if (authError.message?.toLowerCase().includes('already registered') || 
+          authError.message?.toLowerCase().includes('already exists')) {
+        return {
+          success: false,
+          error: 'This email is already registered. Please use a different email or sign in instead.',
+        }
+      }
       return {
         success: false,
-        error: authError?.message || 'Failed to create user account',
+        error: authError.message || 'Failed to create user account',
+      }
+    }
+
+    if (!authData.user) {
+      return {
+        success: false,
+        error: 'Failed to create user account',
       }
     }
 
