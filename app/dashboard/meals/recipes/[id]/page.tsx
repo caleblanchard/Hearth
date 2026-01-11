@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import {
   ArrowLeftIcon,
   HeartIcon,
@@ -84,7 +84,7 @@ const DIETARY_TAG_LABELS: Record<string, string> = {
 
 export default function RecipeDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -273,7 +273,7 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
                   <HeartIcon className="h-6 w-6 text-gray-400" />
                 )}
               </button>
-              {session?.user?.id === recipe.creator.id && (
+              {user?.id === recipe.creator.id && (
                 <button
                   onClick={deleteRecipe}
                   className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

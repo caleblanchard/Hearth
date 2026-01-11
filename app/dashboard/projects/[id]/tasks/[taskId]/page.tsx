@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -69,7 +69,7 @@ export default function TaskDetailPage({
   params: { id: string; taskId: string } 
 }) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -246,7 +246,7 @@ export default function TaskDetailPage({
     });
   };
 
-  if (session?.user?.role !== 'PARENT') {
+  if (user?.role !== 'PARENT') {
     return (
       <div className="p-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">

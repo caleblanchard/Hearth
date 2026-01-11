@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import {
   UserCircleIcon,
   PlusIcon,
@@ -36,7 +36,7 @@ interface FamilyMember {
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 export default function MedicalProfilePage() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [profile, setProfile] = useState<MedicalProfile | null>(null);
@@ -77,8 +77,8 @@ export default function MedicalProfilePage() {
           setMembers(data.family.members || []);
           // Auto-select current user if they're a child, or first member if parent
           if (data.family.members.length > 0) {
-            if (session?.user?.role === 'CHILD') {
-              setSelectedMemberId(session.user.id);
+            if (user?.role === 'CHILD') {
+              setSelectedMemberId(user.id);
             } else {
               setSelectedMemberId(data.family.members[0].id);
             }
@@ -90,7 +90,7 @@ export default function MedicalProfilePage() {
         setLoading(false);
       }
     }
-    if (session?.user) {
+    if (user) {
       fetchMembers();
     }
   }, [session]);
@@ -135,7 +135,7 @@ export default function MedicalProfilePage() {
   }, [selectedMemberId]);
 
   const handleSave = async () => {
-    if (!selectedMemberId || session?.user?.role !== 'PARENT') return;
+    if (!selectedMemberId || user?.role !== 'PARENT') return;
 
     setSaving(true);
     try {
@@ -216,7 +216,7 @@ export default function MedicalProfilePage() {
     setMedications(medications.filter((_, i) => i !== index));
   };
 
-  const isParent = session?.user?.role === 'PARENT';
+  const isParent = user?.role === 'PARENT';
   const canEdit = isParent;
 
   if (loading && !selectedMemberId) {

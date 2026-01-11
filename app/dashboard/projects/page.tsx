@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import {
   FolderIcon,
   PlusIcon,
@@ -33,7 +33,7 @@ interface Project {
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -97,7 +97,7 @@ export default function ProjectsPage() {
     }).format(amount);
   };
 
-  if (session?.user?.role !== 'PARENT') {
+  if (user?.role !== 'PARENT') {
     return (
       <div className="p-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">

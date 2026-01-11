@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import SessionProvider from '@/components/SessionProvider';
 import ServiceWorkerRegistration from './components/ServiceWorkerRegistration';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -63,12 +62,10 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <ServiceWorkerRegistration />
-        <SessionProvider>
-          <ToastProvider>
-            {children}
-            <PWAInstallPrompt />
-          </ToastProvider>
-        </SessionProvider>
+        <ToastProvider>
+          {children}
+          <PWAInstallPrompt />
+        </ToastProvider>
       </body>
     </html>
   );

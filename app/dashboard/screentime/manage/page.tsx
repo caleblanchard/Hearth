@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useRouter } from 'next/navigation';
 import {
   PlusIcon,
@@ -49,7 +49,7 @@ interface ScreenTimeAllowance {
 }
 
 export default function ScreenTimeManagePage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useSupabaseSession();
   const router = useRouter();
   const [types, setTypes] = useState<ScreenTimeType[]>([]);
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -90,12 +90,12 @@ export default function ScreenTimeManagePage() {
 
   useEffect(() => {
     // Wait for session to load before checking role
-    if (status === 'loading') {
+    if (loading) {
       // Session is still loading
       return;
     }
     
-    if (!session || session.user?.role !== 'PARENT') {
+    if (!session || user?.role !== 'PARENT') {
       router.push('/dashboard/screentime');
       return;
     }

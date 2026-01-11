@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useRouter } from 'next/navigation';
 import { useGuestSession } from '@/hooks/useGuestSession';
 import { MapPinIcon } from '@heroicons/react/24/outline';
@@ -114,7 +114,7 @@ export default function DashboardContent() {
     const stillLoading = sessionLoading || guestLoading;
     
     // Only redirect if we're done loading and there's no session (user or guest)
-    if (!stillLoading && !session?.user && !guestSession) {
+    if (!stillLoading && !user && !guestSession) {
       router.push('/auth/signin');
     }
   }, [session, sessionStatus, guestSession, guestLoading, router]);
@@ -173,7 +173,7 @@ export default function DashboardContent() {
     }
     
     // If no session (user or guest), don't fetch (redirect will happen)
-    if (!session?.user && !guestSession) {
+    if (!user && !guestSession) {
       return;
     }
 
@@ -630,7 +630,7 @@ export default function DashboardContent() {
       {/* Transport Widget - spans 2 columns on large screens */}
       {enabledModules.has('TRANSPORT') && isWidgetEnabled('transport') && (
         <div style={getWidgetStyle('transport')} className="md:col-span-2 lg:col-span-2">
-          <TransportWidget memberId={session?.user?.id} />
+          <TransportWidget memberId={user?.id} />
         </div>
       )}
 
@@ -651,7 +651,7 @@ export default function DashboardContent() {
       {/* Medication Widget */}
       {enabledModules.has('HEALTH') && isWidgetEnabled('medication') && (
         <div style={getWidgetStyle('medication')} className="md:col-span-1 lg:col-span-1">
-          <MedicationWidget memberId={session?.user?.id} />
+          <MedicationWidget memberId={user?.id} />
         </div>
       )}
 
@@ -678,7 +678,7 @@ export default function DashboardContent() {
     </div>
     
     {/* Dashboard Customizer Button - Only show for authenticated users */}
-    {session?.user && !guestSession && (
+    {user && !guestSession && (
       <DashboardCustomizerButton 
         onClick={() => setIsCustomizing(true)} 
       />

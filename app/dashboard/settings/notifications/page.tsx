@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useToast } from '@/components/ui/Toast';
 
 interface NotificationPreferences {
@@ -33,7 +33,7 @@ const NOTIFICATION_TYPES = [
 ];
 
 export default function NotificationSettingsPage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useSupabaseSession();
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     enabledTypes: [],
     quietHoursEnabled: false,
@@ -153,7 +153,7 @@ export default function NotificationSettingsPage() {
     }));
   };
 
-  if (status === 'loading' || loading) {
+  if (loading || loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ember-600"></div>

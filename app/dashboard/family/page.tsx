@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { format } from 'date-fns';
 import { Modal, ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
@@ -62,7 +62,7 @@ interface Family {
 }
 
 export default function FamilyPage() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const { showToast } = useToast();
   const [family, setFamily] = useState<Family | null>(null);
   const [loading, setLoading] = useState(true);
@@ -569,7 +569,7 @@ export default function FamilyPage() {
   }
 
   // Only parents can access this page
-  if (session?.user?.role !== 'PARENT') {
+  if (user?.role !== 'PARENT') {
     return (
       <div className="p-8">
         <div className="max-w-6xl mx-auto">

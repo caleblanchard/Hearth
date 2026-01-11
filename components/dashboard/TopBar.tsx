@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
+import { useSupabaseSession, signOut } from '@/hooks/useSupabaseSession';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useGuestSession } from '@/hooks/useGuestSession';
@@ -44,7 +44,7 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 export default function TopBar() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const { guestSession, endSession } = useGuestSession();
   const pathname = usePathname();
 
@@ -52,7 +52,7 @@ export default function TopBar() {
     if (guestSession) {
       await endSession();
     } else {
-      await signOut({ callbackUrl: '/auth/signin' });
+      await signOut();
     }
   };
 

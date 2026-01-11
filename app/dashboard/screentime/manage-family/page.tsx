@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useRouter } from 'next/navigation';
 import {
   ClockIcon,
@@ -41,7 +41,7 @@ interface AdjustmentForm {
 }
 
 export default function FamilyScreenTimeManagement() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const router = useRouter();
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +62,7 @@ export default function FamilyScreenTimeManagement() {
 
   // Check if user is a parent
   useEffect(() => {
-    if (session?.user && session.user.role !== 'PARENT') {
+    if (user && user.role !== 'PARENT') {
       router.push('/dashboard/screentime');
     }
   }, [session, router]);
@@ -90,7 +90,7 @@ export default function FamilyScreenTimeManagement() {
   };
 
   useEffect(() => {
-    if (session?.user?.role === 'PARENT') {
+    if (user?.role === 'PARENT') {
       fetchFamilyScreenTime();
     }
   }, [session]);
@@ -185,7 +185,7 @@ export default function FamilyScreenTimeManagement() {
     );
   }
 
-  if (session?.user?.role !== 'PARENT') {
+  if (user?.role !== 'PARENT') {
     return null; // Will redirect in useEffect
   }
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 
 interface Pet {
   id: string;
@@ -22,7 +22,7 @@ interface PetsResponse {
 
 export default function PetsList() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,7 +212,7 @@ export default function PetsList() {
             </p>
           )}
         </div>
-        {session?.user?.role === 'PARENT' && (
+        {user?.role === 'PARENT' && (
           <button
             onClick={() => setShowAddDialog(true)}
             className="px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg transition-colors"

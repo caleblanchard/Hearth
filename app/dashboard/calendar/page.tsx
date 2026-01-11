@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useSearchParams } from 'next/navigation';
 import { Modal, ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import MealDetailModal from '@/components/meals/MealDetailModal';
@@ -48,7 +48,7 @@ interface FamilyMember {
 type CalendarView = 'month' | 'week' | 'day';
 
 export default function CalendarPage() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const searchParams = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
@@ -279,7 +279,7 @@ export default function CalendarPage() {
   };
 
   useEffect(() => {
-    if (session?.user?.familyId) {
+    if (user?.familyId) {
       fetchEvents(currentDate, view);
       fetchFamilyMembers();
     }

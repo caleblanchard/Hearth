@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import {
   LineChart,
   Line,
@@ -87,7 +87,7 @@ interface ReportData {
 }
 
 export default function ReportsPage() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const router = useRouter();
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,7 +95,7 @@ export default function ReportsPage() {
 
   // Redirect non-parents
   useEffect(() => {
-    if (session?.user?.role !== 'PARENT') {
+    if (user?.role !== 'PARENT') {
       router.push('/dashboard');
     }
   }, [session, router]);
@@ -116,7 +116,7 @@ export default function ReportsPage() {
   };
 
   useEffect(() => {
-    if (session?.user?.role === 'PARENT') {
+    if (user?.role === 'PARENT') {
       fetchReportData();
     }
   }, [session]);

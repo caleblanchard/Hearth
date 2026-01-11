@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmModal } from '@/components/ui/Modal';
 
@@ -39,7 +39,7 @@ interface ExternalCalendarSubscription {
 }
 
 function CalendarSettingsContent() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [connections, setConnections] = useState<CalendarConnection[]>([]);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import {
   CheckCircleIcon,
@@ -94,7 +94,7 @@ interface FamilyMember {
 
 export default function ManageChoresPage() {
   console.log('🚀 ManageChoresPage component rendered');
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const router = useRouter();
   const [chores, setChores] = useState<Chore[]>([]);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
@@ -135,7 +135,7 @@ export default function ManageChoresPage() {
   // Check authorization
   useEffect(() => {
     // Only redirect if session is loaded and user is not a parent
-    if (session && session?.user?.role !== 'PARENT') {
+    if (session && user?.role !== 'PARENT') {
       router.push('/dashboard');
     }
   }, [session, router]);
@@ -492,7 +492,7 @@ export default function ManageChoresPage() {
     return `${names} (${type})`;
   };
 
-  if (session?.user?.role !== 'PARENT') {
+  if (user?.role !== 'PARENT') {
     return null;
   }
 

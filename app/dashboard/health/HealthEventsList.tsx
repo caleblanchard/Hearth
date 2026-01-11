@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useRouter } from 'next/navigation';
 
 interface FamilyMember {
@@ -31,7 +31,7 @@ interface HealthEventsResponse {
 }
 
 export default function HealthEventsList() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const router = useRouter();
   const [events, setEvents] = useState<HealthEvent[]>([]);
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -66,10 +66,10 @@ export default function HealthEventsList() {
         const response = await fetch('/api/family');
         if (response.ok) {
           const data = await response.json();
-          setMembers(data.family.members.filter((m: FamilyMember) => m.role === 'CHILD' || session?.user?.role === 'PARENT'));
+          setMembers(data.family.members.filter((m: FamilyMember) => m.role === 'CHILD' || user?.role === 'PARENT'));
           if (data.family.members.length > 0) {
-            const defaultMember = session?.user?.role === 'CHILD' 
-              ? data.family.members.find((m: FamilyMember) => m.id === session.user.id)
+            const defaultMember = user?.role === 'CHILD' 
+              ? data.family.members.find((m: FamilyMember) => m.id === user.id)
               : data.family.members.find((m: FamilyMember) => m.role === 'CHILD');
             if (defaultMember) {
               setSelectedMemberId(defaultMember.id);
@@ -240,7 +240,7 @@ export default function HealthEventsList() {
           >
             🌡️ Log Temperature
           </button>
-          {(session?.user?.role === 'PARENT' || session?.user?.role === 'CHILD') && (
+          {(user?.role === 'PARENT' || user?.role === 'CHILD') && (
             <button
               onClick={() => setShowAddDialog(true)}
               className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"

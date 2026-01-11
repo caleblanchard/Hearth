@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import {
   Cog6ToothIcon,
   CheckCircleIcon,
@@ -20,7 +20,7 @@ interface Module {
 }
 
 export default function ModuleSettingsPage() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const [modules, setModules] = useState<Module[]>([]);
   const [categories, setCategories] = useState<Record<string, Module[]>>({});
   const [loading, setLoading] = useState(true);
@@ -45,7 +45,7 @@ export default function ModuleSettingsPage() {
       }
     }
 
-    if (session?.user?.role === 'PARENT') {
+    if (user?.role === 'PARENT') {
       fetchModules();
     } else {
       setLoading(false);
@@ -103,7 +103,7 @@ export default function ModuleSettingsPage() {
     }
   };
 
-  if (session?.user?.role !== 'PARENT') {
+  if (user?.role !== 'PARENT') {
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center">

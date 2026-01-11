@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { createClient } from '@/lib/supabase/client';
 
 const COUNTRIES = [
   { code: 'US', name: 'United States' },
@@ -281,21 +281,23 @@ export default function OnboardingPage() {
         throw new Error(result.error || 'Setup failed');
       }
 
-      // Auto-login the user
-      const signInResult = await signIn('parent-login', {
+      // Auto-login the user with Supabase Auth
+      const supabase = createClient()
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: data.adminEmail.trim().toLowerCase(),
         password: data.adminPassword,
-        redirect: false,
-      });
+      })
 
-      if (signInResult?.error) {
+      if (signInError) {
         // Setup succeeded but login failed - not critical
-        console.error('Auto-login failed:', signInResult.error);
-        setStep('complete');
-      } else {
-        // Both setup and login succeeded
-        setStep('complete');
+        console.error('Auto-login failed:', signInError)
+        setError('Account created but auto-login failed. Please sign in manually.')
+        setLoading(false)
+        return
       }
+
+      // Both setup and login succeeded
+      setStep('complete');
     } catch (err: any) {
       setError(err.message || 'An error occurred during setup');
       setLoading(false);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
+import { useSupabaseSession, signOut } from '@/hooks/useSupabaseSession';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   HomeIcon,
@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function DashboardNav() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -34,7 +34,7 @@ export default function DashboardNav() {
   ];
 
   // Add parent-only items
-  if (session?.user?.role === 'PARENT') {
+  if (user?.role === 'PARENT') {
     navItems.push({ name: 'Approvals', path: '/dashboard/approvals', icon: CheckBadgeIcon });
     navItems.push({ name: 'Family', path: '/dashboard/family', icon: UsersIcon });
   }
@@ -82,10 +82,10 @@ export default function DashboardNav() {
           {/* User Info & Sign Out */}
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-700 dark:text-gray-300">
-              <span className="font-medium">{session?.user?.name}</span>
-              {session?.user?.role && (
+              <span className="font-medium">{user?.name}</span>
+              {user?.role && (
                 <span className="ml-2 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
-                  {session.user.role}
+                  {user.role}
                 </span>
               )}
             </div>

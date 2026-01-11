@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useRouter } from 'next/navigation';
 import { Heart, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
@@ -13,7 +13,7 @@ interface FamilyMember {
 }
 
 export default function StartSickModePage() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const router = useRouter();
   const { showToast } = useToast();
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -72,7 +72,7 @@ export default function StartSickModePage() {
     }
   };
 
-  if (session?.user?.role !== 'PARENT') {
+  if (user?.role !== 'PARENT') {
     return (
       <div className="max-w-2xl mx-auto p-6">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">

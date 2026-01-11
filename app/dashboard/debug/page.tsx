@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 
 export default function DebugPage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useSupabaseSession();
   const [familyData, setFamilyData] = useState<any>(null);
   const [error, setError] = useState<string>('');
 
@@ -24,7 +24,7 @@ export default function DebugPage() {
       }
     };
 
-    if (status === 'authenticated') {
+    if (!loading && user) {
       fetchFamily();
     }
   }, [status]);
