@@ -43,7 +43,7 @@ export async function createClient() {
  * Returns null if not authenticated
  */
 export async function getAuthContext() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (!user || authError) return null
@@ -79,7 +79,7 @@ export async function getAuthContext() {
  * Get the current user's member record for a specific family
  */
 export async function getMemberInFamily(familyId: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -99,7 +99,7 @@ export async function getMemberInFamily(familyId: string) {
  * Check if current user is a parent in the specified family
  */
 export async function isParentInFamily(familyId: string): Promise<boolean> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
