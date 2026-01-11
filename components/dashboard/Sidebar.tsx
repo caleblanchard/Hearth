@@ -85,7 +85,7 @@ export default function Sidebar() {
     if (user) {
       fetchEnabledModules();
     }
-  }, [session]);
+  }, [user]);
 
   const toggleGroup = (groupName: string) => {
     const newExpanded = new Set(expandedGroups);

@@ -90,7 +90,7 @@ interface DashboardData {
 }
 
 export default function DashboardContent() {
-  const { data: session, status: sessionStatus } = useSession();
+  const { user, loading: sessionLoading } = useSupabaseSession();
   const { guestSession, loading: guestLoading } = useGuestSession();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -110,14 +110,13 @@ export default function DashboardContent() {
   // Redirect if no session (user or guest) - but only after both are done loading
   useEffect(() => {
     // Wait for both session and guest session to finish loading
-    const sessionLoading = sessionStatus === 'loading';
     const stillLoading = sessionLoading || guestLoading;
     
     // Only redirect if we're done loading and there's no session (user or guest)
     if (!stillLoading && !user && !guestSession) {
       router.push('/auth/signin');
     }
-  }, [session, sessionStatus, guestSession, guestLoading, router]);
+  }, [user, sessionLoading, guestSession, guestLoading, router]);
 
   useEffect(() => {
     async function fetchEnabledModules() {
@@ -164,7 +163,6 @@ export default function DashboardContent() {
     }
 
     // Wait for session to finish loading before fetching data
-    const sessionLoading = sessionStatus === 'loading';
     const stillLoading = sessionLoading || guestLoading;
     
     // Don't fetch if we're still loading or if there's no session
@@ -179,7 +177,7 @@ export default function DashboardContent() {
 
     fetchEnabledModules();
     fetchDashboard();
-  }, [session, sessionStatus, guestSession, guestLoading]);
+  }, [user, sessionLoading, guestSession, guestLoading]);
 
   if (loading) {
     return (
