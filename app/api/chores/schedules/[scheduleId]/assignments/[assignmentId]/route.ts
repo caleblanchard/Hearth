@@ -9,6 +9,7 @@ export async function DELETE(
   { params }: { params: Promise<{ scheduleId: string; assignmentId: string } }
 ) {
   try {
+    const { scheduleId, assignmentId } = await params
     const supabase = await createClient();
     const authContext = await getAuthContext();
 
@@ -39,7 +40,7 @@ export async function DELETE(
           assignments:chore_assignments!inner(*)
         )
       `)
-      .eq('id', params.assignmentId)
+      .eq('id', assignmentId)
       .eq('schedule.assignments.is_active', true)
       .single();
 
@@ -58,7 +59,7 @@ export async function DELETE(
     }
 
     // Soft delete assignment
-    await removeChoreAssignment(params.assignmentId);
+    await removeChoreAssignment(assignmentId);
 
     return NextResponse.json({
       success: true,

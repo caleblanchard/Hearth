@@ -29,7 +29,7 @@ export async function PATCH(
     const { data: dish } = await supabase
       .from('meal_plan_dishes')
       .select('entry:meal_plan_entries!inner(family_id)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!dish || dish.entry.family_id !== familyId) {
@@ -37,7 +37,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const updatedDish = await updateDish(params.id, body);
+    const updatedDish = await updateDish(id, body);
 
     return NextResponse.json({
       success: true,
@@ -75,14 +75,14 @@ export async function DELETE(
     const { data: dish } = await supabase
       .from('meal_plan_dishes')
       .select('entry:meal_plan_entries!inner(family_id)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!dish || dish.entry.family_id !== familyId) {
       return NextResponse.json({ error: 'Dish not found' }, { status: 404 });
     }
 
-    await deleteDish(params.id);
+    await deleteDish(id);
 
     return NextResponse.json({
       success: true,

@@ -27,7 +27,7 @@ export async function POST(
     const { data: event } = await supabase
       .from('health_events')
       .select('member:family_members!inner(family_id)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!event || event.member.family_id !== familyId) {
@@ -35,7 +35,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const medication = await addMedicationToHealthEvent(params.id, memberId, body);
+    const medication = await addMedicationToHealthEvent(id, memberId, body);
 
     return NextResponse.json({
       success: true,

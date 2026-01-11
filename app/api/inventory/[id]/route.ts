@@ -25,7 +25,7 @@ export async function GET(
     const { data: item, error } = await supabase
       .from('inventory_items')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error || !item) {
@@ -68,7 +68,7 @@ export async function PATCH(
     const { data: existing } = await supabase
       .from('inventory_items')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!existing || existing.family_id !== familyId) {
@@ -76,7 +76,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const item = await updateInventoryItem(params.id, body);
+    const item = await updateInventoryItem(id, body);
 
     return NextResponse.json({
       success: true,
@@ -110,14 +110,14 @@ export async function DELETE(
     const { data: existing } = await supabase
       .from('inventory_items')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Inventory item not found' }, { status: 404 });
     }
 
-    await deleteInventoryItem(params.id);
+    await deleteInventoryItem(id);
 
     return NextResponse.json({
       success: true,

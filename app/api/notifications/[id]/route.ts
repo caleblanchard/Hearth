@@ -20,7 +20,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Verify notification belongs to user
     const { data: notification } = await supabase
@@ -79,7 +79,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Verify notification belongs to user
     const { data: notification } = await supabase

@@ -25,7 +25,7 @@ export async function GET(
     const { data: pet } = await supabase
       .from('pets')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!pet) {
@@ -36,7 +36,7 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const visits = await getPetVetVisits(params.id);
+    const visits = await getPetVetVisits(id);
 
     return NextResponse.json({ visits });
   } catch (error) {
@@ -68,7 +68,7 @@ export async function POST(
     const { data: pet } = await supabase
       .from('pets')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!pet || pet.family_id !== familyId) {
@@ -76,7 +76,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const visit = await addPetVetVisit(params.id, memberId, body);
+    const visit = await addPetVetVisit(id, memberId, body);
 
     return NextResponse.json({
       success: true,

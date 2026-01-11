@@ -32,7 +32,7 @@ export async function GET(
       );
     }
 
-    const dependencies = await getTaskDependencies(params.taskId);
+    const dependencies = await getTaskDependencies(taskId);
 
     return NextResponse.json({ dependencies });
   } catch (error) {
@@ -75,7 +75,7 @@ export async function POST(
       return NextResponse.json({ error: 'blockingTaskId is required' }, { status: 400 });
     }
 
-    const dependency = await addTaskDependency(params.taskId, blockingTaskId);
+    const dependency = await addTaskDependency(taskId, blockingTaskId);
 
     return NextResponse.json({
       success: true,
@@ -122,7 +122,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'blockingTaskId is required' }, { status: 400 });
     }
 
-    await removeTaskDependency(params.taskId, blockingTaskId);
+    await removeTaskDependency(taskId, blockingTaskId);
 
     return NextResponse.json({
       success: true,

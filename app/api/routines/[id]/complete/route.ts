@@ -27,7 +27,7 @@ export async function POST(
     const { data: routine } = await supabase
       .from('routines')
       .select('family_id, member_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!routine) {
@@ -45,7 +45,7 @@ export async function POST(
     const body = await request.json();
     const { notes, completedBy } = body;
 
-    const result = await completeRoutine(params.id, completedBy || memberId, notes || null);
+    const result = await completeRoutine(id, completedBy || memberId, notes || null);
 
     return NextResponse.json({
       success: true,

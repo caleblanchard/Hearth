@@ -27,7 +27,7 @@ export async function PATCH(
     const { data: post } = await supabase
       .from('communication_posts')
       .select('family_id, author_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!post) {
@@ -55,7 +55,7 @@ export async function PATCH(
       }
     }
 
-    const updatedPost = await updateCommunicationPost(params.id, body);
+    const updatedPost = await updateCommunicationPost(id, body);
 
     return NextResponse.json({
       success: true,
@@ -91,7 +91,7 @@ export async function DELETE(
     const { data: post } = await supabase
       .from('communication_posts')
       .select('family_id, author_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!post) {
@@ -111,7 +111,7 @@ export async function DELETE(
       );
     }
 
-    await deleteCommunicationPost(params.id);
+    await deleteCommunicationPost(id);
 
     return NextResponse.json({
       success: true,

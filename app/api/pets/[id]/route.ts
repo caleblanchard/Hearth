@@ -32,7 +32,7 @@ export async function GET(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const pet = await getPet(params.id);
+    const pet = await getPet(id);
 
     if (!pet) {
       return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
@@ -79,13 +79,13 @@ export async function PATCH(
     }
 
     // Verify pet exists
-    const existing = await getPet(params.id);
+    const existing = await getPet(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const pet = await updatePet(params.id, body);
+    const pet = await updatePet(id, body);
 
     return NextResponse.json({
       success: true,
@@ -126,12 +126,12 @@ export async function DELETE(
     }
 
     // Verify pet exists
-    const existing = await getPet(params.id);
+    const existing = await getPet(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
     }
 
-    await deletePet(params.id);
+    await deletePet(id);
 
     return NextResponse.json({
       success: true,

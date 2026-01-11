@@ -36,7 +36,7 @@ export async function PATCH(
     const { data: rule } = await supabase
       .from('automation_rules')
       .select('family_id, is_enabled')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!rule) {
@@ -48,7 +48,7 @@ export async function PATCH(
     }
 
     // Toggle the rule
-    const updatedRule = await toggleAutomationRule(params.id);
+    const updatedRule = await toggleAutomationRule(id);
 
     // Audit log
     await supabase.from('audit_logs').insert({
@@ -56,7 +56,7 @@ export async function PATCH(
       member_id: memberId,
       action: updatedRule.is_enabled ? 'RULE_ENABLED' : 'RULE_DISABLED',
       entity_type: 'RULE',
-      entity_id: params.id,
+      entity_id: id,
       result: 'SUCCESS',
       metadata: { previousState: rule.is_enabled },
     });

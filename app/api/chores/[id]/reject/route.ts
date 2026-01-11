@@ -28,7 +28,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
     }
 
-    const { id: completionId } = params;
+    const { id: completionId } = await params;
     const { reason } = await request.json();
 
     // Use RPC function for rejection

@@ -48,7 +48,7 @@ export async function GET(
     }
 
     // Fetch the rule
-    const rule = await getAutomationRule(params.id);
+    const rule = await getAutomationRule(id);
 
     if (!rule) {
       return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
@@ -102,7 +102,7 @@ export async function PATCH(
     }
 
     // Verify rule exists
-    const existing = await getAutomationRule(params.id);
+    const existing = await getAutomationRule(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
     }
@@ -125,7 +125,7 @@ export async function PATCH(
       }
     }
 
-    const rule = await updateAutomationRule(params.id, body);
+    const rule = await updateAutomationRule(id, body);
 
     return NextResponse.json({
       success: true,
@@ -174,12 +174,12 @@ export async function DELETE(
     }
 
     // Verify rule exists
-    const existing = await getAutomationRule(params.id);
+    const existing = await getAutomationRule(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
     }
 
-    await deleteAutomationRule(params.id);
+    await deleteAutomationRule(id);
 
     return NextResponse.json({
       success: true,

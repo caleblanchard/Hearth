@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const item = await getMaintenanceItem(params.id);
+    const item = await getMaintenanceItem(id);
 
     if (!item) {
       return NextResponse.json(
@@ -59,13 +59,13 @@ export async function PATCH(
     }
 
     // Verify item exists
-    const existing = await getMaintenanceItem(params.id);
+    const existing = await getMaintenanceItem(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Maintenance item not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const item = await updateMaintenanceItem(params.id, body);
+    const item = await updateMaintenanceItem(id, body);
 
     return NextResponse.json({
       success: true,
@@ -95,12 +95,12 @@ export async function DELETE(
     }
 
     // Verify item exists
-    const existing = await getMaintenanceItem(params.id);
+    const existing = await getMaintenanceItem(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Maintenance item not found' }, { status: 404 });
     }
 
-    await deleteMaintenanceItem(params.id);
+    await deleteMaintenanceItem(id);
 
     return NextResponse.json({
       success: true,

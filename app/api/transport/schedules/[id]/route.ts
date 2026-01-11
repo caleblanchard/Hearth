@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const schedule = await getTransportSchedule(params.id);
+    const schedule = await getTransportSchedule(id);
 
     if (!schedule || schedule.family_id !== familyId) {
       return NextResponse.json(
@@ -56,13 +56,13 @@ export async function PATCH(
     }
 
     // Verify schedule exists
-    const existing = await getTransportSchedule(params.id);
+    const existing = await getTransportSchedule(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Transport schedule not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const schedule = await updateTransportSchedule(params.id, body);
+    const schedule = await updateTransportSchedule(id, body);
 
     return NextResponse.json({
       success: true,
@@ -95,12 +95,12 @@ export async function DELETE(
     }
 
     // Verify schedule exists
-    const existing = await getTransportSchedule(params.id);
+    const existing = await getTransportSchedule(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Transport schedule not found' }, { status: 404 });
     }
 
-    await deleteTransportSchedule(params.id);
+    await deleteTransportSchedule(id);
 
     return NextResponse.json({
       success: true,

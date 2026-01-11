@@ -36,7 +36,7 @@ export async function POST(
         chore_definition:chore_definitions!inner(family_id),
         assignments:chore_assignments!inner(*)
       `)
-      .eq('id', params.scheduleId)
+      .eq('id', scheduleId)
       .eq('assignments.is_active', true)
       .single();
 
@@ -85,7 +85,7 @@ export async function POST(
     }
 
     // Create assignment
-    const newAssignment = await addChoreAssignment(params.scheduleId, assignMemberId, finalRotationOrder);
+    const newAssignment = await addChoreAssignment(scheduleId, assignMemberId, finalRotationOrder);
 
     return NextResponse.json({
       success: true,

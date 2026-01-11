@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const document = await getDocument(params.id);
+    const document = await getDocument(id);
 
     if (!document) {
       return NextResponse.json(
@@ -58,13 +58,13 @@ export async function PATCH(
     }
 
     // Verify document exists
-    const existing = await getDocument(params.id);
+    const existing = await getDocument(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const document = await updateDocument(params.id, body);
+    const document = await updateDocument(id, body);
 
     return NextResponse.json({
       success: true,
@@ -94,12 +94,12 @@ export async function DELETE(
     }
 
     // Verify document exists
-    const existing = await getDocument(params.id);
+    const existing = await getDocument(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
-    await deleteDocument(params.id);
+    await deleteDocument(id);
 
     return NextResponse.json({
       success: true,

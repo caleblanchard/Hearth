@@ -27,7 +27,7 @@ export async function POST(
     const { data: item } = await supabase
       .from('maintenance_items')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!item) {
@@ -45,7 +45,7 @@ export async function POST(
     const { cost, serviceProvider, notes, photoUrls } = body;
 
     // Log completion - all family members can log completions
-    const result = await completeMaintenanceItem(params.id, memberId, {
+    const result = await completeMaintenanceItem(id, memberId, {
       cost: cost || null,
       serviceProvider: serviceProvider || null,
       notes: notes || null,

@@ -36,7 +36,7 @@ export async function POST(
     const { data: document } = await supabase
       .from('documents')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!document || document.family_id !== familyId) {
@@ -44,7 +44,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const shareLink = await createDocumentShareLink(params.id, memberId, body);
+    const shareLink = await createDocumentShareLink(id, memberId, body);
 
     return NextResponse.json({
       success: true,

@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const event = await getHealthEvent(params.id);
+    const event = await getHealthEvent(id);
 
     if (!event) {
       return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
@@ -65,7 +65,7 @@ export async function PATCH(
     }
 
     // Verify event exists and belongs to family
-    const existing = await getHealthEvent(params.id);
+    const existing = await getHealthEvent(id);
     if (!existing) {
       return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
     }
@@ -81,7 +81,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const event = await updateHealthEvent(params.id, body);
+    const event = await updateHealthEvent(id, body);
 
     return NextResponse.json({
       success: true,
@@ -112,7 +112,7 @@ export async function DELETE(
     }
 
     // Verify event exists and belongs to family
-    const existing = await getHealthEvent(params.id);
+    const existing = await getHealthEvent(id);
     if (!existing) {
       return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
     }
@@ -127,7 +127,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
     }
 
-    await deleteHealthEvent(params.id);
+    await deleteHealthEvent(id);
 
     return NextResponse.json({
       success: true,

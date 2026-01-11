@@ -25,7 +25,7 @@ export async function PATCH(
     const { data: entry } = await supabase
       .from('meal_plan_entries')
       .select('*, meal_plan:meal_plans!inner(family_id)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!entry) {
@@ -41,7 +41,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const updatedEntry = await updateMealPlanEntry(params.id, body);
+    const updatedEntry = await updateMealPlanEntry(id, body);
 
     return NextResponse.json({
       success: true,
@@ -75,7 +75,7 @@ export async function DELETE(
     const { data: entry } = await supabase
       .from('meal_plan_entries')
       .select('*, meal_plan:meal_plans!inner(family_id)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!entry) {
@@ -90,7 +90,7 @@ export async function DELETE(
       );
     }
 
-    await deleteMealPlanEntry(params.id);
+    await deleteMealPlanEntry(id);
 
     return NextResponse.json({
       success: true,

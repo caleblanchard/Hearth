@@ -28,7 +28,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Get redemption
     const { data: redemption } = await supabase

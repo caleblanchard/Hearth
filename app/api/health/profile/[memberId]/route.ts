@@ -25,14 +25,14 @@ export async function GET(
     const { data: member } = await supabase
       .from('family_members')
       .select('family_id')
-      .eq('id', params.memberId)
+      .eq('id', memberId)
       .single();
 
     if (!member || member.family_id !== familyId) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
-    const profile = await getMedicalProfile(params.memberId);
+    const profile = await getMedicalProfile(memberId);
 
     return NextResponse.json({ profile });
   } catch (error) {
@@ -62,7 +62,7 @@ export async function PUT(
     const { data: member } = await supabase
       .from('family_members')
       .select('family_id')
-      .eq('id', params.memberId)
+      .eq('id', memberId)
       .single();
 
     if (!member || member.family_id !== familyId) {
@@ -70,7 +70,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const profile = await updateMedicalProfile(params.memberId, body);
+    const profile = await updateMedicalProfile(memberId, body);
 
     return NextResponse.json({
       success: true,

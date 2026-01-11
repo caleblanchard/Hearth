@@ -34,7 +34,7 @@ export async function POST(
     const body = await request.json();
     const { context } = body;
 
-    const result = await testAutomationRule(params.id, context || {});
+    const result = await testAutomationRule(id, context || {});
 
     return NextResponse.json({
       success: true,

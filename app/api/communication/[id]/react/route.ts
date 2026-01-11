@@ -27,7 +27,7 @@ export async function POST(
     const { data: post } = await supabase
       .from('communication_posts')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!post) {
@@ -53,7 +53,7 @@ export async function POST(
       );
     }
 
-    const reaction = await addPostReaction(params.id, memberId, emoji.trim());
+    const reaction = await addPostReaction(id, memberId, emoji.trim());
 
     return NextResponse.json({
       success: true,
@@ -89,7 +89,7 @@ export async function DELETE(
     const { data: post } = await supabase
       .from('communication_posts')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!post) {
@@ -104,7 +104,7 @@ export async function DELETE(
     const body = await request.json();
     const { emoji } = body;
 
-    await removePostReaction(params.id, memberId, emoji);
+    await removePostReaction(id, memberId, emoji);
 
     return NextResponse.json({
       success: true,

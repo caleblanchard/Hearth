@@ -32,7 +32,7 @@ export async function GET(
       );
     }
 
-    const task = await getProjectTask(params.taskId);
+    const task = await getProjectTask(taskId);
 
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
@@ -85,7 +85,7 @@ export async function PATCH(
     }
 
     // Verify task exists
-    const existing = await getProjectTask(params.taskId);
+    const existing = await getProjectTask(taskId);
     if (!existing) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
@@ -102,7 +102,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const task = await updateProjectTask(params.taskId, body);
+    const task = await updateProjectTask(taskId, body);
 
     return NextResponse.json({
       success: true,
@@ -144,7 +144,7 @@ export async function DELETE(
     }
 
     // Verify task exists
-    const existing = await getProjectTask(params.taskId);
+    const existing = await getProjectTask(taskId);
     if (!existing) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
@@ -160,7 +160,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    await deleteProjectTask(params.taskId);
+    await deleteProjectTask(taskId);
 
     return NextResponse.json({
       success: true,

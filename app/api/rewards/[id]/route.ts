@@ -29,7 +29,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const updates = await request.json();
 
     // Verify reward belongs to user's family
@@ -95,7 +95,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Verify reward belongs to user's family
     const { data: reward } = await supabase

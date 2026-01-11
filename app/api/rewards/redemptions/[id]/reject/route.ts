@@ -31,7 +31,7 @@ export async function POST(
 
     const { reason } = await request.json();
 
-    const result = await rejectRewardRedemption(params.id, reason || null);
+    const result = await rejectRewardRedemption(id, reason || null);
 
     return NextResponse.json({
       success: true,

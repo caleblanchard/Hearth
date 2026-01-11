@@ -27,14 +27,14 @@ export async function GET(
     const { data: targetMember } = await supabase
       .from('family_members')
       .select('family_id, role')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!targetMember || targetMember.family_id !== familyId) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
-    const modules = await getMemberModuleAccess(params.id);
+    const modules = await getMemberModuleAccess(id);
 
     return NextResponse.json({ modules });
   } catch (error) {
@@ -72,7 +72,7 @@ export async function PUT(
     const { data: targetMember } = await supabase
       .from('family_members')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!targetMember || targetMember.family_id !== familyId) {
@@ -80,7 +80,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const modules = await updateMemberModuleAccess(params.id, body.modules);
+    const modules = await updateMemberModuleAccess(id, body.modules);
 
     return NextResponse.json({
       success: true,

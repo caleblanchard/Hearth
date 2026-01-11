@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const routine = await getRoutine(params.id);
+    const routine = await getRoutine(id);
 
     if (!routine) {
       return NextResponse.json({ error: 'Routine not found' }, { status: 404 });
@@ -61,13 +61,13 @@ export async function PATCH(
     }
 
     // Verify routine exists
-    const existing = await getRoutine(params.id);
+    const existing = await getRoutine(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Routine not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const routine = await updateRoutine(params.id, body);
+    const routine = await updateRoutine(id, body);
 
     return NextResponse.json({
       success: true,
@@ -100,12 +100,12 @@ export async function DELETE(
     }
 
     // Verify routine exists
-    const existing = await getRoutine(params.id);
+    const existing = await getRoutine(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Routine not found' }, { status: 404 });
     }
 
-    await deleteRoutine(params.id);
+    await deleteRoutine(id);
 
     return NextResponse.json({
       success: true,

@@ -31,7 +31,7 @@ export async function GET(
       );
     }
 
-    const project = await getProject(params.id);
+    const project = await getProject(id);
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -77,13 +77,13 @@ export async function PATCH(
     }
 
     // Verify project exists
-    const existing = await getProject(params.id);
+    const existing = await getProject(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const project = await updateProject(params.id, body);
+    const project = await updateProject(id, body);
 
     return NextResponse.json({
       success: true,
@@ -124,12 +124,12 @@ export async function DELETE(
     }
 
     // Verify project exists
-    const existing = await getProject(params.id);
+    const existing = await getProject(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    await deleteProject(params.id);
+    await deleteProject(id);
 
     return NextResponse.json({
       success: true,

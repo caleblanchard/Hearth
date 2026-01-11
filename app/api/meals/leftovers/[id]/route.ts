@@ -27,7 +27,7 @@ export async function PATCH(
     const { data: leftover } = await supabase
       .from('leftovers')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!leftover) {
@@ -63,9 +63,9 @@ export async function PATCH(
     // Mark as used or tossed
     let updatedLeftover;
     if (action === 'used') {
-      updatedLeftover = await markLeftoverUsed(params.id, memberId);
+      updatedLeftover = await markLeftoverUsed(id, memberId);
     } else {
-      updatedLeftover = await markLeftoverTossed(params.id, memberId);
+      updatedLeftover = await markLeftoverTossed(id, memberId);
     }
 
     return NextResponse.json({

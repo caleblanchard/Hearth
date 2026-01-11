@@ -20,7 +20,7 @@ export async function POST(
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
-    const { id: rewardId } = params;
+    const { id: rewardId } = await params;
     
     // Validate JSON input
     let body;

@@ -36,7 +36,7 @@ export async function DELETE(
     const { data: existingInvite } = await supabase
       .from('guest_invites')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!existingInvite) {
@@ -50,7 +50,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    await revokeGuestInvite(params.id);
+    await revokeGuestInvite(id);
 
     return NextResponse.json({
       success: true,

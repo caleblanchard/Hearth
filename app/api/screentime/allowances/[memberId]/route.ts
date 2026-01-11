@@ -29,7 +29,7 @@ export async function GET(
     const { data: member } = await supabase
       .from('family_members')
       .select('id, family_id, name')
-      .eq('id', params.memberId)
+      .eq('id', memberId)
       .single();
 
     if (!member || member.family_id !== familyId) {
@@ -39,7 +39,7 @@ export async function GET(
       );
     }
 
-    const allowances = await getScreenTimeAllowances(params.memberId);
+    const allowances = await getScreenTimeAllowances(memberId);
 
     return NextResponse.json({ allowances });
   } catch (error) {

@@ -23,7 +23,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const updates = await request.json();
 
     // Verify item belongs to user's family
@@ -102,7 +102,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Verify item belongs to user's family
     const { data: item } = await supabase

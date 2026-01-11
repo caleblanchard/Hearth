@@ -6,9 +6,10 @@ import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ scheduleId: string } }
+  { params }: { params: Promise<{ scheduleId: string }> }
 ) {
   try {
+    const { scheduleId } = await params
     const supabase = await createClient();
     const authContext = await getAuthContext();
 
@@ -32,7 +33,7 @@ export async function PATCH(
     const { data: existingSchedule } = await supabase
       .from('chore_schedules')
       .select('*, chore_definition:chore_definitions!inner(family_id)')
-      .eq('id', params.scheduleId)
+      .eq('id', scheduleId)
       .single();
 
     if (!existingSchedule) {
@@ -89,7 +90,7 @@ export async function PATCH(
     }
 
     // Update schedule
-    const updatedSchedule = await updateChoreSchedule(params.scheduleId, updates);
+    const updatedSchedule = await updateChoreSchedule(scheduleId, updates);
 
     return NextResponse.json({
       success: true,

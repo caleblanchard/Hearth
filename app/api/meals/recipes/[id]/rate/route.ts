@@ -27,7 +27,7 @@ export async function POST(
     const { data: recipe } = await supabase
       .from('recipes')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!recipe) {
@@ -53,7 +53,7 @@ export async function POST(
       );
     }
 
-    const result = await rateRecipe(params.id, memberId, rating, notes || null);
+    const result = await rateRecipe(id, memberId, rating, notes || null);
 
     return NextResponse.json({
       success: true,

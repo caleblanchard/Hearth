@@ -21,7 +21,7 @@ export async function GET(
           )
         )
       `)
-      .eq('token', params.token)
+      .eq('token', token)
       .single();
 
     if (!shareLink) {
@@ -79,7 +79,7 @@ export async function GET(
           documentId: shareLink.document_id,
           documentName: shareLink.document.name,
           shareLinkId: shareLink.id,
-          token: params.token,
+          token: token,
         },
       });
 

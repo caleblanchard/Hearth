@@ -36,14 +36,14 @@ export async function GET(
     const { data: project } = await supabase
       .from('projects')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!project || project.family_id !== familyId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    const tasks = await getProjectTasks(params.id);
+    const tasks = await getProjectTasks(id);
 
     return NextResponse.json({ tasks });
   } catch (error) {
@@ -84,7 +84,7 @@ export async function POST(
     const { data: project } = await supabase
       .from('projects')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!project || project.family_id !== familyId) {
@@ -92,7 +92,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const task = await createProjectTask(params.id, body);
+    const task = await createProjectTask(id, body);
 
     return NextResponse.json({
       success: true,

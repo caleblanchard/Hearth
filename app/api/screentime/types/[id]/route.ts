@@ -30,7 +30,7 @@ export async function GET(
     const { data: type, error } = await supabase
       .from('screen_time_types')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('family_id', familyId)
       .single();
 
@@ -72,7 +72,7 @@ export async function PATCH(
     const { data: existing } = await supabase
       .from('screen_time_types')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!existing || existing.family_id !== familyId) {
@@ -80,7 +80,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const type = await updateScreenTimeType(params.id, body);
+    const type = await updateScreenTimeType(id, body);
 
     return NextResponse.json({
       success: true,
@@ -117,14 +117,14 @@ export async function DELETE(
     const { data: existing } = await supabase
       .from('screen_time_types')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Screen time type not found' }, { status: 404 });
     }
 
-    await deleteScreenTimeType(params.id);
+    await deleteScreenTimeType(id);
 
     return NextResponse.json({
       success: true,

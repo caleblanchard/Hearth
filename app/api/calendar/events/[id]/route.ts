@@ -21,7 +21,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     // Verify the event belongs to the user's family
@@ -66,7 +66,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Verify the event belongs to the user's family
     const { data: event } = await supabase

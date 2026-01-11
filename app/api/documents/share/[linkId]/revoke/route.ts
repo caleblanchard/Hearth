@@ -36,14 +36,14 @@ export async function POST(
     const { data: shareLink } = await supabase
       .from('document_share_links')
       .select('document:documents!inner(family_id)')
-      .eq('id', params.linkId)
+      .eq('id', linkId)
       .single();
 
     if (!shareLink || shareLink.document.family_id !== familyId) {
       return NextResponse.json({ error: 'Share link not found' }, { status: 404 });
     }
 
-    await revokeDocumentShareLink(params.linkId);
+    await revokeDocumentShareLink(linkId);
 
     return NextResponse.json({
       success: true,

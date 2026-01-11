@@ -6,9 +6,10 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const authContext = await getAuthContext();
 
     if (!authContext) {
@@ -20,7 +21,7 @@ export async function GET(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const subscription = await getCalendarSubscription(params.id);
+    const subscription = await getCalendarSubscription(id);
 
     if (!subscription || subscription.family_id !== familyId) {
       return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
@@ -49,13 +50,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const existing = await getCalendarSubscription(params.id);
+    const existing = await getCalendarSubscription(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const subscription = await updateCalendarSubscription(params.id, body);
+    const subscription = await updateCalendarSubscription(id, body);
 
     return NextResponse.json({
       success: true,
@@ -84,12 +85,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const existing = await getCalendarSubscription(params.id);
+    const existing = await getCalendarSubscription(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
     }
 
-    await deleteCalendarSubscription(params.id);
+    await deleteCalendarSubscription(id);
 
     return NextResponse.json({
       success: true,

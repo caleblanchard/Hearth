@@ -33,7 +33,7 @@ export async function PATCH(
     const { data: targetMember } = await supabase
       .from('family_members')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!targetMember || targetMember.family_id !== familyId) {
@@ -41,7 +41,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const member = await updateFamilyMember(params.id, body);
+    const member = await updateFamilyMember(id, body);
 
     // Audit log
     await supabase.from('audit_logs').insert({
@@ -49,7 +49,7 @@ export async function PATCH(
       member_id: memberId,
       action: 'MEMBER_UPDATED',
       entity_type: 'MEMBER',
-      entity_id: params.id,
+      entity_id: id,
       result: 'SUCCESS',
       metadata: body,
     });
@@ -94,14 +94,14 @@ export async function DELETE(
     const { data: targetMember } = await supabase
       .from('family_members')
       .select('family_id, name')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!targetMember || targetMember.family_id !== familyId) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
-    await deleteFamilyMember(params.id);
+    await deleteFamilyMember(id);
 
     // Audit log
     await supabase.from('audit_logs').insert({
@@ -109,7 +109,7 @@ export async function DELETE(
       member_id: memberId,
       action: 'MEMBER_DELETED',
       entity_type: 'MEMBER',
-      entity_id: params.id,
+      entity_id: id,
       result: 'SUCCESS',
       metadata: { name: targetMember.name },
     });

@@ -27,7 +27,7 @@ export async function POST(
     const { data: pet } = await supabase
       .from('pets')
       .select('family_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!pet) {
@@ -42,7 +42,7 @@ export async function POST(
     const { foodType, amount, notes } = body;
 
     // Log feeding
-    const feeding = await recordPetFeeding(params.id, memberId, {
+    const feeding = await recordPetFeeding(id, memberId, {
       foodType: foodType || null,
       amount: amount || null,
       notes: notes || null,

@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
-    const connection = await getCalendarConnection(params.id);
+    const connection = await getCalendarConnection(id);
 
     if (!connection || connection.member_id !== memberId) {
       return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
@@ -49,13 +49,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
-    const existing = await getCalendarConnection(params.id);
+    const existing = await getCalendarConnection(id);
     if (!existing || existing.member_id !== memberId) {
       return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const connection = await updateCalendarConnection(params.id, body);
+    const connection = await updateCalendarConnection(id, body);
 
     return NextResponse.json({
       success: true,
@@ -84,12 +84,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
-    const existing = await getCalendarConnection(params.id);
+    const existing = await getCalendarConnection(id);
     if (!existing || existing.member_id !== memberId) {
       return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
     }
 
-    await deleteCalendarConnection(params.id);
+    await deleteCalendarConnection(id);
 
     return NextResponse.json({
       success: true,

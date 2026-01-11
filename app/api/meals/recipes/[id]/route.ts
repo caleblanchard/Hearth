@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const recipe = await getRecipe(params.id);
+    const recipe = await getRecipe(id);
 
     if (!recipe) {
       return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
@@ -55,13 +55,13 @@ export async function PATCH(
     }
 
     // Verify recipe exists
-    const existing = await getRecipe(params.id);
+    const existing = await getRecipe(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const recipe = await updateRecipe(params.id, body);
+    const recipe = await updateRecipe(id, body);
 
     return NextResponse.json({
       success: true,
@@ -91,12 +91,12 @@ export async function DELETE(
     }
 
     // Verify recipe exists
-    const existing = await getRecipe(params.id);
+    const existing = await getRecipe(id);
     if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
     }
 
-    await deleteRecipe(params.id);
+    await deleteRecipe(id);
 
     return NextResponse.json({
       success: true,

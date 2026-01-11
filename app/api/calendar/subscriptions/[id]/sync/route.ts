@@ -20,7 +20,7 @@ export async function POST(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const result = await syncCalendarSubscription(params.id, familyId);
+    const result = await syncCalendarSubscription(id, familyId);
 
     return NextResponse.json({
       success: true,

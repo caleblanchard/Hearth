@@ -21,7 +21,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const symptom = await addSymptomToHealthEvent(params.id, body);
+    const symptom = await addSymptomToHealthEvent(id, body);
 
     return NextResponse.json({
       success: true,

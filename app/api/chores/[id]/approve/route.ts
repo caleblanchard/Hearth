@@ -28,7 +28,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
     }
 
-    const { id: completionId } = params;
+    const { id: completionId } = await params;
 
     // Use RPC function for atomic approval with credit award
     const result = await approveChore(completionId, memberId);

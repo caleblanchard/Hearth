@@ -19,7 +19,7 @@ export async function POST(
     const { data: invite } = await supabase
       .from('guest_invites')
       .select('*')
-      .eq('invite_code', params.code)
+      .eq('invite_code', code)
       .single();
 
     if (!invite) {
