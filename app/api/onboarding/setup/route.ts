@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { hash } from 'bcrypt';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { registerFamily } from '@/lib/auth/signup';
 import { generateSampleData } from '@/lib/sample-data-generator';
 import { sendWelcomeEmail } from '@/lib/welcome-email';
 import { logger } from '@/lib/logger';
@@ -116,52 +117,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // NOTE: Supabase doesn't have built-in transactions like Prisma, so we'll do our best
-    // to maintain consistency. For a one-time setup operation, this is acceptable.
+    // NOTE: We use the registerFamily helper which:
+    // 1. Creates Supabase Auth user
+    // 2. Uses admin client to create family (bypassing RLS)
+    // 3. Links family_member to auth user
     
     try {
-      // Create family
-      const { data: family, error: familyError } = await supabase
-        .from('families')
-        .insert({
-          name: familyName.trim(),
-          timezone: timezone || 'America/New_York',
-          location: location?.trim() || null,
-          latitude: latitude !== undefined && latitude !== null ? parseFloat(latitude.toString()) : null,
-          longitude: longitude !== undefined && longitude !== null ? parseFloat(longitude.toString()) : null,
-        })
-        .select()
-        .single();
+      // Use the signup helper that handles RLS correctly
+      const result = await registerFamily({
+        familyName: familyName.trim(),
+        timezone: timezone || 'America/New_York',
+        location: location?.trim() || null,
+        latitude: latitude !== undefined && latitude !== null ? parseFloat(latitude.toString()) : null,
+        longitude: longitude !== undefined && longitude !== null ? parseFloat(longitude.toString()) : null,
+        parentName: adminName.trim(),
+        email: adminEmail.trim().toLowerCase(),
+        password: adminPassword,
+      });
 
-      if (familyError || !family) {
-        throw new Error('Failed to create family: ' + familyError?.message);
+      if (!result.success || !result.family || !result.member) {
+        throw new Error(result.error || 'Failed to create family');
       }
 
-      // Hash password
-      const passwordHash = await hash(adminPassword, 10);
+      const family = result.family;
+      const admin = result.member;
 
-      // Create admin user
-      const { data: admin, error: adminError } = await supabase
-        .from('family_members')
-        .insert({
-          family_id: family.id,
-          name: adminName.trim(),
-          email: adminEmail.trim().toLowerCase(),
-          password_hash: passwordHash,
-          role: 'PARENT',
-          is_active: true,
-        })
-        .select()
-        .single();
-
-      if (adminError || !admin) {
-        throw new Error('Failed to create admin: ' + adminError?.message);
-      }
-
-      // Create module configurations for selected modules
+      // Create module configurations for selected modules using admin client
+      const adminClient = createAdminClient();
       const moduleConfigurations = [];
       for (const moduleId of selectedModules) {
-        const { data: config } = await supabase
+        const { data: config } = await adminClient
           .from('module_configurations')
           .insert({
             family_id: family.id,
@@ -193,8 +178,8 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Mark onboarding as complete
-      const { data: systemConfig } = await supabase
+      // Mark onboarding as complete using admin client
+      const { data: systemConfig } = await adminClient
         .from('system_config')
         .upsert({
           id: 'system',
