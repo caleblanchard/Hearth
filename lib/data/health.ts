@@ -247,3 +247,118 @@ export async function addMedicationToHealthEvent(
 
   return data
 }
+
+/**
+ * Add symptom to a health event
+ */
+export async function addSymptomToHealthEvent(
+  eventId: string,
+  symptomData: {
+    symptom: string
+    severity?: string
+    notes?: string
+  }
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('health_event_symptoms')
+    .insert({
+      health_event_id: eventId,
+      symptom: symptomData.symptom,
+      severity: symptomData.severity || 'MODERATE',
+      notes: symptomData.notes,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Get a single health event
+ */
+export async function getHealthEvent(eventId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('health_events')
+    .select('*')
+    .eq('id', eventId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Get medications for a member
+ */
+export async function getMedications(memberId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('medications')
+    .select('*')
+    .eq('member_id', memberId)
+    .order('name')
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Update medical profile
+ */
+export async function updateMedicalProfile(
+  memberId: string,
+  updates: any
+) {
+  return upsertMedicalProfile(memberId, updates)
+}
+
+/**
+ * Record temperature reading
+ */
+export async function recordTemperatureReading(
+  memberId: string,
+  temperature: number,
+  unit: 'FAHRENHEIT' | 'CELSIUS' = 'FAHRENHEIT'
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('temperature_readings')
+    .insert({
+      member_id: memberId,
+      temperature,
+      unit,
+      recorded_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Get temperature readings for a member
+ */
+export async function getTemperatureReadings(memberId: string, days = 7) {
+  const supabase = await createClient()
+
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - days)
+
+  const { data, error } = await supabase
+    .from('temperature_readings')
+    .select('*')
+    .eq('member_id', memberId)
+    .gte('recorded_at', cutoffDate.toISOString())
+    .order('recorded_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}

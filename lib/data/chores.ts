@@ -340,3 +340,87 @@ export async function assignMembersToChore(
   if (error) throw error
   return data || []
 }
+
+/**
+ * Add a single chore assignment
+ */
+export async function addChoreAssignment(
+  scheduleId: string,
+  memberId: string,
+  rotationOrder?: number
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('chore_assignments')
+    .insert({
+      chore_schedule_id: scheduleId,
+      member_id: memberId,
+      rotation_order: rotationOrder ?? 0,
+      is_active: true,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Remove a chore assignment
+ */
+export async function removeChoreAssignment(assignmentId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('chore_assignments')
+    .update({ is_active: false })
+    .eq('id', assignmentId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Get a single chore definition
+ */
+export async function getChoreDefinition(choreDefinitionId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('chore_definitions')
+    .select('*')
+    .eq('id', choreDefinitionId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Update a chore schedule
+ */
+export async function updateChoreSchedule(
+  scheduleId: string,
+  updates: {
+    assignment_type?: string
+    frequency?: string
+    day_of_week?: number
+    day_of_month?: number
+    is_active?: boolean
+  }
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('chore_schedules')
+    .update(updates)
+    .eq('id', scheduleId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
