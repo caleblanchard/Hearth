@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { updateDish, deleteDish } from '@/lib/data/meals';
 import { logger } from '@/lib/logger';
 
 /**
@@ -12,54 +13,40 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const dishId = params.id;
-    const body = await request.json();
-    const { dishName, sortOrder } = body;
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    // Verify dish exists and belongs to user's family
-    const dish = await prisma.mealPlanDish.findUnique({
-      where: { id: dishId },
-      include: {
-        mealEntry: {
-          include: {
-            mealPlan: true,
-          },
-        },
-      },
-    });
+    // Verify dish belongs to family
+    const { data: dish } = await supabase
+      .from('meal_plan_dishes')
+      .select('entry:meal_plan_entries!inner(family_id)')
+      .eq('id', params.id)
+      .single();
 
-    if (!dish) {
+    if (!dish || dish.entry.family_id !== familyId) {
       return NextResponse.json({ error: 'Dish not found' }, { status: 404 });
     }
 
-    if (dish.mealEntry.mealPlan.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Update dish
-    const updatedDish = await prisma.mealPlanDish.update({
-      where: { id: dishId },
-      data: {
-        ...(dishName !== undefined && { dishName }),
-        ...(sortOrder !== undefined && { sortOrder }),
-      },
-    });
+    const body = await request.json();
+    const updatedDish = await updateDish(params.id, body);
 
     return NextResponse.json({
+      success: true,
       dish: updatedDish,
       message: 'Dish updated successfully',
     });
   } catch (error) {
-    logger.error('Error updating dish:', error);
-    return NextResponse.json(
-      { error: 'Failed to update dish' },
-      { status: 500 }
-    );
+    logger.error('Update dish error:', error);
+    return NextResponse.json({ error: 'Failed to update dish' }, { status: 500 });
   }
 }
 
@@ -72,46 +59,37 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const dishId = params.id;
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    // Verify dish exists and belongs to user's family
-    const dish = await prisma.mealPlanDish.findUnique({
-      where: { id: dishId },
-      include: {
-        mealEntry: {
-          include: {
-            mealPlan: true,
-          },
-        },
-      },
-    });
+    // Verify dish belongs to family
+    const { data: dish } = await supabase
+      .from('meal_plan_dishes')
+      .select('entry:meal_plan_entries!inner(family_id)')
+      .eq('id', params.id)
+      .single();
 
-    if (!dish) {
+    if (!dish || dish.entry.family_id !== familyId) {
       return NextResponse.json({ error: 'Dish not found' }, { status: 404 });
     }
 
-    if (dish.mealEntry.mealPlan.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Delete dish
-    await prisma.mealPlanDish.delete({
-      where: { id: dishId },
-    });
+    await deleteDish(params.id);
 
     return NextResponse.json({
+      success: true,
       message: 'Dish deleted successfully',
     });
   } catch (error) {
-    logger.error('Error deleting dish:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete dish' },
-      { status: 500 }
-    );
+    logger.error('Delete dish error:', error);
+    return NextResponse.json({ error: 'Failed to delete dish' }, { status: 500 });
   }
 }

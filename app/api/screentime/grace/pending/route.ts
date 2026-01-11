@@ -1,72 +1,40 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getPendingGraceRequests } from '@/lib/data/screentime';
 import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can view pending grace requests
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can view pending grace requests' },
         { status: 403 }
       );
     }
 
-    // Get pending grace requests for family members
-    const pendingRequests = await prisma.gracePeriodLog.findMany({
-      where: {
-        member: {
-          familyId: session.user.familyId,
-        },
-        approvedById: null, // Not yet approved
-        repaymentStatus: 'PENDING',
-      },
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        requestedAt: 'asc', // Oldest first
-      },
-    });
+    const pendingRequests = await getPendingGraceRequests(familyId);
 
-    // Get current balance for each member
-    const requestsWithBalance = await Promise.all(
-      pendingRequests.map(async (request) => {
-        const balance = await prisma.screenTimeBalance.findUnique({
-          where: { memberId: request.memberId },
-        });
-
-        return {
-          id: request.id,
-          memberId: request.memberId,
-          memberName: request.member.name,
-          minutesGranted: request.minutesGranted,
-          reason: request.reason,
-          requestedAt: request.requestedAt.toISOString(),
-          currentBalance: balance?.currentBalanceMinutes || 0,
-        };
-      })
-    );
-
-    return NextResponse.json({
-      requests: requestsWithBalance,
-    });
+    return NextResponse.json({ pendingRequests });
   } catch (error) {
-    logger.error('Error fetching pending grace requests:', error);
+    logger.error('Get pending grace requests error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch pending grace requests' },
+      { error: 'Failed to get pending requests' },
       { status: 500 }
     );
   }

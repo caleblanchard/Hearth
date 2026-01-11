@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { apiRateLimiter, authRateLimiter, cronRateLimiter, getClientIdentifier } from '@/lib/rate-limit-redis';
 import { MAX_REQUEST_SIZE_BYTES } from '@/lib/constants';
 import { logger } from '@/lib/logger';
-
 import { CACHE_TTL_MS } from '@/lib/constants';
 
 // Cache the onboarding status in memory to avoid database hits on every request
@@ -46,13 +46,72 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Initialize response
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
+
+  // Update Supabase session
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options) {
+          request.cookies.set({ name, value, ...options });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+          response.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options) {
+          request.cookies.set({ name, value: '', ...options });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+          response.cookies.set({ name, value: '', ...options });
+        },
+      },
+    }
+  );
+
+  // Get the user (validates JWT with Supabase Auth server)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Redirect unauthenticated users trying to access protected routes
+  const isProtectedRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/kiosk');
+  const isAuthRoute = pathname.startsWith('/auth');
+
+  if (!user && isProtectedRoute) {
+    const redirectUrl = new URL('/auth/signin', request.url);
+    redirectUrl.searchParams.set('redirectTo', pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // Redirect authenticated users away from auth pages
+  if (user && isAuthRoute && pathname !== '/auth/signout') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
   // Check onboarding status for all routes except onboarding and its API
   const isOnboardingRoute = pathname.startsWith('/onboarding');
   const isOnboardingAPI = pathname.startsWith('/api/onboarding');
   const isAuthAPI = pathname.startsWith('/api/auth');
   const isHealthAPI = pathname === '/api/health';
+  const isGeocodingAPI = pathname === '/api/geocoding';
 
-  if (!isOnboardingRoute && !isOnboardingAPI && !isAuthAPI && !isHealthAPI) {
+  if (!isOnboardingRoute && !isOnboardingAPI && !isAuthAPI && !isHealthAPI && !isGeocodingAPI) {
     const onboardingComplete = await checkOnboardingStatus();
 
     if (!onboardingComplete) {
@@ -134,7 +193,6 @@ export async function middleware(request: NextRequest) {
   }
 
   // Add rate limit headers to response
-  const response = NextResponse.next();
   response.headers.set('X-RateLimit-Limit', String(limiter.maxRequests));
   response.headers.set('X-RateLimit-Remaining', String(result.remaining));
   response.headers.set('X-RateLimit-Reset', String(result.resetTime));

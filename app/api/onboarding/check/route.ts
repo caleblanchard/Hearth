@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 /**
@@ -11,17 +11,17 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    
     // Check if system config exists and onboarding is complete
-    const systemConfig = await prisma.systemConfig.findUnique({
-      where: { id: 'system' },
-      select: {
-        onboardingComplete: true,
-        setupCompletedAt: true,
-      },
-    });
+    const { data: systemConfig } = await supabase
+      .from('system_config')
+      .select('onboarding_complete, setup_completed_at')
+      .eq('id', 'system')
+      .maybeSingle();
 
     // If no config exists or onboarding is not complete, setup is required
-    if (!systemConfig || !systemConfig.onboardingComplete) {
+    if (!systemConfig || !systemConfig.onboarding_complete) {
       return NextResponse.json({
         onboardingComplete: false,
         setupRequired: true,
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       onboardingComplete: true,
       setupRequired: false,
-      setupCompletedAt: systemConfig.setupCompletedAt?.toISOString(),
+      setupCompletedAt: systemConfig.setup_completed_at,
     });
   } catch (error) {
     logger.error('Error checking onboarding status', error);

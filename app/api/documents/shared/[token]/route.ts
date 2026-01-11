@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -7,21 +7,22 @@ export async function GET(
   { params }: { params: { token: string } }
 ) {
   try {
-    const shareLink = await prisma.documentShareLink.findUnique({
-      where: { token: params.token },
-      include: {
-        document: {
-          include: {
-            uploader: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const supabase = await createClient();
+    
+    const { data: shareLink } = await supabase
+      .from('document_share_links')
+      .select(`
+        *,
+        document:documents(
+          *,
+          uploader:family_members(
+            id,
+            name
+          )
+        )
+      `)
+      .eq('token', params.token)
+      .single();
 
     if (!shareLink) {
       return NextResponse.json(
@@ -31,7 +32,7 @@ export async function GET(
     }
 
     // Check if link is revoked
-    if (shareLink.revokedAt) {
+    if (shareLink.revoked_at) {
       return NextResponse.json(
         { error: 'Share link has been revoked' },
         { status: 410 }
@@ -39,7 +40,7 @@ export async function GET(
     }
 
     // Check if link is expired
-    if (shareLink.expiresAt && shareLink.expiresAt < new Date()) {
+    if (shareLink.expires_at && new Date(shareLink.expires_at) < new Date()) {
       return NextResponse.json(
         { error: 'Share link has expired' },
         { status: 410 }
@@ -47,58 +48,56 @@ export async function GET(
     }
 
     // Increment access count and update last accessed time
-    await prisma.documentShareLink.update({
-      where: { id: shareLink.id },
-      data: {
-        accessCount: {
-          increment: 1,
-        },
-        lastAccessedAt: new Date(),
-      },
-    });
+    await supabase
+      .from('document_share_links')
+      .update({
+        access_count: shareLink.access_count + 1,
+        last_accessed_at: new Date().toISOString(),
+      })
+      .eq('id', shareLink.id);
 
     // Create document access log for external access
-    await prisma.documentAccessLog.create({
-      data: {
-        documentId: shareLink.documentId,
-        accessedBy: null, // External access
-        ipAddress: 'unknown',
-        userAgent: 'unknown',
-        viaShareLink: shareLink.id,
-      },
-    });
+    await supabase
+      .from('document_access_logs')
+      .insert({
+        document_id: shareLink.document_id,
+        accessed_by: null, // External access
+        ip_address: 'unknown',
+        user_agent: 'unknown',
+        via_share_link: shareLink.id,
+      });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: shareLink.document.familyId,
-        memberId: shareLink.createdBy,
+    await supabase
+      .from('audit_logs')
+      .insert({
+        family_id: shareLink.document.family_id,
+        member_id: shareLink.created_by,
         action: 'DOCUMENT_SHARE_ACCESSED',
         result: 'SUCCESS',
-        metadata: {
-          documentId: shareLink.documentId,
+        details: {
+          documentId: shareLink.document_id,
           documentName: shareLink.document.name,
           shareLinkId: shareLink.id,
           token: params.token,
         },
-      },
-    });
+      });
 
     return NextResponse.json({
       document: {
         id: shareLink.document.id,
         name: shareLink.document.name,
         category: shareLink.document.category,
-        fileUrl: shareLink.document.fileUrl,
-        fileSize: shareLink.document.fileSize,
-        mimeType: shareLink.document.mimeType,
+        fileUrl: shareLink.document.file_url,
+        fileSize: shareLink.document.file_size,
+        mimeType: shareLink.document.mime_type,
         notes: shareLink.document.notes,
         uploader: shareLink.document.uploader,
       },
       shareInfo: {
-        createdAt: shareLink.createdAt,
-        expiresAt: shareLink.expiresAt,
-        createdBy: shareLink.createdBy, // User ID who created the share link
+        createdAt: shareLink.created_at,
+        expiresAt: shareLink.expires_at,
+        createdBy: shareLink.created_by,
       },
     });
   } catch (error) {

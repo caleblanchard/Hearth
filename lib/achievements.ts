@@ -1,4 +1,11 @@
-import prisma from './prisma';
+/**
+ * Achievement System
+ * Handles achievement definitions, progress tracking, and awards
+ * 
+ * MIGRATED TO SUPABASE - January 10, 2026
+ */
+
+import { createClient } from './supabase/server';
 import { onChoreStreak } from './rules-engine/hooks';
 
 export interface AchievementDefinition {
@@ -158,19 +165,40 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
 
 // Initialize achievements in database
 export async function initializeAchievements() {
+  const supabase = await createClient();
+  
   for (const def of ACHIEVEMENT_DEFINITIONS) {
-    await prisma.achievement.upsert({
-      where: { key: def.key },
-      update: {
-        name: def.name,
-        description: def.description,
-        category: def.category,
-        tier: def.tier,
-        iconName: def.iconName,
-        requirement: def.requirement,
-      },
-      create: def,
-    });
+    const { data: existing } = await supabase
+      .from('achievements')
+      .select('id')
+      .eq('key', def.key)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('achievements')
+        .update({
+          name: def.name,
+          description: def.description,
+          category: def.category,
+          tier: def.tier,
+          icon_name: def.iconName,
+          requirement: def.requirement,
+        })
+        .eq('key', def.key);
+    } else {
+      await supabase
+        .from('achievements')
+        .insert({
+          key: def.key,
+          name: def.name,
+          description: def.description,
+          category: def.category,
+          tier: def.tier,
+          icon_name: def.iconName,
+          requirement: def.requirement,
+        });
+    }
   }
 }
 
@@ -180,70 +208,111 @@ export async function checkAndAwardAchievement(
   achievementKey: string,
   currentProgress: number
 ) {
-  const achievement = await prisma.achievement.findUnique({
-    where: { key: achievementKey },
-  });
+  const supabase = await createClient();
+  
+  const { data: achievement } = await supabase
+    .from('achievements')
+    .select('*')
+    .eq('key', achievementKey)
+    .single();
 
   if (!achievement) return null;
 
-  let userAchievement = await prisma.userAchievement.findUnique({
-    where: {
-      userId_achievementId: {
-        userId,
-        achievementId: achievement.id,
-      },
-    },
-  });
+  const { data: userAchievement } = await supabase
+    .from('user_achievements')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('achievement_id', achievement.id)
+    .maybeSingle();
+
+  const isCompleted = currentProgress >= achievement.requirement;
+  const completedAt = isCompleted ? new Date().toISOString() : null;
 
   if (!userAchievement) {
-    userAchievement = await prisma.userAchievement.create({
-      data: {
-        userId,
-        achievementId: achievement.id,
+    const { data: newUserAchievement } = await supabase
+      .from('user_achievements')
+      .insert({
+        user_id: userId,
+        achievement_id: achievement.id,
         progress: currentProgress,
-        isCompleted: currentProgress >= achievement.requirement,
-        completedAt: currentProgress >= achievement.requirement ? new Date() : null,
-      },
-      include: {
-        achievement: true,
-      },
-    });
-  } else if (!userAchievement.isCompleted) {
-    userAchievement = await prisma.userAchievement.update({
-      where: { id: userAchievement.id },
-      data: {
+        is_completed: isCompleted,
+        completed_at: completedAt,
+      })
+      .select(`
+        *,
+        achievement:achievements(*)
+      `)
+      .single();
+    
+    // Create notification if just completed
+    if (isCompleted) {
+      const { data: member } = await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('id', userId)
+        .single();
+
+      if (member) {
+        await supabase
+          .from('notifications')
+          .insert({
+            family_id: member.family_id,
+            recipient_id: userId,
+            type: 'GENERAL',
+            title: '🏆 Achievement Unlocked!',
+            message: `You earned the "${achievement.name}" badge! ${achievement.description}`,
+            action_url: '/dashboard/profile',
+            metadata: {
+              achievementKey: achievement.key,
+              achievementName: achievement.name,
+              tier: achievement.tier,
+            },
+          });
+      }
+    }
+    
+    return newUserAchievement;
+  } else if (!userAchievement.is_completed && isCompleted) {
+    const { data: updated } = await supabase
+      .from('user_achievements')
+      .update({
         progress: currentProgress,
-        isCompleted: currentProgress >= achievement.requirement,
-        completedAt: currentProgress >= achievement.requirement ? new Date() : null,
-      },
-      include: {
-        achievement: true,
-      },
-    });
-  }
+        is_completed: true,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', userAchievement.id)
+      .select(`
+        *,
+        achievement:achievements(*)
+      `)
+      .single();
+    
+    // Create notification for newly completed achievement
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('id', userId)
+      .single();
 
-  // If just completed, create notification
-  if (
-    userAchievement.isCompleted &&
-    userAchievement.completedAt &&
-    new Date().getTime() - new Date(userAchievement.completedAt).getTime() < 5000
-  ) {
-    await prisma.notification.create({
-      data: {
-        userId,
-        type: 'GENERAL',
-        title: '🏆 Achievement Unlocked!',
-        message: `You earned the "${achievement.name}" badge! ${achievement.description}`,
-        actionUrl: '/dashboard/profile',
-        metadata: {
-          achievementKey: achievement.key,
-          achievementName: achievement.name,
-          tier: achievement.tier,
-        },
-      },
-    });
-
-    return userAchievement;
+    if (member) {
+      await supabase
+        .from('notifications')
+        .insert({
+          family_id: member.family_id,
+          recipient_id: userId,
+          type: 'GENERAL',
+          title: '🏆 Achievement Unlocked!',
+          message: `You earned the "${achievement.name}" badge! ${achievement.description}`,
+          action_url: '/dashboard/profile',
+          metadata: {
+            achievementKey: achievement.key,
+            achievementName: achievement.name,
+            tier: achievement.tier,
+          },
+        });
+    }
+    
+    return updated;
   }
 
   return null;
@@ -255,43 +324,46 @@ export async function updateStreak(
   type: 'DAILY_CHORES' | 'WEEKLY_CHORES' | 'PERFECT_WEEK' | 'REWARD_SAVER',
   familyId?: string
 ) {
+  const supabase = await createClient();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  let streak = await prisma.streak.findUnique({
-    where: {
-      userId_type: {
-        userId,
-        type,
-      },
-    },
-  });
+  const { data: streak } = await supabase
+    .from('streaks')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('type', type)
+    .maybeSingle();
 
   if (!streak) {
-    streak = await prisma.streak.create({
-      data: {
-        userId,
+    const { data: newStreak } = await supabase
+      .from('streaks')
+      .insert({
+        user_id: userId,
         type,
-        currentCount: 1,
-        longestCount: 1,
-        lastActivityDate: today,
-        isActive: true,
-      },
-    });
+        current_count: 1,
+        longest_count: 1,
+        last_activity_date: today.toISOString(),
+        is_active: true,
+      })
+      .select()
+      .single();
 
     // Trigger rules engine hook for streak update
-    if (familyId && type === 'DAILY_CHORES') {
+    if (familyId && type === 'DAILY_CHORES' && newStreak) {
       try {
         await onChoreStreak(userId, familyId, {
-          currentStreak: streak.currentCount,
-          longestStreak: streak.longestCount,
+          currentStreak: newStreak.current_count,
+          longestStreak: newStreak.longest_count,
         });
       } catch (error) {
         console.error('Rules engine streak hook error:', error);
       }
     }
+
+    return newStreak;
   } else {
-    const lastDate = streak.lastActivityDate ? new Date(streak.lastActivityDate) : null;
+    const lastDate = streak.last_activity_date ? new Date(streak.last_activity_date) : null;
     if (lastDate) {
       lastDate.setHours(0, 0, 0, 0);
       const daysDiff = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -301,15 +373,17 @@ export async function updateStreak(
         return streak;
       } else if (daysDiff === 1) {
         // Consecutive day
-        const newCount = streak.currentCount + 1;
-        streak = await prisma.streak.update({
-          where: { id: streak.id },
-          data: {
-            currentCount: newCount,
-            longestCount: Math.max(newCount, streak.longestCount),
-            lastActivityDate: today,
-          },
-        });
+        const newCount = streak.current_count + 1;
+        const { data: updated } = await supabase
+          .from('streaks')
+          .update({
+            current_count: newCount,
+            longest_count: Math.max(newCount, streak.longest_count),
+            last_activity_date: today.toISOString(),
+          })
+          .eq('id', streak.id)
+          .select()
+          .single();
 
         // Check streak achievements
         if (type === 'DAILY_CHORES') {
@@ -319,37 +393,43 @@ export async function updateStreak(
         }
 
         // Trigger rules engine hook for streak update
-        if (familyId && type === 'DAILY_CHORES') {
+        if (familyId && type === 'DAILY_CHORES' && updated) {
           try {
             await onChoreStreak(userId, familyId, {
               currentStreak: newCount,
-              longestStreak: streak.longestCount,
+              longestStreak: updated.longest_count,
             });
           } catch (error) {
             console.error('Rules engine streak hook error:', error);
           }
         }
+
+        return updated;
       } else {
         // Streak broken
-        streak = await prisma.streak.update({
-          where: { id: streak.id },
-          data: {
-            currentCount: 1,
-            lastActivityDate: today,
-          },
-        });
+        const { data: updated } = await supabase
+          .from('streaks')
+          .update({
+            current_count: 1,
+            last_activity_date: today.toISOString(),
+          })
+          .eq('id', streak.id)
+          .select()
+          .single();
 
         // Trigger rules engine hook for streak reset
-        if (familyId && type === 'DAILY_CHORES') {
+        if (familyId && type === 'DAILY_CHORES' && updated) {
           try {
             await onChoreStreak(userId, familyId, {
               currentStreak: 1,
-              longestStreak: streak.longestCount,
+              longestStreak: updated.longest_count,
             });
           } catch (error) {
             console.error('Rules engine streak hook error:', error);
           }
         }
+
+        return updated;
       }
     }
   }

@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { evaluateRules } from '@/lib/rules-engine';
 import { logger } from '@/lib/logger';
 
@@ -20,7 +20,7 @@ import { logger } from '@/lib/logger';
  * Examples:
  *   "0 9 * * 0" - Every Sunday at 9 AM
  *   "0 0 * * *" - Every day at midnight
- *   "star/15 * * * *" - Every 15 minutes (replace star with *)
+ *   "*/15 * * * *" - Every 15 minutes
  *
  * Special keywords:
  *   "birthday" - Member's birthday (handled separately)
@@ -97,6 +97,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const supabase = await createClient();
     const currentDate = new Date();
     let evaluated = 0;
     let executed = 0;
@@ -104,29 +105,19 @@ export async function GET(request: NextRequest) {
     let errors = 0;
 
     // Find all enabled time-based rules
-    const timeRules = await prisma.automationRule.findMany({
-      where: {
-        isEnabled: true,
-        trigger: {
-          path: ['type'],
-          equals: 'time_based',
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        familyId: true,
-        trigger: true,
-      },
-    });
+    const { data: timeRules } = await supabase
+      .from('automation_rules')
+      .select('id, name, family_id, trigger')
+      .eq('is_enabled', true)
+      .eq('trigger->type', 'time_based');
 
     logger.info('Evaluating time-based rules', {
-      count: timeRules.length,
+      count: timeRules?.length || 0,
       timestamp: currentDate.toISOString(),
     });
 
     // Process each rule
-    for (const rule of timeRules) {
+    for (const rule of timeRules || []) {
       try {
         evaluated++;
 
@@ -152,7 +143,7 @@ export async function GET(request: NextRequest) {
           // Trigger rule evaluation
           await evaluateRules('time_based', {
             ruleId: rule.id,
-            familyId: rule.familyId,
+            familyId: rule.family_id,
             timestamp: currentDate,
             triggerId: `time-${rule.id}-${currentDate.toISOString()}`,
           });
@@ -177,7 +168,7 @@ export async function GET(request: NextRequest) {
       executed,
       skipped,
       errors,
-      totalRules: timeRules.length,
+      totalRules: timeRules?.length || 0,
       timestamp: currentDate.toISOString(),
     });
   } catch (error) {

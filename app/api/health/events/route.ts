@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
-import { HealthEventType } from '@/app/generated/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getHealthEvents, createHealthEvent } from '@/lib/data/health';
 import { logger } from '@/lib/logger';
 
-const VALID_EVENT_TYPES: HealthEventType[] = [
+const VALID_EVENT_TYPES = [
   'ILLNESS',
   'INJURY',
   'DOCTOR_VISIT',
@@ -15,9 +15,16 @@ const VALID_EVENT_TYPES: HealthEventType[] = [
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -25,66 +32,38 @@ export async function GET(request: NextRequest) {
     const eventType = searchParams.get('eventType');
     const active = searchParams.get('active');
 
-    // Build where clause
-    const where: any = {
-      member: {
-        familyId: session.user.familyId,
-      },
-    };
-
-    // Filter by memberId if provided
+    // Filter options
+    const filters: any = {};
+    
     if (memberId) {
       // Verify member belongs to family
-      const member = await prisma.familyMember.findUnique({
-        where: { id: memberId },
-        select: { familyId: true },
-      });
+      const { data: member } = await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('id', memberId)
+        .eq('family_id', familyId)
+        .single();
 
-      if (!member || member.familyId !== session.user.familyId) {
+      if (!member) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
 
-      where.memberId = memberId;
+      filters.memberId = memberId;
     }
 
-    // Filter by eventType if provided
     if (eventType) {
-      where.eventType = eventType;
+      filters.eventType = eventType;
     }
 
-    // Filter to active events only if requested
     if (active === 'true') {
-      where.endedAt = null;
+      filters.activeOnly = true;
     }
 
-    const events = await prisma.healthEvent.findMany({
-      where,
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        symptoms: {
-          orderBy: {
-            recordedAt: 'desc',
-          },
-        },
-        medications: {
-          orderBy: {
-            givenAt: 'desc',
-          },
-        },
-      },
-      orderBy: {
-        startedAt: 'desc',
-      },
-    });
+    const events = await getHealthEvents(familyId, filters);
 
-    return NextResponse.json({ events }, { status: 200 });
+    return NextResponse.json({ events });
   } catch (error) {
-    logger.error('Error fetching health events:', error);
+    logger.error('Health events API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch health events' },
       { status: 500 }
@@ -94,90 +73,87 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { memberId, eventType, severity, notes } = body;
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
 
-    // Validate required fields
-    if (!memberId) {
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const {
+      memberId: targetMemberId,
+      eventType,
+      title,
+      description,
+      severity,
+      startedAt,
+    } = body;
+
+    // Validation
+    if (!targetMemberId) {
       return NextResponse.json({ error: 'Member ID is required' }, { status: 400 });
     }
 
-    if (!eventType) {
-      return NextResponse.json({ error: 'Event type is required' }, { status: 400 });
-    }
-
-    if (!VALID_EVENT_TYPES.includes(eventType)) {
-      return NextResponse.json({ error: 'Invalid event type' }, { status: 400 });
-    }
-
-    // Validate severity if provided
-    if (severity !== undefined && severity !== null) {
-      if (severity < 1 || severity > 10) {
-        return NextResponse.json(
-          { error: 'Severity must be between 1 and 10' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Children can only create events for themselves
-    if (session.user.role === 'CHILD' && session.user.id !== memberId) {
+    if (!eventType || !VALID_EVENT_TYPES.includes(eventType)) {
       return NextResponse.json(
-        { error: 'Children can only create health events for themselves' },
-        { status: 403 }
+        { error: `Event type must be one of: ${VALID_EVENT_TYPES.join(', ')}` },
+        { status: 400 }
       );
     }
 
-    // Verify member belongs to family
-    const member = await prisma.familyMember.findUnique({
-      where: { id: memberId },
-      select: { id: true, familyId: true },
-    });
+    if (!title || title.trim().length === 0) {
+      return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    }
 
-    if (!member || member.familyId !== session.user.familyId) {
+    // Verify member belongs to family
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('id', targetMemberId)
+      .eq('family_id', familyId)
+      .single();
+
+    if (!member) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
-    // Create health event
-    const event = await prisma.healthEvent.create({
-      data: {
-        memberId,
-        eventType,
-        severity,
-        notes,
-      },
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        symptoms: true,
-        medications: true,
-      },
+    // Create event
+    const event = await createHealthEvent({
+      memberId: targetMemberId,
+      eventType,
+      title: title.trim(),
+      description: description?.trim() || null,
+      severity: severity || 'MODERATE',
+      startedAt: startedAt ? new Date(startedAt) : new Date(),
+      recordedById: memberId,
     });
 
-    // Log audit event
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'HEALTH_EVENT_CREATED',
-        entityType: 'HealthEvent',
-        entityId: event.id,
-        result: 'SUCCESS',
-      },
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'HEALTH_EVENT_CREATED',
+      entity_type: 'HEALTH_EVENT',
+      entity_id: event.id,
+      result: 'SUCCESS',
+      metadata: { title, eventType, targetMemberId },
     });
 
-    return NextResponse.json({ event }, { status: 201 });
+    return NextResponse.json({
+      success: true,
+      event,
+      message: 'Health event created successfully',
+    });
   } catch (error) {
-    logger.error('Error creating health event:', error);
+    logger.error('Create health event error:', error);
     return NextResponse.json(
       { error: 'Failed to create health event' },
       { status: 500 }

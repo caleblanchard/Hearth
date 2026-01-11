@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getMemberModuleAccess, updateMemberModuleAccess } from '@/lib/data/family';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -8,77 +9,86 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
     // Verify the member belongs to the same family
-    const member = await prisma.familyMember.findUnique({
-      where: { id },
-      select: { familyId: true, role: true },
-    });
+    const { data: targetMember } = await supabase
+      .from('family_members')
+      .select('family_id, role')
+      .eq('id', params.id)
+      .single();
 
-    if (!member || member.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    if (!targetMember || targetMember.family_id !== familyId) {
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
-    // Parents can see all family-enabled modules, children see only their allowed modules
-    if (member.role === 'PARENT') {
-      // Get all family-level enabled modules
-      const familyModules = await prisma.moduleConfiguration.findMany({
-        where: {
-          familyId: session.user.familyId,
-          isEnabled: true,
-        },
-        select: {
-          moduleId: true,
-        },
-      });
+    const modules = await getMemberModuleAccess(params.id);
 
-      return NextResponse.json({
-        allowedModules: familyModules.map(m => m.moduleId),
-      });
-    } else {
-      // For children, get their specific module access
-      const memberAccess = await prisma.memberModuleAccess.findMany({
-        where: {
-          memberId: id,
-          hasAccess: true,
-        },
-        select: {
-          moduleId: true,
-        },
-      });
-
-      // Also verify these modules are still enabled at family level
-      const familyModules = await prisma.moduleConfiguration.findMany({
-        where: {
-          familyId: session.user.familyId,
-          isEnabled: true,
-        },
-        select: {
-          moduleId: true,
-        },
-      });
-
-      const enabledModuleIds = new Set(familyModules.map(m => m.moduleId));
-      const allowedModules = memberAccess
-        .map(a => a.moduleId)
-        .filter(moduleId => enabledModuleIds.has(moduleId));
-
-      return NextResponse.json({
-        allowedModules,
-      });
-    }
+    return NextResponse.json({ modules });
   } catch (error) {
-    logger.error('Error fetching member modules:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch member modules' },
-      { status: 500 }
-    );
+    logger.error('Get member module access error:', error);
+    return NextResponse.json({ error: 'Failed to get module access' }, { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Only parents can update module access
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Parent access required' }, { status: 403 });
+    }
+
+    // Verify the member belongs to the same family
+    const { data: targetMember } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('id', params.id)
+      .single();
+
+    if (!targetMember || targetMember.family_id !== familyId) {
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+    }
+
+    const body = await request.json();
+    const modules = await updateMemberModuleAccess(params.id, body.modules);
+
+    return NextResponse.json({
+      success: true,
+      modules,
+      message: 'Member module access updated successfully',
+    });
+  } catch (error) {
+    logger.error('Update member module access error:', error);
+    return NextResponse.json({ error: 'Failed to update module access' }, { status: 500 });
   }
 }

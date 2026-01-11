@@ -1,9 +1,7 @@
-import prisma from '@/lib/prisma';
-import {
-  ScreenTimeGraceSettings,
-  GraceRepaymentMode,
-  RepaymentStatus,
-} from '@/app/generated/prisma';
+import { createClient } from '@/lib/supabase/server';
+
+type GraceRepaymentMode = 'FORGIVE' | 'DEDUCT_NEXT_WEEK' | 'EARN_BACK';
+type RepaymentStatus = 'PENDING' | 'FORGIVEN' | 'DEDUCTED' | 'EARNED_BACK';
 
 /**
  * Check if user is eligible for grace period
@@ -34,67 +32,71 @@ import {
  */
 export async function checkGraceEligibility(
   memberId: string,
-  settings: ScreenTimeGraceSettings
+  settings: any
 ): Promise<{
   eligible: boolean;
   reason?: string;
   remainingDaily: number;
   remainingWeekly: number;
 }> {
+  const supabase = await createClient();
+  
   // Get current balance
-  const balance = await prisma.screenTimeBalance.findUnique({
-    where: { memberId },
-  });
+  const { data: balance } = await supabase
+    .from('screen_time_balances')
+    .select('*')
+    .eq('member_id', memberId)
+    .maybeSingle();
 
   if (!balance) {
     return {
       eligible: false,
       reason: 'Balance not found',
-      remainingDaily: settings.maxGracePerDay,
-      remainingWeekly: settings.maxGracePerWeek,
+      remainingDaily: settings.grace_period_minutes,
+      remainingWeekly: settings.max_grace_per_week,
     };
   }
 
   // Check if balance is low enough
-  if (balance.currentBalanceMinutes >= settings.lowBalanceWarningMinutes) {
+  if (balance.current_balance_minutes >= settings.low_balance_warning_minutes) {
     const dailyUses = await countGraceUsesToday(memberId);
     const weeklyUses = await countGraceUsesThisWeek(memberId);
 
     return {
       eligible: false,
       reason: 'Balance is not low enough',
-      remainingDaily: Math.max(0, settings.maxGracePerDay - dailyUses),
-      remainingWeekly: Math.max(0, settings.maxGracePerWeek - weeklyUses),
+      remainingDaily: Math.max(0, settings.max_grace_per_day - dailyUses),
+      remainingWeekly: Math.max(0, settings.max_grace_per_week - weeklyUses),
     };
   }
 
   // Count today's grace uses
   const dailyUses = await countGraceUsesToday(memberId);
-  if (dailyUses >= settings.maxGracePerDay) {
+  if (dailyUses >= settings.max_grace_per_day) {
     const weeklyUses = await countGraceUsesThisWeek(memberId);
     return {
       eligible: false,
       reason: 'Daily grace limit exceeded',
       remainingDaily: 0,
-      remainingWeekly: Math.max(0, settings.maxGracePerWeek - weeklyUses),
+      remainingWeekly: Math.max(0, settings.max_grace_per_week - weeklyUses),
     };
   }
 
   // Count this week's grace uses
   const weeklyUses = await countGraceUsesThisWeek(memberId);
-  if (weeklyUses >= settings.maxGracePerWeek) {
+  if (weeklyUses >= settings.max_grace_per_week) {
     return {
       eligible: false,
       reason: 'Weekly grace limit exceeded',
-      remainingDaily: Math.max(0, settings.maxGracePerDay - dailyUses),
+      remainingDaily: Math.max(0, settings.max_grace_per_day - dailyUses),
       remainingWeekly: 0,
     };
   }
 
   return {
     eligible: true,
-    remainingDaily: Math.max(0, settings.maxGracePerDay - dailyUses),
-    remainingWeekly: Math.max(0, settings.maxGracePerWeek - weeklyUses),
+    remainingDaily: Math.max(0, settings.max_grace_per_day - dailyUses),
+    remainingWeekly: Math.max(0, settings.max_grace_per_week - weeklyUses),
   };
 }
 
@@ -132,18 +134,19 @@ export async function countGraceUses(
   memberId: string,
   startDate: Date,
   endDate: Date,
-  status: RepaymentStatus = RepaymentStatus.PENDING
+  status: RepaymentStatus = 'PENDING'
 ): Promise<number> {
-  return await prisma.gracePeriodLog.count({
-    where: {
-      memberId,
-      requestedAt: {
-        gte: startDate,
-        lte: endDate,
-      },
-      repaymentStatus: status,
-    },
-  });
+  const supabase = await createClient();
+  
+  const { count } = await supabase
+    .from('grace_period_logs')
+    .select('*', { count: 'exact', head: true })
+    .eq('member_id', memberId)
+    .gte('requested_at', startDate.toISOString())
+    .lte('requested_at', endDate.toISOString())
+    .eq('repayment_status', status);
+
+  return count || 0;
 }
 
 /**
@@ -172,89 +175,96 @@ export async function processGraceRepayment(
   totalRepaid: number;
   logsProcessed: number;
 }> {
+  const supabase = await createClient();
+  
   // Get all pending grace logs
-  const pendingLogs = await prisma.gracePeriodLog.findMany({
-    where: {
-      memberId,
-      repaymentStatus: RepaymentStatus.PENDING,
-    },
-  });
+  const { data: pendingLogs } = await supabase
+    .from('grace_period_logs')
+    .select('*')
+    .eq('member_id', memberId)
+    .eq('repayment_status', 'PENDING');
 
-  if (pendingLogs.length === 0) {
+  if (!pendingLogs || pendingLogs.length === 0) {
     return { totalRepaid: 0, logsProcessed: 0 };
   }
 
   // Get grace settings
-  const settings = await prisma.screenTimeGraceSettings.findUnique({
-    where: { memberId },
-  });
+  const { data: settings } = await supabase
+    .from('screen_time_grace_settings')
+    .select('*')
+    .eq('member_id', memberId)
+    .maybeSingle();
 
   if (!settings) {
     return { totalRepaid: 0, logsProcessed: 0 };
   }
 
   // Handle based on repayment mode
-  if (settings.graceRepaymentMode === GraceRepaymentMode.FORGIVE) {
+  if (settings.grace_repayment_mode === 'FORGIVE') {
     // Mark all as forgiven, no deduction
     for (const log of pendingLogs) {
-      await prisma.gracePeriodLog.update({
-        where: { id: log.id },
-        data: {
-          repaymentStatus: RepaymentStatus.FORGIVEN,
-          repaidAt: new Date(),
-        },
-      });
+      await supabase
+        .from('grace_period_logs')
+        .update({
+          repayment_status: 'FORGIVEN',
+          repaid_at: new Date().toISOString(),
+        })
+        .eq('id', log.id);
     }
 
     return { totalRepaid: 0, logsProcessed: pendingLogs.length };
   }
 
-  if (settings.graceRepaymentMode === GraceRepaymentMode.DEDUCT_NEXT_WEEK) {
+  if (settings.grace_repayment_mode === 'DEDUCT_NEXT_WEEK') {
     // Calculate total to deduct
     const totalMinutes = pendingLogs.reduce(
-      (sum, log) => sum + log.minutesGranted,
+      (sum, log) => sum + log.minutes_granted,
       0
     );
 
     // Get current balance
-    const balance = await prisma.screenTimeBalance.findUnique({
-      where: { memberId },
-    });
+    const { data: balance } = await supabase
+      .from('screen_time_balances')
+      .select('*')
+      .eq('member_id', memberId)
+      .single();
 
     if (!balance) {
       return { totalRepaid: 0, logsProcessed: 0 };
     }
 
     // Create repayment transaction
-    const transaction = await prisma.screenTimeTransaction.create({
-      data: {
-        memberId,
+    const { data: transaction } = await supabase
+      .from('screen_time_transactions')
+      .insert({
+        member_id: memberId,
         type: 'GRACE_REPAID',
-        amountMinutes: -totalMinutes,
-        balanceAfter: balance.currentBalanceMinutes - totalMinutes,
+        amount_minutes: -totalMinutes,
+        balance_after: balance.current_balance_minutes - totalMinutes,
         reason: 'Grace period repayment',
-        createdById: memberId,
-      },
-    });
+        created_by_id: memberId,
+      })
+      .select()
+      .single();
 
     // Update balance
-    await prisma.screenTimeBalance.update({
-      where: { memberId },
-      data: {
-        currentBalanceMinutes: balance.currentBalanceMinutes - totalMinutes,
-      },
-    });
+    await supabase
+      .from('screen_time_balances')
+      .update({
+        current_balance_minutes: balance.current_balance_minutes - totalMinutes,
+      })
+      .eq('member_id', memberId);
 
     // Update grace logs
     for (const log of pendingLogs) {
-      await prisma.gracePeriodLog.update({
-        where: { id: log.id },
-        data: {
-          repaymentStatus: RepaymentStatus.DEDUCTED,
-          repaidAt: new Date(),
-          relatedTransactionId: transaction.id,
-        },
-      });
+      await supabase
+        .from('grace_period_logs')
+        .update({
+          repayment_status: 'DEDUCTED',
+          repaid_at: new Date().toISOString(),
+          related_transaction_id: transaction?.id,
+        })
+        .eq('id', log.id);
     }
 
     return { totalRepaid: totalMinutes, logsProcessed: pendingLogs.length };
@@ -270,28 +280,34 @@ export async function processGraceRepayment(
  */
 export async function getOrCreateGraceSettings(
   memberId: string
-): Promise<ScreenTimeGraceSettings> {
+): Promise<any> {
+  const supabase = await createClient();
+  
   // Try to find existing settings
-  const existing = await prisma.screenTimeGraceSettings.findUnique({
-    where: { memberId },
-  });
+  const { data: existing } = await supabase
+    .from('screen_time_grace_settings')
+    .select('*')
+    .eq('member_id', memberId)
+    .maybeSingle();
 
   if (existing) {
     return existing;
   }
 
   // Create default settings
-  const defaultSettings = await prisma.screenTimeGraceSettings.create({
-    data: {
-      memberId,
-      gracePeriodMinutes: 15,
-      maxGracePerDay: 1,
-      maxGracePerWeek: 3,
-      graceRepaymentMode: GraceRepaymentMode.DEDUCT_NEXT_WEEK,
-      lowBalanceWarningMinutes: 10,
-      requiresApproval: false,
-    },
-  });
+  const { data: defaultSettings } = await supabase
+    .from('screen_time_grace_settings')
+    .insert({
+      member_id: memberId,
+      grace_period_minutes: 15,
+      max_grace_per_day: 1,
+      max_grace_per_week: 3,
+      grace_repayment_mode: 'DEDUCT_NEXT_WEEK',
+      low_balance_warning_minutes: 10,
+      requires_approval: false,
+    })
+    .select()
+    .single();
 
   return defaultSettings;
 }

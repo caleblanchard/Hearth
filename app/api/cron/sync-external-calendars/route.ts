@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { syncExternalCalendar } from '@/lib/integrations/external-calendar';
 
@@ -28,27 +28,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const supabase = await createClient();
+
     // Find all active subscriptions that are due for sync
     const now = new Date();
-    const subscriptions = await prisma.externalCalendarSubscription.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          { nextSyncAt: { lte: now } },
-          { nextSyncAt: null },
-        ],
-      },
-      orderBy: {
-        nextSyncAt: 'asc',
-      },
-    });
+    const { data: subscriptions } = await supabase
+      .from('external_calendar_subscriptions')
+      .select('*')
+      .eq('is_active', true)
+      .or(`next_sync_at.lte.${now.toISOString()},next_sync_at.is.null`)
+      .order('next_sync_at', { ascending: true });
 
     logger.info('Starting external calendar sync cron job', {
-      subscriptionCount: subscriptions.length,
+      subscriptionCount: subscriptions?.length || 0,
     });
 
     const results = {
-      total: subscriptions.length,
+      total: subscriptions?.length || 0,
       successful: 0,
       failed: 0,
       skipped: 0,
@@ -64,7 +60,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Sync each subscription
-    for (const subscription of subscriptions) {
+    for (const subscription of subscriptions || []) {
       try {
         const result = await syncExternalCalendar(subscription.id);
 

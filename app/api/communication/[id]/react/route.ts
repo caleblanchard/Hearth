@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { addPostReaction, removePostReaction } from '@/lib/data/communication';
 import { logger } from '@/lib/logger';
 
 export async function POST(
@@ -8,23 +9,33 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Get existing post
-    const post = await prisma.communicationPost.findUnique({
-      where: { id: params.id },
-    });
+    const { data: post } = await supabase
+      .from('communication_posts')
+      .select('family_id')
+      .eq('id', params.id)
+      .single();
 
     if (!post) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
     // Verify post belongs to user's family
-    if (post.familyId !== session.user.familyId) {
+    if (post.family_id !== familyId) {
       return NextResponse.json(
         { error: 'You do not have permission to react to this post' },
         { status: 403 }
@@ -42,64 +53,16 @@ export async function POST(
       );
     }
 
-    // Add or update reaction (upsert for idempotency)
-    await prisma.postReaction.upsert({
-      where: {
-        postId_memberId_emoji: {
-          postId: params.id,
-          memberId: session.user.id,
-          emoji: emoji.trim(),
-        },
-      },
-      update: {
-        // Nothing to update - just return existing
-      },
-      create: {
-        postId: params.id,
-        memberId: session.user.id,
-        emoji: emoji.trim(),
-      },
-    });
-
-    // Get updated post with reactions
-    const updatedPost = await prisma.communicationPost.findUnique({
-      where: { id: params.id },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-          },
-        },
-        reactions: {
-          include: {
-            member: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            reactions: true,
-          },
-        },
-      },
-    });
+    const reaction = await addPostReaction(params.id, memberId, emoji.trim());
 
     return NextResponse.json({
-      post: updatedPost,
+      success: true,
+      reaction,
       message: 'Reaction added successfully',
     });
   } catch (error) {
-    logger.error('Error adding reaction:', error);
-    return NextResponse.json(
-      { error: 'Failed to add reaction' },
-      { status: 500 }
-    );
+    logger.error('Add reaction error:', error);
+    return NextResponse.json({ error: 'Failed to add reaction' }, { status: 500 });
   }
 }
 
@@ -108,87 +71,47 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Get existing post
-    const post = await prisma.communicationPost.findUnique({
-      where: { id: params.id },
-    });
+    const { data: post } = await supabase
+      .from('communication_posts')
+      .select('family_id')
+      .eq('id', params.id)
+      .single();
 
     if (!post) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
     // Verify post belongs to user's family
-    if (post.familyId !== session.user.familyId) {
-      return NextResponse.json(
-        { error: 'You do not have permission to remove reactions from this post' },
-        { status: 403 }
-      );
+    if (post.family_id !== familyId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const emoji = searchParams.get('emoji');
+    const body = await request.json();
+    const { emoji } = body;
 
-    // Validate emoji
-    if (!emoji || emoji.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Emoji parameter is required' },
-        { status: 400 }
-      );
-    }
-
-    // Remove reaction (only user's own reaction)
-    await prisma.postReaction.deleteMany({
-      where: {
-        postId: params.id,
-        memberId: session.user.id,
-        emoji: emoji.trim(),
-      },
-    });
-
-    // Get updated post with reactions
-    const updatedPost = await prisma.communicationPost.findUnique({
-      where: { id: params.id },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-          },
-        },
-        reactions: {
-          include: {
-            member: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            reactions: true,
-          },
-        },
-      },
-    });
+    await removePostReaction(params.id, memberId, emoji);
 
     return NextResponse.json({
-      post: updatedPost,
+      success: true,
       message: 'Reaction removed successfully',
     });
   } catch (error) {
-    logger.error('Error removing reaction:', error);
-    return NextResponse.json(
-      { error: 'Failed to remove reaction' },
-      { status: 500 }
-    );
+    logger.error('Remove reaction error:', error);
+    return NextResponse.json({ error: 'Failed to remove reaction' }, { status: 500 });
   }
 }

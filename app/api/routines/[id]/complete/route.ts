@@ -1,159 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
-import { onRoutineCompleted } from '@/lib/rules-engine/hooks';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { completeRoutine } from '@/lib/data/routines';
 import { logger } from '@/lib/logger';
-import { shouldSkipRoutine } from '@/lib/sick-mode';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Get the routine
-    const routine = await prisma.routine.findUnique({
-      where: {
-        id: params.id,
-      },
-    });
+    const { data: routine } = await supabase
+      .from('routines')
+      .select('family_id, member_id')
+      .eq('id', params.id)
+      .single();
 
     if (!routine) {
       return NextResponse.json({ error: 'Routine not found' }, { status: 404 });
     }
 
     // Verify routine belongs to user's family
-    if (routine.familyId !== session.user.familyId) {
+    if (routine.family_id !== familyId) {
       return NextResponse.json(
         { error: 'You do not have permission to complete this routine' },
         { status: 403 }
       );
     }
 
-    // Determine who is completing the routine
-    let memberId = session.user.id;
-    
-    // Validate JSON input
-    let body;
-    try {
-      body = await request.json();
-    } catch (error) {
-      // Empty body is acceptable for routine completion
-      body = {};
-    }
+    const body = await request.json();
+    const { notes, completedBy } = body;
 
-    // If parent is completing on behalf of child
-    if (session.user.role === 'PARENT' && body.memberId) {
-      // Verify member exists and belongs to family
-      const member = await prisma.familyMember.findFirst({
-        where: {
-          id: body.memberId,
-          familyId: session.user.familyId,
-        },
-      });
+    const result = await completeRoutine(params.id, completedBy || memberId, notes || null);
 
-      if (!member) {
-        return NextResponse.json(
-          { error: 'Specified member is not a valid family member' },
-          { status: 400 }
-        );
-      }
-
-      memberId = body.memberId;
-    } else if (session.user.role === 'CHILD') {
-      // If routine is assigned to a specific child, verify it's this child
-      if (routine.assignedTo && routine.assignedTo !== session.user.id) {
-        return NextResponse.json(
-          { error: 'This routine is not assigned to you' },
-          { status: 403 }
-        );
-      }
-    }
-
-    // Check if routine should be skipped due to sick mode
-    const shouldSkip = await shouldSkipRoutine(memberId, routine.type);
-    if (shouldSkip) {
-      logger.info(`Routine ${routine.id} (${routine.type}) skipped for member ${memberId} - in sick mode`);
-      return NextResponse.json({
-        message: `${routine.type === 'MORNING' ? 'Morning' : 'Bedtime'} routine is skipped while in sick mode`,
-        skippedDueToSickMode: true,
-        completion: null,
-      }, { status: 200 });
-    }
-
-    // Create completion record with today's date (normalized to midnight)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    try {
-      const completion = await prisma.routineCompletion.create({
-        data: {
-          routineId: params.id,
-          memberId,
-          date: today,
-        },
-      });
-
-      // Create audit log
-      await prisma.auditLog.create({
-        data: {
-          familyId: session.user.familyId,
-          memberId: session.user.id,
-          action: 'ROUTINE_COMPLETED',
-          result: 'SUCCESS',
-          metadata: {
-            routineId: routine.id,
-            routineName: routine.name,
-            completedBy: memberId,
-            completedByUser: session.user.id,
-          },
-        },
-      });
-
-      // Trigger rules engine evaluation (async, fire-and-forget)
-      try {
-        await onRoutineCompleted(
-          {
-            id: completion.id,
-            routineId: completion.routineId,
-            memberId: completion.memberId,
-            completedAt: completion.date,
-          },
-          session.user.familyId,
-          routine.type
-        );
-      } catch (error) {
-        logger.error('Rules engine hook error:', error);
-        // Don't fail the completion if rules engine fails
-      }
-
-      return NextResponse.json(
-        {
-          completion,
-          message: 'Routine completed successfully',
-        },
-        { status: 201 }
-      );
-    } catch (error: any) {
-      // Handle unique constraint violation (already completed today)
-      if (error.code === 'P2002') {
-        return NextResponse.json(
-          { error: 'Routine already completed today' },
-          { status: 400 }
-        );
-      }
-      throw error;
-    }
+    return NextResponse.json({
+      success: true,
+      completion: result.completion,
+      message: 'Routine completed successfully',
+    });
   } catch (error) {
-    logger.error('Error completing routine:', error);
-    return NextResponse.json(
-      { error: 'Failed to complete routine' },
-      { status: 500 }
-    );
+    logger.error('Complete routine error:', error);
+    return NextResponse.json({ error: 'Failed to complete routine' }, { status: 500 });
   }
 }

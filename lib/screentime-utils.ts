@@ -3,9 +3,11 @@
  * 
  * Helper functions for calculating screen time allowances, remaining time,
  * rollover logic, and week boundaries.
+ * 
+ * MIGRATED TO SUPABASE - January 10, 2026
  */
 
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 
 export enum ScreenTimePeriod {
   DAILY = 'DAILY',
@@ -16,10 +18,13 @@ export enum ScreenTimePeriod {
  * Get the start of the week based on family settings
  */
 export async function getWeekStart(date: Date, familyId: string): Promise<Date> {
-  const family = await prisma.family.findUnique({
-    where: { id: familyId },
-    select: { settings: true },
-  });
+  const supabase = await createClient();
+  
+  const { data: family } = await supabase
+    .from('families')
+    .select('settings')
+    .eq('id', familyId)
+    .single();
 
   const weekStartDay = (family?.settings as any)?.weekStartDay || 'MONDAY';
   
@@ -70,17 +75,17 @@ export async function calculateRemainingTime(
   periodStart: Date;
   periodEnd: Date;
 }> {
-  const allowance = await prisma.screenTimeAllowance.findUnique({
-    where: {
-      memberId_screenTimeTypeId: {
-        memberId,
-        screenTimeTypeId,
-      },
-    },
-    include: {
-      screenTimeType: true,
-    },
-  });
+  const supabase = await createClient();
+  
+  const { data: allowance } = await supabase
+    .from('screen_time_allowances')
+    .select(`
+      *,
+      screen_time_type:screen_time_types(*)
+    `)
+    .eq('member_id', memberId)
+    .eq('screen_time_type_id', screenTimeTypeId)
+    .maybeSingle();
 
   if (!allowance) {
     return {
@@ -94,10 +99,11 @@ export async function calculateRemainingTime(
   }
 
   // Get family ID for week start calculation
-  const member = await prisma.familyMember.findUnique({
-    where: { id: memberId },
-    select: { familyId: true },
-  });
+  const { data: member } = await supabase
+    .from('family_members')
+    .select('family_id')
+    .eq('id', memberId)
+    .single();
 
   if (!member) {
     throw new Error('Member not found');
@@ -112,53 +118,43 @@ export async function calculateRemainingTime(
     periodEnd.setUTCDate(periodEnd.getUTCDate() + 1);
   } else {
     // WEEKLY
-    periodStart = await getWeekStart(asOfDate, member.familyId);
+    periodStart = await getWeekStart(asOfDate, member.family_id);
     periodEnd = new Date(periodStart);
     periodEnd.setUTCDate(periodEnd.getUTCDate() + 7);
   }
 
   // Get all SPENT transactions for this type in the current period
-  const spentTransactions = await prisma.screenTimeTransaction.findMany({
-    where: {
-      memberId,
-      screenTimeTypeId,
-      type: 'SPENT',
-      createdAt: {
-        gte: periodStart,
-        lt: periodEnd,
-      },
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  });
+  const { data: spentTransactions } = await supabase
+    .from('screen_time_transactions')
+    .select('*')
+    .eq('member_id', memberId)
+    .eq('screen_time_type_id', screenTimeTypeId)
+    .eq('type', 'SPENT')
+    .gte('created_at', periodStart.toISOString())
+    .lt('created_at', periodEnd.toISOString())
+    .order('created_at', { ascending: true });
 
   // Get all ADJUSTMENT transactions for this type in the current period
-  const adjustmentTransactions = await prisma.screenTimeTransaction.findMany({
-    where: {
-      memberId,
-      screenTimeTypeId,
-      type: 'ADJUSTMENT',
-      createdAt: {
-        gte: periodStart,
-        lt: periodEnd,
-      },
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  });
+  const { data: adjustmentTransactions } = await supabase
+    .from('screen_time_transactions')
+    .select('*')
+    .eq('member_id', memberId)
+    .eq('screen_time_type_id', screenTimeTypeId)
+    .eq('type', 'ADJUSTMENT')
+    .gte('created_at', periodStart.toISOString())
+    .lt('created_at', periodEnd.toISOString())
+    .order('created_at', { ascending: true });
 
   // Calculate used minutes (from SPENT transactions)
-  const usedMinutes = spentTransactions.reduce((sum, t) => sum + Math.abs(t.amountMinutes), 0);
+  const usedMinutes = (spentTransactions || []).reduce((sum, t) => sum + Math.abs(t.amount_minutes), 0);
   
   // Calculate adjustment minutes (positive adjustments add time, negative remove time)
-  // Note: amountMinutes is already positive for additions and negative for removals
-  const adjustmentMinutes = adjustmentTransactions.reduce((sum, t) => sum + t.amountMinutes, 0);
+  // Note: amount_minutes is already positive for additions and negative for removals
+  const adjustmentMinutes = (adjustmentTransactions || []).reduce((sum, t) => sum + t.amount_minutes, 0);
 
   // Calculate rollover from previous period
   let rolloverMinutes = 0;
-  if (allowance.rolloverEnabled) {
+  if (allowance.rollover_enabled) {
     let previousPeriodStart: Date;
     let previousPeriodEnd: Date;
 
@@ -173,38 +169,35 @@ export async function calculateRemainingTime(
       previousPeriodEnd = periodStart;
     }
 
-    const previousTransactions = await prisma.screenTimeTransaction.findMany({
-      where: {
-        memberId,
-        screenTimeTypeId,
-        type: 'SPENT',
-        createdAt: {
-          gte: previousPeriodStart,
-          lt: previousPeriodEnd,
-        },
-      },
-    });
+    const { data: previousTransactions } = await supabase
+      .from('screen_time_transactions')
+      .select('*')
+      .eq('member_id', memberId)
+      .eq('screen_time_type_id', screenTimeTypeId)
+      .eq('type', 'SPENT')
+      .gte('created_at', previousPeriodStart.toISOString())
+      .lt('created_at', previousPeriodEnd.toISOString());
 
-    const previousUsed = previousTransactions.reduce(
-      (sum, t) => sum + Math.abs(t.amountMinutes),
+    const previousUsed = (previousTransactions || []).reduce(
+      (sum, t) => sum + Math.abs(t.amount_minutes),
       0
     );
-    const previousRemaining = Math.max(0, allowance.allowanceMinutes - previousUsed);
+    const previousRemaining = Math.max(0, allowance.allowance_minutes - previousUsed);
 
     rolloverMinutes = previousRemaining;
-    if (allowance.rolloverCapMinutes !== null && rolloverMinutes > allowance.rolloverCapMinutes) {
-      rolloverMinutes = allowance.rolloverCapMinutes;
+    if (allowance.rollover_cap_minutes !== null && rolloverMinutes > allowance.rollover_cap_minutes) {
+      rolloverMinutes = allowance.rollover_cap_minutes;
     }
   }
 
   // Calculate remaining: allowance + rollover - used + adjustments
   // Adjustments: positive values add time, negative values remove time
-  const remainingMinutes = Math.max(0, allowance.allowanceMinutes + rolloverMinutes - usedMinutes + adjustmentMinutes);
+  const remainingMinutes = Math.max(0, allowance.allowance_minutes + rolloverMinutes - usedMinutes + adjustmentMinutes);
 
   return {
     remainingMinutes,
     usedMinutes,
-    allowanceMinutes: allowance.allowanceMinutes,
+    allowanceMinutes: allowance.allowance_minutes,
     rolloverMinutes,
     periodStart,
     periodEnd,

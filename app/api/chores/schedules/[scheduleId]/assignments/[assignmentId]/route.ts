@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { removeChoreAssignment } from '@/lib/data/chores';
 import { logger } from '@/lib/logger';
 
 export async function DELETE(
@@ -8,46 +9,56 @@ export async function DELETE(
   { params }: { params: { scheduleId: string; assignmentId: string } }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId || session.user.role !== 'PARENT') {
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
     // Verify assignment exists
-    const existingAssignment = await prisma.choreAssignment.findUnique({
-      where: { id: params.assignmentId },
-      include: {
-        choreSchedule: {
-          include: {
-            choreDefinition: true,
-            assignments: {
-              where: { isActive: true },
-            },
-          },
-        },
-      },
-    });
+    const { data: existingAssignment } = await supabase
+      .from('chore_assignments')
+      .select(`
+        *,
+        schedule:chore_schedules!inner(
+          *,
+          definition:chore_definitions!inner(family_id),
+          assignments:chore_assignments!inner(*)
+        )
+      `)
+      .eq('id', params.assignmentId)
+      .eq('schedule.assignments.is_active', true)
+      .single();
 
     if (!existingAssignment) {
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
 
     // Verify family ownership
-    if (existingAssignment.choreSchedule.choreDefinition.familyId !== session.user.familyId) {
+    if (existingAssignment.schedule.definition.family_id !== familyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     // Prevent deleting last assignment
-    if (existingAssignment.choreSchedule.assignments.length <= 1) {
+    if (existingAssignment.schedule.assignments.length <= 1) {
       return NextResponse.json({ error: 'Cannot remove the last assignment from a schedule' }, { status: 400 });
     }
 
     // Soft delete assignment
-    await prisma.choreAssignment.update({
-      where: { id: params.assignmentId },
-      data: { isActive: false },
-    });
+    await removeChoreAssignment(params.assignmentId);
 
     return NextResponse.json({
       success: true,

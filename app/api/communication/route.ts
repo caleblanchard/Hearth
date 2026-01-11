@@ -1,82 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
-import { PostType } from '@/app/generated/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getCommunicationPosts, createCommunicationPost } from '@/lib/data/communication';
 import { logger } from '@/lib/logger';
-import { sanitizeString, sanitizeHTML } from '@/lib/input-sanitization';
-import { parsePaginationParams, createPaginationResponse } from '@/lib/pagination';
-import { parseJsonBody } from '@/lib/request-validation';
-
-const VALID_POST_TYPES = ['ANNOUNCEMENT', 'KUDOS', 'NOTE', 'PHOTO'];
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type');
     const pinnedOnly = searchParams.get('pinned') === 'true';
-    
-    // Use pagination utilities
-    const { page, limit } = parsePaginationParams(searchParams);
-    const skip = (page - 1) * limit;
+    const limit = parseInt(searchParams.get('limit') || '20');
 
-    // Build query filters
-    const where: any = {
-      familyId: session.user.familyId,
-    };
+    // Use data module
+    const posts = await getCommunicationPosts(familyId, {
+      limit,
+      pinned: pinnedOnly ? true : undefined,
+    });
 
-    if (type) {
-      where.type = type as PostType;
-    }
-
-    if (pinnedOnly) {
-      where.isPinned = true;
-    }
-
-    // Fetch posts with author and reactions
-    const [posts, total] = await Promise.all([
-      prisma.communicationPost.findMany({
-        where,
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              avatarUrl: true,
-            },
-          },
-          reactions: {
-            include: {
-              member: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-          _count: {
-            select: {
-              reactions: true,
-            },
-          },
-        },
-        orderBy: [
-          { isPinned: 'desc' },
-          { createdAt: 'desc' },
-        ],
-        skip,
-        take: limit,
-      }),
-      prisma.communicationPost.count({ where }),
-    ]);
-
-    return NextResponse.json(createPaginationResponse(posts, page, limit, total));
+    return NextResponse.json({ posts, total: posts.length });
   } catch (error) {
     logger.error('Error fetching posts', error);
     return NextResponse.json(
@@ -88,90 +39,56 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Validate and parse JSON body
-    const bodyResult = await parseJsonBody(request);
-    if (!bodyResult.success) {
-      return NextResponse.json(
-        { error: bodyResult.error },
-        { status: bodyResult.status }
-      );
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+    
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
-    const { type, title, content, imageUrl } = bodyResult.data;
 
-    // Sanitize and validate input
-    const sanitizedContent = sanitizeHTML(content);
-    if (!sanitizedContent || sanitizedContent.trim().length === 0) {
+    const body = await request.json();
+    const { content, category, imageUrl } = body;
+
+    // Validation
+    if (!content || content.trim().length === 0) {
       return NextResponse.json(
         { error: 'Content is required' },
         { status: 400 }
       );
     }
 
-    const sanitizedType = sanitizeString(type);
-    if (!sanitizedType || !VALID_POST_TYPES.includes(sanitizedType)) {
-      return NextResponse.json(
-        { error: 'Valid post type is required (ANNOUNCEMENT, KUDOS, NOTE, PHOTO)' },
-        { status: 400 }
-      );
-    }
-
-    const sanitizedTitle = title ? sanitizeString(title) : null;
-    const sanitizedImageUrl = imageUrl ? sanitizeString(imageUrl) : null;
-
-    // Only parents can post announcements
-    if (sanitizedType === 'ANNOUNCEMENT' && session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can post announcements' },
-        { status: 403 }
-      );
-    }
-
-    // Create post
-    const post = await prisma.communicationPost.create({
-      data: {
-        familyId: session.user.familyId,
-        type: sanitizedType as PostType,
-        title: sanitizedTitle,
-        content: sanitizedContent,
-        imageUrl: sanitizedImageUrl,
-        authorId: session.user.id,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-          },
-        },
-      },
+    // Use data module
+    const post = await createCommunicationPost({
+      family_id: familyId,
+      author_id: memberId,
+      content: content.trim(),
+      category: category || 'NOTE',
+      image_url: imageUrl?.trim() || null,
+      is_pinned: false,
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'POST_CREATED',
-        result: 'SUCCESS',
-        metadata: {
-          postId: post.id,
-          postType: post.type,
-        },
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'POST_CREATED',
+      entity_type: 'COMMUNICATION',
+      entity_id: post.id,
+      result: 'SUCCESS',
+      metadata: {
+        category: post.category,
       },
     });
 
     return NextResponse.json(
-      {
-        post,
-        message: 'Post created successfully',
-      },
+      { post, message: 'Post created successfully' },
       { status: 201 }
     );
   } catch (error) {

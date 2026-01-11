@@ -1,7 +1,15 @@
+/**
+ * Push Notification Utilities
+ * Handles web push notifications with preferences and quiet hours
+ * 
+ * MIGRATED TO SUPABASE - January 10, 2026
+ */
+
 import webpush from 'web-push';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
-import { NotificationType } from '@/app/generated/prisma';
+
+type NotificationType = string; // Import proper type if available
 
 // Configure VAPID details (these should be set in environment variables)
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -61,13 +69,17 @@ export async function sendPushNotificationToUser(
   payload: NotificationPayload
 ): Promise<void> {
   try {
+    const supabase = await createClient();
+    
     // Get user's notification preferences
-    const preferences = await prisma.notificationPreference.findUnique({
-      where: { userId },
-    });
+    const { data: preferences } = await supabase
+      .from('notification_preferences')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
 
     // Check if push notifications are enabled
-    if (preferences && !preferences.pushEnabled) {
+    if (preferences && !preferences.push_enabled) {
       logger.info('Push notifications disabled for user', { userId });
       return;
     }
@@ -75,8 +87,8 @@ export async function sendPushNotificationToUser(
     // Check if this notification type is enabled
     if (
       preferences &&
-      preferences.enabledTypes.length > 0 &&
-      !preferences.enabledTypes.includes(notificationType)
+      preferences.enabled_types.length > 0 &&
+      !preferences.enabled_types.includes(notificationType)
     ) {
       logger.info('Notification type disabled for user', { userId, notificationType });
       return;
@@ -84,19 +96,20 @@ export async function sendPushNotificationToUser(
 
     // Check quiet hours
     if (
-      preferences?.quietHoursEnabled &&
-      isQuietHours(preferences.quietHoursStart, preferences.quietHoursEnd)
+      preferences?.quiet_hours_enabled &&
+      isQuietHours(preferences.quiet_hours_start, preferences.quiet_hours_end)
     ) {
       logger.info('Notification skipped due to quiet hours', { userId, notificationType });
       return;
     }
 
     // Get all push subscriptions for the user
-    const subscriptions = await prisma.pushSubscription.findMany({
-      where: { userId },
-    });
+    const { data: subscriptions } = await supabase
+      .from('push_subscriptions')
+      .select('*')
+      .eq('user_id', userId);
 
-    if (subscriptions.length === 0) {
+    if (!subscriptions || subscriptions.length === 0) {
       logger.info('No push subscriptions found for user', { userId });
       return;
     }
@@ -142,9 +155,10 @@ export async function sendPushNotificationToUser(
             userId,
             endpoint: subscription.endpoint,
           });
-          await prisma.pushSubscription.delete({
-            where: { id: subscription.id },
-          });
+          await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('id', subscription.id);
         } else {
           logger.error('Failed to send push notification', {
             userId,
@@ -189,17 +203,25 @@ export async function sendPushNotificationToFamily(
   }
 ): Promise<void> {
   try {
-    const members = await prisma.familyMember.findMany({
-      where: {
-        familyId,
-        isActive: true,
-        ...(options?.roleFilter && { role: options.roleFilter }),
-        ...(options?.excludeUserIds && {
-          id: { notIn: options.excludeUserIds },
-        }),
-      },
-      select: { id: true },
-    });
+    const supabase = await createClient();
+    
+    let query = supabase
+      .from('family_members')
+      .select('id')
+      .eq('family_id', familyId)
+      .eq('is_active', true);
+
+    if (options?.roleFilter) {
+      query = query.eq('role', options.roleFilter);
+    }
+
+    if (options?.excludeUserIds && options.excludeUserIds.length > 0) {
+      query = query.not('id', 'in', `(${options.excludeUserIds.join(',')})`);
+    }
+
+    const { data: members } = await query;
+
+    if (!members) return;
 
     const userIds = members.map((m) => m.id);
     await sendPushNotificationToUsers(userIds, notificationType, payload);

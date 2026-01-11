@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getRecipes, createRecipe } from '@/lib/data/recipes';
 import { logger } from '@/lib/logger';
-import { parsePaginationParams, createPaginationResponse } from '@/lib/pagination';
 
 const VALID_DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'];
 const VALID_CATEGORIES = [
@@ -18,74 +18,34 @@ const VALID_CATEGORIES = [
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Parse query parameters for filtering
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const isFavorite = searchParams.get('isFavorite');
-    const search = searchParams.get('search');
+    const category = searchParams.get('category') || undefined;
+    const search = searchParams.get('search') || undefined;
+    const sortBy = searchParams.get('sortBy') as 'name' | 'rating' | 'created_at' | undefined;
+    const sortOrder = searchParams.get('sortOrder') as 'asc' | 'desc' | undefined;
 
-    // Build where clause
-    const where: any = {
-      familyId: session.user.familyId,
-    };
+    // Use data module
+    const recipes = await getRecipes(familyId, {
+      category,
+      searchQuery: search,
+      sortBy: sortBy || 'name',
+      sortOrder: sortOrder || 'asc',
+    });
 
-    if (category) {
-      where.category = category;
-    }
-
-    if (isFavorite !== null) {
-      where.isFavorite = isFavorite === 'true';
-    }
-
-    if (search) {
-      where.name = {
-        contains: search,
-        mode: 'insensitive',
-      };
-    }
-
-    // Parse pagination
-    const { page, limit } = parsePaginationParams(request.nextUrl.searchParams);
-    const skip = (page - 1) * limit;
-
-    // Fetch recipes with pagination
-    const [recipes, total] = await Promise.all([
-      prisma.recipe.findMany({
-        where,
-        include: {
-          creator: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          ingredients: {
-            orderBy: {
-              sortOrder: 'asc',
-            },
-          },
-          _count: {
-            select: {
-              ratings: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        skip,
-        take: limit,
-      }),
-      prisma.recipe.count({ where }),
-    ]);
-
-    return NextResponse.json(createPaginationResponse(recipes, page, limit, total));
+    return NextResponse.json({ recipes, total: recipes.length });
   } catch (error) {
     logger.error('Error fetching recipes:', error);
     return NextResponse.json({ error: 'Failed to fetch recipes' }, { status: 500 });
@@ -94,10 +54,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+    
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const body = await request.json();
@@ -113,10 +81,8 @@ export async function POST(request: NextRequest) {
       sourceUrl,
       instructions,
       notes,
-      isFavorite,
       category,
       dietaryTags,
-      ingredients,
     } = body;
 
     // Validate required fields
@@ -140,66 +106,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare ingredients with sortOrder
-    const ingredientsData =
-      ingredients?.map((ing: any, index: number) => ({
-        name: ing.name,
-        ...(ing.quantity !== undefined && { quantity: ing.quantity }),
-        ...(ing.unit !== undefined && ing.unit?.trim() && { unit: ing.unit.trim() }),
-        ...(ing.notes !== undefined && ing.notes?.trim() && { notes: ing.notes.trim() }),
-        sortOrder: ing.sortOrder ?? index,
-      })) || [];
-
-    // Create recipe
-    const recipe = await prisma.recipe.create({
-      data: {
-        familyId: session.user.familyId,
-        name: name.trim(),
-        description: description?.trim() || null,
-        prepTimeMinutes: prepTimeMinutes || null,
-        cookTimeMinutes: cookTimeMinutes || null,
-        servings: servings || 4,
-        difficulty: difficulty || 'MEDIUM',
-        imageUrl: imageUrl?.trim() || null,
-        sourceUrl: sourceUrl?.trim() || null,
-        instructions: Array.isArray(instructions)
-          ? JSON.stringify(instructions)
-          : instructions || JSON.stringify([]),
-        notes: notes?.trim() || null,
-        isFavorite: isFavorite || false,
-        category: category || null,
-        dietaryTags: dietaryTags || [],
-        createdBy: session.user.id,
-        ingredients: {
-          create: ingredientsData,
-        },
-      },
-      include: {
-        ingredients: {
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+    // Use data module to create recipe
+    const recipe = await createRecipe({
+      family_id: familyId,
+      name: name.trim(),
+      description: description?.trim() || null,
+      prep_time_minutes: prepTimeMinutes || null,
+      cook_time_minutes: cookTimeMinutes || null,
+      servings: servings || 4,
+      difficulty: difficulty || 'MEDIUM',
+      image_url: imageUrl?.trim() || null,
+      source_url: sourceUrl?.trim() || null,
+      instructions: Array.isArray(instructions)
+        ? JSON.stringify(instructions)
+        : instructions || JSON.stringify([]),
+      notes: notes?.trim() || null,
+      is_favorite: false,
+      category: category || null,
+      dietary_tags: dietaryTags || [],
+      created_by: memberId,
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'RECIPE_CREATED',
-        result: 'SUCCESS',
-        metadata: {
-          recipeId: recipe.id,
-          name: recipe.name,
-        },
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'RECIPE_CREATED',
+      entity_type: 'RECIPE',
+      entity_id: recipe.id,
+      result: 'SUCCESS',
+      metadata: {
+        recipeId: recipe.id,
+        name: recipe.name,
       },
     });
 

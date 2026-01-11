@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getPet, updatePet, deletePet } from '@/lib/data/pets';
 import { logger } from '@/lib/logger';
 
 const VALID_SPECIES = [
@@ -20,22 +21,25 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const pet = await prisma.pet.findUnique({
-      where: { id: params.id },
-    });
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const pet = await getPet(params.id);
 
     if (!pet) {
       return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
     }
 
     // Verify family ownership
-    if (pet.familyId !== session.user.familyId) {
+    if (pet.family_id !== familyId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -51,72 +55,41 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify pet exists and belongs to family
-    const existingPet = await prisma.pet.findUnique({
-      where: { id: params.id },
-    });
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
 
-    if (!existingPet) {
-      return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
-    }
-
-    if (existingPet.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can update pets
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json({ error: 'Only parents can update pets' }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const { name, species, breed, birthday, imageUrl, notes } = body;
-
-    // Validate species if provided
-    if (species && !VALID_SPECIES.includes(species)) {
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json(
-        { error: `Invalid species. Must be one of: ${VALID_SPECIES.join(', ')}` },
-        { status: 400 }
+        { error: 'Only parents can update pets' },
+        { status: 403 }
       );
     }
 
-    // Build update data
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name.trim();
-    if (species !== undefined) updateData.species = species;
-    if (breed !== undefined) updateData.breed = breed?.trim() || null;
-    if (birthday !== undefined) updateData.birthday = birthday ? new Date(birthday) : null;
-    if (imageUrl !== undefined) updateData.imageUrl = imageUrl?.trim() || null;
-    if (notes !== undefined) updateData.notes = notes?.trim() || null;
+    // Verify pet exists
+    const existing = await getPet(params.id);
+    if (!existing || existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
+    }
 
-    // Update pet
-    const updatedPet = await prisma.pet.update({
-      where: { id: params.id },
-      data: updateData,
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'PET_UPDATED',
-        result: 'SUCCESS',
-        metadata: {
-          petId: updatedPet.id,
-          name: updatedPet.name,
-        },
-      },
-    });
+    const body = await request.json();
+    const pet = await updatePet(params.id, body);
 
     return NextResponse.json({
-      pet: updatedPet,
+      success: true,
+      pet,
       message: 'Pet updated successfully',
     });
   } catch (error) {
@@ -130,50 +103,40 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify pet exists and belongs to family
-    const existingPet = await prisma.pet.findUnique({
-      where: { id: params.id },
-    });
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
 
-    if (!existingPet) {
-      return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
-    }
-
-    if (existingPet.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can delete pets
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json({ error: 'Only parents can delete pets' }, { status: 403 });
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
+      return NextResponse.json(
+        { error: 'Only parents can delete pets' },
+        { status: 403 }
+      );
     }
 
-    // Delete pet (cascade will handle related records)
-    await prisma.pet.delete({
-      where: { id: params.id },
-    });
+    // Verify pet exists
+    const existing = await getPet(params.id);
+    if (!existing || existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
+    }
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'PET_DELETED',
-        result: 'SUCCESS',
-        metadata: {
-          petId: existingPet.id,
-          name: existingPet.name,
-        },
-      },
-    });
+    await deletePet(params.id);
 
-    return NextResponse.json({ message: 'Pet deleted successfully' });
+    return NextResponse.json({
+      success: true,
+      message: 'Pet deleted successfully',
+    });
   } catch (error) {
     logger.error('Error deleting pet:', error);
     return NextResponse.json({ error: 'Failed to delete pet' }, { status: 500 });

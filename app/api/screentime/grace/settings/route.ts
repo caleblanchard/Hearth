@@ -1,166 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
-import { getOrCreateGraceSettings } from '@/lib/screentime-grace';
-import { GraceRepaymentMode } from '@/app/generated/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getGraceSettings, updateGraceSettings } from '@/lib/data/screentime';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const currentMemberId = authContext.defaultMemberId;
+
+    if (!familyId || !currentMemberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Get memberId from query params (optional)
     const { searchParams } = new URL(request.url);
     const queryMemberId = searchParams.get('memberId');
-    const memberId = queryMemberId || session.user.id;
+    const memberId = queryMemberId || currentMemberId;
 
     // If viewing another member's settings, verify permissions
-    if (memberId !== session.user.id) {
-      // Only parents can view other members' settings
-      if (session.user.role !== 'PARENT') {
+    if (memberId !== currentMemberId) {
+      const isParent = await isParentInFamily(currentMemberId, familyId);
+      if (!isParent) {
         return NextResponse.json(
           { error: 'Cannot view other members settings' },
           { status: 403 }
         );
       }
 
-      // Verify member belongs to same family
-      const member = await prisma.familyMember.findUnique({
-        where: { id: memberId },
-      });
+      // Verify member belongs to family
+      const { data: member } = await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('id', memberId)
+        .single();
 
-      if (!member || member.familyId !== session.user.familyId) {
-        return NextResponse.json(
-          { error: 'Cannot view settings from other families' },
-          { status: 403 }
-        );
+      if (!member || member.family_id !== familyId) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
     }
 
-    // Get or create settings
-    const settings = await getOrCreateGraceSettings(memberId);
+    const settings = await getGraceSettings(memberId);
 
     return NextResponse.json({ settings });
   } catch (error) {
-    logger.error('Error fetching grace settings:', error);
+    logger.error('Get grace settings error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch grace settings' },
+      { error: 'Failed to get grace settings' },
       { status: 500 }
     );
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function PATCH(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can update settings
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can update grace settings' },
-        { status: 403 }
-      );
+    const familyId = authContext.defaultFamilyId;
+    const currentMemberId = authContext.defaultMemberId;
+
+    if (!familyId || !currentMemberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const {
-      memberId,
-      gracePeriodMinutes,
-      maxGracePerDay,
-      maxGracePerWeek,
-      graceRepaymentMode,
-      lowBalanceWarningMinutes,
-      requiresApproval,
-    } = await request.json();
+    const body = await request.json();
+    const { memberId: targetMemberId } = body;
+    const memberId = targetMemberId || currentMemberId;
 
-    // Verify member belongs to same family
-    const member = await prisma.familyMember.findUnique({
-      where: { id: memberId },
+    // If updating another member's settings, verify permissions
+    if (memberId !== currentMemberId) {
+      const isParent = await isParentInFamily(currentMemberId, familyId);
+      if (!isParent) {
+        return NextResponse.json(
+          { error: 'Cannot update other members settings' },
+          { status: 403 }
+        );
+      }
+
+      // Verify member belongs to family
+      const { data: member } = await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('id', memberId)
+        .single();
+
+      if (!member || member.family_id !== familyId) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+    }
+
+    const settings = await updateGraceSettings(memberId, body);
+
+    return NextResponse.json({
+      success: true,
+      settings,
+      message: 'Grace settings updated successfully',
     });
-
-    if (!member || member.familyId !== session.user.familyId) {
-      return NextResponse.json(
-        { error: 'Cannot update settings for members from other families' },
-        { status: 403 }
-      );
-    }
-
-    // Validate positive numbers
-    if (
-      gracePeriodMinutes <= 0 ||
-      maxGracePerDay < 0 ||
-      maxGracePerWeek < 0 ||
-      lowBalanceWarningMinutes <= 0
-    ) {
-      return NextResponse.json(
-        { error: 'All numeric values must be positive' },
-        { status: 400 }
-      );
-    }
-
-    // Validate enum
-    const validModes = Object.values(GraceRepaymentMode);
-    if (!validModes.includes(graceRepaymentMode)) {
-      return NextResponse.json(
-        { error: 'Invalid repayment mode' },
-        { status: 400 }
-      );
-    }
-
-    // Upsert settings
-    const settings = await prisma.screenTimeGraceSettings.upsert({
-      where: { memberId },
-      update: {
-        gracePeriodMinutes,
-        maxGracePerDay,
-        maxGracePerWeek,
-        graceRepaymentMode,
-        lowBalanceWarningMinutes,
-        requiresApproval,
-      },
-      create: {
-        memberId,
-        gracePeriodMinutes,
-        maxGracePerDay,
-        maxGracePerWeek,
-        graceRepaymentMode,
-        lowBalanceWarningMinutes,
-        requiresApproval,
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'SCREENTIME_ADJUSTED',
-        entityType: 'GRACE_SETTINGS',
-        result: 'SUCCESS',
-        metadata: {
-          targetMemberId: memberId,
-          settings: {
-            gracePeriodMinutes,
-            maxGracePerDay,
-            maxGracePerWeek,
-            graceRepaymentMode,
-            lowBalanceWarningMinutes,
-            requiresApproval,
-          },
-        },
-      },
-    });
-
-    return NextResponse.json({ settings });
   } catch (error) {
-    logger.error('Error updating grace settings:', error);
+    logger.error('Update grace settings error:', error);
     return NextResponse.json(
       { error: 'Failed to update grace settings' },
       { status: 500 }

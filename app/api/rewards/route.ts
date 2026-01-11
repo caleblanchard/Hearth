@@ -1,67 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getRewardItems, createRewardItem } from '@/lib/data/credits';
 import { logger } from '@/lib/logger';
 import { sanitizeString, sanitizeInteger } from '@/lib/input-sanitization';
-import { parsePaginationParams, createPaginationResponse } from '@/lib/pagination';
 import { parseJsonBody } from '@/lib/request-validation';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { familyId } = session.user;
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    // Parse pagination
-    const { page, limit } = parsePaginationParams(request.nextUrl.searchParams);
-    const skip = (page - 1) * limit;
+    // Fetch active rewards for the family
+    const rewards = await getRewardItems(familyId, true);
 
-    // Fetch active rewards for the family with pagination
-    const [rewards, total] = await Promise.all([
-      prisma.rewardItem.findMany({
-        where: {
-          familyId,
-          status: 'ACTIVE',
-        },
-        include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          _count: {
-            select: {
-              redemptions: {
-                where: {
-                  status: {
-                    in: ['PENDING', 'APPROVED'],
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: [
-          { costCredits: 'asc' },
-          { name: 'asc' },
-        ],
-        skip,
-        take: limit,
-      }),
-      prisma.rewardItem.count({
-        where: {
-          familyId,
-          status: 'ACTIVE',
-        },
-      }),
-    ]);
-
-    return NextResponse.json(createPaginationResponse(rewards, page, limit, total));
+    return NextResponse.json({ data: rewards, total: rewards.length });
   } catch (error) {
     logger.error('Rewards API error:', error);
     return NextResponse.json(
@@ -73,15 +34,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can create rewards
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
     }
 
     // Validate and parse JSON body
@@ -116,33 +85,19 @@ export async function POST(request: NextRequest) {
 
     const sanitizedQuantity = quantity != null ? sanitizeInteger(quantity, 0) : null;
 
-    const { familyId } = session.user;
-
     // Validate category
     const validCategories = ['PRIVILEGE', 'ITEM', 'EXPERIENCE', 'SCREEN_TIME', 'OTHER'];
     const sanitizedCategory = category && validCategories.includes(category) ? category : 'OTHER';
 
     // Create reward
-    const reward = await prisma.rewardItem.create({
-      data: {
-        familyId,
-        name: sanitizedName,
-        description: sanitizedDescription,
-        category: sanitizedCategory,
-        costCredits: sanitizedCostCredits,
-        quantity: sanitizedQuantity,
-        imageUrl: sanitizedImageUrl,
-        status: 'ACTIVE',
-        createdById: session.user.id,
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+    const reward = await createRewardItem(familyId, {
+      name: sanitizedName,
+      description: sanitizedDescription,
+      category: sanitizedCategory,
+      costCredits: sanitizedCostCredits,
+      quantity: sanitizedQuantity,
+      imageUrl: sanitizedImageUrl,
+      createdById: memberId,
     });
 
     return NextResponse.json({

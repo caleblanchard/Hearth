@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { updateRewardItem } from '@/lib/data/credits';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
@@ -8,14 +9,23 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can update rewards
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -23,9 +33,11 @@ export async function PATCH(
     const updates = await request.json();
 
     // Verify reward belongs to user's family
-    const reward = await prisma.rewardItem.findUnique({
-      where: { id },
-    });
+    const { data: reward } = await supabase
+      .from('reward_items')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
     if (!reward) {
       return NextResponse.json(
@@ -34,7 +46,7 @@ export async function PATCH(
       );
     }
 
-    if (reward.familyId !== session.user.familyId) {
+    if (reward.family_id !== familyId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -42,18 +54,7 @@ export async function PATCH(
     }
 
     // Update reward
-    const updatedReward = await prisma.rewardItem.update({
-      where: { id },
-      data: updates,
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+    const updatedReward = await updateRewardItem(id, updates);
 
     return NextResponse.json({
       success: true,
@@ -74,23 +75,34 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can delete rewards
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { id } = params;
 
     // Verify reward belongs to user's family
-    const reward = await prisma.rewardItem.findUnique({
-      where: { id },
-    });
+    const { data: reward } = await supabase
+      .from('reward_items')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
     if (!reward) {
       return NextResponse.json(
@@ -99,17 +111,23 @@ export async function DELETE(
       );
     }
 
-    if (reward.familyId !== session.user.familyId) {
+    if (reward.family_id !== familyId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
       );
     }
 
-    // Delete reward
-    await prisma.rewardItem.delete({
-      where: { id },
-    });
+    // Soft delete (set status to INACTIVE)
+    const { error } = await supabase
+      .from('reward_items')
+      .update({ status: 'INACTIVE' })
+      .eq('id', id);
+
+    if (error) {
+      logger.error('Error deleting reward:', error);
+      return NextResponse.json({ error: 'Failed to delete reward' }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,

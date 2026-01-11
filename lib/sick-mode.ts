@@ -1,15 +1,24 @@
-import prisma from '@/lib/prisma';
+/**
+ * Centralized sick mode utilities
+ * Handles sick mode checks and settings
+ * 
+ * MIGRATED TO SUPABASE - January 10, 2026
+ */
+
+import { createClient } from '@/lib/supabase/server';
 
 /**
  * Check if a specific family member has active sick mode
  */
 export async function isMemberInSickMode(memberId: string): Promise<boolean> {
-  const activeSickMode = await prisma.sickModeInstance.findFirst({
-    where: {
-      memberId,
-      isActive: true,
-    },
-  });
+  const supabase = await createClient();
+  
+  const { data: activeSickMode } = await supabase
+    .from('sick_mode_instances')
+    .select('id')
+    .eq('member_id', memberId)
+    .eq('is_active', true)
+    .maybeSingle();
 
   return !!activeSickMode;
 }
@@ -18,54 +27,64 @@ export async function isMemberInSickMode(memberId: string): Promise<boolean> {
  * Get active sick mode instance for a member
  */
 export async function getActiveSickMode(memberId: string) {
-  return await prisma.sickModeInstance.findFirst({
-    where: {
-      memberId,
-      isActive: true,
-    },
-    include: {
-      member: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-  });
+  const supabase = await createClient();
+  
+  const { data } = await supabase
+    .from('sick_mode_instances')
+    .select(`
+      *,
+      member:family_members(
+        id,
+        name
+      )
+    `)
+    .eq('member_id', memberId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  return data;
 }
 
 /**
  * Get all active sick mode instances for a family
  */
 export async function getFamilySickModes(familyId: string) {
-  return await prisma.sickModeInstance.findMany({
-    where: {
-      familyId,
-      isActive: true,
-    },
-    include: {
-      member: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-  });
+  const supabase = await createClient();
+  
+  const { data } = await supabase
+    .from('sick_mode_instances')
+    .select(`
+      *,
+      member:family_members(
+        id,
+        name
+      )
+    `)
+    .eq('family_id', familyId)
+    .eq('is_active', true);
+
+  return data || [];
 }
 
 /**
  * Get sick mode settings for a family (creates defaults if not exist)
  */
 export async function getSickModeSettings(familyId: string) {
-  let settings = await prisma.sickModeSettings.findUnique({
-    where: { familyId },
-  });
+  const supabase = await createClient();
+  
+  let { data: settings } = await supabase
+    .from('sick_mode_settings')
+    .select('*')
+    .eq('family_id', familyId)
+    .maybeSingle();
 
   if (!settings) {
-    settings = await prisma.sickModeSettings.create({
-      data: { familyId },
-    });
+    const { data: newSettings } = await supabase
+      .from('sick_mode_settings')
+      .insert({ family_id: familyId })
+      .select()
+      .single();
+    settings = newSettings;
   }
 
   return settings;
@@ -78,8 +97,8 @@ export async function shouldPauseChores(memberId: string): Promise<boolean> {
   const sickMode = await getActiveSickMode(memberId);
   if (!sickMode) return false;
 
-  const settings = await getSickModeSettings(sickMode.familyId);
-  return settings.pauseChores;
+  const settings = await getSickModeSettings(sickMode.family_id);
+  return settings?.pause_chores || false;
 }
 
 /**
@@ -89,8 +108,8 @@ export async function shouldPauseScreenTimeTracking(memberId: string): Promise<b
   const sickMode = await getActiveSickMode(memberId);
   if (!sickMode) return false;
 
-  const settings = await getSickModeSettings(sickMode.familyId);
-  return settings.pauseScreenTimeTracking;
+  const settings = await getSickModeSettings(sickMode.family_id);
+  return settings?.pause_screen_time_tracking || false;
 }
 
 /**
@@ -100,8 +119,8 @@ export async function getScreenTimeBonus(memberId: string): Promise<number> {
   const sickMode = await getActiveSickMode(memberId);
   if (!sickMode) return 0;
 
-  const settings = await getSickModeSettings(sickMode.familyId);
-  return settings.screenTimeBonus;
+  const settings = await getSickModeSettings(sickMode.family_id);
+  return settings?.screen_time_bonus || 0;
 }
 
 /**
@@ -111,8 +130,8 @@ export async function shouldSkipMorningRoutine(memberId: string): Promise<boolea
   const sickMode = await getActiveSickMode(memberId);
   if (!sickMode) return false;
 
-  const settings = await getSickModeSettings(sickMode.familyId);
-  return settings.skipMorningRoutine;
+  const settings = await getSickModeSettings(sickMode.family_id);
+  return settings?.skip_morning_routine || false;
 }
 
 /**
@@ -122,8 +141,8 @@ export async function shouldSkipBedtimeRoutine(memberId: string): Promise<boolea
   const sickMode = await getActiveSickMode(memberId);
   if (!sickMode) return false;
 
-  const settings = await getSickModeSettings(sickMode.familyId);
-  return settings.skipBedtimeRoutine;
+  const settings = await getSickModeSettings(sickMode.family_id);
+  return settings?.skip_bedtime_routine || false;
 }
 
 /**
@@ -150,6 +169,6 @@ export async function shouldMuteNonEssentialNotifications(memberId: string): Pro
   const sickMode = await getActiveSickMode(memberId);
   if (!sickMode) return false;
 
-  const settings = await getSickModeSettings(sickMode.familyId);
-  return settings.muteNonEssentialNotifs;
+  const settings = await getSickModeSettings(sickMode.family_id);
+  return settings?.mute_non_essential_notifs || false;
 }

@@ -1,80 +1,29 @@
-/**
- * Calendar Connections Management
- *
- * GET /api/calendar/connections
- * Returns list of calendar connections for the authenticated user
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getCalendarConnections } from '@/lib/data/calendar';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session || !session.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get family member info
-    // session.user.id is the FamilyMember ID from the auth system
-    const familyMember = await prisma.familyMember.findUnique({
-      where: {
-        id: session.user.id,
-      },
-    });
-
-    if (!familyMember) {
-      logger.error('Family member not found for user', { userId: session.user.id });
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    const memberId = authContext.defaultMemberId;
+    if (!memberId) {
+      return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
-    // Get user's calendar connections
-    const connections = await prisma.calendarConnection.findMany({
-      where: {
-        memberId: familyMember.id,
-      },
-      select: {
-        id: true,
-        provider: true,
-        googleEmail: true,
-        googleCalendarId: true,
-        syncStatus: true,
-        syncEnabled: true,
-        importFromGoogle: true,
-        exportToGoogle: true,
-        lastSyncAt: true,
-        syncError: true,
-        createdAt: true,
-        updatedAt: true,
-        // Explicitly exclude sensitive fields
-        accessToken: false,
-        refreshToken: false,
-        tokenExpiresAt: false,
-        syncToken: false,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const connections = await getCalendarConnections(memberId);
 
-    logger.info('Calendar connections retrieved', {
-      userId: session.user.id,
-      connectionCount: connections.length,
-    });
-
-    return NextResponse.json({ connections }, { status: 200 });
+    return NextResponse.json({ connections });
   } catch (error) {
-    logger.error('Failed to retrieve calendar connections', { error });
-
-    return NextResponse.json(
-      { error: 'Failed to retrieve calendar connections' },
-      { status: 500 }
-    );
+    logger.error('Get calendar connections error:', error);
+    return NextResponse.json({ error: 'Failed to get connections' }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest, getFamilyId } from '@/lib/api-auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -13,26 +13,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const supabase = await createClient();
+
     // Guests can view dashboard but with limited data
     if (authResult.isGuest) {
       // For guests, return limited dashboard data
       const familyId = getFamilyId(authResult);
       
       // Get basic family info only
-      const family = await prisma.family.findUnique({
-        where: { id: familyId },
-        select: {
-          name: true,
-          members: {
-            where: { isActive: true },
-            select: {
-              id: true,
-              name: true,
-              role: true,
-            },
-          },
-        },
-      });
+      const { data: family } = await supabase
+        .from('families')
+        .select(`
+          name,
+          members:family_members!inner(
+            id,
+            name,
+            role
+          )
+        `)
+        .eq('id', familyId)
+        .eq('members.is_active', true)
+        .single();
 
       return NextResponse.json({
         chores: [],
@@ -50,80 +51,66 @@ export async function GET(request: NextRequest) {
 
     const { familyId, id: memberId } = authResult.user!;
 
-    // Fetch all pending/rejected chores for the user (regardless of due date)
-    // This ensures chores show up even if dueDate isn't set correctly or instances weren't generated for today
-    const chores = await prisma.choreInstance.findMany({
-      where: {
-        assignedToId: memberId,
-        status: {
-          in: ['PENDING', 'REJECTED'],
-        },
-      },
-      include: {
-        choreSchedule: {
-          include: {
-            choreDefinition: true,
-          },
-        },
-      },
-      orderBy: [
-        { dueDate: 'asc' },
-        { createdAt: 'asc' },
-      ],
-    });
+    // Fetch all pending/rejected chores for the user
+    const { data: chores } = await supabase
+      .from('chore_instances')
+      .select(`
+        *,
+        chore_schedule:chore_schedules(
+          *,
+          chore_definition:chore_definitions(*)
+        )
+      `)
+      .eq('assigned_to_id', memberId)
+      .in('status', ['PENDING', 'REJECTED'])
+      .order('due_date', { ascending: true })
+      .order('created_at', { ascending: true });
 
     // Fetch screen time balance
-    const screenTimeBalance = await prisma.screenTimeBalance.findUnique({
-      where: {
-        memberId,
-      },
-      include: {
-        member: {
-          include: {
-            screenTimeSettings: true,
-          },
-        },
-      },
-    });
+    const { data: screenTimeBalance } = await supabase
+      .from('screen_time_balances')
+      .select(`
+        *,
+        member:family_members(
+          *,
+          screen_time_settings:screen_time_settings(*)
+        )
+      `)
+      .eq('member_id', memberId)
+      .maybeSingle();
 
-    // Fetch screen time allowances with remaining time calculations
-    const allowances = await prisma.screenTimeAllowance.findMany({
-      where: {
-        memberId,
-        screenTimeType: {
-          isActive: true,
-          isArchived: false,
-        },
-      },
-      include: {
-        screenTimeType: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-          },
-        },
-      },
-    });
+    // Fetch screen time allowances
+    const { data: allowances } = await supabase
+      .from('screen_time_allowances')
+      .select(`
+        *,
+        screen_time_type:screen_time_types!inner(
+          id,
+          name,
+          description
+        )
+      `)
+      .eq('member_id', memberId)
+      .eq('screen_time_type.is_active', true)
+      .eq('screen_time_type.is_archived', false);
 
     // Calculate remaining time for each allowance
     const allowancesWithRemaining = await Promise.all(
-      allowances.map(async (allowance) => {
+      (allowances || []).map(async (allowance) => {
         try {
           const { calculateRemainingTime } = await import('@/lib/screentime-utils');
-          const remaining = await calculateRemainingTime(memberId, allowance.screenTimeTypeId);
+          const remaining = await calculateRemainingTime(memberId, allowance.screen_time_type_id);
           return {
             id: allowance.id,
-            screenTimeTypeId: allowance.screenTimeTypeId,
-            screenTimeTypeName: allowance.screenTimeType.name,
-            allowanceMinutes: allowance.allowanceMinutes,
+            screenTimeTypeId: allowance.screen_time_type_id,
+            screenTimeTypeName: allowance.screen_time_type.name,
+            allowanceMinutes: allowance.allowance_minutes,
             period: allowance.period,
             remainingMinutes: remaining.remainingMinutes,
             usedMinutes: remaining.usedMinutes,
             rolloverMinutes: remaining.rolloverMinutes,
           };
         } catch (error) {
-          // If calculation fails, return basic info
           logger.warn('Failed to calculate remaining time for allowance', {
             error: error instanceof Error ? error.message : String(error),
             allowanceId: allowance.id,
@@ -131,11 +118,11 @@ export async function GET(request: NextRequest) {
           });
           return {
             id: allowance.id,
-            screenTimeTypeId: allowance.screenTimeTypeId,
-            screenTimeTypeName: allowance.screenTimeType.name,
-            allowanceMinutes: allowance.allowanceMinutes,
+            screenTimeTypeId: allowance.screen_time_type_id,
+            screenTimeTypeName: allowance.screen_time_type.name,
+            allowanceMinutes: allowance.allowance_minutes,
             period: allowance.period,
-            remainingMinutes: allowance.allowanceMinutes,
+            remainingMinutes: allowance.allowance_minutes,
             usedMinutes: 0,
             rolloverMinutes: 0,
           };
@@ -144,134 +131,105 @@ export async function GET(request: NextRequest) {
     );
 
     // Fetch credit balance
-    const creditBalance = await prisma.creditBalance.findUnique({
-      where: {
-        memberId,
-      },
-    });
+    const { data: creditBalance } = await supabase
+      .from('credit_balances')
+      .select('*')
+      .eq('member_id', memberId)
+      .maybeSingle();
 
     // Fetch shopping list
-    const shoppingLists = await prisma.shoppingList.findMany({
-      where: {
-        familyId,
-        isActive: true,
-      },
-      include: {
-        items: {
-          where: {
-            status: {
-              in: ['PENDING', 'IN_CART'],
-            },
-          },
-          orderBy: {
-            priority: 'desc',
-          },
-        },
-      },
-      take: 1,
-    });
+    const { data: shoppingLists } = await supabase
+      .from('shopping_lists')
+      .select(`
+        *,
+        items:shopping_items!inner(
+          *
+        )
+      `)
+      .eq('family_id', familyId)
+      .eq('is_active', true)
+      .in('items.status', ['PENDING', 'IN_CART'])
+      .order('items.priority', { ascending: false })
+      .limit(1);
 
     // Fetch to-do items
-    const todos = await prisma.todoItem.findMany({
-      where: {
-        OR: [
-          { assignedToId: memberId },
-          { AND: [{ assignedToId: null }, { familyId }] },
-        ],
-        status: {
-          in: ['PENDING', 'IN_PROGRESS'],
-        },
-      },
-      orderBy: [
-        { priority: 'desc' },
-        { dueDate: 'asc' },
-      ],
-      take: 5,
-    });
+    const { data: todos } = await supabase
+      .from('todo_items')
+      .select('*')
+      .eq('family_id', familyId)
+      .or(`assigned_to_id.eq.${memberId},assigned_to_id.is.null`)
+      .in('status', ['PENDING', 'IN_PROGRESS'])
+      .order('priority', { ascending: false })
+      .order('due_date', { ascending: true })
+      .limit(5);
 
     // Fetch upcoming calendar events
-    const calendarEvents = await prisma.calendarEvent.findMany({
-      where: {
-        familyId,
-        startTime: {
-          gte: new Date(),
-        },
-      },
-      include: {
-        assignments: {
-          where: {
-            memberId,
-          },
-        },
-      },
-      orderBy: {
-        startTime: 'asc',
-      },
-      take: 5,
-    });
+    const { data: calendarEvents } = await supabase
+      .from('calendar_events')
+      .select(`
+        *,
+        assignments:calendar_event_assignments!inner(
+          member_id
+        )
+      `)
+      .eq('family_id', familyId)
+      .gte('start_time', new Date().toISOString())
+      .order('start_time', { ascending: true })
+      .limit(5);
 
-    // Filter events that are assigned to the user
-    const myEvents = calendarEvents.filter(event =>
-      event.assignments.length > 0 || authResult.user!.role === 'PARENT'
+    // Filter events for user
+    const myEvents = (calendarEvents || []).filter(event =>
+      event.assignments?.some((a: any) => a.member_id === memberId) || authResult.user!.role === 'PARENT'
     );
 
-    // Fetch project tasks assigned to the user
-    const projectTasks = await prisma.projectTask.findMany({
-      where: {
-        assigneeId: memberId,
-        status: {
-          in: ['PENDING', 'IN_PROGRESS', 'BLOCKED'],
-        },
-        project: {
-          familyId,
-        },
-      },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: [
-        { dueDate: 'asc' },
-        { createdAt: 'asc' },
-      ],
-      take: 5,
-    });
+    // Fetch project tasks
+    const { data: projectTasks } = await supabase
+      .from('project_tasks')
+      .select(`
+        *,
+        project:projects!inner(
+          id,
+          name,
+          family_id
+        )
+      `)
+      .eq('assignee_id', memberId)
+      .eq('project.family_id', familyId)
+      .in('status', ['PENDING', 'IN_PROGRESS', 'BLOCKED'])
+      .order('due_date', { ascending: true })
+      .order('created_at', { ascending: true })
+      .limit(5);
 
     return NextResponse.json({
-      chores: chores.map(chore => ({
+      chores: (chores || []).map(chore => ({
         id: chore.id,
-        name: chore.choreSchedule.choreDefinition.name,
-        description: chore.choreSchedule.choreDefinition.description,
+        name: chore.chore_schedule.chore_definition.name,
+        description: chore.chore_schedule.chore_definition.description,
         status: chore.status,
-        creditValue: chore.choreSchedule.choreDefinition.creditValue,
-        difficulty: chore.choreSchedule.choreDefinition.difficulty,
-        dueDate: chore.dueDate,
-        requiresApproval: chore.choreSchedule.requiresApproval,
+        creditValue: chore.chore_schedule.chore_definition.credit_value,
+        difficulty: chore.chore_schedule.chore_definition.difficulty,
+        dueDate: chore.due_date,
+        requiresApproval: chore.chore_schedule.requires_approval,
       })),
       screenTime: allowancesWithRemaining.length > 0 ? {
-        // Calculate totals from type-specific allowances
         currentBalance: allowancesWithRemaining.reduce((sum, a) => sum + a.remainingMinutes, 0),
         weeklyAllocation: allowancesWithRemaining
           .filter((a) => a.period === 'WEEKLY')
           .reduce((sum, a) => sum + a.allowanceMinutes, 0),
-        weekStartDate: screenTimeBalance?.weekStartDate,
+        weekStartDate: screenTimeBalance?.week_start_date,
         allowances: allowancesWithRemaining,
       } : null,
       credits: creditBalance ? {
-        current: creditBalance.currentBalance,
-        lifetimeEarned: creditBalance.lifetimeEarned,
-        lifetimeSpent: creditBalance.lifetimeSpent,
+        current: creditBalance.current_balance,
+        lifetimeEarned: creditBalance.lifetime_earned,
+        lifetimeSpent: creditBalance.lifetime_spent,
       } : null,
-      shopping: shoppingLists[0] ? {
+      shopping: shoppingLists?.[0] ? {
         id: shoppingLists[0].id,
         name: shoppingLists[0].name,
-        itemCount: shoppingLists[0].items.length,
-        urgentCount: shoppingLists[0].items.filter(item => item.priority === 'URGENT').length,
-        items: shoppingLists[0].items.slice(0, 3).map(item => ({
+        itemCount: shoppingLists[0].items?.length || 0,
+        urgentCount: shoppingLists[0].items?.filter((item: any) => item.priority === 'URGENT').length || 0,
+        items: (shoppingLists[0].items || []).slice(0, 3).map((item: any) => ({
           id: item.id,
           name: item.name,
           quantity: item.quantity,
@@ -280,28 +238,28 @@ export async function GET(request: NextRequest) {
           category: item.category,
         })),
       } : null,
-      todos: todos.map(todo => ({
+      todos: (todos || []).map(todo => ({
         id: todo.id,
         title: todo.title,
         priority: todo.priority,
-        dueDate: todo.dueDate,
+        dueDate: todo.due_date,
         status: todo.status,
       })),
       events: myEvents.map(event => ({
         id: event.id,
         title: event.title,
-        startTime: event.startTime,
-        endTime: event.endTime,
+        startTime: event.start_time,
+        endTime: event.end_time,
         location: event.location,
         color: event.color,
       })),
-      projectTasks: projectTasks.map(task => ({
+      projectTasks: (projectTasks || []).map(task => ({
         id: task.id,
         name: task.name,
         description: task.description,
         status: task.status,
-        dueDate: task.dueDate,
-        projectId: task.projectId,
+        dueDate: task.due_date,
+        projectId: task.project_id,
         projectName: task.project.name,
       })),
       isGuest: false,

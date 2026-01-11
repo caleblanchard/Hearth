@@ -1,73 +1,37 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getPendingApprovals } from '@/lib/data/chores';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can access this
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const { familyId } = session.user;
+    // Only parents can access this
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
+    }
 
     // Fetch chores pending approval
-    const pendingChores = await prisma.choreInstance.findMany({
-      where: {
-        status: 'COMPLETED',
-        choreSchedule: {
-          choreDefinition: {
-            familyId,
-          },
-        },
-      },
-      include: {
-        choreSchedule: {
-          include: {
-            choreDefinition: true,
-          },
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-          },
-        },
-        completedBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        completedAt: 'desc',
-      },
-    });
+    const pendingChores = await getPendingApprovals(familyId);
 
     return NextResponse.json({
-      chores: pendingChores.map((chore) => ({
-        id: chore.id,
-        name: chore.choreSchedule.choreDefinition.name,
-        description: chore.choreSchedule.choreDefinition.description,
-        creditValue: chore.choreSchedule.choreDefinition.creditValue,
-        difficulty: chore.choreSchedule.choreDefinition.difficulty,
-        assignedTo: chore.assignedTo,
-        completedBy: chore.completedBy,
-        completedAt: chore.completedAt,
-        notes: chore.notes,
-        photoUrl: chore.photoUrl,
-      })),
+      chores: pendingChores,
     });
   } catch (error) {
     logger.error('Pending approval API error:', error);

@@ -3,9 +3,11 @@
  *
  * Core orchestration logic for evaluating and executing automation rules.
  * Handles trigger evaluation, condition matching, action execution, and logging.
+ * 
+ * MIGRATED TO SUPABASE - January 10, 2026
  */
 
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { evaluateTrigger } from './triggers';
 import { executeAction } from './actions';
 import {
@@ -120,17 +122,19 @@ export async function evaluateRules(
   const results: RuleExecutionResult[] = [];
 
   try {
+    const supabase = createClient();
+    
     // Find all enabled rules for this family and trigger type
-    const rules = await prisma.automationRule.findMany({
-      where: {
-        familyId: context.familyId,
-        isEnabled: true,
-        trigger: {
-          path: ['type'],
-          equals: triggerType,
-        },
-      },
-    });
+    const { data: rules } = await supabase
+      .from('automation_rules')
+      .select('*')
+      .eq('family_id', context.familyId)
+      .eq('is_enabled', true)
+      .like('trigger->>type', triggerType);
+
+    if (!rules || rules.length === 0) {
+      return results;
+    }
 
     // Evaluate each rule
     for (const rule of rules) {
@@ -198,16 +202,19 @@ export async function evaluateRules(
 
       const success = actionsFailed === 0;
 
+      const supabase = createClient();
+
       // Log execution to database
-      await prisma.ruleExecution.create({
-        data: {
-          ruleId: rule.id,
+      await supabase
+        .from('rule_execution_logs')
+        .insert({
+          rule_id: rule.id,
           success,
           result: {
             actionsCompleted,
             actionsFailed,
             actionResults,
-          } as any,
+          },
           error: errors.length > 0 ? errors.join('; ') : null,
           metadata: {
             triggerType,
@@ -218,26 +225,25 @@ export async function evaluateRules(
               triggerId: context.triggerId,
             },
           },
-        },
-      });
+        });
 
       // Create audit log
-      await prisma.auditLog.create({
-        data: {
-          familyId: context.familyId,
-          memberId: context.memberId || null,
+      await supabase
+        .from('audit_logs')
+        .insert({
+          family_id: context.familyId,
+          member_id: context.memberId || null,
           action: 'RULE_EXECUTED',
-          entityType: 'AutomationRule',
-          entityId: rule.id,
+          entity_type: 'AutomationRule',
+          entity_id: rule.id,
           result: success ? 'SUCCESS' : 'FAILURE',
-          metadata: {
+          details: {
             ruleName: rule.name,
             triggerType,
             actionsCompleted,
             actionsFailed,
           },
-        },
-      });
+        });
 
       results.push({
         ruleId: rule.id,
@@ -272,9 +278,13 @@ export async function dryRunRule(
   simulatedContext: RuleContext
 ): Promise<DryRunResult> {
   try {
-    const rule = await prisma.automationRule.findUnique({
-      where: { id: ruleId },
-    });
+    const supabase = createClient();
+    
+    const { data: rule } = await supabase
+      .from('automation_rules')
+      .select('*')
+      .eq('id', ruleId)
+      .single();
 
     if (!rule) {
       return {
@@ -390,39 +400,62 @@ export async function getRuleExecutionHistory(
   limit: number = 50,
   offset: number = 0
 ) {
-  return await prisma.ruleExecution.findMany({
-    where: { ruleId },
-    orderBy: { executedAt: 'desc' },
-    take: limit,
-    skip: offset,
-  });
+  const supabase = createClient();
+  
+  const { data } = await supabase
+    .from('rule_execution_logs')
+    .select('*')
+    .eq('rule_id', ruleId)
+    .order('executed_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+  
+  return data || [];
 }
 
 /**
  * Get execution statistics for a rule
  */
 export async function getRuleExecutionStats(ruleId: string) {
-  const [totalExecutions, successfulExecutions, failedExecutions, lastExecution] =
-    await Promise.all([
-      prisma.ruleExecution.count({ where: { ruleId } }),
-      prisma.ruleExecution.count({ where: { ruleId, success: true } }),
-      prisma.ruleExecution.count({ where: { ruleId, success: false } }),
-      prisma.ruleExecution.findFirst({
-        where: { ruleId },
-        orderBy: { executedAt: 'desc' },
-      }),
-    ]);
+  const supabase = createClient();
+  
+  const [
+    { count: totalExecutions },
+    { count: successfulExecutions },
+    { count: failedExecutions },
+    { data: lastExecutionData }
+  ] = await Promise.all([
+    supabase
+      .from('rule_execution_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('rule_id', ruleId),
+    supabase
+      .from('rule_execution_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('rule_id', ruleId)
+      .eq('success', true),
+    supabase
+      .from('rule_execution_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('rule_id', ruleId)
+      .eq('success', false),
+    supabase
+      .from('rule_execution_logs')
+      .select('*')
+      .eq('rule_id', ruleId)
+      .order('executed_at', { ascending: false })
+      .limit(1)
+  ]);
 
   const successRate =
-    totalExecutions > 0 ? (successfulExecutions / totalExecutions) * 100 : 0;
+    (totalExecutions || 0) > 0 ? ((successfulExecutions || 0) / (totalExecutions || 0)) * 100 : 0;
 
   return {
-    totalExecutions,
-    successfulExecutions,
-    failedExecutions,
+    totalExecutions: totalExecutions || 0,
+    successfulExecutions: successfulExecutions || 0,
+    failedExecutions: failedExecutions || 0,
     successRate: Math.round(successRate),
-    lastExecutionAt: lastExecution?.executedAt || null,
-    lastExecutionSuccess: lastExecution?.success || null,
+    lastExecutionAt: lastExecutionData?.[0]?.executed_at || null,
+    lastExecutionSuccess: lastExecutionData?.[0]?.success || null,
   };
 }
 
@@ -430,41 +463,47 @@ export async function getRuleExecutionStats(ruleId: string) {
  * Auto-disable rule after consecutive failures
  */
 export async function checkAndDisableFailingRule(ruleId: string): Promise<boolean> {
+  const supabase = createClient();
+  
   // Get last 3 executions
-  const recentExecutions = await prisma.ruleExecution.findMany({
-    where: { ruleId },
-    orderBy: { executedAt: 'desc' },
-    take: DEFAULT_SAFETY_LIMITS.maxConsecutiveFailures,
-  });
+  const { data: recentExecutions } = await supabase
+    .from('rule_execution_logs')
+    .select('*')
+    .eq('rule_id', ruleId)
+    .order('executed_at', { ascending: false })
+    .limit(DEFAULT_SAFETY_LIMITS.maxConsecutiveFailures);
 
   // Check if all recent executions failed
   if (
+    recentExecutions &&
     recentExecutions.length >= DEFAULT_SAFETY_LIMITS.maxConsecutiveFailures &&
     recentExecutions.every(e => !e.success)
   ) {
     // Disable the rule
-    await prisma.automationRule.update({
-      where: { id: ruleId },
-      data: { isEnabled: false },
-    });
+    await supabase
+      .from('automation_rules')
+      .update({ is_enabled: false })
+      .eq('id', ruleId);
 
     // Notify rule creator
-    const rule = await prisma.automationRule.findUnique({
-      where: { id: ruleId },
-      select: { name: true, createdById: true, familyId: true },
-    });
+    const { data: rule } = await supabase
+      .from('automation_rules')
+      .select('name, created_by_id, family_id')
+      .eq('id', ruleId)
+      .single();
 
     if (rule) {
-      await prisma.notification.create({
-        data: {
-          userId: rule.createdById,
+      await supabase
+        .from('notifications')
+        .insert({
+          family_id: rule.family_id,
+          recipient_id: rule.created_by_id,
           type: 'GENERAL',
           title: 'Automation Rule Disabled',
           message: `Rule "${rule.name}" has been automatically disabled after ${DEFAULT_SAFETY_LIMITS.maxConsecutiveFailures} consecutive failures. Please review the rule configuration.`,
-          actionUrl: `/dashboard/rules/${ruleId}`,
-          metadata: { ruleId, autoDisabled: true } as any,
-        },
-      });
+          action_url: `/dashboard/rules/${ruleId}`,
+          metadata: { ruleId, autoDisabled: true },
+        });
     }
 
     return true;

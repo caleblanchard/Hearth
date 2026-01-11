@@ -1,41 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getDocument, updateDocument, deleteDocument } from '@/lib/data/documents';
 import { logger } from '@/lib/logger';
-
-const VALID_CATEGORIES = [
-  'IDENTITY', 'MEDICAL', 'FINANCIAL', 'HOUSEHOLD',
-  'EDUCATION', 'LEGAL', 'PETS', 'OTHER'
-];
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const document = await prisma.document.findUnique({
-      where: { id: params.id },
-      include: {
-        uploader: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        versions: {
-          take: 5,
-          orderBy: {
-            uploadedAt: 'desc',
-          },
-        },
-      },
-    });
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const document = await getDocument(params.id);
 
     if (!document) {
       return NextResponse.json(
@@ -45,44 +30,14 @@ export async function GET(
     }
 
     // Verify family ownership
-    if (document.familyId !== session.user.familyId) {
+    if (document.family_id !== familyId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
-
-    // Check access list (anyone in family can view)
-    // In a more restrictive setup, you could check document.accessList
-    // For now, family membership is sufficient
-
-    // Log access
-    await prisma.documentAccessLog.create({
-      data: {
-        documentId: document.id,
-        accessedBy: session.user.id,
-        ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'DOCUMENT_ACCESSED',
-        result: 'SUCCESS',
-        metadata: {
-          documentId: document.id,
-          documentName: document.name,
-        },
-      },
-    });
 
     return NextResponse.json({ document });
   } catch (error) {
     logger.error('Error fetching document:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch document' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch document' }, { status: 500 });
   }
 }
 
@@ -91,102 +46,34 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can update documents
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can update documents' },
-        { status: 403 }
-      );
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const document = await prisma.document.findUnique({
-      where: { id: params.id },
-    });
-
-    if (!document) {
-      return NextResponse.json(
-        { error: 'Document not found' },
-        { status: 404 }
-      );
-    }
-
-    // Verify family ownership
-    if (document.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    // Verify document exists
+    const existing = await getDocument(params.id);
+    if (!existing || existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const {
-      name,
-      category,
-      documentNumber,
-      issuedDate,
-      expiresAt,
-      tags,
-      notes,
-      accessList,
-    } = body;
-
-    // Validate category if provided
-    if (category && !VALID_CATEGORIES.includes(category)) {
-      return NextResponse.json(
-        { error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}` },
-        { status: 400 }
-      );
-    }
-
-    const updatedDocument = await prisma.document.update({
-      where: { id: params.id },
-      data: {
-        name: name?.trim() || document.name,
-        category: category || document.category,
-        documentNumber: documentNumber !== undefined ? documentNumber?.trim() || null : document.documentNumber,
-        issuedDate: issuedDate ? new Date(issuedDate) : document.issuedDate,
-        expiresAt: expiresAt ? new Date(expiresAt) : document.expiresAt,
-        tags: tags !== undefined ? tags : document.tags,
-        notes: notes !== undefined ? notes?.trim() || null : document.notes,
-        accessList: accessList !== undefined ? accessList : document.accessList,
-      },
-      include: {
-        uploader: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'DOCUMENT_UPDATED',
-        result: 'SUCCESS',
-        metadata: {
-          documentId: updatedDocument.id,
-          documentName: updatedDocument.name,
-        },
-      },
-    });
+    const document = await updateDocument(params.id, body);
 
     return NextResponse.json({
-      document: updatedDocument,
+      success: true,
+      document,
       message: 'Document updated successfully',
     });
   } catch (error) {
     logger.error('Error updating document:', error);
-    return NextResponse.json(
-      { error: 'Failed to update document' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to update document' }, { status: 500 });
   }
 }
 
@@ -195,63 +82,31 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can delete documents
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can delete documents' },
-        { status: 403 }
-      );
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const document = await prisma.document.findUnique({
-      where: { id: params.id },
-    });
-
-    if (!document) {
-      return NextResponse.json(
-        { error: 'Document not found' },
-        { status: 404 }
-      );
+    // Verify document exists
+    const existing = await getDocument(params.id);
+    if (!existing || existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
-    // Verify family ownership
-    if (document.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Delete document (cascade will delete versions, share links, access logs)
-    await prisma.document.delete({
-      where: { id: params.id },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'DOCUMENT_DELETED',
-        result: 'SUCCESS',
-        metadata: {
-          documentId: document.id,
-          documentName: document.name,
-        },
-      },
-    });
+    await deleteDocument(params.id);
 
     return NextResponse.json({
+      success: true,
       message: 'Document deleted successfully',
     });
   } catch (error) {
     logger.error('Error deleting document:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete document' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 });
   }
 }

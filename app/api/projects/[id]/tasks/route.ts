@@ -1,23 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getProjectTasks, createProjectTask } from '@/lib/data/projects';
 import { logger } from '@/lib/logger';
-
-const VALID_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED', 'CANCELLED'];
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can manage projects
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage projects' },
         { status: 403 }
@@ -25,44 +33,22 @@ export async function GET(
     }
 
     // Check if project exists and belongs to family
-    const project = await prisma.project.findUnique({
-      where: { id: params.id },
-    });
+    const { data: project } = await supabase
+      .from('projects')
+      .select('family_id')
+      .eq('id', params.id)
+      .single();
 
-    if (!project) {
+    if (!project || project.family_id !== familyId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    if (project.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    const tasks = await prisma.projectTask.findMany({
-      where: { projectId: params.id },
-      include: {
-        assignee: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            dependencies: true,
-            dependents: true,
-          },
-        },
-      },
-      orderBy: { sortOrder: 'asc' },
-    });
+    const tasks = await getProjectTasks(params.id);
 
     return NextResponse.json({ tasks });
   } catch (error) {
-    logger.error('Error fetching tasks:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch tasks' },
-      { status: 500 }
-    );
+    logger.error('Get project tasks error:', error);
+    return NextResponse.json({ error: 'Failed to get tasks' }, { status: 500 });
   }
 }
 
@@ -71,119 +57,50 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can manage tasks
-    if (session.user.role !== 'PARENT') {
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Only parents can manage projects
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json(
-        { error: 'Only parents can manage tasks' },
+        { error: 'Only parents can manage projects' },
         { status: 403 }
       );
     }
 
     // Check if project exists and belongs to family
-    const project = await prisma.project.findUnique({
-      where: { id: params.id },
-    });
+    const { data: project } = await supabase
+      .from('projects')
+      .select('family_id')
+      .eq('id', params.id)
+      .single();
 
-    if (!project) {
+    if (!project || project.family_id !== familyId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    if (project.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
     const body = await request.json();
-    const {
-      name,
-      description,
-      status,
-      assigneeId,
-      dueDate,
-      estimatedHours,
-      actualHours,
-    } = body;
+    const task = await createProjectTask(params.id, body);
 
-    // Validate required fields
-    if (!name || !name.trim()) {
-      return NextResponse.json(
-        { error: 'Task name is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate status if provided
-    if (status && !VALID_STATUSES.includes(status)) {
-      return NextResponse.json(
-        { error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` },
-        { status: 400 }
-      );
-    }
-
-    // Validate hours
-    if (estimatedHours !== undefined && estimatedHours !== null && estimatedHours < 0) {
-      return NextResponse.json(
-        { error: 'Estimated hours must be a positive number' },
-        { status: 400 }
-      );
-    }
-
-    if (actualHours !== undefined && actualHours !== null && actualHours < 0) {
-      return NextResponse.json(
-        { error: 'Actual hours must be a positive number' },
-        { status: 400 }
-      );
-    }
-
-    // Get current task count for sortOrder
-    const taskCount = await prisma.projectTask.count({
-      where: { projectId: params.id },
+    return NextResponse.json({
+      success: true,
+      task,
+      message: 'Task created successfully',
     });
-
-    // Create task
-    const task = await prisma.projectTask.create({
-      data: {
-        projectId: params.id,
-        name: name.trim(),
-        description: description?.trim() || null,
-        status: status || 'PENDING',
-        assigneeId: assigneeId || null,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        estimatedHours: estimatedHours !== undefined && estimatedHours !== null ? parseFloat(estimatedHours) : null,
-        actualHours: actualHours !== undefined && actualHours !== null ? parseFloat(actualHours) : null,
-        sortOrder: taskCount,
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'PROJECT_TASK_CREATED',
-        result: 'SUCCESS',
-        metadata: {
-          projectId: params.id,
-          taskId: task.id,
-          name: task.name,
-        },
-      },
-    });
-
-    return NextResponse.json(
-      { task, message: 'Task created successfully' },
-      { status: 201 }
-    );
   } catch (error) {
-    logger.error('Error creating task:', error);
-    return NextResponse.json(
-      { error: 'Failed to create task' },
-      { status: 500 }
-    );
+    logger.error('Create project task error:', error);
+    return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });
   }
 }

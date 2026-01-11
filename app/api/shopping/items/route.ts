@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { addShoppingItem, getOrCreateShoppingList } from '@/lib/data/shopping';
 import { logger } from '@/lib/logger';
 import { sanitizeString, sanitizeInteger } from '@/lib/input-sanitization';
 import { parseJsonBody } from '@/lib/request-validation';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Validate and parse JSON body
@@ -47,56 +56,33 @@ export async function POST(request: NextRequest) {
     const validPriorities = ['NORMAL', 'NEEDED_SOON', 'URGENT'];
     const sanitizedPriority = priority && validPriorities.includes(priority) ? priority : 'NORMAL';
 
-    const { familyId } = session.user;
-
     // Get or create active shopping list
-    let shoppingList = await prisma.shoppingList.findFirst({
-      where: {
-        familyId,
-        isActive: true,
-      },
-    });
-
-    if (!shoppingList) {
-      shoppingList = await prisma.shoppingList.create({
-        data: {
-          familyId,
-          name: 'Family Shopping List',
-          isActive: true,
-        },
-      });
-    }
+    const shoppingList = await getOrCreateShoppingList(familyId, 'Family Shopping List');
 
     // Create item
-    const item = await prisma.shoppingItem.create({
-      data: {
-        listId: shoppingList.id,
-        name: sanitizedName,
-        category: sanitizedCategory,
-        quantity: sanitizedQuantity,
-        unit: sanitizedUnit,
-        priority: sanitizedPriority,
-        status: 'PENDING',
-        notes: sanitizedNotes,
-        requestedById: session.user.id,
-        addedById: session.user.id,
-      },
+    const item = await addShoppingItem(shoppingList.id, {
+      name: sanitizedName,
+      category: sanitizedCategory,
+      quantity: sanitizedQuantity,
+      unit: sanitizedUnit,
+      priority: sanitizedPriority,
+      notes: sanitizedNotes,
+      requestedById: memberId,
+      addedById: memberId,
     });
 
     // Log audit
-    await prisma.auditLog.create({
-      data: {
-        familyId,
-        memberId: session.user.id,
-        action: 'SHOPPING_ITEM_ADDED',
-        entityType: 'ShoppingItem',
-        entityId: item.id,
-        result: 'SUCCESS',
-        metadata: {
-          itemName: name,
-          category,
-          priority,
-        },
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'SHOPPING_ITEM_ADDED',
+      entity_type: 'SHOPPING_ITEM',
+      entity_id: item.id,
+      result: 'SUCCESS',
+      metadata: {
+        itemName: name,
+        category,
+        priority,
       },
     });
 

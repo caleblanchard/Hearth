@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { revokeDocumentShareLink } from '@/lib/data/documents';
 import { logger } from '@/lib/logger';
 
 export async function POST(
@@ -8,81 +9,48 @@ export async function POST(
   { params }: { params: { linkId: string } }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can revoke share links
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can revoke share links' },
         { status: 403 }
       );
     }
 
-    const shareLink = await prisma.documentShareLink.findUnique({
-      where: { id: params.linkId },
-      include: {
-        document: true,
-      },
-    });
+    // Verify share link belongs to family
+    const { data: shareLink } = await supabase
+      .from('document_share_links')
+      .select('document:documents!inner(family_id)')
+      .eq('id', params.linkId)
+      .single();
 
-    if (!shareLink) {
-      return NextResponse.json(
-        { error: 'Share link not found' },
-        { status: 404 }
-      );
+    if (!shareLink || shareLink.document.family_id !== familyId) {
+      return NextResponse.json({ error: 'Share link not found' }, { status: 404 });
     }
 
-    // Verify family ownership
-    if (shareLink.document.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Check if already revoked
-    if (shareLink.revokedAt) {
-      return NextResponse.json(
-        { error: 'Share link is already revoked' },
-        { status: 400 }
-      );
-    }
-
-    // Update the share link to mark it as revoked
-    const updatedShareLink = await prisma.documentShareLink.update({
-      where: { id: params.linkId },
-      data: {
-        revokedAt: new Date(),
-        revokedBy: session.user.id,
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'DOCUMENT_SHARED',
-        result: 'SUCCESS',
-        metadata: {
-          documentId: shareLink.documentId,
-          documentName: shareLink.document.name,
-          shareLinkId: shareLink.id,
-          action: 'revoked',
-        },
-      },
-    });
+    await revokeDocumentShareLink(params.linkId);
 
     return NextResponse.json({
+      success: true,
       message: 'Share link revoked successfully',
-      shareLink: updatedShareLink,
     });
   } catch (error) {
-    logger.error('Error revoking share link:', error);
-    return NextResponse.json(
-      { error: 'Failed to revoke share link' },
-      { status: 500 }
-    );
+    logger.error('Revoke share link error:', error);
+    return NextResponse.json({ error: 'Failed to revoke share link' }, { status: 500 });
   }
 }

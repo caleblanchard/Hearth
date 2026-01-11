@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getMemberInFamily, isParentInFamily } from '@/lib/supabase/server';
+import { getOrCreateKioskSettings, updateKioskSettings } from '@/lib/data/kiosk';
 import { logger } from '@/lib/logger';
 
 const VALID_WIDGETS = [
@@ -19,14 +20,25 @@ const VALID_WIDGETS = [
  */
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
+
     // Verify authentication
-    const session = await auth();
-    if (!session || !session.user) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (!user || authError) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get familyId from query param
+    const { searchParams } = new URL(request.url);
+    const familyId = searchParams.get('familyId');
+    
+    if (!familyId) {
+      return NextResponse.json({ error: 'Missing familyId' }, { status: 400 });
+    }
+
     // Only parents can manage kiosk settings
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage kiosk settings' },
         { status: 403 }
@@ -34,28 +46,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get or create default settings
-    let settings = await prisma.kioskSettings.findUnique({
-      where: { familyId: session.user.familyId },
+    const settings = await getOrCreateKioskSettings(familyId);
+
+    logger.info('Retrieved kiosk settings', {
+      familyId,
+      settingsId: settings.id,
     });
-
-    if (!settings) {
-      // Create default settings
-      settings = await prisma.kioskSettings.create({
-        data: {
-          familyId: session.user.familyId,
-          isEnabled: true,
-          autoLockMinutes: 15,
-          enabledWidgets: VALID_WIDGETS,
-          allowGuestView: true,
-          requirePinForSwitch: true,
-        },
-      });
-
-      logger.info('Created default kiosk settings', {
-        familyId: session.user.familyId,
-        settingsId: settings.id,
-      });
-    }
 
     return NextResponse.json(settings);
   } catch (error) {
@@ -75,29 +71,37 @@ export async function GET(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    // Verify authentication
-    const session = await auth();
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const supabase = await createClient();
 
-    // Only parents can manage kiosk settings
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can manage kiosk settings' },
-        { status: 403 }
-      );
+    // Verify authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (!user || authError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse request body
     const body = await request.json();
     const {
+      familyId,
       isEnabled,
       autoLockMinutes,
       enabledWidgets,
       allowGuestView,
       requirePinForSwitch,
     } = body;
+
+    if (!familyId) {
+      return NextResponse.json({ error: 'Missing familyId' }, { status: 400 });
+    }
+
+    // Only parents can manage kiosk settings
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
+      return NextResponse.json(
+        { error: 'Only parents can manage kiosk settings' },
+        { status: 403 }
+      );
+    }
 
     // Validate autoLockMinutes if provided
     if (autoLockMinutes !== undefined && autoLockMinutes <= 0) {
@@ -122,41 +126,38 @@ export async function PUT(request: NextRequest) {
 
     // Build update data (only include fields that are provided)
     const updateData: any = {};
-    if (isEnabled !== undefined) updateData.isEnabled = isEnabled;
+    if (isEnabled !== undefined) updateData.is_enabled = isEnabled;
     if (autoLockMinutes !== undefined)
-      updateData.autoLockMinutes = autoLockMinutes;
-    if (enabledWidgets !== undefined) updateData.enabledWidgets = enabledWidgets;
-    if (allowGuestView !== undefined) updateData.allowGuestView = allowGuestView;
+      updateData.auto_lock_minutes = autoLockMinutes;
+    if (enabledWidgets !== undefined) updateData.enabled_widgets = enabledWidgets;
+    if (allowGuestView !== undefined) updateData.allow_guest_view = allowGuestView;
     if (requirePinForSwitch !== undefined)
-      updateData.requirePinForSwitch = requirePinForSwitch;
+      updateData.require_pin_for_switch = requirePinForSwitch;
 
-    // Upsert settings
-    const settings = await prisma.kioskSettings.upsert({
-      where: { familyId: session.user.familyId },
-      create: {
-        familyId: session.user.familyId,
-        ...updateData,
-      },
-      update: updateData,
-    });
+    // Ensure settings exist first
+    await getOrCreateKioskSettings(familyId);
+
+    // Update settings
+    const settings = await updateKioskSettings(familyId, updateData);
+
+    // Get member record for audit log
+    const member = await getMemberInFamily(familyId);
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'KIOSK_SETTINGS_UPDATED',
-        entityType: 'KIOSK_SETTINGS',
-        entityId: settings.id,
-        result: 'SUCCESS',
-        metadata: {
-          changes: updateData,
-        },
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: member?.id,
+      action: 'KIOSK_SETTINGS_UPDATED',
+      entity_type: 'KIOSK_SETTINGS',
+      entity_id: settings.id,
+      result: 'SUCCESS',
+      metadata: {
+        changes: updateData,
       },
     });
 
     logger.info('Kiosk settings updated', {
-      familyId: session.user.familyId,
+      familyId,
       settingsId: settings.id,
       changes: updateData,
     });

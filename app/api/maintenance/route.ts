@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getMaintenanceItems, createMaintenanceItem } from '@/lib/data/maintenance';
 import { logger } from '@/lib/logger';
 
 const VALID_CATEGORIES = [
@@ -20,21 +21,19 @@ const VALID_SEASONS = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // All family members can view maintenance items
-    const items = await prisma.maintenanceItem.findMany({
-      where: {
-        familyId: session.user.familyId,
-      },
-      orderBy: {
-        nextDueAt: 'asc',
-      },
-    });
+    const items = await getMaintenanceItems(familyId);
 
     return NextResponse.json({ items });
   } catch (error) {
@@ -48,14 +47,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can add maintenance items
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can add maintenance items' },
         { status: 403 }
@@ -82,60 +90,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate category enum
+    // Validate enums
     if (!VALID_CATEGORIES.includes(category)) {
       return NextResponse.json(
-        {
-          error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}`,
-        },
+        { error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}` },
         { status: 400 }
       );
     }
 
-    // Validate season enum if provided
     if (season && !VALID_SEASONS.includes(season)) {
       return NextResponse.json(
-        {
-          error: `Invalid season. Must be one of: ${VALID_SEASONS.join(', ')}`,
-        },
+        { error: `Invalid season. Must be one of: ${VALID_SEASONS.join(', ')}` },
         { status: 400 }
       );
     }
 
-    // Create maintenance item
-    const item = await prisma.maintenanceItem.create({
-      data: {
-        familyId: session.user.familyId,
-        name: name.trim(),
-        description: description?.trim() || null,
-        category,
-        frequency: frequency.trim(),
-        season: season || null,
-        nextDueAt: nextDueAt ? new Date(nextDueAt) : null,
-        estimatedCost: estimatedCost !== undefined ? estimatedCost : null,
-        notes: notes?.trim() || null,
-      },
+    const item = await createMaintenanceItem(familyId, {
+      name,
+      description: description || null,
+      category,
+      frequency,
+      season: season || null,
+      nextDueAt: nextDueAt ? new Date(nextDueAt) : new Date(),
+      estimatedCost: estimatedCost || null,
+      notes: notes || null,
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'MAINTENANCE_ITEM_CREATED',
-        result: 'SUCCESS',
-        metadata: {
-          itemId: item.id,
-          name: item.name,
-          category: item.category,
-        },
-      },
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'MAINTENANCE_ITEM_CREATED',
+      entity_type: 'MAINTENANCE_ITEM',
+      entity_id: item.id,
+      result: 'SUCCESS',
+      metadata: { name, category, frequency },
     });
 
-    return NextResponse.json(
-      { item, message: 'Maintenance item created successfully' },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      success: true,
+      item,
+      message: 'Maintenance item created successfully',
+    });
   } catch (error) {
     logger.error('Error creating maintenance item:', error);
     return NextResponse.json(

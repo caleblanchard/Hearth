@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getAuthContext } from '@/lib/supabase/server';
 import { extractRecipeFromUrl } from '@/lib/recipe-extractor';
 import { logger } from '@/lib/logger';
 
@@ -13,55 +13,40 @@ import { logger } from '@/lib/logger';
 export async function POST(request: NextRequest) {
   try {
     // 1. Authenticate
-    const session = await auth();
-    if (!session?.user?.id) {
+    const authContext = await getAuthContext();
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Validate request body
-    let body;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
-    }
-
+    // 2. Parse request
+    const body = await request.json();
     const { url } = body;
 
+    // 3. Validate
     if (!url || typeof url !== 'string') {
-      return NextResponse.json({ error: 'URL is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'URL is required and must be a string' },
+        { status: 400 }
+      );
     }
 
-    // 3. Validate URL format
-    let parsedUrl;
-    try {
-      parsedUrl = new URL(url);
-    } catch {
-      return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 });
-    }
+    // 4. Extract recipe data from URL
+    const recipeData = await extractRecipeFromUrl(url);
 
-    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-      return NextResponse.json({ error: 'URL must be HTTP or HTTPS' }, { status: 400 });
-    }
-
-    // 4. Extract recipe data
-    try {
-      const recipe = await extractRecipeFromUrl(url);
-
-      // 5. Return extracted data (not saved yet - two-step process)
-      return NextResponse.json({ recipe }, { status: 200 });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (errorMessage === 'No recipe data found') {
-        return NextResponse.json({ error: 'No recipe data found at URL' }, { status: 404 });
-      }
-
-      console.error('Recipe extraction error:', errorMessage);
-      return NextResponse.json({ error: 'Failed to extract recipe' }, { status: 500 });
-    }
-  } catch (error) {
-    logger.error('Unexpected error in import route:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // 5. Return extracted data for review
+    return NextResponse.json({
+      success: true,
+      recipe: recipeData,
+      message: 'Recipe extracted successfully. Please review and save.',
+    });
+  } catch (error: any) {
+    logger.error('Recipe import error:', error);
+    return NextResponse.json(
+      {
+        error: error.message || 'Failed to import recipe',
+        details: error.cause || undefined,
+      },
+      { status: 500 }
+    );
   }
 }

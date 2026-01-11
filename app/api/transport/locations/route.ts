@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getTransportLocations, createTransportLocation } from '@/lib/data/transport';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const locations = await prisma.transportLocation.findMany({
-      where: { familyId: session.user.familyId },
-      orderBy: { name: 'asc' },
-    });
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const locations = await getTransportLocations(familyId);
 
     return NextResponse.json({ locations });
   } catch (error) {
@@ -28,58 +31,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can create locations
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can create transport locations' },
-        { status: 403 }
-      );
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const body = await request.json();
-    const { name, address } = body;
+    const location = await createTransportLocation(familyId, body);
 
-    // Validate required fields
-    if (!name) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      );
-    }
-
-    // Create location
-    const location = await prisma.transportLocation.create({
-      data: {
-        familyId: session.user.familyId,
-        name: name.trim(),
-        address: address?.trim() || null,
-      },
+    return NextResponse.json({
+      success: true,
+      location,
+      message: 'Location created successfully',
     });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'TRANSPORT_LOCATION_ADDED',
-        result: 'SUCCESS',
-        metadata: {
-          locationId: location.id,
-          name: location.name,
-        },
-      },
-    });
-
-    return NextResponse.json(
-      { location, message: 'Transport location created successfully' },
-      { status: 201 }
-    );
   } catch (error) {
     logger.error('Error creating transport location:', error);
     return NextResponse.json(

@@ -1,37 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getActiveLeftovers, createLeftover } from '@/lib/data/meals';
 import { logger } from '@/lib/logger';
 
 const DEFAULT_EXPIRY_DAYS = 3;
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get active leftovers (not used or tossed)
-    const leftovers = await prisma.leftover.findMany({
-      where: {
-        familyId: session.user.familyId,
-        usedAt: null,
-        tossedAt: null,
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        expiresAt: 'asc', // Soonest to expire first
-      },
-    });
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Use data module
+    const leftovers = await getActiveLeftovers(familyId);
 
     return NextResponse.json({ leftovers });
   } catch (error) {
@@ -45,10 +34,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+    
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const body = await request.json();
@@ -68,32 +65,30 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(now);
     expiresAt.setDate(expiresAt.getDate() + expiryDays);
 
-    // Create leftover
-    const leftover = await prisma.leftover.create({
-      data: {
-        familyId: session.user.familyId,
-        name: name.trim(),
-        quantity: quantity?.trim() || null,
-        storedAt: now,
-        expiresAt,
-        notes: notes?.trim() || null,
-        mealPlanEntryId: mealPlanEntryId || null,
-        createdBy: session.user.id,
-      },
+    // Use data module
+    const leftover = await createLeftover({
+      family_id: familyId,
+      name: name.trim(),
+      quantity: quantity?.trim() || null,
+      stored_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      notes: notes?.trim() || null,
+      meal_plan_entry_id: mealPlanEntryId || null,
+      created_by: memberId,
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'LEFTOVER_LOGGED',
-        result: 'SUCCESS',
-        metadata: {
-          leftoverId: leftover.id,
-          name: leftover.name,
-          expiresAt: leftover.expiresAt.toISOString(),
-        },
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'LEFTOVER_LOGGED',
+      entity_type: 'LEFTOVER',
+      entity_id: leftover.id,
+      result: 'SUCCESS',
+      metadata: {
+        leftoverId: leftover.id,
+        name: leftover.name,
+        expiresAt: leftover.expires_at,
       },
     });
 

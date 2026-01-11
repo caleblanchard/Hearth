@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { rejectChore } from '@/lib/data/chores';
 import { logger } from '@/lib/logger';
 
 export async function POST(
@@ -8,91 +9,38 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can reject
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const { id: choreInstanceId } = params;
+    // Only parents can reject
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
+    }
+
+    const { id: completionId } = params;
     const { reason } = await request.json();
 
-    // Fetch the chore instance
-    const choreInstance = await prisma.choreInstance.findUnique({
-      where: { id: choreInstanceId },
-      include: {
-        choreSchedule: {
-          include: {
-            choreDefinition: true,
-          },
-        },
-      },
-    });
+    // Use RPC function for rejection
+    const result = await rejectChore(completionId, memberId, reason || '');
 
-    if (!choreInstance) {
-      return NextResponse.json({ error: 'Chore not found' }, { status: 404 });
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
-
-    if (choreInstance.status !== 'COMPLETED') {
-      return NextResponse.json(
-        { error: 'Chore must be completed before rejection' },
-        { status: 400 }
-      );
-    }
-
-    // Update chore status back to pending
-    const updatedChore = await prisma.choreInstance.update({
-      where: { id: choreInstanceId },
-      data: {
-        status: 'REJECTED',
-        approvedById: session.user.id,
-        approvedAt: new Date(),
-        notes: reason || choreInstance.notes,
-      },
-    });
-
-    // Log audit event
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'CHORE_REJECTED',
-        entityType: 'ChoreInstance',
-        entityId: choreInstanceId,
-        result: 'SUCCESS',
-        metadata: {
-          choreName: choreInstance.choreSchedule.choreDefinition.name,
-          reason: reason || 'No reason provided',
-          assignedTo: choreInstance.assignedToId,
-        },
-      },
-    });
-
-    // Notify child that their chore was rejected
-    await prisma.notification.create({
-      data: {
-        userId: choreInstance.assignedToId,
-        type: 'CHORE_REJECTED',
-        title: 'Chore needs work',
-        message: `Your chore "${choreInstance.choreSchedule.choreDefinition.name}" needs to be redone.${reason ? ` Reason: ${reason}` : ''}`,
-        actionUrl: '/dashboard/chores',
-        metadata: {
-          choreInstanceId,
-          choreName: choreInstance.choreSchedule.choreDefinition.name,
-          rejectionReason: reason || 'No reason provided',
-          rejectedBy: session.user.name,
-        },
-      },
-    });
 
     return NextResponse.json({
       success: true,
-      chore: updatedChore,
+      chore: result.completion,
       message: 'Chore rejected. Please try again!',
     });
   } catch (error) {

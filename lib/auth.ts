@@ -1,9 +1,19 @@
+/**
+ * Authentication Configuration
+ * Handles NextAuth configuration for parent and child login
+ * 
+ * PARTIALLY MIGRATED TO SUPABASE - January 10, 2026
+ * Note: NextAuth Credentials provider still uses direct DB queries
+ * This is acceptable as authentication is a critical path that benefits from simplicity
+ */
+
 import NextAuth, { NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { compare } from 'bcrypt';
-import prisma from './prisma';
-import { Role } from '@/app/generated/prisma';
+import { createClient } from './supabase/server';
 import { validateGuestSession, type GuestSessionInfo } from './guest-session';
+
+type Role = 'PARENT' | 'CHILD';
 
 export const config = {
   providers: [
@@ -19,18 +29,24 @@ export const config = {
           return null;
         }
 
-        const member = await prisma.familyMember.findUnique({
-          where: { email: credentials.email as string },
-          include: { family: true },
-        });
+        const supabase = await createClient();
+        
+        const { data: member } = await supabase
+          .from('family_members')
+          .select(`
+            *,
+            family:families(*)
+          `)
+          .eq('email', credentials.email as string)
+          .single();
 
-        if (!member || !member.passwordHash || member.role !== Role.PARENT) {
+        if (!member || !member.password_hash || member.role !== 'PARENT') {
           return null;
         }
 
         const isPasswordValid = await compare(
           credentials.password as string,
-          member.passwordHash
+          member.password_hash
         );
 
         if (!isPasswordValid) {
@@ -38,17 +54,17 @@ export const config = {
         }
 
         // Update last login
-        await prisma.familyMember.update({
-          where: { id: member.id },
-          data: { lastLoginAt: new Date() },
-        });
+        await supabase
+          .from('family_members')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('id', member.id);
 
         return {
           id: member.id,
           name: member.name,
           email: member.email,
           role: member.role,
-          familyId: member.familyId,
+          familyId: member.family_id,
           familyName: member.family.name,
         };
       },
@@ -65,12 +81,18 @@ export const config = {
           return null;
         }
 
-        const member = await prisma.familyMember.findUnique({
-          where: { id: credentials.memberId as string },
-          include: { family: true },
-        });
+        const supabase = await createClient();
+        
+        const { data: member } = await supabase
+          .from('family_members')
+          .select(`
+            *,
+            family:families(*)
+          `)
+          .eq('id', credentials.memberId as string)
+          .single();
 
-        if (!member || !member.pin || member.role !== Role.CHILD) {
+        if (!member || !member.pin || member.role !== 'CHILD') {
           return null;
         }
 
@@ -84,17 +106,17 @@ export const config = {
         }
 
         // Update last login
-        await prisma.familyMember.update({
-          where: { id: member.id },
-          data: { lastLoginAt: new Date() },
-        });
+        await supabase
+          .from('family_members')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('id', member.id);
 
         return {
           id: member.id,
           name: member.name,
           email: member.email,
           role: member.role,
-          familyId: member.familyId,
+          familyId: member.family_id,
           familyName: member.family.name,
         };
       },

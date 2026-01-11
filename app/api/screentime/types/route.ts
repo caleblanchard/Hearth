@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getScreenTimeTypes, createScreenTimeType } from '@/lib/data/screentime';
 import { logger } from '@/lib/logger';
 import { sanitizeString } from '@/lib/input-sanitization';
 import { parseJsonBody } from '@/lib/request-validation';
@@ -11,22 +12,18 @@ import { parseJsonBody } from '@/lib/request-validation';
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const types = await prisma.screenTimeType.findMany({
-      where: {
-        familyId: session.user.familyId,
-        isArchived: false,
-      },
-      orderBy: [
-        { isActive: 'desc' },
-        { name: 'asc' },
-      ],
-    });
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const types = await getScreenTimeTypes(familyId);
 
     return NextResponse.json({ types });
   } catch (error) {
@@ -38,24 +35,20 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/screentime/types
- * Create a new screen time type (parents only)
- */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can create types
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can create screen time types' },
-        { status: 403 }
-      );
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Validate and parse JSON body
@@ -66,63 +59,26 @@ export async function POST(request: NextRequest) {
         { status: bodyResult.status }
       );
     }
-    const { name, description } = bodyResult.data;
+    const { name, description, icon, color } = bodyResult.data;
 
-    // Sanitize input
+    // Sanitize and validate
     const sanitizedName = sanitizeString(name);
     if (!sanitizedName || sanitizedName.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
-    const sanitizedDescription = description ? sanitizeString(description) : null;
-
-    // Check for duplicate name
-    const existing = await prisma.screenTimeType.findFirst({
-      where: {
-        familyId: session.user.familyId,
-        name: sanitizedName,
-        isArchived: false,
-      },
+    const type = await createScreenTimeType(familyId, {
+      name: sanitizedName,
+      description: description ? sanitizeString(description) : null,
+      icon: icon ? sanitizeString(icon) : null,
+      color: color ? sanitizeString(color) : null,
     });
 
-    if (existing) {
-      return NextResponse.json(
-        { error: 'A screen time type with this name already exists' },
-        { status: 400 }
-      );
-    }
-
-    const type = await prisma.screenTimeType.create({
-      data: {
-        familyId: session.user.familyId,
-        name: sanitizedName,
-        description: sanitizedDescription,
-        isActive: true,
-        isArchived: false,
-      },
+    return NextResponse.json({
+      success: true,
+      type,
+      message: 'Screen time type created successfully',
     });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'SCREENTIME_TYPE_CREATED',
-        result: 'SUCCESS',
-        metadata: {
-          typeId: type.id,
-          typeName: type.name,
-        },
-      },
-    });
-
-    return NextResponse.json(
-      { type, message: 'Screen time type created successfully' },
-      { status: 201 }
-    );
   } catch (error) {
     logger.error('Error creating screen time type:', error);
     return NextResponse.json(

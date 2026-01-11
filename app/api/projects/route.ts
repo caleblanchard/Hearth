@@ -1,23 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getProjects, createProject } from '@/lib/data/projects';
 import { logger } from '@/lib/logger';
 import { sanitizeString } from '@/lib/input-sanitization';
-import { parsePaginationParams, createPaginationResponse } from '@/lib/pagination';
 import { parseJsonBody } from '@/lib/request-validation';
 
 const VALID_STATUSES = ['ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can manage projects
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage projects' },
         { status: 403 }
@@ -27,43 +35,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    const where: any = {
-      familyId: session.user.familyId,
-    };
+    const projects = await getProjects(familyId, status || undefined);
 
-    if (status) {
-      where.status = status;
-    }
-
-    // Parse pagination
-    const { page, limit } = parsePaginationParams(request.nextUrl.searchParams);
-    const skip = (page - 1) * limit;
-
-    // Fetch projects with pagination
-    const [projects, total] = await Promise.all([
-      prisma.project.findMany({
-        where,
-        include: {
-          creator: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          _count: {
-            select: {
-              tasks: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.project.count({ where }),
-    ]);
-
-    return NextResponse.json(createPaginationResponse(projects, page, limit, total));
+    return NextResponse.json({ data: projects, total: projects.length });
   } catch (error) {
     logger.error('Error fetching projects', error);
     return NextResponse.json(
@@ -75,16 +49,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can create projects
-    if (session.user.role !== 'PARENT') {
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Only parents can manage projects
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json(
-        { error: 'Only parents can create projects' },
+        { error: 'Only parents can manage projects' },
         { status: 403 }
       );
     }
@@ -97,90 +80,44 @@ export async function POST(request: NextRequest) {
         { status: bodyResult.status }
       );
     }
-    const {
-      name,
-      description,
-      status,
-      startDate,
-      dueDate,
-      budget,
-      notes,
-    } = bodyResult.data;
+    const { name, description, startDate, endDate, budget } = bodyResult.data;
 
     // Sanitize and validate input
     const sanitizedName = sanitizeString(name);
     if (!sanitizedName || sanitizedName.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Name is required' },
+        { error: 'Project name is required' },
         { status: 400 }
       );
     }
 
     const sanitizedDescription = description ? sanitizeString(description) : null;
-    const sanitizedNotes = notes ? sanitizeString(notes) : null;
 
-    // Validate status if provided
-    if (status && !VALID_STATUSES.includes(status)) {
-      return NextResponse.json(
-        { error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` },
-        { status: 400 }
-      );
-    }
-
-    // Validate budget
-    if (budget !== undefined && budget !== null && budget < 0) {
-      return NextResponse.json(
-        { error: 'Budget must be a positive number' },
-        { status: 400 }
-      );
-    }
-
-    // Validate dates
-    if (startDate && dueDate) {
-      const start = new Date(startDate);
-      const due = new Date(dueDate);
-      if (due < start) {
-        return NextResponse.json(
-          { error: 'Due date must be after start date' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Create project
-    const project = await prisma.project.create({
-      data: {
-        familyId: session.user.familyId,
-        name: sanitizedName,
-        description: sanitizedDescription,
-        status: status || 'ACTIVE',
-        startDate: startDate ? new Date(startDate) : null,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        budget: budget !== undefined && budget !== null ? parseFloat(String(budget)) : null,
-        notes: sanitizedNotes,
-        createdById: session.user.id,
-      },
+    const project = await createProject(familyId, {
+      name: sanitizedName,
+      description: sanitizedDescription,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      budget: budget || null,
+      createdById: memberId,
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'PROJECT_CREATED',
-        result: 'SUCCESS',
-        metadata: {
-          projectId: project.id,
-          name: project.name,
-          status: project.status,
-        },
-      },
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'PROJECT_CREATED',
+      entity_type: 'PROJECT',
+      entity_id: project.id,
+      result: 'SUCCESS',
+      metadata: { name: sanitizedName },
     });
 
-    return NextResponse.json(
-      { project, message: 'Project created successfully' },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      success: true,
+      project,
+      message: 'Project created successfully',
+    });
   } catch (error) {
     logger.error('Error creating project', error);
     return NextResponse.json(

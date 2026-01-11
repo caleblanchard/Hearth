@@ -1,31 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
-import { ApprovalItem, ApprovalType } from '@/types/approvals';
 
-/**
- * GET /api/approvals
- * 
- * Returns unified queue of all pending approval items across modules
- * (chores, rewards, shopping, calendar)
- * 
- * Query Parameters:
- * - type: Filter by approval type (optional)
- * - memberId: Filter by family member (optional)
- * - sort: Sort field - 'date' | 'priority' | 'type' (default: 'date')
- * - order: Sort order - 'asc' | 'desc' (default: 'asc')
- */
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
-    const session = await auth();
-    if (!session || !session.user) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can view approval queue
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can view the approval queue' },
         { status: 403 }
@@ -33,212 +29,94 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const typeFilter = searchParams.get('type') as ApprovalType | null;
+    const typeFilter = searchParams.get('type');
     const memberIdFilter = searchParams.get('memberId');
-    const sort = searchParams.get('sort') || 'date';
-    const order = searchParams.get('order') || 'asc';
 
-    const familyId = session.user.familyId;
-    const approvals: ApprovalItem[] = [];
+    // Fetch pending chore completions (COMPLETED status, awaiting approval)
+    const { data: choreCompletions } = await supabase
+      .from('chore_completions')
+      .select(`
+        *,
+        assignment:chore_assignments!inner(
+          *,
+          schedule:chore_schedules!inner(
+            *,
+            definition:chore_definitions!inner(name, credit_value, family_id)
+          )
+        ),
+        member:family_members!inner(id, name, avatar_url)
+      `)
+      .eq('status', 'COMPLETED')
+      .eq('assignment.schedule.definition.family_id', familyId)
+      .order('completed_at', { ascending: true });
 
-    // 1. Fetch pending chore completions (COMPLETED status, awaiting approval)
-    if (!typeFilter || typeFilter === 'CHORE_COMPLETION') {
-      const choreCompletions = await prisma.choreInstance.findMany({
-        where: {
-          status: 'COMPLETED',
-          choreSchedule: {
-            choreDefinition: {
-              familyId,
-            },
-          },
-          ...(memberIdFilter && { assignedToId: memberIdFilter }),
+    // Fetch pending reward redemptions
+    const { data: rewardRedemptions } = await supabase
+      .from('reward_redemptions')
+      .select(`
+        *,
+        reward:reward_items!inner(*, family_id),
+        member:family_members!inner(id, name, avatar_url)
+      `)
+      .eq('status', 'PENDING')
+      .eq('reward.family_id', familyId)
+      .order('created_at', { ascending: true });
+
+    // Format approvals
+    const approvals = [
+      ...(choreCompletions || []).map((c: any) => ({
+        id: c.id,
+        type: 'CHORE_COMPLETION',
+        itemId: c.id,
+        memberId: c.member_id,
+        memberName: c.member.name,
+        memberAvatar: c.member.avatar_url,
+        title: c.assignment?.schedule?.definition?.name || 'Chore',
+        description: c.notes || '',
+        date: c.completed_at,
+        priority: 'normal',
+        metadata: {
+          creditValue: c.assignment?.schedule?.definition?.credit_value || 0,
         },
-        include: {
-          assignedTo: {
-            select: {
-              id: true,
-              name: true,
-              avatarUrl: true,
-            },
-          },
-          choreSchedule: {
-            include: {
-              choreDefinition: {
-                select: {
-                  name: true,
-                  creditValue: true,
-                  familyId: true,
-                },
-              },
-            },
-          },
+      })),
+      ...(rewardRedemptions || []).map((r: any) => ({
+        id: r.id,
+        type: 'REWARD_REDEMPTION',
+        itemId: r.id,
+        memberId: r.member_id,
+        memberName: r.member.name,
+        memberAvatar: r.member.avatar_url,
+        title: r.reward.name,
+        description: r.notes || '',
+        date: r.created_at,
+        priority: 'normal',
+        metadata: {
+          costCredits: r.reward.cost_credits,
         },
-        orderBy: {
-          completedAt: 'asc',
-        },
-      });
+      })),
+    ];
 
-      for (const chore of choreCompletions) {
-        // Filter out chores from other families (shouldn't happen, but defensive)
-        if (chore.choreSchedule.choreDefinition.familyId !== familyId) {
-          continue;
-        }
-
-        approvals.push({
-          id: `chore-${chore.id}`,
-          type: 'CHORE_COMPLETION',
-          familyMemberId: chore.assignedTo.id,
-          familyMemberName: chore.assignedTo.name,
-          familyMemberAvatarUrl: chore.assignedTo.avatarUrl || undefined,
-          title: chore.choreSchedule.choreDefinition.name,
-          description: `Completed ${chore.completedAt ? new Date(chore.completedAt).toLocaleDateString() : 'recently'}`,
-          requestedAt: chore.completedAt || new Date(),
-          metadata: {
-            credits: chore.choreSchedule.choreDefinition.creditValue,
-            notes: chore.notes,
-            photoUrl: chore.photoUrl,
-            completedAt: chore.completedAt,
-          },
-          priority: calculatePriority({
-            type: 'CHORE_COMPLETION',
-            requestedAt: chore.completedAt || new Date(),
-            photoUrl: chore.photoUrl,
-          }),
-        });
-      }
+    // Apply filters
+    let filtered = approvals;
+    if (typeFilter) {
+      filtered = filtered.filter((a: any) => a.type === typeFilter);
+    }
+    if (memberIdFilter) {
+      filtered = filtered.filter((a: any) => a.memberId === memberIdFilter);
     }
 
-    // 2. Fetch pending reward redemptions
-    if (!typeFilter || typeFilter === 'REWARD_REDEMPTION') {
-      const rewardRedemptions = await prisma.rewardRedemption.findMany({
-        where: {
-          status: 'PENDING',
-          reward: {
-            familyId,
-          },
-          ...(memberIdFilter && { memberId: memberIdFilter }),
-        },
-        include: {
-          member: {
-            select: {
-              id: true,
-              name: true,
-              avatarUrl: true,
-            },
-          },
-          reward: {
-            select: {
-              name: true,
-              costCredits: true,
-              familyId: true,
-            },
-          },
-        },
-        orderBy: {
-          requestedAt: 'asc',
-        },
-      });
-
-      for (const redemption of rewardRedemptions) {
-        // Filter out redemptions from other families
-        if (redemption.reward.familyId !== familyId) {
-          continue;
-        }
-
-        approvals.push({
-          id: `reward-${redemption.id}`,
-          type: 'REWARD_REDEMPTION',
-          familyMemberId: redemption.member.id,
-          familyMemberName: redemption.member.name,
-          familyMemberAvatarUrl: redemption.member.avatarUrl || undefined,
-          title: redemption.reward.name,
-          description: `Requested ${new Date(redemption.requestedAt).toLocaleDateString()}`,
-          requestedAt: redemption.requestedAt,
-          metadata: {
-            costCredits: redemption.reward.costCredits,
-            requestedAt: redemption.requestedAt,
-          },
-          priority: calculatePriority({
-            type: 'REWARD_REDEMPTION',
-            requestedAt: redemption.requestedAt,
-            costCredits: redemption.reward.costCredits,
-          }),
-        });
-      }
-    }
-
-    // 3. Fetch pending shopping item requests
-    // Note: Current schema doesn't have requestedById, so we'll skip for now
-    // This can be added when shopping items support request/approval workflow
-
-    // 4. Sort approvals
-    approvals.sort((a, b) => {
-      let comparison = 0;
-
-      if (sort === 'date') {
-        comparison = a.requestedAt.getTime() - b.requestedAt.getTime();
-      } else if (sort === 'priority') {
-        const priorityOrder = { HIGH: 3, NORMAL: 2, LOW: 1 };
-        comparison = priorityOrder[b.priority] - priorityOrder[a.priority];
-      } else if (sort === 'type') {
-        comparison = a.type.localeCompare(b.type);
-      }
-
-      return order === 'desc' ? -comparison : comparison;
-    });
-
-    logger.info('Fetched approval queue', {
-      familyId,
-      total: approvals.length,
-      typeFilter,
-      memberIdFilter,
-    });
+    // Sort by date
+    filtered.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return NextResponse.json({
-      approvals,
-      total: approvals.length,
+      approvals: filtered,
+      count: filtered.length,
     });
   } catch (error) {
-    logger.error('Error fetching approval queue', error);
+    logger.error('Approvals API error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch approval queue' },
+      { error: 'Failed to fetch approvals' },
       { status: 500 }
     );
   }
-}
-
-/**
- * Calculate priority based on approval type and metadata
- */
-function calculatePriority(data: {
-  type: ApprovalType;
-  requestedAt: Date;
-  photoUrl?: string | null;
-  costCredits?: number;
-}): 'HIGH' | 'NORMAL' | 'LOW' {
-  const { type, requestedAt, photoUrl, costCredits } = data;
-
-  // High priority if chore has photo proof (child put effort in)
-  if (type === 'CHORE_COMPLETION' && photoUrl) {
-    return 'HIGH';
-  }
-
-  // High priority if reward costs >100 credits (significant request)
-  if (type === 'REWARD_REDEMPTION' && costCredits && costCredits > 100) {
-    return 'HIGH';
-  }
-
-  // High priority if waiting >24 hours
-  const hoursPending = (Date.now() - requestedAt.getTime()) / (1000 * 60 * 60);
-  if (hoursPending > 24) {
-    return 'HIGH';
-  }
-
-  // Normal priority if waiting 12-24 hours
-  if (hoursPending > 12) {
-    return 'NORMAL';
-  }
-
-  // Low priority for recent requests
-  return 'LOW';
 }

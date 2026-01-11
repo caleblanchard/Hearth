@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getAuthContext } from '@/lib/supabase/server';
 import { getKioskSession } from '@/lib/kiosk-session';
 import { logger } from '@/lib/logger';
 
@@ -28,128 +28,33 @@ const WIDGET_HANDLERS: Record<string, WidgetHandler> = {
   weather: GetWeather,
 };
 
-/**
- * GET /api/dashboard/widgets
- *
- * Aggregated endpoint for dashboard widget data
- * Query params: widgets[] (array of widget names)
- */
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication (regular session or kiosk token)
-    const session = await auth();
-    const kioskToken = request.headers.get('X-Kiosk-Token');
+    const authContext = await getAuthContext();
 
-    let familyId: string | undefined;
-    let memberId: string | undefined;
-
-    if (session && session.user) {
-      // Regular authenticated session
-      familyId = session.user.familyId;
-      memberId = session.user.id;
-    } else if (kioskToken) {
-      // Kiosk session authentication
-      const kioskSession = await getKioskSession(kioskToken);
-      if (kioskSession && kioskSession.isActive) {
-        familyId = kioskSession.familyId;
-        memberId = kioskSession.currentMemberId || undefined;
-      }
-    }
-
-    if (!familyId) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Parse widgets parameter
     const { searchParams } = new URL(request.url);
-    const widgetsParam = searchParams.getAll('widgets[]');
+    const widget = searchParams.get('widget');
 
-    if (!widgetsParam || widgetsParam.length === 0) {
-      return NextResponse.json(
-        { error: 'No widgets specified' },
-        { status: 400 }
-      );
+    if (!widget) {
+      return NextResponse.json({ error: 'Widget parameter is required' }, { status: 400 });
     }
 
-    // Validate widget names
-    const invalidWidgets = widgetsParam.filter(
-      (widget) => !VALID_WIDGETS.includes(widget)
-    );
-    if (invalidWidgets.length > 0) {
-      return NextResponse.json(
-        { error: 'Invalid widget names' },
-        { status: 400 }
-      );
+    if (!VALID_WIDGETS.includes(widget)) {
+      return NextResponse.json({ error: 'Invalid widget type' }, { status: 400 });
     }
 
-    // Fetch widget data in parallel
-    const widgetPromises = widgetsParam.map(async (widget) => {
-      try {
-        const handler = WIDGET_HANDLERS[widget];
-        if (!handler) {
-          return {
-            widget,
-            success: false,
-            error: `Handler not found for ${widget}`,
-          };
-        }
+    const handler = WIDGET_HANDLERS[widget];
+    if (!handler) {
+      return NextResponse.json({ error: 'Widget handler not found' }, { status: 404 });
+    }
 
-        // Create a new request with kiosk token if present
-        const widgetRequest = new NextRequest(request.url, {
-          headers: kioskToken
-            ? { 'X-Kiosk-Token': kioskToken }
-            : undefined,
-        });
-
-        const response = await handler(widgetRequest);
-
-        // Check if response status is successful (2xx)
-        if (response.status < 200 || response.status >= 300) {
-          return {
-            widget,
-            success: false,
-            error: `Failed to fetch ${widget} data`,
-          };
-        }
-
-        const data = await response.json();
-        return {
-          widget,
-          success: true,
-          data,
-        };
-      } catch (error) {
-        logger.error(`Error fetching ${widget} widget`, error);
-        return {
-          widget,
-          success: false,
-          error: `Failed to fetch ${widget} data`,
-        };
-      }
-    });
-
-    const results = await Promise.allSettled(widgetPromises);
-
-    // Transform results into aggregated response
-    const aggregated: Record<string, any> = {};
-    results.forEach((result) => {
-      if (result.status === 'fulfilled') {
-        const { widget, success, data, error } = result.value;
-        aggregated[widget] = success
-          ? { success: true, data }
-          : { success: false, error };
-      } else {
-        // Promise was rejected
-        logger.error('Widget promise rejected', result.reason);
-      }
-    });
-
-    return NextResponse.json(aggregated);
+    return await handler(request);
   } catch (error) {
-    logger.error('Error fetching dashboard widgets', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch dashboard widgets' },
-      { status: 500 }
-    );
+    logger.error('Widget data error:', error);
+    return NextResponse.json({ error: 'Failed to fetch widget data' }, { status: 500 });
   }
 }

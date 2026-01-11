@@ -1,45 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getLowStockItems } from '@/lib/data/inventory';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get items where lowStockThreshold is set (not null)
-    // The filtering for currentQuantity <= lowStockThreshold will be done in app logic
-    const allItems = await prisma.inventoryItem.findMany({
-      where: {
-        familyId: session.user.familyId,
-        lowStockThreshold: {
-          not: null,
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    // Filter in-memory for low stock items (quantity <= threshold)
-    const lowStockItems = allItems.filter(
-      (item) =>
-        item.lowStockThreshold !== null &&
-        item.currentQuantity <= item.lowStockThreshold
-    );
+    const items = await getLowStockItems(familyId);
 
-    return NextResponse.json({ items: lowStockItems });
+    return NextResponse.json({ items });
   } catch (error) {
     logger.error('Error fetching low-stock items:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch low-stock items' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch low-stock items' }, { status: 500 });
   }
 }

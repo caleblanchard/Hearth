@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getChoreDefinition, updateChoreDefinition, deleteChoreDefinition } from '@/lib/data/chores';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -8,55 +9,32 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId || session.user.role !== 'PARENT') {
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
-    const chore = await prisma.choreDefinition.findUnique({
-      where: {
-        id: params.id,
-      },
-      include: {
-        schedules: {
-          include: {
-            assignments: {
-              include: {
-                member: {
-                  select: {
-                    id: true,
-                    name: true,
-                    avatarUrl: true,
-                  },
-                },
-              },
-              where: {
-                isActive: true,
-              },
-              orderBy: {
-                rotationOrder: 'asc',
-              },
-            },
-            _count: {
-              select: {
-                instances: true,
-              },
-            },
-          },
-          where: {
-            isActive: true,
-          },
-        },
-      },
-    });
+    const chore = await getChoreDefinition(params.id);
 
     if (!chore) {
       return NextResponse.json({ error: 'Chore not found' }, { status: 404 });
     }
 
     // Verify family ownership
-    if (chore.familyId !== session.user.familyId) {
+    if (chore.family_id !== familyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -72,22 +50,32 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId || session.user.role !== 'PARENT') {
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
     // Verify chore exists and belongs to family
-    const existingChore = await prisma.choreDefinition.findUnique({
-      where: { id: params.id },
-    });
+    const existingChore = await getChoreDefinition(params.id);
 
     if (!existingChore) {
       return NextResponse.json({ error: 'Chore not found' }, { status: 404 });
     }
 
-    if (existingChore.familyId !== session.user.familyId) {
+    if (existingChore.family_id !== familyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -125,7 +113,7 @@ export async function PATCH(
       if (creditValue < 0) {
         return NextResponse.json({ error: 'Credit value must be 0 or greater' }, { status: 400 });
       }
-      updates.creditValue = creditValue;
+      updates.credit_value = creditValue;
     }
 
     if (difficulty !== undefined) {
@@ -139,45 +127,19 @@ export async function PATCH(
       if (estimatedMinutes <= 0) {
         return NextResponse.json({ error: 'Estimated minutes must be greater than 0' }, { status: 400 });
       }
-      updates.estimatedMinutes = estimatedMinutes;
+      updates.estimated_minutes = estimatedMinutes;
     }
 
     if (minimumAge !== undefined) {
-      updates.minimumAge = minimumAge || null;
+      updates.minimum_age = minimumAge || null;
     }
 
     if (iconName !== undefined) {
-      updates.iconName = iconName || null;
+      updates.icon_name = iconName || null;
     }
 
     // Update chore
-    const updatedChore = await prisma.choreDefinition.update({
-      where: { id: params.id },
-      data: updates,
-      include: {
-        schedules: {
-          include: {
-            assignments: {
-              include: {
-                member: {
-                  select: {
-                    id: true,
-                    name: true,
-                    avatarUrl: true,
-                  },
-                },
-              },
-              where: {
-                isActive: true,
-              },
-            },
-          },
-          where: {
-            isActive: true,
-          },
-        },
-      },
-    });
+    const updatedChore = await updateChoreDefinition(params.id, updates);
 
     return NextResponse.json({
       success: true,
@@ -195,39 +157,37 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId || session.user.role !== 'PARENT') {
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
     // Verify chore exists and belongs to family
-    const existingChore = await prisma.choreDefinition.findUnique({
-      where: { id: params.id },
-      include: {
-        schedules: true,
-      },
-    });
+    const existingChore = await getChoreDefinition(params.id);
 
     if (!existingChore) {
       return NextResponse.json({ error: 'Chore not found' }, { status: 404 });
     }
 
-    if (existingChore.familyId !== session.user.familyId) {
+    if (existingChore.family_id !== familyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // Soft delete: set isActive to false for chore and all schedules
-    await prisma.$transaction([
-      prisma.choreDefinition.update({
-        where: { id: params.id },
-        data: { isActive: false },
-      }),
-      prisma.choreSchedule.updateMany({
-        where: { choreDefinitionId: params.id },
-        data: { isActive: false },
-      }),
-    ]);
+    // Soft delete
+    await deleteChoreDefinition(params.id);
 
     return NextResponse.json({
       success: true,

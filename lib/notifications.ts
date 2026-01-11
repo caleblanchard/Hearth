@@ -1,9 +1,11 @@
 /**
  * Centralized notification helper
  * Handles notification creation with sick mode muting support
+ * 
+ * MIGRATED TO SUPABASE - January 10, 2026
  */
 
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { shouldMuteNonEssentialNotifications } from '@/lib/sick-mode';
 import { logger } from '@/lib/logger';
 
@@ -70,6 +72,7 @@ const NON_ESSENTIAL_NOTIFICATION_TYPES: NotificationType[] = [
 
 interface CreateNotificationParams {
   userId: string;
+  familyId: string;
   type: NotificationType;
   title: string;
   message: string;
@@ -84,7 +87,7 @@ interface CreateNotificationParams {
  * @returns Created notification or null if muted
  */
 export async function createNotification(params: CreateNotificationParams) {
-  const { userId, type, title, message, actionUrl, metadata } = params;
+  const { userId, familyId, type, title, message, actionUrl, metadata } = params;
 
   // Check if notification should be muted due to sick mode
   if (NON_ESSENTIAL_NOTIFICATION_TYPES.includes(type)) {
@@ -100,17 +103,23 @@ export async function createNotification(params: CreateNotificationParams) {
 
   // Create the notification
   try {
-    const notification = await prisma.notification.create({
-      data: {
-        userId,
+    const supabase = await createClient();
+    
+    const { data: notification, error } = await supabase
+      .from('notifications')
+      .insert({
+        family_id: familyId,
+        recipient_id: userId,
         type,
         title,
         message,
-        actionUrl,
+        action_url: actionUrl,
         metadata,
-      },
-    });
+      })
+      .select()
+      .single();
 
+    if (error) throw error;
     return notification;
   } catch (error) {
     logger.error('Failed to create notification:', error);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateKioskActivity, getKioskSession } from '@/lib/kiosk-session';
+import { updateKioskActivity, getKioskSession } from '@/lib/data/kiosk';
 import { logger } from '@/lib/logger';
 
 /**
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      lastActivityAt: updatedSession.lastActivityAt,
+      lastActivityAt: updatedSession.last_activity_at,
     });
   } catch (error) {
     logger.error('Error updating kiosk activity', error);

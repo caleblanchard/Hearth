@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { lockKioskSession, getKioskSession } from '@/lib/kiosk-session';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { lockKioskSession, getKioskSession } from '@/lib/data/kiosk';
 import { logger } from '@/lib/logger';
 
 /**
@@ -10,6 +10,8 @@ import { logger } from '@/lib/logger';
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+
     // Get kiosk token from header
     const kioskToken = request.headers.get('X-Kiosk-Token');
     if (!kioskToken) {
@@ -26,22 +28,20 @@ export async function POST(request: NextRequest) {
     await lockKioskSession(kioskToken);
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.familyId,
-        memberId: session.currentMemberId,
-        action: 'KIOSK_AUTO_LOCKED',
-        entityType: 'KIOSK',
-        entityId: session.id,
-        result: 'SUCCESS',
-        metadata: {
-          reason: 'Manual lock',
-        },
+    await supabase.from('audit_logs').insert({
+      family_id: session.family_id,
+      member_id: session.current_member_id,
+      action: 'KIOSK_AUTO_LOCKED',
+      entity_type: 'KIOSK',
+      entity_id: session.id,
+      result: 'SUCCESS',
+      metadata: {
+        reason: 'Manual lock',
       },
     });
 
     logger.info('Kiosk session locked', {
-      familyId: session.familyId,
+      familyId: session.family_id,
       sessionId: session.id,
     });
 

@@ -1,94 +1,100 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import prisma from '@/lib/prisma'
-import { Frequency } from '@/app/generated/prisma'
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
-    const session = await auth()
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { familyId } = session.user
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
     // Fetch all allowance schedules for the family
-    const schedules = await prisma.allowanceSchedule.findMany({
-      where: {
-        member: {
-          familyId,
-        },
-      },
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
+    const { data: schedules, error } = await supabase
+      .from('allowance_schedules')
+      .select(`
+        *,
+        member:family_members!inner(id, name, email)
+      `)
+      .eq('member.family_id', familyId)
+      .order('created_at', { ascending: false });
 
-    return NextResponse.json({ schedules })
+    if (error) {
+      logger.error('Error fetching allowance schedules:', error);
+      return NextResponse.json({ error: 'Failed to fetch allowance schedules' }, { status: 500 });
+    }
+
+    return NextResponse.json({ schedules });
   } catch (error) {
-    logger.error('Allowance schedules API error:', error)
+    logger.error('Allowance schedules API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch allowance schedules' },
       { status: 500 }
-    )
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can create allowance schedules
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
     }
 
-    const body = await request.json()
+    const body = await request.json();
     const {
-      memberId,
+      memberId: targetMemberId,
       amount,
       frequency,
       dayOfWeek,
       dayOfMonth,
       startDate,
       endDate,
-    } = body
+    } = body;
 
     // Validate required fields
-    if (!memberId) {
+    if (!targetMemberId) {
       return NextResponse.json(
         { error: 'Member ID is required' },
         { status: 400 }
-      )
+      );
     }
 
     if (!amount || amount <= 0) {
       return NextResponse.json(
         { error: 'Amount must be a positive number' },
         { status: 400 }
-      )
+      );
     }
 
     if (!frequency) {
       return NextResponse.json(
         { error: 'Frequency is required' },
         { status: 400 }
-      )
+      );
     }
 
     // Validate frequency-specific fields
@@ -97,13 +103,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'dayOfWeek is required for WEEKLY/BIWEEKLY frequency' },
           { status: 400 }
-        )
+        );
       }
       if (dayOfWeek < 0 || dayOfWeek > 6) {
         return NextResponse.json(
           { error: 'dayOfWeek must be between 0 (Sunday) and 6 (Saturday)' },
           { status: 400 }
-        )
+        );
       }
     }
 
@@ -112,72 +118,72 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'dayOfMonth is required for MONTHLY frequency' },
           { status: 400 }
-        )
+        );
       }
       if (dayOfMonth < 1 || dayOfMonth > 31) {
         return NextResponse.json(
           { error: 'dayOfMonth must be between 1 and 31' },
           { status: 400 }
-        )
+        );
       }
     }
 
-    const { familyId } = session.user
-
     // Verify member exists and belongs to the same family
-    const member = await prisma.familyMember.findUnique({
-      where: { id: memberId },
-      select: { id: true, familyId: true },
-    })
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('id, family_id')
+      .eq('id', targetMemberId)
+      .single();
 
-    if (!member || member.familyId !== familyId) {
+    if (!member || member.family_id !== familyId) {
       return NextResponse.json(
         { error: 'Family member not found' },
         { status: 404 }
-      )
+      );
     }
 
     // Check for existing active schedule
-    const existingSchedule = await prisma.allowanceSchedule.findFirst({
-      where: {
-        memberId,
-        isActive: true,
-      },
-    })
+    const { data: existingSchedule } = await supabase
+      .from('allowance_schedules')
+      .select('id')
+      .eq('member_id', targetMemberId)
+      .eq('is_active', true)
+      .maybeSingle();
 
     if (existingSchedule) {
       return NextResponse.json(
         { error: 'This member already has an active allowance schedule' },
         { status: 409 }
-      )
+      );
     }
 
     // Create the allowance schedule
-    const schedule = await prisma.allowanceSchedule.create({
-      data: {
-        memberId,
+    const { data: schedule, error } = await supabase
+      .from('allowance_schedules')
+      .insert({
+        member_id: targetMemberId,
         amount,
-        frequency: frequency as Frequency,
-        dayOfWeek:
+        frequency,
+        day_of_week:
           frequency === 'WEEKLY' || frequency === 'BIWEEKLY'
             ? dayOfWeek
             : null,
-        dayOfMonth: frequency === 'MONTHLY' ? dayOfMonth : null,
-        isActive: true,
-        isPaused: false,
-        startDate: startDate ? new Date(startDate) : new Date(),
-        endDate: endDate ? new Date(endDate) : null,
-      },
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
+        day_of_month: frequency === 'MONTHLY' ? dayOfMonth : null,
+        is_active: true,
+        is_paused: false,
+        start_date: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
+        end_date: endDate ? new Date(endDate).toISOString() : null,
+      })
+      .select(`
+        *,
+        member:family_members(id, name, email)
+      `)
+      .single();
+
+    if (error) {
+      logger.error('Error creating allowance schedule:', error);
+      return NextResponse.json({ error: 'Failed to create allowance schedule' }, { status: 500 });
+    }
 
     return NextResponse.json(
       {
@@ -186,12 +192,12 @@ export async function POST(request: NextRequest) {
         message: 'Allowance schedule created successfully',
       },
       { status: 201 }
-    )
+    );
   } catch (error) {
-    logger.error('Create allowance schedule error:', error)
+    logger.error('Create allowance schedule error:', error);
     return NextResponse.json(
       { error: 'Failed to create allowance schedule' },
       { status: 500 }
-    )
+    );
   }
 }

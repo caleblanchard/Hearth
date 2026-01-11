@@ -1,7 +1,34 @@
+/**
+ * Module Protection Utilities
+ * Handles module enablement checks and page protection
+ * 
+ * MIGRATED TO SUPABASE - January 10, 2026
+ */
+
 import { redirect, notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { ModuleId } from '@/app/generated/prisma';
+import { createClient } from '@/lib/supabase/server';
+
+type ModuleId = 
+  | 'CHORES'
+  | 'SCREEN_TIME'
+  | 'CREDITS'
+  | 'SHOPPING'
+  | 'CALENDAR'
+  | 'TODOS'
+  | 'ROUTINES'
+  | 'MEAL_PLANNING'
+  | 'RECIPES'
+  | 'INVENTORY'
+  | 'HEALTH'
+  | 'PROJECTS'
+  | 'COMMUNICATION'
+  | 'TRANSPORT'
+  | 'PETS'
+  | 'MAINTENANCE'
+  | 'DOCUMENTS'
+  | 'FINANCIAL'
+  | 'LEADERBOARD';
 
 // All modules that should be enabled by default
 const DEFAULT_ENABLED_MODULES: ModuleId[] = [
@@ -36,25 +63,22 @@ export async function isModuleEnabled(moduleId: ModuleId): Promise<boolean> {
     return false;
   }
 
+  const supabase = await createClient();
+  
   // Check if there's a configuration for this module
-  const config = await prisma.moduleConfiguration.findUnique({
-    where: {
-      familyId_moduleId: {
-        familyId: session.user.familyId,
-        moduleId,
-      },
-    },
-    select: {
-      isEnabled: true,
-    },
-  });
+  const { data: config } = await supabase
+    .from('module_configurations')
+    .select('is_enabled')
+    .eq('family_id', session.user.familyId)
+    .eq('module_id', moduleId)
+    .maybeSingle();
 
   // If no config exists, check if it's in default enabled list
   if (!config) {
     return DEFAULT_ENABLED_MODULES.includes(moduleId);
   }
 
-  return config.isEnabled;
+  return config.is_enabled;
 }
 
 /**
@@ -85,31 +109,33 @@ export async function getEnabledModules(): Promise<ModuleId[]> {
     return [];
   }
 
-  const configs = await prisma.moduleConfiguration.findMany({
-    where: {
-      familyId: session.user.familyId,
-      isEnabled: true,
-    },
-    select: {
-      moduleId: true,
-    },
-  });
+  const supabase = await createClient();
+  
+  const { data: configs } = await supabase
+    .from('module_configurations')
+    .select('module_id, is_enabled')
+    .eq('family_id', session.user.familyId)
+    .eq('is_enabled', true);
 
   // If no configurations exist, return all defaults
-  if (configs.length === 0) {
+  if (!configs || configs.length === 0) {
     return DEFAULT_ENABLED_MODULES;
   }
 
   // Get all configured modules
-  const allConfigs = await prisma.moduleConfiguration.findMany({
-    where: { familyId: session.user.familyId },
-    select: { moduleId: true, isEnabled: true },
-  });
+  const { data: allConfigs } = await supabase
+    .from('module_configurations')
+    .select('module_id, is_enabled')
+    .eq('family_id', session.user.familyId);
 
-  const configuredModuleIds = new Set(allConfigs.map((c) => c.moduleId));
+  if (!allConfigs) {
+    return DEFAULT_ENABLED_MODULES;
+  }
+
+  const configuredModuleIds = new Set(allConfigs.map((c) => c.module_id));
   const enabledConfiguredIds = allConfigs
-    .filter((c) => c.isEnabled)
-    .map((c) => c.moduleId);
+    .filter((c) => c.is_enabled)
+    .map((c) => c.module_id as ModuleId);
 
   // Combine enabled configured + default unconfigured
   return [

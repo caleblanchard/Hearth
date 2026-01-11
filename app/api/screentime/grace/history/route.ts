@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getGraceHistory } from '@/lib/data/screentime';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.defaultFamilyId;
+    const currentMemberId = authContext.defaultMemberId;
+
+    if (!familyId || !currentMemberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Get query params
@@ -17,12 +26,12 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    const memberId = queryMemberId || session.user.id;
+    const memberId = queryMemberId || currentMemberId;
 
     // If viewing another member's history, verify permissions
-    if (memberId !== session.user.id) {
-      // Only parents can view other members' history
-      if (session.user.role !== 'PARENT') {
+    if (memberId !== currentMemberId) {
+      const isParent = await isParentInFamily(currentMemberId, familyId);
+      if (!isParent) {
         return NextResponse.json(
           { error: 'Cannot view other members history' },
           { status: 403 }
@@ -30,50 +39,24 @@ export async function GET(request: NextRequest) {
       }
 
       // Verify member belongs to same family
-      const member = await prisma.familyMember.findUnique({
-        where: { id: memberId },
-      });
+      const { data: member } = await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('id', memberId)
+        .single();
 
-      if (!member || member.familyId !== session.user.familyId) {
-        return NextResponse.json(
-          { error: 'Cannot view history from other families' },
-          { status: 403 }
-        );
+      if (!member || member.family_id !== familyId) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
     }
 
-    // Get grace logs with pagination
-    const [logs, total] = await Promise.all([
-      prisma.gracePeriodLog.findMany({
-        where: { memberId },
-        include: {
-          approvedBy: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-        orderBy: { requestedAt: 'desc' },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.gracePeriodLog.count({
-        where: { memberId },
-      }),
-    ]);
+    const history = await getGraceHistory(memberId, { limit, offset });
 
-    return NextResponse.json({
-      logs,
-      pagination: {
-        total,
-        hasMore: offset + limit < total,
-      },
-    });
+    return NextResponse.json({ history });
   } catch (error) {
-    logger.error('Error fetching grace history:', error);
+    logger.error('Get grace history error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch grace history' },
+      { error: 'Failed to get grace history' },
       { status: 500 }
     );
   }

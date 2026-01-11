@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getPets, createPet } from '@/lib/data/pets';
 import { logger } from '@/lib/logger';
 
 const VALID_SPECIES = [
@@ -17,51 +18,20 @@ const VALID_SPECIES = [
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const pets = await prisma.pet.findMany({
-      where: {
-        familyId: session.user.familyId,
-      },
-      include: {
-        feedings: {
-          orderBy: {
-            fedAt: 'desc',
-          },
-          take: 1,
-          include: {
-            member: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    // Format pets with last feeding info
-    const petsWithLastFeeding = pets.map(pet => ({
-      id: pet.id,
-      name: pet.name,
-      species: pet.species,
-      breed: pet.breed,
-      birthday: pet.birthday,
-      imageUrl: pet.imageUrl,
-      notes: pet.notes,
-      lastFedAt: pet.feedings[0]?.fedAt || null,
-      lastFedBy: pet.feedings[0]?.member?.name || null,
-    }));
+    const pets = await getPets(familyId);
 
-    return NextResponse.json({ pets: petsWithLastFeeding });
+    return NextResponse.json({ pets });
   } catch (error) {
     logger.error('Error fetching pets:', error);
     return NextResponse.json({ error: 'Failed to fetch pets' }, { status: 500 });
@@ -70,15 +40,27 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can add pets
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json({ error: 'Only parents can add pets' }, { status: 403 });
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
+      return NextResponse.json(
+        { error: 'Only parents can add pets' },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
@@ -100,40 +82,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create pet
-    const pet = await prisma.pet.create({
-      data: {
-        familyId: session.user.familyId,
-        name: name.trim(),
-        species,
-        breed: breed?.trim() || null,
-        birthday: birthday ? new Date(birthday) : null,
-        imageUrl: imageUrl?.trim() || null,
-        notes: notes?.trim() || null,
-      },
+    const pet = await createPet(familyId, {
+      name,
+      species,
+      breed: breed || null,
+      birthday: birthday ? new Date(birthday) : null,
+      imageUrl: imageUrl || null,
+      notes: notes || null,
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'PET_ADDED',
-        result: 'SUCCESS',
-        metadata: {
-          petId: pet.id,
-          name: pet.name,
-          species: pet.species,
-        },
-      },
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'PET_CREATED',
+      entity_type: 'PET',
+      entity_id: pet.id,
+      result: 'SUCCESS',
+      metadata: { name, species },
     });
 
-    return NextResponse.json(
-      { pet, message: 'Pet added successfully' },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      success: true,
+      pet,
+      message: 'Pet created successfully',
+    });
   } catch (error) {
-    logger.error('Error adding pet:', error);
-    return NextResponse.json({ error: 'Failed to add pet' }, { status: 500 });
+    logger.error('Error creating pet:', error);
+    return NextResponse.json({ error: 'Failed to create pet' }, { status: 500 });
   }
 }

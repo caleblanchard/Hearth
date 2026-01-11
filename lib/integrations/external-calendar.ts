@@ -6,7 +6,7 @@
  */
 
 import ICAL from 'ical.js';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 interface ParsedEvent {
@@ -523,19 +523,22 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
   eventsDeleted: number;
   error?: string;
 }> {
-  const subscription = await prisma.externalCalendarSubscription.findUnique({
-    where: { id: subscriptionId },
-    include: {
-      family: true,
-    },
-    // We need createdById for creating events
-  });
+  const supabase = await createClient();
+  
+  const { data: subscription } = await supabase
+    .from('external_calendar_subscriptions')
+    .select(`
+      *,
+      family:families(*)
+    `)
+    .eq('id', subscriptionId)
+    .single();
 
   if (!subscription) {
     throw new Error('Subscription not found');
   }
 
-  if (!subscription.isActive) {
+  if (!subscription.is_active) {
     logger.info('Subscription is inactive, skipping sync', { subscriptionId });
     return {
       success: true,
@@ -556,16 +559,16 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
 
     // If no data (304 Not Modified), no changes
     if (!data) {
-      await prisma.externalCalendarSubscription.update({
-        where: { id: subscriptionId },
-        data: {
-          lastSyncAt: new Date(),
-          lastSuccessfulSyncAt: new Date(),
-          syncStatus: 'ACTIVE',
-          syncError: null,
-          nextSyncAt: new Date(Date.now() + subscription.refreshInterval * 60 * 1000),
-        },
-      });
+      await supabase
+        .from('external_calendar_subscriptions')
+        .update({
+          last_sync_at: new Date().toISOString(),
+          last_successful_sync_at: new Date().toISOString(),
+          sync_status: 'ACTIVE',
+          sync_error: null,
+          next_sync_at: new Date(Date.now() + subscription.refresh_interval * 60 * 1000).toISOString(),
+        })
+        .eq('id', subscriptionId);
 
       return {
         success: true,
@@ -608,28 +611,27 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
     });
 
     // Get existing events from this subscription
-    const existingEvents = await prisma.calendarEvent.findMany({
-      where: {
-        externalSubscriptionId: subscriptionId,
-      },
-    });
+    const { data: existingEvents } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('external_subscription_id', subscriptionId);
     
-    logger.info(`Found ${existingEvents.length} existing events for subscription`, {
+    logger.info(`Found ${existingEvents?.length || 0} existing events for subscription`, {
       subscriptionId,
     });
 
     // Create maps for matching events
     // Map by exact UID match
     const existingEventsByUid = new Map(
-      existingEvents.map((e) => [e.externalId || '', e])
+      (existingEvents || []).map((e) => [e.external_id || '', e])
     );
     
     // Map by startTime + title for recurring events (since UIDs might differ)
     // Key format: startTime-timestamp + title
     const existingEventsByTimeAndTitle = new Map<string, typeof existingEvents[0]>();
-    for (const e of existingEvents) {
+    for (const e of (existingEvents || [])) {
       // Use startTime (rounded to nearest minute) + title as key for recurring events
-      const timeKey = `${Math.floor(e.startTime.getTime() / 60000)}-${e.title}`;
+      const timeKey = `${Math.floor(new Date(e.start_time).getTime() / 60000)}-${e.title}`;
       if (!existingEventsByTimeAndTitle.has(timeKey)) {
         existingEventsByTimeAndTitle.set(timeKey, e);
       }
@@ -654,11 +656,11 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
         
         // Also try a more lenient match: same subscription, same title, startTime within 1 minute
         if (!existingEvent) {
-          existingEvent = existingEvents.find(
+          existingEvent = (existingEvents || []).find(
             (e) =>
-              e.externalSubscriptionId === subscriptionId &&
+              e.external_subscription_id === subscriptionId &&
               e.title === parsedEvent.title &&
-              Math.abs(e.startTime.getTime() - parsedEvent.startTime.getTime()) < 60000 // Within 1 minute
+              Math.abs(new Date(e.start_time).getTime() - parsedEvent.startTime.getTime()) < 60000 // Within 1 minute
           );
         }
       }
@@ -666,50 +668,50 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
       if (existingEvent) {
         // Check if event needs update (compare updatedAt or times)
         const needsUpdate =
-          !existingEvent.updatedAt ||
+          !existingEvent.updated_at ||
           (parsedEvent.lastModified &&
-            new Date(existingEvent.updatedAt) < parsedEvent.lastModified) ||
-          existingEvent.startTime.getTime() !== parsedEvent.startTime.getTime() ||
-          existingEvent.endTime.getTime() !== parsedEvent.endTime.getTime() ||
+            new Date(existingEvent.updated_at) < parsedEvent.lastModified) ||
+          new Date(existingEvent.start_time).getTime() !== parsedEvent.startTime.getTime() ||
+          new Date(existingEvent.end_time).getTime() !== parsedEvent.endTime.getTime() ||
           existingEvent.title !== parsedEvent.title;
 
         if (needsUpdate) {
-          await prisma.calendarEvent.update({
-            where: { id: existingEvent.id },
-            data: {
+          await supabase
+            .from('calendar_events')
+            .update({
               title: parsedEvent.title,
               description: parsedEvent.description,
-              startTime: parsedEvent.startTime,
-              endTime: parsedEvent.endTime,
-              isAllDay: parsedEvent.isAllDay,
+              start_time: parsedEvent.startTime.toISOString(),
+              end_time: parsedEvent.endTime.toISOString(),
+              is_all_day: parsedEvent.isAllDay,
               location: parsedEvent.location,
               color: subscription.color || '#9CA3AF', // Update color from subscription
-              // Note: url field doesn't exist in CalendarEvent schema
-              lastSyncedAt: parsedEvent.lastModified || new Date(),
-            },
-          });
+              last_synced_at: (parsedEvent.lastModified || new Date()).toISOString(),
+            })
+            .eq('id', existingEvent.id);
           eventsUpdated++;
         }
       } else {
         // Create new event
         try {
-          const newEvent = await prisma.calendarEvent.create({
-            data: {
-              familyId: subscription.familyId,
+          const { data: newEvent } = await supabase
+            .from('calendar_events')
+            .insert({
+              family_id: subscription.family_id,
               title: parsedEvent.title,
               description: parsedEvent.description,
-              startTime: parsedEvent.startTime,
-              endTime: parsedEvent.endTime,
-              isAllDay: parsedEvent.isAllDay,
+              start_time: parsedEvent.startTime.toISOString(),
+              end_time: parsedEvent.endTime.toISOString(),
+              is_all_day: parsedEvent.isAllDay,
               location: parsedEvent.location,
               color: subscription.color || '#9CA3AF', // Use subscription color or default gray
-              // Note: url field doesn't exist in CalendarEvent schema
-              externalSubscriptionId: subscriptionId,
-              externalId: parsedEvent.uid, // Store UID in externalId field
-              createdById: subscription.createdById, // Required: use subscription creator
-              lastSyncedAt: parsedEvent.lastModified || new Date(),
-            },
-          });
+              external_subscription_id: subscriptionId,
+              external_id: parsedEvent.uid, // Store UID in external_id field
+              created_by_id: subscription.created_by_id, // Required: use subscription creator
+              last_synced_at: (parsedEvent.lastModified || new Date()).toISOString(),
+            })
+            .select()
+            .single();
           eventsCreated++;
           
           if (eventsCreated <= 5) {
@@ -730,17 +732,17 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
     }
 
     // Delete events that are no longer in the calendar
-    const uidsToDelete = existingEvents
-      .filter((e) => e.externalId && !processedUids.has(e.externalId))
+    const uidsToDelete = (existingEvents || [])
+      .filter((e) => e.external_id && !processedUids.has(e.external_id))
       .map((e) => e.id);
 
     // Also delete events that are older than 12 months (outside our sync range)
     const cleanupDate = new Date();
     cleanupDate.setMonth(cleanupDate.getMonth() - 12);
     
-    const oldEventsToDelete = existingEvents
+    const oldEventsToDelete = (existingEvents || [])
       .filter((e) => {
-        const eventStart = new Date(e.startTime);
+        const eventStart = new Date(e.start_time);
         return eventStart < cleanupDate;
       })
       .map((e) => e.id);
@@ -750,11 +752,10 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
 
     let eventsDeleted = 0;
     if (allEventsToDelete.length > 0) {
-      await prisma.calendarEvent.deleteMany({
-        where: {
-          id: { in: allEventsToDelete },
-        },
-      });
+      await supabase
+        .from('calendar_events')
+        .delete()
+        .in('id', allEventsToDelete);
       eventsDeleted = allEventsToDelete.length;
       
       if (oldEventsToDelete.length > 0) {
@@ -763,32 +764,32 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
     }
 
     // Update subscription with sync results
-    await prisma.externalCalendarSubscription.update({
-      where: { id: subscriptionId },
-      data: {
-        lastSyncAt: new Date(),
-        lastSuccessfulSyncAt: new Date(),
-        syncStatus: 'ACTIVE',
-        syncError: null,
+    await supabase
+      .from('external_calendar_subscriptions')
+      .update({
+        last_sync_at: new Date().toISOString(),
+        last_successful_sync_at: new Date().toISOString(),
+        sync_status: 'ACTIVE',
+        sync_error: null,
         etag: etag || subscription.etag,
-        nextSyncAt: new Date(Date.now() + subscription.refreshInterval * 60 * 1000),
-      },
-    });
+        next_sync_at: new Date(Date.now() + subscription.refresh_interval * 60 * 1000).toISOString(),
+      })
+      .eq('id', subscriptionId);
 
     // Create sync log
     const syncDuration = Date.now() - syncStartTime;
-    await prisma.calendarSyncLog.create({
-      data: {
-        familyId: subscription.familyId,
-        externalSubscriptionId: subscriptionId,
-        syncDirection: 'IMPORT', // External -> App
+    await supabase
+      .from('calendar_sync_logs')
+      .insert({
+        family_id: subscription.family_id,
+        external_subscription_id: subscriptionId,
+        sync_direction: 'IMPORT', // External -> App
         status: 'SUCCESS',
-        eventsAdded: eventsCreated,
-        eventsUpdated: eventsUpdated,
-        eventsDeleted: eventsDeleted,
+        events_added: eventsCreated,
+        events_updated: eventsUpdated,
+        events_deleted: eventsDeleted,
         duration: syncDuration,
-      },
-    });
+      });
 
     logger.info('External calendar sync completed', {
       subscriptionId,
@@ -807,27 +808,27 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     // Update subscription with error
-    await prisma.externalCalendarSubscription.update({
-      where: { id: subscriptionId },
-      data: {
-        lastSyncAt: new Date(),
-        syncStatus: 'ERROR',
-        syncError: errorMessage,
-      },
-    });
+    await supabase
+      .from('external_calendar_subscriptions')
+      .update({
+        last_sync_at: new Date().toISOString(),
+        sync_status: 'ERROR',
+        sync_error: errorMessage,
+      })
+      .eq('id', subscriptionId);
 
     // Create sync log with error
     const syncDuration = Date.now() - syncStartTime;
-    await prisma.calendarSyncLog.create({
-      data: {
-        familyId: subscription.familyId,
-        externalSubscriptionId: subscriptionId,
-        syncDirection: 'IMPORT', // External -> App
+    await supabase
+      .from('calendar_sync_logs')
+      .insert({
+        family_id: subscription?.family_id || '',
+        external_subscription_id: subscriptionId,
+        sync_direction: 'IMPORT', // External -> App
         status: 'FAILED',
-        errorMessage,
+        error_message: errorMessage,
         duration: syncDuration,
-      },
-    });
+      });
 
     logger.error('External calendar sync failed', {
       subscriptionId,

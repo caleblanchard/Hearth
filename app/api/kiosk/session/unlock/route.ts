@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unlockKioskSession, getKioskSession } from '@/lib/kiosk-session';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { unlockKioskSession, getKioskSession } from '@/lib/data/kiosk';
 import { logger } from '@/lib/logger';
 
 /**
@@ -10,6 +10,8 @@ import { logger } from '@/lib/logger';
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+
     // Get kiosk token from header
     const kioskToken = request.headers.get('X-Kiosk-Token');
     if (!kioskToken) {
@@ -45,29 +47,27 @@ export async function POST(request: NextRequest) {
     const updatedSession = await getKioskSession(kioskToken);
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.familyId,
-        memberId,
-        action: 'KIOSK_MEMBER_SWITCHED',
-        entityType: 'KIOSK',
-        entityId: session.id,
-        result: 'SUCCESS',
-        metadata: {
-          memberId: updatedSession?.currentMemberId,
-        },
+    await supabase.from('audit_logs').insert({
+      family_id: session.family_id,
+      member_id: memberId,
+      action: 'KIOSK_MEMBER_SWITCHED',
+      entity_type: 'KIOSK',
+      entity_id: session.id,
+      result: 'SUCCESS',
+      metadata: {
+        memberId: updatedSession?.current_member_id,
       },
     });
 
     logger.info('Kiosk session unlocked', {
-      familyId: session.familyId,
+      familyId: session.family_id,
       sessionId: session.id,
       memberId,
     });
 
     return NextResponse.json({
       success: true,
-      memberId: updatedSession?.currentMemberId,
+      memberId: updatedSession?.current_member_id,
     });
   } catch (error) {
     logger.error('Error unlocking kiosk session', error);

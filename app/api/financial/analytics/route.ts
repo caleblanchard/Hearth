@@ -1,88 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getFinancialAnalytics } from '@/lib/data/financial';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
-import {
-  calculateAnalytics,
-  getSpendingByCategory,
-  getTrends,
-} from '@/lib/financial-analytics'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url)
-    const memberId = searchParams.get('memberId')
-    const period = searchParams.get('period') || 'monthly' // 'weekly' or 'monthly'
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
 
-    // Build where clause
-    const where: any = {
-      member: {
-        familyId: session.user.familyId,
-      },
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    // Children can only see their own data
-    if (session.user.role === 'CHILD') {
-      where.memberId = session.user.id
-    } else if (memberId) {
-      where.memberId = memberId
-    }
+    // Only parents can view analytics for other members
+    const { searchParams } = new URL(request.url);
+    const targetMemberId = searchParams.get('memberId');
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
 
-    // Add date filters if provided
-    if (startDate || endDate) {
-      where.createdAt = {}
-      if (startDate) {
-        where.createdAt.gte = new Date(startDate)
-      }
-      if (endDate) {
-        where.createdAt.lte = new Date(endDate)
+    if (targetMemberId && targetMemberId !== memberId) {
+      const isParent = await isParentInFamily(memberId, familyId);
+      if (!isParent) {
+        return NextResponse.json({ error: 'Parent access required' }, { status: 403 });
       }
     }
 
-    // Fetch transactions
-    const transactions = await prisma.creditTransaction.findMany({
-      where,
-      select: {
-        id: true,
-        type: true,
-        amount: true,
-        category: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
+    const analytics = await getFinancialAnalytics(familyId, targetMemberId || memberId, { startDate, endDate });
 
-    // Calculate analytics
-    const summary = calculateAnalytics(transactions)
-    const spendingByCategory = getSpendingByCategory(transactions)
-    const trends = getTrends(
-      transactions,
-      period === 'weekly' ? 'weekly' : 'monthly'
-    )
-
-    return NextResponse.json({
-      summary,
-      spendingByCategory,
-      trends,
-      period,
-    })
+    return NextResponse.json({ analytics });
   } catch (error) {
-    logger.error('Analytics API error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch analytics' },
-      { status: 500 }
-    )
+    logger.error('Get financial analytics error:', error);
+    return NextResponse.json({ error: 'Failed to get analytics' }, { status: 500 });
   }
 }

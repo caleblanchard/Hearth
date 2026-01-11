@@ -1,250 +1,102 @@
-/**
- * Calendar Connection Management - Individual Connection
- *
- * GET /api/calendar/connections/[id] - Get connection details
- * PATCH /api/calendar/connections/[id] - Update connection settings
- * DELETE /api/calendar/connections/[id] - Delete connection
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getCalendarConnection, updateCalendarConnection, deleteCalendarConnection } from '@/lib/data/calendar';
 import { logger } from '@/lib/logger';
 
-// GET connection details
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check authentication
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session || !session.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get family member info
-    // session.user.id is the FamilyMember ID from the auth system
-    const familyMember = await prisma.familyMember.findUnique({
-      where: {
-        id: session.user.id,
-      },
-    });
-
-    if (!familyMember) {
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    const memberId = authContext.defaultMemberId;
+    if (!memberId) {
+      return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
-    // Get connection
-    const connection = await prisma.calendarConnection.findUnique({
-      where: {
-        id: params.id,
-      },
-      select: {
-        id: true,
-        memberId: true,
-        provider: true,
-        googleEmail: true,
-        googleCalendarId: true,
-        syncStatus: true,
-        syncEnabled: true,
-        importFromGoogle: true,
-        exportToGoogle: true,
-        lastSyncAt: true,
-        syncError: true,
-        createdAt: true,
-        updatedAt: true,
-        // Exclude sensitive fields
-        accessToken: false,
-        refreshToken: false,
-        tokenExpiresAt: false,
-        syncToken: false,
-      },
-    });
+    const connection = await getCalendarConnection(params.id);
 
-    if (!connection) {
+    if (!connection || connection.member_id !== memberId) {
       return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
     }
 
-    // Verify ownership
-    if (connection.memberId !== familyMember.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    return NextResponse.json({ connection }, { status: 200 });
+    return NextResponse.json({ connection });
   } catch (error) {
-    logger.error('Failed to get calendar connection', { error });
+    logger.error('Get calendar connection error:', error);
     return NextResponse.json({ error: 'Failed to get connection' }, { status: 500 });
   }
 }
 
-// PATCH connection settings
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check authentication
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session || !session.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get family member info
-    // session.user.id is the FamilyMember ID from the auth system
-    const familyMember = await prisma.familyMember.findUnique({
-      where: {
-        id: session.user.id,
-      },
-    });
-
-    if (!familyMember) {
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    const memberId = authContext.defaultMemberId;
+    if (!memberId) {
+      return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
-    // Get connection
-    const connection = await prisma.calendarConnection.findUnique({
-      where: {
-        id: params.id,
-      },
-    });
-
-    if (!connection) {
+    const existing = await getCalendarConnection(params.id);
+    if (!existing || existing.member_id !== memberId) {
       return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
     }
 
-    // Verify ownership
-    if (connection.memberId !== familyMember.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Parse request body
     const body = await request.json();
+    const connection = await updateCalendarConnection(params.id, body);
 
-    // Validate allowed fields
-    const allowedFields = ['syncEnabled', 'importFromGoogle', 'exportToGoogle'];
-    const providedFields = Object.keys(body);
-    const hasInvalidFields = providedFields.some((field) => !allowedFields.includes(field));
-
-    if (hasInvalidFields) {
-      return NextResponse.json(
-        { error: 'Invalid fields. Allowed: syncEnabled, importFromGoogle, exportToGoogle' },
-        { status: 400 }
-      );
-    }
-
-    // Build update data
-    const updateData: any = {};
-
-    if (body.syncEnabled !== undefined) {
-      updateData.syncEnabled = body.syncEnabled;
-
-      // Clear sync error when re-enabling
-      if (body.syncEnabled === true) {
-        updateData.syncError = null;
-      }
-    }
-
-    if (body.importFromGoogle !== undefined) {
-      updateData.importFromGoogle = body.importFromGoogle;
-    }
-
-    if (body.exportToGoogle !== undefined) {
-      updateData.exportToGoogle = body.exportToGoogle;
-    }
-
-    // Update connection
-    const updatedConnection = await prisma.calendarConnection.update({
-      where: {
-        id: params.id,
-      },
-      data: updateData,
-      select: {
-        id: true,
-        provider: true,
-        googleEmail: true,
-        syncStatus: true,
-        syncEnabled: true,
-        importFromGoogle: true,
-        exportToGoogle: true,
-        lastSyncAt: true,
-        syncError: true,
-        updatedAt: true,
-      },
+    return NextResponse.json({
+      success: true,
+      connection,
+      message: 'Connection updated successfully',
     });
-
-    logger.info('Calendar connection updated', {
-      userId: session.user.id,
-      connectionId: params.id,
-      updates: updateData,
-    });
-
-    return NextResponse.json({ connection: updatedConnection }, { status: 200 });
   } catch (error) {
-    logger.error('Failed to update calendar connection', { error });
+    logger.error('Update calendar connection error:', error);
     return NextResponse.json({ error: 'Failed to update connection' }, { status: 500 });
   }
 }
 
-// DELETE connection
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check authentication
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session || !session.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get family member info
-    // session.user.id is the FamilyMember ID from the auth system
-    const familyMember = await prisma.familyMember.findUnique({
-      where: {
-        id: session.user.id,
-      },
-    });
-
-    if (!familyMember) {
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    const memberId = authContext.defaultMemberId;
+    if (!memberId) {
+      return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
-    // Get connection
-    const connection = await prisma.calendarConnection.findUnique({
-      where: {
-        id: params.id,
-      },
-    });
-
-    if (!connection) {
+    const existing = await getCalendarConnection(params.id);
+    if (!existing || existing.member_id !== memberId) {
       return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
     }
 
-    // Verify ownership
-    if (connection.memberId !== familyMember.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await deleteCalendarConnection(params.id);
 
-    // Delete connection
-    await prisma.calendarConnection.delete({
-      where: {
-        id: params.id,
-      },
+    return NextResponse.json({
+      success: true,
+      message: 'Connection deleted successfully',
     });
-
-    logger.info('Calendar connection deleted', {
-      userId: session.user.id,
-      connectionId: params.id,
-      provider: connection.provider,
-    });
-
-    return NextResponse.json({ message: 'Connection deleted successfully' }, { status: 200 });
   } catch (error) {
-    logger.error('Failed to delete calendar connection', { error });
+    logger.error('Delete calendar connection error:', error);
     return NextResponse.json({ error: 'Failed to delete connection' }, { status: 500 });
   }
 }

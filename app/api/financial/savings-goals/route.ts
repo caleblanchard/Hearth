@@ -1,134 +1,66 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getSavingsGoals, createSavingsGoal } from '@/lib/data/financial';
 import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
-    const session = await auth()
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const where: any = {
-      member: {
-        familyId: session.user.familyId,
-      },
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    // Children can only see their own goals
-    if (session.user.role === 'CHILD') {
-      where.memberId = session.user.id
-    }
+    const goals = await getSavingsGoals(familyId, memberId);
 
-    const goals = await prisma.savingsGoal.findMany({
-      where,
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
-
-    return NextResponse.json({ goals })
+    return NextResponse.json({ goals });
   } catch (error) {
-    logger.error('Savings goals API error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch savings goals' },
-      { status: 500 }
-    )
+    logger.error('Get savings goals error:', error);
+    return NextResponse.json({ error: 'Failed to get savings goals' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json()
-    const { memberId, name, description, targetAmount, iconName, color, deadline } = body
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
 
-    // Validate
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    if (!targetAmount || targetAmount <= 0) {
-      return NextResponse.json(
-        { error: 'Target amount must be positive' },
-        { status: 400 }
-      )
+    // Only parents can create goals for other members
+    const body = await request.json();
+    if (body.memberId && body.memberId !== memberId) {
+      const isParent = await isParentInFamily(memberId, familyId);
+      if (!isParent) {
+        return NextResponse.json({ error: 'Parent access required' }, { status: 403 });
+      }
     }
 
-    // Determine memberId
-    let goalMemberId = memberId
-    if (session.user.role === 'CHILD') {
-      // Children can only create goals for themselves
-      goalMemberId = session.user.id
-    } else if (!memberId) {
-      return NextResponse.json(
-        { error: 'Member ID is required' },
-        { status: 400 }
-      )
-    }
+    const goal = await createSavingsGoal(familyId, body);
 
-    // Verify member belongs to family
-    const member = await prisma.familyMember.findUnique({
-      where: { id: goalMemberId },
-      select: { familyId: true },
-    })
-
-    if (!member || member.familyId !== session.user.familyId) {
-      return NextResponse.json(
-        { error: 'Family member not found' },
-        { status: 404 }
-      )
-    }
-
-    // Create goal
-    const goal = await prisma.savingsGoal.create({
-      data: {
-        memberId: goalMemberId,
-        name: name.trim(),
-        description: description || null,
-        targetAmount,
-        iconName: iconName || 'currency-dollar',
-        color: color || 'blue',
-        deadline: deadline ? new Date(deadline) : null,
-      },
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    })
-
-    return NextResponse.json(
-      {
-        success: true,
-        goal,
-        message: 'Savings goal created successfully',
-      },
-      { status: 201 }
-    )
+    return NextResponse.json({
+      success: true,
+      goal,
+      message: 'Savings goal created successfully',
+    });
   } catch (error) {
-    logger.error('Create savings goal error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create savings goal' },
-      { status: 500 }
-    )
+    logger.error('Create savings goal error:', error);
+    return NextResponse.json({ error: 'Failed to create savings goal' }, { status: 500 });
   }
 }

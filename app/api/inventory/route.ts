@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getInventoryItems, createInventoryItem } from '@/lib/data/inventory';
 import { logger } from '@/lib/logger';
 
 const VALID_CATEGORIES = [
@@ -28,21 +29,19 @@ const VALID_LOCATIONS = [
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // All family members can view inventory
-    const items = await prisma.inventoryItem.findMany({
-      where: {
-        familyId: session.user.familyId,
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    const items = await getInventoryItems(familyId);
 
     return NextResponse.json({ items });
   } catch (error) {
@@ -56,14 +55,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.defaultFamilyId;
+    const memberId = authContext.defaultMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can add inventory items
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily(memberId, familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can add inventory items' },
         { status: 403 }
@@ -111,46 +119,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create inventory item
-    const item = await prisma.inventoryItem.create({
-      data: {
-        familyId: session.user.familyId,
-        name: name.trim(),
-        category,
-        location,
-        currentQuantity: currentQuantity !== undefined ? currentQuantity : 0,
-        unit: unit.trim(),
-        lowStockThreshold:
-          lowStockThreshold !== undefined ? lowStockThreshold : null,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        barcode: barcode?.trim() || null,
-        notes: notes?.trim() || null,
-      },
+    const item = await createInventoryItem(familyId, {
+      name,
+      category,
+      location,
+      currentQuantity: currentQuantity || 0,
+      unit,
+      lowStockThreshold: lowStockThreshold || null,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      barcode: barcode || null,
+      notes: notes || null,
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'INVENTORY_ITEM_ADDED',
-        result: 'SUCCESS',
-        metadata: {
-          itemId: item.id,
-          name: item.name,
-          category: item.category,
-        },
-      },
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'INVENTORY_ITEM_ADDED',
+      entity_type: 'INVENTORY_ITEM',
+      entity_id: item.id,
+      result: 'SUCCESS',
+      metadata: { name, category, location },
     });
 
-    return NextResponse.json(
-      { item, message: 'Inventory item added successfully' },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      success: true,
+      item,
+      message: 'Inventory item created successfully',
+    });
   } catch (error) {
-    logger.error('Error adding inventory item:', error);
+    logger.error('Error creating inventory item:', error);
     return NextResponse.json(
-      { error: 'Failed to add inventory item' },
+      { error: 'Failed to create inventory item' },
       { status: 500 }
     );
   }
