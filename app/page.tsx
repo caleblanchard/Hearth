@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getAuthContext } from '@/lib/supabase/server';
 
 export default async function Home() {
-  const session = await auth();
+  const authContext = await getAuthContext();
 
-  if (session?.user) {
+  if (authContext?.user) {
     redirect('/dashboard');
   } else {
     redirect('/auth/signin');

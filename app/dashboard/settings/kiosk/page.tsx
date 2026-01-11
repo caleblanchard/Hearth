@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { auth } from '@/lib/auth';
+import { getAuthContext } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import KioskSettingsForm from '@/components/settings/KioskSettingsForm';
 
@@ -9,14 +9,15 @@ export const metadata: Metadata = {
 };
 
 export default async function KioskSettingsPage() {
-  const session = await auth();
+  const authContext = await getAuthContext();
 
-  if (!session || !session.user) {
-    redirect('/auth/login');
+  if (!authContext?.user) {
+    redirect('/auth/signin');
   }
 
   // Only parents can access settings
-  if (session.user.role !== 'PARENT') {
+  const firstMembership = authContext.memberships[0];
+  if (!firstMembership || firstMembership.role !== 'PARENT') {
     redirect('/dashboard');
   }
 
@@ -31,7 +32,7 @@ export default async function KioskSettingsPage() {
         </p>
       </div>
 
-      <KioskSettingsForm familyId={session.user.familyId} />
+      <KioskSettingsForm familyId={firstMembership.family_id} />
     </div>
   );
 }

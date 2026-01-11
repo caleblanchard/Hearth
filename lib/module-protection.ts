@@ -6,7 +6,7 @@
  */
 
 import { redirect, notFound } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getAuthContext } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
 
 type ModuleId = 
@@ -58,8 +58,8 @@ const DEFAULT_ENABLED_MODULES: ModuleId[] = [
  * Returns true if enabled, false if disabled.
  */
 export async function isModuleEnabled(moduleId: ModuleId): Promise<boolean> {
-  const session = await auth();
-  if (!session?.user?.familyId) {
+  const authContext = await getAuthContext();
+  if (!authContext?.defaultFamilyId) {
     return false;
   }
 
@@ -69,7 +69,7 @@ export async function isModuleEnabled(moduleId: ModuleId): Promise<boolean> {
   const { data: config } = await supabase
     .from('module_configurations')
     .select('is_enabled')
-    .eq('family_id', session.user.familyId)
+    .eq('family_id', authContext.defaultFamilyId)
     .eq('module_id', moduleId)
     .maybeSingle();
 
@@ -104,8 +104,8 @@ export async function requireModule(moduleId: ModuleId): Promise<void> {
  * Get all enabled modules for the current user's family
  */
 export async function getEnabledModules(): Promise<ModuleId[]> {
-  const session = await auth();
-  if (!session?.user?.familyId) {
+  const authContext = await getAuthContext();
+  if (!authContext?.defaultFamilyId) {
     return [];
   }
 
@@ -114,7 +114,7 @@ export async function getEnabledModules(): Promise<ModuleId[]> {
   const { data: configs } = await supabase
     .from('module_configurations')
     .select('module_id, is_enabled')
-    .eq('family_id', session.user.familyId)
+    .eq('family_id', authContext.defaultFamilyId)
     .eq('is_enabled', true);
 
   // If no configurations exist, return all defaults
@@ -126,7 +126,7 @@ export async function getEnabledModules(): Promise<ModuleId[]> {
   const { data: allConfigs } = await supabase
     .from('module_configurations')
     .select('module_id, is_enabled')
-    .eq('family_id', session.user.familyId);
+    .eq('family_id', authContext.defaultFamilyId);
 
   if (!allConfigs) {
     return DEFAULT_ENABLED_MODULES;
