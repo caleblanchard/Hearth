@@ -239,3 +239,37 @@ function calculateNextDueDate(from: Date, frequency: string): Date {
 
   return nextDue
 }
+
+/**
+ * Get a single maintenance item
+ */
+export async function getMaintenanceItem(itemId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('maintenance_items')
+    .select('*')
+    .eq('id', itemId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Complete maintenance item
+ */
+export async function completeMaintenanceItem(
+  itemId: string,
+  completedBy: string,
+  notes?: string
+) {
+  return recordMaintenanceCompletion(itemId, completedBy, notes)
+}
+
+/**
+ * Get upcoming maintenance items
+ */
+export async function getUpcomingMaintenanceItems(familyId: string, days = 30) {
+  return getUpcomingMaintenance(familyId, days)
+}

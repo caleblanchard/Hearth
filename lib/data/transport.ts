@@ -171,3 +171,129 @@ export async function removeCarpoolMember(carpoolMemberId: string) {
 
   if (error) throw error
 }
+
+/**
+ * Get transport drivers for a family
+ */
+export async function getTransportDrivers(familyId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('transport_drivers')
+    .select('*')
+    .eq('family_id', familyId)
+    .order('name')
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Create transport driver
+ */
+export async function createTransportDriver(
+  familyId: string,
+  driverData: {
+    name: string
+    phone?: string
+    email?: string
+  }
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('transport_drivers')
+    .insert({
+      family_id: familyId,
+      name: driverData.name,
+      phone: driverData.phone,
+      email: driverData.email,
+      is_active: true,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Get transport locations for a family
+ */
+export async function getTransportLocations(familyId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('transport_locations')
+    .select('*')
+    .eq('family_id', familyId)
+    .order('name')
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Create transport location
+ */
+export async function createTransportLocation(
+  familyId: string,
+  locationData: {
+    name: string
+    address?: string
+    latitude?: number
+    longitude?: number
+  }
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('transport_locations')
+    .insert({
+      family_id: familyId,
+      name: locationData.name,
+      address: locationData.address,
+      latitude: locationData.latitude,
+      longitude: locationData.longitude,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Get transport schedule by ID
+ */
+export async function getTransportSchedule(scheduleId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('transport_schedules')
+    .select('*')
+    .eq('id', scheduleId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Get today's transport schedules
+ */
+export async function getTodaysTransportSchedules(familyId: string) {
+  const supabase = await createClient()
+
+  const today = new Date().toISOString().split('T')[0]
+
+  const { data, error } = await supabase
+    .from('transport_schedules')
+    .select('*')
+    .eq('family_id', familyId)
+    .eq('day_of_week', new Date().getDay())
+    .order('pickup_time')
+
+  if (error) throw error
+  return data || []
+}

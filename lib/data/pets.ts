@@ -56,6 +56,22 @@ export async function getPetWithHistory(petId: string) {
 }
 
 /**
+ * Get a single pet
+ */
+export async function getPet(petId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('pets')
+    .select('*')
+    .eq('id', petId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
  * Create pet
  */
 export async function createPet(pet: PetInsert): Promise<Pet> {
@@ -406,4 +422,18 @@ export async function addPetWeight(
   })
 
   return data
+}
+
+/**
+ * Delete pet
+ */
+export async function deletePet(petId: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('pets')
+    .delete()
+    .eq('id', petId)
+
+  if (error) throw error
 }

@@ -168,3 +168,24 @@ export async function getInventoryByCategory(familyId: string) {
 
   return grouped
 }
+
+/**
+ * Get expiring inventory items
+ */
+export async function getExpiringInventoryItems(familyId: string, days = 7) {
+  const supabase = await createClient()
+
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() + days)
+
+  const { data, error } = await supabase
+    .from('inventory_items')
+    .select('*')
+    .eq('family_id', familyId)
+    .not('expiration_date', 'is', null)
+    .lte('expiration_date', cutoffDate.toISOString())
+    .order('expiration_date', { ascending: true })
+
+  if (error) throw error
+  return data || []
+}

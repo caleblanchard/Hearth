@@ -425,3 +425,28 @@ export async function fulfillRedemption(
   if (error) throw error
   return data
 }
+
+/**
+ * Reject reward redemption (wrapper for rejectRedemption)
+ */
+export async function rejectRewardRedemption(
+  redemptionId: string,
+  reason: string | null
+) {
+  const supabase = await createClient()
+  
+  // Get the current user for rejectedById
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+  
+  // Get member ID
+  const { data: member } = await supabase
+    .from('family_members')
+    .select('id')
+    .eq('auth_user_id', user.id)
+    .single()
+  
+  if (!member) throw new Error('Member not found')
+  
+  return rejectRedemption(redemptionId, member.id, reason || 'No reason provided')
+}

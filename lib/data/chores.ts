@@ -424,3 +424,30 @@ export async function updateChoreSchedule(
   if (error) throw error
   return data
 }
+
+/**
+ * Get pending approvals for a family (chores with COMPLETED status awaiting approval)
+ */
+export async function getPendingApprovals(familyId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('chore_completions')
+    .select(`
+      *,
+      assignment:chore_assignments!inner(
+        *,
+        schedule:chore_schedules!inner(
+          *,
+          definition:chore_definitions!inner(family_id, name, credit_value)
+        )
+      ),
+      member:family_members!inner(id, name, avatar_url)
+    `)
+    .eq('status', 'COMPLETED')
+    .eq('assignment.schedule.definition.family_id', familyId)
+    .order('completed_at', { ascending: true })
+
+  if (error) throw error
+  return data || []
+}

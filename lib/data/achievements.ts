@@ -255,3 +255,10 @@ export async function getMemberAchievementStats(memberId: string) {
     byCategory,
   }
 }
+
+/**
+ * Get user achievements (alias for getMemberAchievements)
+ */
+export async function getUserAchievements(memberId: string) {
+  return getMemberAchievements(memberId)
+}

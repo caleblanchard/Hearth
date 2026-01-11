@@ -215,3 +215,19 @@ export async function cleanupExpiredSubscriptions() {
 
   if (error) throw error
 }
+
+/**
+ * Create push subscription (alias for addPushSubscription)
+ */
+export async function createPushSubscription(
+  subscription: PushSubscriptionInsert
+): Promise<PushSubscription> {
+  return addPushSubscription(subscription)
+}
+
+/**
+ * Delete push subscription (alias for removePushSubscription)
+ */
+export async function deletePushSubscription(endpoint: string) {
+  return removePushSubscription(endpoint)
+}

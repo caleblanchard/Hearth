@@ -103,3 +103,47 @@ export async function isModuleEnabledForFamily(
 
   return config.is_enabled
 }
+
+/**
+ * Get module configurations for a family
+ */
+export async function getModuleConfigurations(familyId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('module_configurations')
+    .select('*')
+    .eq('family_id', familyId)
+    .order('module_id')
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Update module configuration
+ */
+export async function updateModuleConfiguration(
+  familyId: string,
+  moduleId: ModuleId,
+  updates: {
+    is_enabled?: boolean
+  }
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('module_configurations')
+    .upsert({
+      family_id: familyId,
+      module_id: moduleId,
+      is_enabled: updates.is_enabled ?? true,
+      enabled_at: updates.is_enabled ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}

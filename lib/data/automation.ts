@@ -253,3 +253,44 @@ export async function testRule(ruleId: string, testData: any) {
     message: 'Rule test not fully implemented yet',
   }
 }
+
+/**
+ * Execute automation rule action
+ */
+export async function executeAction(
+  ruleId: string,
+  actionData: any
+) {
+  const supabase = await createClient()
+
+  // Get the rule
+  const { data: rule } = await supabase
+    .from('automation_rules')
+    .select('*')
+    .eq('id', ruleId)
+    .single()
+
+  if (!rule) throw new Error('Rule not found')
+
+  // Record execution
+  await recordRuleExecution(ruleId, {
+    triggered_at: new Date().toISOString(),
+    action_data: actionData,
+    status: 'SUCCESS',
+  })
+
+  // The actual action execution would be handled by the rules engine
+  // This is just a stub
+  return {
+    success: true,
+    ruleId,
+    actionData,
+  }
+}
+
+/**
+ * Test automation rule (alias for testRule)
+ */
+export async function testAutomationRule(ruleId: string, testData: any) {
+  return testRule(ruleId, testData)
+}

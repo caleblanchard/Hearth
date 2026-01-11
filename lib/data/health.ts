@@ -362,3 +362,121 @@ export async function getTemperatureReadings(memberId: string, days = 7) {
   if (error) throw error
   return data || []
 }
+
+/**
+ * Start sick mode for a member
+ */
+export async function startSickMode(
+  memberId: string,
+  startedBy: string,
+  reason?: string
+) {
+  const supabase = await createClient()
+
+  // Get member's family_id
+  const { data: member } = await supabase
+    .from('family_members')
+    .select('family_id')
+    .eq('id', memberId)
+    .single()
+
+  if (!member) throw new Error('Member not found')
+
+  const { data, error } = await supabase
+    .from('sick_mode_instances')
+    .insert({
+      member_id: memberId,
+      family_id: member.family_id,
+      started_by: startedBy,
+      reason,
+      is_active: true,
+      started_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * End sick mode instance
+ */
+export async function endSickMode(instanceId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('sick_mode_instances')
+    .update({
+      is_active: false,
+      ended_at: new Date().toISOString(),
+    })
+    .eq('id', instanceId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return { instance: data }
+}
+
+/**
+ * Get sick mode status for a member
+ */
+export async function getSickModeStatus(memberId: string) {
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from('sick_mode_instances')
+    .select('*')
+    .eq('member_id', memberId)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  return data
+}
+
+/**
+ * Get sick mode settings for a family
+ */
+export async function getSickModeSettings(familyId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('sick_mode_settings')
+    .select('*')
+    .eq('family_id', familyId)
+    .maybeSingle()
+
+  if (error && error.code !== 'PGRST116') throw error
+  return data
+}
+
+/**
+ * Update sick mode settings
+ */
+export async function updateSickModeSettings(
+  familyId: string,
+  settings: {
+    pause_chores?: boolean
+    pause_screen_time_tracking?: boolean
+    screen_time_bonus?: number
+    skip_morning_routine?: boolean
+    skip_bedtime_routine?: boolean
+    mute_non_essential_notifs?: boolean
+  }
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('sick_mode_settings')
+    .upsert({
+      family_id: familyId,
+      ...settings,
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}

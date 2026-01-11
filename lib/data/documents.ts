@@ -73,6 +73,22 @@ export async function getExpiringDocuments(familyId: string) {
 }
 
 /**
+ * Get a single document
+ */
+export async function getDocument(documentId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('documents')
+    .select('*')
+    .eq('id', documentId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/**
  * Create document
  */
 export async function createDocument(doc: DocumentInsert): Promise<Document> {
