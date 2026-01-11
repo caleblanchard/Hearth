@@ -52,6 +52,19 @@ export async function getFamilyMedications(familyId: string) {
 }
 
 /**
+ * Get medications (wrapper that handles both family and member)
+ */
+export async function getMedications(
+  familyId: string,
+  memberId?: string
+) {
+  if (memberId) {
+    return getMemberMedications(memberId)
+  }
+  return getFamilyMedications(familyId)
+}
+
+/**
  * Create medication
  */
 export async function createMedication(

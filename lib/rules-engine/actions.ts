@@ -700,3 +700,40 @@ export async function executeAdjustScreenTime(
     };
   }
 }
+
+// ============================================
+// ACTION ROUTER
+// ============================================
+
+/**
+ * Execute an action based on action type
+ */
+export async function executeAction(
+  actionType: string,
+  config: any,
+  context: RuleContext
+): Promise<ActionResult> {
+  switch (actionType) {
+    case 'AWARD_CREDITS':
+      return executeAwardCredits(config, context)
+    case 'SEND_NOTIFICATION':
+      return executeSendNotification(config, context)
+    case 'ADD_SHOPPING_ITEM':
+      return executeAddShoppingItem(config, context)
+    case 'CREATE_TODO':
+      return executeCreateTodo(config, context)
+    case 'LOCK_MEDICATION':
+      return executeLockMedication(config, context)
+    case 'SUGGEST_MEAL':
+      return executeSuggestMeal(config, context)
+    case 'REDUCE_CHORES':
+      return executeReduceChores(config, context)
+    case 'ADJUST_SCREENTIME':
+      return executeAdjustScreenTime(config, context)
+    default:
+      return {
+        success: false,
+        error: `Unknown action type: ${actionType}`,
+      }
+  }
+}
