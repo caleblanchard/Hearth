@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { scheduleId: string } }
+  { params }: { params: Promise<{ scheduleId: string } }
 ) {
   try {
     const supabase = await createClient();

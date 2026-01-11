@@ -5,9 +5,10 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient();
     const authContext = await getAuthContext();
 
@@ -27,7 +28,7 @@ export async function GET(
         *,
         member:family_members!inner(id, name, email, family_id)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error || !schedule || schedule.member.family_id !== familyId) {
@@ -49,9 +50,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient();
     const authContext = await getAuthContext();
 
@@ -78,7 +80,7 @@ export async function PUT(
     const { data: existing } = await supabase
       .from('allowance_schedules')
       .select('*, member:family_members!inner(family_id)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!existing || existing.member.family_id !== familyId) {
@@ -92,7 +94,7 @@ export async function PUT(
     const { data: schedule, error } = await supabase
       .from('allowance_schedules')
       .update(body)
-      .eq('id', params.id)
+      .eq('id', id)
       .select(`
         *,
         member:family_members(id, name, email)
@@ -120,9 +122,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient();
     const authContext = await getAuthContext();
 
@@ -147,7 +150,7 @@ export async function DELETE(
     const { data: existing } = await supabase
       .from('allowance_schedules')
       .select('*, member:family_members!inner(family_id)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!existing || existing.member.family_id !== familyId) {
@@ -161,7 +164,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('allowance_schedules')
       .delete()
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (error) {
       logger.error('Error deleting allowance schedule:', error);

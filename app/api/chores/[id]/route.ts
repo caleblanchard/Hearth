@@ -6,9 +6,10 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const authContext = await getAuthContext();
 
     if (!authContext) {
@@ -27,7 +28,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
-    const chore = await getChoreDefinition(params.id);
+    const chore = await getChoreDefinition(id);
 
     if (!chore) {
       return NextResponse.json({ error: 'Chore not found' }, { status: 404 });
@@ -40,14 +41,14 @@ export async function GET(
 
     return NextResponse.json({ chore });
   } catch (error) {
-    logger.error('Error fetching chore', error, { choreId: params.id });
+    logger.error('Error fetching chore', error, { choreId: id });
     return NextResponse.json({ error: 'Failed to fetch chore' }, { status: 500 });
   }
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string } }
 ) {
   try {
     const authContext = await getAuthContext();
@@ -69,7 +70,7 @@ export async function PATCH(
     }
 
     // Verify chore exists and belongs to family
-    const existingChore = await getChoreDefinition(params.id);
+    const existingChore = await getChoreDefinition(id);
 
     if (!existingChore) {
       return NextResponse.json({ error: 'Chore not found' }, { status: 404 });
@@ -139,7 +140,7 @@ export async function PATCH(
     }
 
     // Update chore
-    const updatedChore = await updateChoreDefinition(params.id, updates);
+    const updatedChore = await updateChoreDefinition(id, updates);
 
     return NextResponse.json({
       success: true,
@@ -147,14 +148,14 @@ export async function PATCH(
       message: 'Chore updated successfully',
     });
   } catch (error) {
-    logger.error('Error updating chore', error, { choreId: params.id });
+    logger.error('Error updating chore', error, { choreId: id });
     return NextResponse.json({ error: 'Failed to update chore' }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string } }
 ) {
   try {
     const authContext = await getAuthContext();
@@ -176,7 +177,7 @@ export async function DELETE(
     }
 
     // Verify chore exists and belongs to family
-    const existingChore = await getChoreDefinition(params.id);
+    const existingChore = await getChoreDefinition(id);
 
     if (!existingChore) {
       return NextResponse.json({ error: 'Chore not found' }, { status: 404 });
@@ -187,14 +188,14 @@ export async function DELETE(
     }
 
     // Soft delete
-    await deleteChoreDefinition(params.id);
+    await deleteChoreDefinition(id);
 
     return NextResponse.json({
       success: true,
       message: 'Chore deactivated successfully',
     });
   } catch (error) {
-    logger.error('Error deleting chore', error, { choreId: params.id });
+    logger.error('Error deleting chore', error, { choreId: id });
     return NextResponse.json({ error: 'Failed to delete chore' }, { status: 500 });
   }
 }

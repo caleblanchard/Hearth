@@ -10,7 +10,7 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { memberId: string } }
+  { params }: { params: Promise<{ memberId: string } }
 ) {
   try {
     const supabase = await createClient();

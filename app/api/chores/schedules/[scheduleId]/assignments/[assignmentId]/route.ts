@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { scheduleId: string; assignmentId: string } }
+  { params }: { params: Promise<{ scheduleId: string; assignmentId: string } }
 ) {
   try {
     const supabase = await createClient();

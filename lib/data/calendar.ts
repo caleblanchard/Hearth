@@ -717,22 +717,6 @@ export async function handleGoogleCalendarCallback(
 }
 
 /**
- * Get calendar subscriptions for a family
- */
-export async function getCalendarSubscriptions(familyId: string) {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase
-    .from('external_calendar_subscriptions')
-    .select('*')
-    .eq('family_id', familyId)
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return data || []
-}
-
-/**
  * Create calendar subscription
  */
 export async function createCalendarSubscription(
