@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
 import { getEnabledModules } from '@/lib/data/settings';
 import { logger } from '@/lib/logger';
 
@@ -17,9 +16,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const modules = await getEnabledModules(familyId);
+    const enabledModules = await getEnabledModules(familyId);
 
-    return NextResponse.json({ modules });
+    return NextResponse.json({ enabledModules });
   } catch (error) {
     logger.error('Get enabled modules error:', error);
     return NextResponse.json({ error: 'Failed to get enabled modules' }, { status: 500 });
