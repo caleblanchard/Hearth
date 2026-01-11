@@ -62,7 +62,7 @@ export default function FamilyScreenTimeManagement() {
 
   // Check if user is a parent
   useEffect(() => {
-    if (user && user.role !== 'PARENT') {
+    if (user && user?.user_metadata?.role !== 'PARENT') {
       router.push('/dashboard/screentime');
     }
   }, [user, router]);
@@ -90,7 +90,7 @@ export default function FamilyScreenTimeManagement() {
   };
 
   useEffect(() => {
-    if (user?.role === 'PARENT') {
+    if (user?.user_metadata?.role === 'PARENT') {
       fetchFamilyScreenTime();
     }
   }, [user]);
@@ -185,7 +185,7 @@ export default function FamilyScreenTimeManagement() {
     );
   }
 
-  if (user?.role !== 'PARENT') {
+  if (user?.user_metadata?.role !== 'PARENT') {
     return null; // Will redirect in useEffect
   }
 

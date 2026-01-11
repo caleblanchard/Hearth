@@ -182,7 +182,7 @@ export default function RewardsPage() {
               </p>
             </div>
           </div>
-          {user?.role === 'PARENT' && (
+          {user?.user_metadata?.role === 'PARENT' && (
             <div className="mt-4 flex gap-3">
               <button
                 onClick={() => router.push('/dashboard/rewards/manage')}
@@ -304,7 +304,7 @@ export default function RewardsPage() {
                 ? 'No rewards available yet.'
                 : 'No rewards in this category.'}
             </p>
-            {user?.role === 'PARENT' && filter === 'ALL' && (
+            {user?.user_metadata?.role === 'PARENT' && filter === 'ALL' && (
               <button
                 onClick={() => router.push('/dashboard/rewards/manage')}
                 className="mt-4 px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"

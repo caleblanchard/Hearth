@@ -22,7 +22,7 @@ export default function CommunicationPage() {
     setIsModalOpen(false);
   };
 
-  const userRole = user?.role === 'PARENT' ? 'PARENT' : 'CHILD';
+  const userRole = user?.user_metadata?.role === 'PARENT' ? 'PARENT' : 'CHILD';
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">

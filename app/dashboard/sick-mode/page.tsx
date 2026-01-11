@@ -72,7 +72,7 @@ export default function StartSickModePage() {
     }
   };
 
-  if (user?.role !== 'PARENT') {
+  if (user?.user_metadata?.role !== 'PARENT') {
     return (
       <div className="max-w-2xl mx-auto p-6">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">

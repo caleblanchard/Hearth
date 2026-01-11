@@ -116,7 +116,7 @@ export default function Sidebar() {
       items: [
         { name: 'Rewards', path: '/dashboard/rewards', icon: GiftIcon, moduleId: 'CREDITS' },
         { name: 'Screen Time', path: '/dashboard/screentime', icon: ClockIcon, moduleId: 'SCREEN_TIME' },
-        ...(user?.role === 'PARENT' 
+        ...(user?.user_metadata?.role === 'PARENT' 
           ? [{ name: 'Family Screen Time', path: '/dashboard/screentime/manage-family', icon: UsersIcon, moduleId: 'SCREEN_TIME' }]
           : []
         ),
@@ -141,7 +141,7 @@ export default function Sidebar() {
   ];
 
   // Add parent-only settings group
-  if (user?.role === 'PARENT') {
+  if (user?.user_metadata?.role === 'PARENT') {
     navGroups.push({
       name: 'Kiosk',
       items: [
@@ -199,7 +199,7 @@ export default function Sidebar() {
       // If no moduleId, always show (like Dashboard, Profile, Family)
       if (!item.moduleId) return true;
       // RULES_ENGINE is always available to parents (non-configurable)
-      if (item.moduleId === 'RULES_ENGINE' && user?.role === 'PARENT') {
+      if (item.moduleId === 'RULES_ENGINE' && user?.user_metadata?.role === 'PARENT') {
         return true;
       }
       // Check if module is enabled
@@ -309,7 +309,7 @@ export default function Sidebar() {
                 {user.name}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {user.role}
+                {user?.user_metadata?.role}
               </p>
             </div>
           </div>

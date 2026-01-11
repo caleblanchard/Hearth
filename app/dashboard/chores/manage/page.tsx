@@ -135,7 +135,7 @@ export default function ManageChoresPage() {
   // Check authorization
   useEffect(() => {
     // Only redirect if session is loaded and user is not a parent
-    if (session && user?.role !== 'PARENT') {
+    if (session && user?.user_metadata?.role !== 'PARENT') {
       router.push('/dashboard');
     }
   }, [user, router]);
@@ -492,7 +492,7 @@ export default function ManageChoresPage() {
     return `${names} (${type})`;
   };
 
-  if (user?.role !== 'PARENT') {
+  if (user?.user_metadata?.role !== 'PARENT') {
     return null;
   }
 

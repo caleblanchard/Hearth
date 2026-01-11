@@ -257,7 +257,7 @@ export default function MedicationsPage() {
             Track medications with safety interlock to prevent double-dosing
           </p>
         </div>
-        {user?.role === 'PARENT' && (
+        {user?.user_metadata?.role === 'PARENT' && (
           <button
             onClick={() => setShowAddModal(true)}
             className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
@@ -273,7 +273,7 @@ export default function MedicationsPage() {
           <p className="text-gray-500 dark:text-gray-400 mb-4">
             No medications configured yet.
           </p>
-          {user?.role === 'PARENT' && (
+          {user?.user_metadata?.role === 'PARENT' && (
             <button
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 mx-auto"

@@ -95,7 +95,7 @@ export default function ReportsPage() {
 
   // Redirect non-parents
   useEffect(() => {
-    if (user?.role !== 'PARENT') {
+    if (user?.user_metadata?.role !== 'PARENT') {
       router.push('/dashboard');
     }
   }, [user, router]);
@@ -116,7 +116,7 @@ export default function ReportsPage() {
   };
 
   useEffect(() => {
-    if (user?.role === 'PARENT') {
+    if (user?.user_metadata?.role === 'PARENT') {
       fetchReportData();
     }
   }, [user]);

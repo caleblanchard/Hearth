@@ -66,9 +66,9 @@ export default function HealthEventsList() {
         const response = await fetch('/api/family');
         if (response.ok) {
           const data = await response.json();
-          setMembers(data.family.members.filter((m: FamilyMember) => m.role === 'CHILD' || user?.role === 'PARENT'));
+          setMembers(data.family.members.filter((m: FamilyMember) => m.role === 'CHILD' || user?.user_metadata?.role === 'PARENT'));
           if (data.family.members.length > 0) {
-            const defaultMember = user?.role === 'CHILD' 
+            const defaultMember = user?.user_metadata?.role === 'CHILD' 
               ? data.family.members.find((m: FamilyMember) => m.id === user.id)
               : data.family.members.find((m: FamilyMember) => m.role === 'CHILD');
             if (defaultMember) {
@@ -240,7 +240,7 @@ export default function HealthEventsList() {
           >
             🌡️ Log Temperature
           </button>
-          {(user?.role === 'PARENT' || user?.role === 'CHILD') && (
+          {(user?.user_metadata?.role === 'PARENT' || user?.user_metadata?.role === 'CHILD') && (
             <button
               onClick={() => setShowAddDialog(true)}
               className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"

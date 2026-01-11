@@ -95,7 +95,7 @@ export default function ScreenTimeManagePage() {
       return;
     }
     
-    if (!session || user?.role !== 'PARENT') {
+    if (!session || user?.user_metadata?.role !== 'PARENT') {
       router.push('/dashboard/screentime');
       return;
     }

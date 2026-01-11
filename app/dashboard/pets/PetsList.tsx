@@ -212,7 +212,7 @@ export default function PetsList() {
             </p>
           )}
         </div>
-        {user?.role === 'PARENT' && (
+        {user?.user_metadata?.role === 'PARENT' && (
           <button
             onClick={() => setShowAddDialog(true)}
             className="px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg transition-colors"

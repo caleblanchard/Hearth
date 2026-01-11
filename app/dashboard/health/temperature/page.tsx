@@ -66,7 +66,7 @@ export default function TemperatureHistoryPage() {
           const data = await res.json();
           setMembers(data.family.members || []);
           // Auto-select current user if they're a child
-          if (user?.role === 'CHILD') {
+          if (user?.user_metadata?.role === 'CHILD') {
             setSelectedMemberId(user.id);
           }
         }
@@ -148,7 +148,7 @@ export default function TemperatureHistoryPage() {
     return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
   };
 
-  const isParent = user?.role === 'PARENT';
+  const isParent = user?.user_metadata?.role === 'PARENT';
 
   return (
     <div className="max-w-7xl mx-auto p-6">

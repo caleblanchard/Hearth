@@ -80,7 +80,7 @@ export default function NewTaskPage({ params }: { params: { id: string } }) {
     }
   };
 
-  if (user?.role !== 'PARENT') {
+  if (user?.user_metadata?.role !== 'PARENT') {
     return (
       <div className="p-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">

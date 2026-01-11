@@ -77,7 +77,7 @@ export default function MedicalProfilePage() {
           setMembers(data.family.members || []);
           // Auto-select current user if they're a child, or first member if parent
           if (data.family.members.length > 0) {
-            if (user?.role === 'CHILD') {
+            if (user?.user_metadata?.role === 'CHILD') {
               setSelectedMemberId(user.id);
             } else {
               setSelectedMemberId(data.family.members[0].id);
@@ -135,7 +135,7 @@ export default function MedicalProfilePage() {
   }, [selectedMemberId]);
 
   const handleSave = async () => {
-    if (!selectedMemberId || user?.role !== 'PARENT') return;
+    if (!selectedMemberId || user?.user_metadata?.role !== 'PARENT') return;
 
     setSaving(true);
     try {
@@ -216,7 +216,7 @@ export default function MedicalProfilePage() {
     setMedications(medications.filter((_, i) => i !== index));
   };
 
-  const isParent = user?.role === 'PARENT';
+  const isParent = user?.user_metadata?.role === 'PARENT';
   const canEdit = isParent;
 
   if (loading && !selectedMemberId) {

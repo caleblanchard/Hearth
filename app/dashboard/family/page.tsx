@@ -569,7 +569,7 @@ export default function FamilyPage() {
   }
 
   // Only parents can access this page
-  if (user?.role !== 'PARENT') {
+  if (user?.user_metadata?.role !== 'PARENT') {
     return (
       <div className="p-8">
         <div className="max-w-6xl mx-auto">

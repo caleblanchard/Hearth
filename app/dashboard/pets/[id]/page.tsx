@@ -373,7 +373,7 @@ export default function PetDetailPage() {
                 </p>
               </div>
             </div>
-            {user?.role === 'PARENT' && (
+            {user?.user_metadata?.role === 'PARENT' && (
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowEditModal(true)}

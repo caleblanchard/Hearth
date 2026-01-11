@@ -34,7 +34,7 @@ export default function DashboardNav() {
   ];
 
   // Add parent-only items
-  if (user?.role === 'PARENT') {
+  if (user?.user_metadata?.role === 'PARENT') {
     navItems.push({ name: 'Approvals', path: '/dashboard/approvals', icon: CheckBadgeIcon });
     navItems.push({ name: 'Family', path: '/dashboard/family', icon: UsersIcon });
   }
@@ -83,9 +83,9 @@ export default function DashboardNav() {
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-700 dark:text-gray-300">
               <span className="font-medium">{user?.name}</span>
-              {user?.role && (
+              {user?.user_metadata?.role && (
                 <span className="ml-2 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
-                  {user.role}
+                  {user?.user_metadata?.role}
                 </span>
               )}
             </div>
