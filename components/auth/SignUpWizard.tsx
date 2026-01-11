@@ -7,7 +7,7 @@ import {
   validateRegistrationData,
   checkEmailAvailable,
   type FamilyRegistrationData,
-} from '@/lib/auth/signup'
+} from '@/lib/auth/signup-client'
 
 type Step = 'family' | 'account' | 'pin' | 'review'
 

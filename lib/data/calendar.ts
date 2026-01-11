@@ -230,22 +230,6 @@ export async function getMemberEvents(
  */
 
 /**
- * Get calendar connections for a family
- */
-export async function getCalendarConnections(familyId: string) {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase
-    .from('calendar_connections')
-    .select('*')
-    .eq('family_id', familyId)
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return data || []
-}
-
-/**
  * Create a calendar connection
  */
 export async function createCalendarConnection(
@@ -261,47 +245,6 @@ export async function createCalendarConnection(
 
   if (error) throw error
   return data
-}
-
-/**
- * Update calendar connection
- */
-export async function updateCalendarConnection(
-  connectionId: string,
-  updates: {
-    is_active?: boolean
-    sync_enabled?: boolean
-    last_sync_at?: string
-    access_token?: string
-    refresh_token?: string
-    token_expires_at?: string
-  }
-) {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase
-    .from('calendar_connections')
-    .update(updates)
-    .eq('id', connectionId)
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
-}
-
-/**
- * Delete a calendar connection
- */
-export async function deleteCalendarConnection(connectionId: string) {
-  const supabase = await createClient()
-
-  const { error } = await supabase
-    .from('calendar_connections')
-    .delete()
-    .eq('id', connectionId)
-
-  if (error) throw error
 }
 
 /**

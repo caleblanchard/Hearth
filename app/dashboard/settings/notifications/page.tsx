@@ -33,7 +33,7 @@ const NOTIFICATION_TYPES = [
 ];
 
 export default function NotificationSettingsPage() {
-  const { user, loading } = useSupabaseSession();
+  const { user, loading: authLoading } = useSupabaseSession();
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     enabledTypes: [],
     quietHoursEnabled: false,

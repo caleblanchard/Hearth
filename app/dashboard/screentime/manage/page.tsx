@@ -49,7 +49,7 @@ interface ScreenTimeAllowance {
 }
 
 export default function ScreenTimeManagePage() {
-  const { user, loading } = useSupabaseSession();
+  const { user, loading: authLoading } = useSupabaseSession();
   const router = useRouter();
   const [types, setTypes] = useState<ScreenTimeType[]>([]);
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -89,19 +89,19 @@ export default function ScreenTimeManagePage() {
   });
 
   useEffect(() => {
-    // Wait for session to load before checking role
-    if (loading) {
-      // Session is still loading
+    // Wait for auth to load before checking role
+    if (authLoading || loading) {
+      // Auth or data is still loading
       return;
     }
     
-    if (!session || user?.user_metadata?.role !== 'PARENT') {
+    if (!user) {
       router.push('/dashboard/screentime');
       return;
     }
     
     loadData();
-  }, [user, loading, router]);
+  }, [user, authLoading, loading, router]);
 
   const loadData = async () => {
     try {

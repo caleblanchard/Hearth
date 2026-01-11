@@ -2,10 +2,10 @@
  * API Authentication Helpers
  * 
  * Provides unified authentication checking for API routes that support
- * both NextAuth sessions and guest sessions
+ * both Supabase Auth sessions and guest sessions
  */
 
-import { auth } from './auth';
+import { getAuthContext } from './supabase/server';
 import { validateGuestSession, type GuestSessionInfo, hasGuestAccess, canGuestWrite } from './guest-session';
 import { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
@@ -24,22 +24,23 @@ export interface AuthResult {
 }
 
 /**
- * Authenticate request - checks both NextAuth and guest sessions
+ * Authenticate request - checks both Supabase Auth and guest sessions
  */
 export async function authenticateRequest(
   request: NextRequest
 ): Promise<AuthResult> {
-  // First try NextAuth session
-  const session = await auth();
-  if (session?.user) {
+  // First try Supabase Auth session
+  const authContext = await getAuthContext();
+  if (authContext?.user && authContext.memberships.length > 0) {
+    const member = authContext.memberships[0];
     return {
       authenticated: true,
       isGuest: false,
       user: {
-        id: session.user.id,
-        role: session.user.role,
-        familyId: session.user.familyId,
-        name: session.user.name || 'Unknown',
+        id: member.id,
+        role: member.role,
+        familyId: member.family_id,
+        name: member.name || 'Unknown',
       },
     };
   }
