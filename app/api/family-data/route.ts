@@ -77,6 +77,9 @@ export async function GET(request: Request) {
       avatarUrl: member.avatar_url,
       isActive: member.is_active,
       createdAt: member.created_at,
+      inviteStatus: member.invite_status,
+      inviteSentAt: member.invite_sent_at,
+      inviteExpiresAt: member.invite_expires_at,
     }));
 
     // Build response matching /api/family structure

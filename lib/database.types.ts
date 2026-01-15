@@ -7,30 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
@@ -1448,6 +1428,11 @@ export type Database = {
           email: string | null
           family_id: string
           id: string
+          invite_expires_at: string | null
+          invite_sent_at: string | null
+          invite_status: Database["public"]["Enums"]["invite_status"] | null
+          invite_token: string | null
+          invited_by: string | null
           is_active: boolean
           last_login_at: string | null
           name: string
@@ -1464,6 +1449,11 @@ export type Database = {
           email?: string | null
           family_id: string
           id?: string
+          invite_expires_at?: string | null
+          invite_sent_at?: string | null
+          invite_status?: Database["public"]["Enums"]["invite_status"] | null
+          invite_token?: string | null
+          invited_by?: string | null
           is_active?: boolean
           last_login_at?: string | null
           name: string
@@ -1480,6 +1470,11 @@ export type Database = {
           email?: string | null
           family_id?: string
           id?: string
+          invite_expires_at?: string | null
+          invite_sent_at?: string | null
+          invite_status?: Database["public"]["Enums"]["invite_status"] | null
+          invite_token?: string | null
+          invited_by?: string | null
           is_active?: boolean
           last_login_at?: string | null
           name?: string
@@ -1494,6 +1489,13 @@ export type Database = {
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "family_members"
             referencedColumns: ["id"]
           },
         ]
@@ -4697,6 +4699,7 @@ export type Database = {
         Args: { check_family_id: string }
         Returns: Database["public"]["Enums"]["role"]
       }
+      get_user_chore_schedule_ids: { Args: never; Returns: string[] }
       get_user_family_ids: { Args: never; Returns: string[] }
       has_active_kiosk_session: {
         Args: { check_family_id: string }
@@ -4856,6 +4859,10 @@ export type Database = {
         | "RATE_LIMIT_HIT"
         | "AUTH_DENIED"
         | "SUSPICIOUS_ACTIVITY"
+        | "MEMBER_INVITED"
+        | "MEMBER_INVITE_ACCEPTED"
+        | "MEMBER_INVITE_RESENT"
+        | "MEMBER_INVITE_CANCELLED"
       audit_result: "SUCCESS" | "FAILURE" | "DENIED"
       badge_tier: "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" | "DIAMOND"
       calendar_provider: "GOOGLE" | "OUTLOOK" | "APPLE"
@@ -5212,9 +5219,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       achievement_category: [
@@ -5354,6 +5358,10 @@ export const Constants = {
         "RATE_LIMIT_HIT",
         "AUTH_DENIED",
         "SUSPICIOUS_ACTIVITY",
+        "MEMBER_INVITED",
+        "MEMBER_INVITE_ACCEPTED",
+        "MEMBER_INVITE_RESENT",
+        "MEMBER_INVITE_CANCELLED",
       ],
       audit_result: ["SUCCESS", "FAILURE", "DENIED"],
       badge_tier: ["BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND"],
@@ -5604,4 +5612,3 @@ export const Constants = {
     },
   },
 } as const
-

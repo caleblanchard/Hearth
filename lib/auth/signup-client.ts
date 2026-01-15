@@ -11,6 +11,8 @@ export interface RegistrationResult {
   family?: any
   member?: any
   error?: string
+  requiresEmailConfirmation?: boolean
+  email?: string
 }
 
 /**

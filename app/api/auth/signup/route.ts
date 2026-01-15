@@ -18,6 +18,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if email confirmation is required
+    if (result.error === 'EMAIL_CONFIRMATION_REQUIRED') {
+      return NextResponse.json({
+        success: true,
+        familyId: result.familyId,
+        memberId: result.memberId,
+        userId: result.userId,
+        family: result.family,
+        member: result.member,
+        requiresEmailConfirmation: true,
+        email: body.email,
+      })
+    }
+
     return NextResponse.json({
       success: true,
       familyId: result.familyId,

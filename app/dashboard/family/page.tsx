@@ -48,6 +48,9 @@ interface FamilyMember {
   avatarUrl?: string;
   isActive: boolean;
   createdAt: string;
+  inviteStatus?: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+  inviteSentAt?: string;
+  inviteExpiresAt?: string;
 }
 
 interface Family {
@@ -103,11 +106,12 @@ export default function FamilyPage() {
     email: '',
     role: 'CHILD',
     birthDate: '',
-    password: '',
     pin: '',
     avatarUrl: '',
     allowedModules: [] as string[],
   });
+
+  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
 
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
   const [memberModules, setMemberModules] = useState<Record<string, string[]>>({});
@@ -343,15 +347,6 @@ export default function FamilyPage() {
         });
         return;
       }
-      if (!newMember.password.trim()) {
-        setAlertModal({
-          isOpen: true,
-          type: 'warning',
-          title: 'Missing Information',
-          message: 'Password is required for parent accounts',
-        });
-        return;
-      }
     }
 
     if (newMember.role === 'CHILD' && !newMember.pin.trim()) {
@@ -376,44 +371,87 @@ export default function FamilyPage() {
 
     setSavingMember(true);
     try {
-      const response = await fetch('/api/family/members', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newMember,
-          // Only send allowedModules for children
-          allowedModules: newMember.role === 'CHILD' ? newMember.allowedModules : undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: 'Family member added successfully',
+      // Use different API endpoints for parents (invite) vs children (direct create)
+      if (newMember.role === 'PARENT') {
+        // Send invitation to parent
+        const response = await fetch('/api/family/members/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newMember.name,
+            email: newMember.email,
+            birthDate: newMember.birthDate || undefined,
+            avatarUrl: newMember.avatarUrl || undefined,
+          }),
         });
-        setAddMemberModal(false);
-        setNewMember({
-          name: '',
-          email: '',
-          role: 'CHILD',
-          birthDate: '',
-          password: '',
-          pin: '',
-          avatarUrl: '',
-          allowedModules: [],
-        });
-        await fetchFamily();
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setAlertModal({
+            isOpen: true,
+            type: 'success',
+            title: 'Invitation Sent!',
+            message: data.message || `An invitation has been sent to ${newMember.email}. They will receive an email to set up their account.`,
+          });
+          setAddMemberModal(false);
+          setNewMember({
+            name: '',
+            email: '',
+            role: 'CHILD',
+            birthDate: '',
+            pin: '',
+            avatarUrl: '',
+            allowedModules: [],
+          });
+          await fetchFamily();
+        } else {
+          setAlertModal({
+            isOpen: true,
+            type: 'error',
+            title: 'Error',
+            message: data.error || 'Failed to send invitation',
+          });
+        }
       } else {
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to add family member',
+        // Create child account directly
+        const response = await fetch('/api/family/members', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...newMember,
+            allowedModules: newMember.allowedModules,
+          }),
         });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setAlertModal({
+            isOpen: true,
+            type: 'success',
+            title: 'Success!',
+            message: 'Family member added successfully',
+          });
+          setAddMemberModal(false);
+          setNewMember({
+            name: '',
+            email: '',
+            role: 'CHILD',
+            birthDate: '',
+            pin: '',
+            avatarUrl: '',
+            allowedModules: [],
+          });
+          await fetchFamily();
+        } else {
+          setAlertModal({
+            isOpen: true,
+            type: 'error',
+            title: 'Error',
+            message: data.error || 'Failed to add family member',
+          });
+        }
       }
     } catch (error) {
       console.error('Error adding member:', error);
@@ -425,6 +463,51 @@ export default function FamilyPage() {
       });
     } finally {
       setSavingMember(false);
+    }
+  };
+
+  const handleResendInvite = async (member: FamilyMember) => {
+    setResendingInvite(member.id);
+    try {
+      const response = await fetch('/api/family/members/invite/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: member.id }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast('success', `Invitation resent to ${member.email}`);
+        await fetchFamily();
+      } else {
+        showToast('error', data.error || 'Failed to resend invitation');
+      }
+    } catch (error) {
+      showToast('error', 'Failed to resend invitation');
+    } finally {
+      setResendingInvite(null);
+    }
+  };
+
+  const handleCancelInvite = async (member: FamilyMember) => {
+    if (!confirm(`Cancel the invitation for ${member.name}?`)) return;
+
+    try {
+      const response = await fetch(`/api/family/members/${member.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast('success', 'Invitation cancelled');
+        await fetchFamily();
+      } else {
+        showToast('error', data.error || 'Failed to cancel invitation');
+      }
+    } catch (error) {
+      showToast('error', 'Failed to cancel invitation');
     }
   };
 
@@ -982,18 +1065,28 @@ export default function FamilyPage() {
               <div
                 key={member.id}
                 className={`p-4 rounded-lg border ${
-                  member.isActive
-                    ? 'border-gray-200 dark:border-gray-700'
-                    : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900'
+                  member.inviteStatus === 'PENDING'
+                    ? 'border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/10'
+                    : member.isActive
+                      ? 'border-gray-200 dark:border-gray-700'
+                      : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-ember-700 rounded-full flex items-center justify-center text-white text-lg font-bold">
-                      {member.name.charAt(0)}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${
+                      member.inviteStatus === 'PENDING' ? 'bg-yellow-500' : 'bg-ember-700'
+                    }`}>
+                      {member.inviteStatus === 'PENDING' ? (
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                        </svg>
+                      ) : (
+                        member.name.charAt(0)
+                      )}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                           {member.name}
                         </h3>
@@ -1004,7 +1097,12 @@ export default function FamilyPage() {
                         }`}>
                           {member.role}
                         </span>
-                        {!member.isActive && (
+                        {member.inviteStatus === 'PENDING' && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200">
+                            PENDING INVITE
+                          </span>
+                        )}
+                        {!member.isActive && member.inviteStatus !== 'PENDING' && (
                           <span className="px-2 py-1 text-xs font-medium rounded bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
                             INACTIVE
                           </span>
@@ -1013,48 +1111,73 @@ export default function FamilyPage() {
                       {member.email && (
                         <p className="text-sm text-gray-600 dark:text-gray-400">{member.email}</p>
                       )}
-                      {member.birthDate && (
+                      {member.inviteStatus === 'PENDING' && member.inviteSentAt && (
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                          Invitation sent {format(new Date(member.inviteSentAt), 'MMM d, yyyy')}
+                        </p>
+                      )}
+                      {member.birthDate && member.inviteStatus !== 'PENDING' && (
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           Born: {format(new Date(member.birthDate.split('T')[0]), 'MMMM d, yyyy')}
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setEditMemberModal(member)}
-                      className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white text-sm font-semibold rounded-lg transition-colors"
-                    >
-                      Edit
-                    </button>
-                    {member.isActive ? (
-                      <button
-                        onClick={() =>
-                          setConfirmModal({
-                            isOpen: true,
-                            memberId: member.id,
-                            memberName: member.name,
-                            action: 'deactivate',
-                          })
-                        }
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                      >
-                        Deactivate
-                      </button>
+                  <div className="flex gap-2 flex-wrap justify-end">
+                    {member.inviteStatus === 'PENDING' ? (
+                      <>
+                        <button
+                          onClick={() => handleResendInvite(member)}
+                          disabled={resendingInvite === member.id}
+                          className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-400 text-white text-sm font-semibold rounded-lg transition-colors"
+                        >
+                          {resendingInvite === member.id ? 'Sending...' : 'Resend Invite'}
+                        </button>
+                        <button
+                          onClick={() => handleCancelInvite(member)}
+                          className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white text-sm font-semibold rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </>
                     ) : (
-                      <button
-                        onClick={() =>
-                          setConfirmModal({
-                            isOpen: true,
-                            memberId: member.id,
-                            memberName: member.name,
-                            action: 'reactivate',
-                          })
-                        }
-                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                      >
-                        Reactivate
-                      </button>
+                      <>
+                        <button
+                          onClick={() => setEditMemberModal(member)}
+                          className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white text-sm font-semibold rounded-lg transition-colors"
+                        >
+                          Edit
+                        </button>
+                        {member.isActive ? (
+                          <button
+                            onClick={() =>
+                              setConfirmModal({
+                                isOpen: true,
+                                memberId: member.id,
+                                memberName: member.name,
+                                action: 'deactivate',
+                              })
+                            }
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                          >
+                            Deactivate
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              setConfirmModal({
+                                isOpen: true,
+                                memberId: member.id,
+                                memberName: member.name,
+                                action: 'reactivate',
+                              })
+                            }
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                          >
+                            Reactivate
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -1098,6 +1221,11 @@ export default function FamilyPage() {
           </div>
           {newMember.role === 'PARENT' && (
             <>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  An invitation email will be sent to this person. They will set their own password when they accept the invitation.
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Email *
@@ -1106,18 +1234,7 @@ export default function FamilyPage() {
                   type="email"
                   value={newMember.email}
                   onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Password *
-                </label>
-                <input
-                  type="password"
-                  value={newMember.password}
-                  onChange={(e) => setNewMember({ ...newMember, password: e.target.value })}
-                  placeholder="Required for parent sign-in"
+                  placeholder="they@example.com"
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
                 />
               </div>

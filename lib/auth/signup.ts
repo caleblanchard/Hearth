@@ -124,11 +124,41 @@ export async function registerFamily(
       await setMemberPin(member.id, data.pin)
     }
 
-    // Step 5: Sign in the user automatically
-    await supabase.auth.signInWithPassword({
+    // Step 5: Check if email confirmation is required
+    // If session is null, the user needs to confirm their email before signing in
+    if (!authData.session) {
+      // User account and family are created, but email confirmation is required
+      // Return success but indicate that email confirmation is needed
+      return {
+        success: true,
+        familyId: family.id,
+        memberId: member.id,
+        userId: authData.user.id,
+        family: family,
+        member: member,
+        error: 'EMAIL_CONFIRMATION_REQUIRED', // Special error code to indicate confirmation needed
+      }
+    }
+
+    // Step 6: Sign in the user automatically (only if session exists)
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
     })
+
+    if (signInError) {
+      // Sign-in failed, but family and member are already created
+      // This shouldn't happen if session exists, but handle it gracefully
+      return {
+        success: true,
+        familyId: family.id,
+        memberId: member.id,
+        userId: authData.user.id,
+        family: family,
+        member: member,
+        error: signInError.message || 'Account created but sign-in failed. Please sign in manually.',
+      }
+    }
 
     return {
       success: true,

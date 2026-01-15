@@ -117,26 +117,26 @@ export default function PWAInstallPrompt() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl p-4 border border-slate-300 dark:border-slate-700">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 text-4xl">🔥</div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
               Install Hearth
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            <p className="text-sm text-slate-700 dark:text-slate-400 mb-3">
               Install Hearth on your home screen for quick access and offline support.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={handleInstall}
-                className="flex-1 bg-ember-600 hover:bg-ember-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+                className="flex-1 bg-ember-700 hover:bg-ember-500 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
               >
                 Install
               </button>
               <button
                 onClick={handleDismiss}
-                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm font-medium transition-colors"
+                className="px-4 py-2 text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 text-sm font-medium transition-colors"
               >
                 Not now
               </button>
@@ -144,7 +144,7 @@ export default function PWAInstallPrompt() {
           </div>
           <button
             onClick={handleDismiss}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            className="flex-shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             aria-label="Close"
           >
             <svg

@@ -136,6 +136,20 @@ export async function POST(request: NextRequest) {
       });
 
       if (!result.success || !result.family || !result.member) {
+        // Check if email confirmation is required
+        if (result.error === 'EMAIL_CONFIRMATION_REQUIRED') {
+          return NextResponse.json(
+            {
+              success: true,
+              familyId: result.familyId,
+              memberId: result.memberId,
+              requiresEmailConfirmation: true,
+              email: adminEmail.trim().toLowerCase(),
+              message: 'Account created successfully. Please check your email to confirm your account before signing in.',
+            },
+            { status: 200 }
+          );
+        }
         throw new Error(result.error || 'Failed to create family');
       }
 
