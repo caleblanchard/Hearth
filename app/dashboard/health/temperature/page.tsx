@@ -61,7 +61,7 @@ export default function TemperatureHistoryPage() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const res = await fetch('/api/family');
+        const res = await fetch('/api/family-data');
         if (res.ok) {
           const data = await res.json();
           setMembers(data.family.members || []);

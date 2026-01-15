@@ -12,18 +12,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
-    const memberId = searchParams.get('memberId') || undefined;
-    const includeEnded = searchParams.get('includeEnded') === 'true';
+    const targetMemberId = searchParams.get('memberId') || authContext.activeMemberId;
+    
+    if (!targetMemberId) {
+      return NextResponse.json({ error: 'Member ID is required' }, { status: 400 });
+    }
 
-    const instances = await getSickModeStatus(familyId, memberId, includeEnded);
+    const instance = await getSickModeStatus(targetMemberId);
 
-    return NextResponse.json({ instances });
+    return NextResponse.json({ instance });
   } catch (error) {
     logger.error('Get sick mode status error:', error);
     return NextResponse.json({ error: 'Failed to get sick mode status' }, { status: 500 });

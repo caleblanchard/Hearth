@@ -8,6 +8,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -16,7 +17,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -58,6 +59,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -66,7 +68,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }

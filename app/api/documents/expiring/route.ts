@@ -14,16 +14,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const daysParam = searchParams.get('days');
-    const days = daysParam ? parseInt(daysParam, 10) : 90;
-
-    const documents = await getExpiringDocuments(familyId, days);
+    const documents = await getExpiringDocuments(familyId);
 
     return NextResponse.json({ documents });
   } catch (error) {

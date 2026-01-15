@@ -30,15 +30,11 @@ export async function getInventoryItems(
     .eq('family_id', familyId)
 
   if (options?.category) {
-    query = query.eq('category', options.category)
+    query = query.eq('category', options.category as any)
   }
 
   if (options?.location) {
-    query = query.eq('location', options.location)
-  }
-
-  if (options?.lowStock) {
-    query = query.lte('current_quantity', supabase.sql`reorder_threshold`)
+    query = query.eq('location', options.location as any)
   }
 
   query = query.order('name')
@@ -46,7 +42,15 @@ export async function getInventoryItems(
   const { data, error } = await query
 
   if (error) throw error
-  return data || []
+  
+  let items = data || []
+  
+  // Filter for low stock if requested
+  if (options?.lowStock) {
+    items = items.filter(item => item.low_stock_threshold != null && item.current_quantity <= item.low_stock_threshold)
+  }
+  
+  return items
 }
 
 /**
@@ -59,11 +63,16 @@ export async function getLowStockItems(familyId: string) {
     .from('inventory_items')
     .select('*')
     .eq('family_id', familyId)
-    .lte('current_quantity', supabase.sql`reorder_threshold`)
     .order('name')
 
   if (error) throw error
-  return data || []
+  
+  // Filter items where current_quantity <= reorder_threshold
+  const lowStockItems = (data || []).filter(
+    item => item.low_stock_threshold != null && item.current_quantity <= item.low_stock_threshold
+  )
+  
+  return lowStockItems
 }
 
 /**
@@ -128,10 +137,21 @@ export async function adjustInventoryQuantity(
 ): Promise<InventoryItem> {
   const supabase = await createClient()
 
+  // First get the current item
+  const { data: item } = await supabase
+    .from('inventory_items')
+    .select('current_quantity')
+    .eq('id', itemId)
+    .single()
+
+  if (!item) throw new Error('Item not found')
+
+  const newQuantity = item.current_quantity + quantityChange
+
   const { data, error } = await supabase
     .from('inventory_items')
     .update({
-      current_quantity: supabase.sql`current_quantity + ${quantityChange}`,
+      current_quantity: newQuantity,
       last_restocked_at: quantityChange > 0 ? new Date().toISOString() : undefined,
     })
     .eq('id', itemId)
@@ -182,9 +202,9 @@ export async function getExpiringInventoryItems(familyId: string, days = 7) {
     .from('inventory_items')
     .select('*')
     .eq('family_id', familyId)
-    .not('expiration_date', 'is', null)
-    .lte('expiration_date', cutoffDate.toISOString())
-    .order('expiration_date', { ascending: true })
+    .not('expires_at', 'is', null)
+    .lte('expires_at', cutoffDate.toISOString())
+    .order('expires_at', { ascending: true })
 
   if (error) throw error
   return data || []

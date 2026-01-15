@@ -87,6 +87,7 @@ export async function sendPushNotificationToUser(
     // Check if this notification type is enabled
     if (
       preferences &&
+      preferences.enabled_types &&
       preferences.enabled_types.length > 0 &&
       !preferences.enabled_types.includes(notificationType)
     ) {

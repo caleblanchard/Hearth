@@ -43,10 +43,13 @@ export async function GET(request: NextRequest) {
 
     // Process schedules in parallel batches for better performance
     const BATCH_SIZE = 20
-    const batches: typeof schedules[] = []
+    const batches: Array<NonNullable<typeof schedules>> = []
     
     for (let i = 0; i < (schedules || []).length; i += BATCH_SIZE) {
-      batches.push((schedules || []).slice(i, i + BATCH_SIZE))
+      const batch = (schedules || []).slice(i, i + BATCH_SIZE)
+      if (batch.length > 0) {
+        batches.push(batch)
+      }
     }
 
     // Process each batch in parallel
@@ -54,7 +57,7 @@ export async function GET(request: NextRequest) {
       const results = await Promise.allSettled(
         batch.map(async (schedule) => {
           // Check if this schedule should be processed today
-          if (!shouldProcessAllowance(schedule, currentDate)) {
+          if (!shouldProcessAllowance(schedule as any, currentDate)) {
             skipped++
             return { status: 'skipped' }
           }
@@ -111,11 +114,10 @@ export async function GET(request: NextRequest) {
               .single()
 
             if (member) {
-              await supabase
+              await (supabase as any)
                 .from('notifications')
                 .insert({
-                  family_id: member.family_id,
-                  recipient_id: schedule.member_id,
+                  user_id: schedule.member_id,
                   type: 'CREDITS_EARNED',
                   title: 'Allowance Received',
                   message: `You received ${schedule.amount} credits from your ${schedule.frequency.toLowerCase()} allowance!`,

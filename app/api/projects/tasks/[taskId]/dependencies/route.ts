@@ -8,6 +8,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
+  const { taskId } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -16,15 +17,15 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can manage tasks
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage tasks' },
@@ -45,6 +46,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
+  const { taskId } = await params
   try {
     const authContext = await getAuthContext();
 
@@ -52,15 +54,15 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can manage tasks
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage tasks' },
@@ -92,22 +94,24 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
+  const { taskId } = await params
   try {
+    const supabase = await createClient();
     const authContext = await getAuthContext();
 
     if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can manage tasks
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage tasks' },
@@ -122,7 +126,19 @@ export async function DELETE(
       return NextResponse.json({ error: 'blockingTaskId is required' }, { status: 400 });
     }
 
-    await removeTaskDependency(taskId, blockingTaskId);
+    // Find the dependency record
+    const { data: dependency } = await supabase
+      .from('task_dependencies')
+      .select('id')
+      .eq('dependent_task_id', taskId)
+      .eq('blocking_task_id', blockingTaskId)
+      .single();
+
+    if (!dependency) {
+      return NextResponse.json({ error: 'Dependency not found' }, { status: 404 });
+    }
+
+    await removeTaskDependency(dependency.id);
 
     return NextResponse.json({
       success: true,

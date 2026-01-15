@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
   Cog6ToothIcon,
   CheckCircleIcon,
@@ -21,6 +22,7 @@ interface Module {
 
 export default function ModuleSettingsPage() {
   const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const [modules, setModules] = useState<Module[]>([]);
   const [categories, setCategories] = useState<Record<string, Module[]>>({});
   const [loading, setLoading] = useState(true);
@@ -45,12 +47,12 @@ export default function ModuleSettingsPage() {
       }
     }
 
-    if (user?.user_metadata?.role === 'PARENT') {
+    if (isParent) {
       fetchModules();
     } else {
       setLoading(false);
     }
-  }, [user]);
+  }, [isParent]);
 
   const toggleModule = async (moduleId: string, currentlyEnabled: boolean) => {
     setUpdating((prev) => new Set(prev).add(moduleId));
@@ -103,7 +105,7 @@ export default function ModuleSettingsPage() {
     }
   };
 
-  if (user?.user_metadata?.role !== 'PARENT') {
+  if (!isParent) {
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center">

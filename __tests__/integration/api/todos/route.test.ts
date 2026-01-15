@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -22,7 +17,6 @@ import { GET, POST } from '@/app/api/todos/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { TodoStatus } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
 const { logger } = require('@/lib/logger')
 
 describe('/api/todos', () => {
@@ -33,7 +27,6 @@ describe('/api/todos', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/todos')
       const response = await GET(request)
@@ -45,7 +38,6 @@ describe('/api/todos', () => {
 
     it('should return active todos by default', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const mockTodos = [
         {
@@ -73,7 +65,6 @@ describe('/api/todos', () => {
 
     it('should filter by completed todos', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.findMany.mockResolvedValue([])
       prismaMock.todoItem.count.mockResolvedValue(0)
@@ -87,7 +78,6 @@ describe('/api/todos', () => {
 
     it('should return all todos when filter=all', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.findMany.mockResolvedValue([])
       prismaMock.todoItem.count.mockResolvedValue(0)
@@ -112,7 +102,6 @@ describe('/api/todos', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/todos', {
         method: 'POST',
@@ -128,7 +117,6 @@ describe('/api/todos', () => {
 
     it('should return 400 if title is missing', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/todos', {
         method: 'POST',
@@ -147,7 +135,6 @@ describe('/api/todos', () => {
 
     it('should return 400 if title is only whitespace', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/todos', {
         method: 'POST',
@@ -166,7 +153,6 @@ describe('/api/todos', () => {
 
     it('should create todo successfully', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const mockCreatedTodo = {
         id: 'todo-1',
@@ -214,7 +200,6 @@ describe('/api/todos', () => {
 
     it('should trim title', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.create.mockResolvedValue({
         id: 'todo-1',
@@ -240,7 +225,6 @@ describe('/api/todos', () => {
 
     it('should use default priority if not provided', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.create.mockResolvedValue({
         id: 'todo-1',
@@ -266,7 +250,6 @@ describe('/api/todos', () => {
 
     it('should handle invalid JSON gracefully', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/todos', {
         method: 'POST',

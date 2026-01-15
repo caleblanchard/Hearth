@@ -235,7 +235,7 @@ export default function RecipesList() {
                     {recipe.category}
                   </span>
                 )}
-                {recipe._count.ratings > 0 && (
+                {recipe._count?.ratings > 0 && (
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                     {recipe._count.ratings} {recipe._count.ratings === 1 ? 'rating' : 'ratings'}
                   </span>

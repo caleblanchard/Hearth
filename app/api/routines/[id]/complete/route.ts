@@ -8,6 +8,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -16,8 +17,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -26,7 +27,7 @@ export async function POST(
     // Get the routine
     const { data: routine } = await supabase
       .from('routines')
-      .select('family_id, member_id')
+      .select('family_id, assigned_to')
       .eq('id', id)
       .single();
 
@@ -43,13 +44,13 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { notes, completedBy } = body;
+    const { completedItems, completedBy } = body;
 
-    const result = await completeRoutine(id, completedBy || memberId, notes || null);
+    const completion = await completeRoutine(id, completedBy || memberId, completedItems || []);
 
     return NextResponse.json({
       success: true,
-      completion: result.completion,
+      completion,
       message: 'Routine completed successfully',
     });
   } catch (error) {

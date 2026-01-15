@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authContext.userId;
+    const userId = authContext.user.id;
     if (!userId) {
       return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }
@@ -34,11 +34,12 @@ export async function POST(request: NextRequest) {
 
     const userAgent = request.headers.get('user-agent') || undefined;
 
-    const subscription = await createPushSubscription(userId, {
+    const subscription = await createPushSubscription({
+      user_id: userId,
       endpoint: body.endpoint,
       p256dh: body.keys.p256dh,
       auth: body.keys.auth,
-      userAgent,
+      user_agent: userAgent || null,
     });
 
     logger.info('Push subscription saved', {
@@ -68,7 +69,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authContext.userId;
+    const userId = authContext.user.id;
     if (!userId) {
       return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }

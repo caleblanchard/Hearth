@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/documents/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/documents', () => {
   beforeEach(() => {
@@ -51,8 +48,6 @@ describe('/api/documents', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/documents', {
         method: 'GET',
       });
@@ -62,7 +57,6 @@ describe('/api/documents', () => {
     });
 
     it('should return all documents for family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findMany.mockResolvedValue([mockDocument] as any);
 
       const request = new NextRequest('http://localhost:3000/api/documents', {
@@ -77,7 +71,6 @@ describe('/api/documents', () => {
     });
 
     it('should filter by category', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findMany.mockResolvedValue([mockDocument] as any);
 
       const request = new NextRequest('http://localhost:3000/api/documents?category=IDENTITY', {
@@ -96,7 +89,6 @@ describe('/api/documents', () => {
     });
 
     it('should only return documents user has access to', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findMany.mockResolvedValue([mockDocument] as any);
 
       const request = new NextRequest('http://localhost:3000/api/documents', {
@@ -110,8 +102,6 @@ describe('/api/documents', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/documents', {
         method: 'POST',
         body: JSON.stringify({
@@ -128,8 +118,6 @@ describe('/api/documents', () => {
     });
 
     it('should return 400 if missing required fields', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/documents', {
         method: 'POST',
         body: JSON.stringify({
@@ -143,8 +131,6 @@ describe('/api/documents', () => {
     });
 
     it('should return 400 if invalid category', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/documents', {
         method: 'POST',
         body: JSON.stringify({
@@ -161,7 +147,6 @@ describe('/api/documents', () => {
     });
 
     it('should create document successfully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.create.mockResolvedValue(mockDocument as any);
       prismaMock.auditLog.create.mockResolvedValue({} as any);
 
@@ -224,7 +209,6 @@ describe('/api/documents', () => {
     });
 
     it('should default accessList to uploader if not provided', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.create.mockResolvedValue(mockDocument as any);
       prismaMock.auditLog.create.mockResolvedValue({} as any);
 

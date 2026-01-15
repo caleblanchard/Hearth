@@ -4,35 +4,6 @@ import { createServerClient } from '@supabase/ssr';
 import { apiRateLimiter, authRateLimiter, cronRateLimiter, getClientIdentifier } from '@/lib/rate-limit-redis';
 import { MAX_REQUEST_SIZE_BYTES } from '@/lib/constants';
 import { logger } from '@/lib/logger';
-import { CACHE_TTL_MS } from '@/lib/constants';
-
-// Cache the onboarding status in memory to avoid database hits on every request
-let onboardingStatusCache: { complete: boolean; lastCheck: number } | null = null;
-
-async function checkOnboardingStatus(): Promise<boolean> {
-  // Return cached status if available and fresh
-  if (onboardingStatusCache && Date.now() - onboardingStatusCache.lastCheck < CACHE_TTL_MS) {
-    return onboardingStatusCache.complete;
-  }
-
-  try {
-    // Check onboarding status via API
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/onboarding/check`);
-    const data = await response.json();
-
-    // Update cache
-    onboardingStatusCache = {
-      complete: data.onboardingComplete === true,
-      lastCheck: Date.now(),
-    };
-
-    return onboardingStatusCache.complete;
-  } catch (error) {
-    console.error('Failed to check onboarding status:', error);
-    // On error, assume onboarding is complete to avoid blocking access
-    return true;
-  }
-}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -89,47 +60,67 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Redirect unauthenticated users trying to access protected routes
+  const isCloudMode = process.env.VERCEL === '1';
   const isProtectedRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/kiosk');
   const isAuthRoute = pathname.startsWith('/auth');
+  const isOnboardingRoute = pathname.startsWith('/onboarding');
 
+  // Redirect unauthenticated users trying to access protected routes
   if (!user && isProtectedRoute) {
-    const redirectUrl = new URL('/auth/signin', request.url);
-    redirectUrl.searchParams.set('redirectTo', pathname);
+    const redirectUrl = isCloudMode 
+      ? new URL('/', request.url) 
+      : new URL('/auth/signin', request.url);
+    if (!isCloudMode) {
+      redirectUrl.searchParams.set('redirectTo', pathname);
+    }
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect authenticated users away from auth pages
-  if (user && isAuthRoute && pathname !== '/auth/signout') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // Redirect unauthenticated users trying to access onboarding
+  if (!user && isOnboardingRoute) {
+    const redirectUrl = isCloudMode 
+      ? new URL('/', request.url) 
+      : new URL('/auth/signin', request.url);
+    return NextResponse.redirect(redirectUrl);
   }
 
-  // Check onboarding status for all routes except onboarding and its API
-  const isOnboardingRoute = pathname.startsWith('/onboarding');
-  const isOnboardingAPI = pathname.startsWith('/api/onboarding');
-  const isAuthAPI = pathname.startsWith('/api/auth');
-  const isHealthAPI = pathname === '/api/health';
-  const isGeocodingAPI = pathname === '/api/geocoding';
+  // For authenticated users, check family membership
+  if (user) {
+    // Check if user has ANY family (just need to know if they belong to at least one)
+    const { data: familyMembers, error } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('auth_user_id', user.id)
+      .limit(1);
 
-  if (!isOnboardingRoute && !isOnboardingAPI && !isAuthAPI && !isHealthAPI && !isGeocodingAPI) {
-    const onboardingComplete = await checkOnboardingStatus();
-
-    if (!onboardingComplete) {
-      // Redirect to onboarding page
-      const url = request.nextUrl.clone();
-      url.pathname = '/onboarding';
-      return NextResponse.redirect(url);
+    if (error) {
+      logger.error('Error checking family membership in middleware:', error);
     }
-  }
 
-  // If trying to access onboarding when already complete, redirect to dashboard
-  if (isOnboardingRoute && !isOnboardingAPI) {
-    const onboardingComplete = await checkOnboardingStatus();
+    const hasFamilies = familyMembers && familyMembers.length > 0;
+    
+    // Debug logging
+    if (pathname === '/dashboard' || pathname === '/onboarding') {
+      logger.info(`Middleware check for ${pathname}: user=${user.id}, hasFamilies=${hasFamilies}, familyCount=${familyMembers?.length || 0}`);
+    }
 
-    if (onboardingComplete) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/dashboard';
-      return NextResponse.redirect(url);
+    // User accessing dashboard without a family - redirect to onboarding
+    if (isProtectedRoute && !hasFamilies) {
+      return NextResponse.redirect(new URL('/onboarding', request.url));
+    }
+
+    // Allow users to access onboarding even if they have a family
+    // (to create additional families)
+    // Remove the redirect that blocked this
+
+    // User accessing auth pages with a family - redirect to dashboard
+    if (isAuthRoute && pathname !== '/auth/signout' && hasFamilies) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    // User accessing auth pages without a family - redirect to onboarding
+    if (isAuthRoute && pathname !== '/auth/signout' && !hasFamilies) {
+      return NextResponse.redirect(new URL('/onboarding', request.url));
     }
   }
 

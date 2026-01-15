@@ -12,6 +12,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -20,19 +21,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Verify dish belongs to family
-    const { data: dish } = await supabase
+    const { data: dish } = await (supabase as any)
       .from('meal_plan_dishes')
-      .select('entry:meal_plan_entries!inner(family_id)')
+      .select('entry:meal_plan_entries!inner(meal_plan:meal_plans!inner(family_id))')
       .eq('id', id)
       .single();
 
-    if (!dish || dish.entry.family_id !== familyId) {
+    if (!dish || dish.entry?.meal_plan?.family_id !== familyId) {
       return NextResponse.json({ error: 'Dish not found' }, { status: 404 });
     }
 
@@ -58,6 +59,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -66,19 +68,19 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Verify dish belongs to family
-    const { data: dish } = await supabase
+    const { data: dish } = await (supabase as any)
       .from('meal_plan_dishes')
-      .select('entry:meal_plan_entries!inner(family_id)')
+      .select('entry:meal_plan_entries!inner(meal_plan:meal_plans!inner(family_id))')
       .eq('id', id)
       .single();
 
-    if (!dish || dish.entry.family_id !== familyId) {
+    if (!dish || dish.entry?.meal_plan?.family_id !== familyId) {
       return NextResponse.json({ error: 'Dish not found' }, { status: 404 });
     }
 

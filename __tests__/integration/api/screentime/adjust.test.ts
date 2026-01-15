@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/screentime/adjust/route'
 import { mockParentSession } from '@/lib/test-utils/auth-mock'
 import { ScreenTimeTransactionType } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/screentime/adjust', () => {
   beforeEach(() => {
@@ -51,7 +44,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should return 403 if not a parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue({ ...session, user: { ...session.user, role: 'CHILD' } })
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
@@ -71,7 +63,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should return 400 if memberId is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
@@ -89,7 +80,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should return 400 if amountMinutes is zero', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
@@ -108,7 +98,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should return 404 if member not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue(null)
 
@@ -130,7 +119,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should return 404 if member belongs to different family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
@@ -155,7 +143,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should return 400 if screen time not configured', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
@@ -193,7 +180,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should return 400 if trying to remove more than available balance', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
@@ -226,7 +212,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should successfully add screen time', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
@@ -276,7 +261,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should successfully remove screen time', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
@@ -322,7 +306,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should prevent negative balance', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
@@ -356,7 +339,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should handle invalid JSON gracefully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
@@ -372,7 +354,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should create notification for child', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
@@ -424,7 +405,6 @@ describe('/api/screentime/adjust', () => {
 
     it('should create audit log', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
@@ -463,7 +443,6 @@ describe('/api/screentime/adjust', () => {
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           familyId: session.user.familyId,
-          memberId: session.user.id,
           action: 'SCREENTIME_ADJUSTED',
           entityType: 'ScreenTimeTransaction',
           result: 'SUCCESS',

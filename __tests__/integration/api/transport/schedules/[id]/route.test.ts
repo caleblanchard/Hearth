@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, PATCH, DELETE } from '@/app/api/transport/schedules/[id]/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/transport/schedules/[id]', () => {
   beforeEach(() => {
@@ -64,24 +61,21 @@ describe('/api/transport/schedules/[id]', () => {
 
   describe('GET /api/transport/schedules/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'schedule-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 404 if schedule not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'schedule-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -89,7 +83,6 @@ describe('/api/transport/schedules/[id]', () => {
     });
 
     it('should return 403 if schedule belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findUnique.mockResolvedValue({
         ...mockSchedule,
         familyId: 'other-family-123',
@@ -98,7 +91,7 @@ describe('/api/transport/schedules/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'schedule-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -106,13 +99,12 @@ describe('/api/transport/schedules/[id]', () => {
     });
 
     it('should return schedule successfully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findUnique.mockResolvedValue(mockSchedule as any);
 
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'schedule-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -122,25 +114,21 @@ describe('/api/transport/schedules/[id]', () => {
 
   describe('PATCH /api/transport/schedules/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'PATCH',
         body: JSON.stringify({ time: '09:00' }),
       });
-      const response = await PATCH(request, { params: { id: 'schedule-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'PATCH',
         body: JSON.stringify({ time: '09:00' }),
       });
-      const response = await PATCH(request, { params: { id: 'schedule-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -148,20 +136,18 @@ describe('/api/transport/schedules/[id]', () => {
     });
 
     it('should return 404 if schedule not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'PATCH',
         body: JSON.stringify({ time: '09:00' }),
       });
-      const response = await PATCH(request, { params: { id: 'schedule-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(404);
     });
 
     it('should return 403 if schedule belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findUnique.mockResolvedValue({
         ...mockSchedule,
         familyId: 'other-family-123',
@@ -171,13 +157,12 @@ describe('/api/transport/schedules/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ time: '09:00' }),
       });
-      const response = await PATCH(request, { params: { id: 'schedule-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should update schedule successfully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findUnique.mockResolvedValue(mockSchedule as any);
 
       const updatedSchedule = { ...mockSchedule, time: '09:00', notes: 'New time!' };
@@ -188,7 +173,7 @@ describe('/api/transport/schedules/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ time: '09:00', notes: 'New time!' }),
       });
-      const response = await PATCH(request, { params: { id: 'schedule-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -209,27 +194,25 @@ describe('/api/transport/schedules/[id]', () => {
     });
 
     it('should return 400 if trying to update with invalid dayOfWeek', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findUnique.mockResolvedValue(mockSchedule as any);
 
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'PATCH',
         body: JSON.stringify({ dayOfWeek: 8 }), // Invalid
       });
-      const response = await PATCH(request, { params: { id: 'schedule-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(400);
     });
 
     it('should return 400 if trying to update with invalid time format', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findUnique.mockResolvedValue(mockSchedule as any);
 
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'PATCH',
         body: JSON.stringify({ time: '25:99' }), // Invalid
       });
-      const response = await PATCH(request, { params: { id: 'schedule-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(400);
     });
@@ -237,41 +220,35 @@ describe('/api/transport/schedules/[id]', () => {
 
   describe('DELETE /api/transport/schedules/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'schedule-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'schedule-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should return 404 if schedule not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'schedule-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(404);
     });
 
     it('should delete schedule successfully (soft delete)', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findUnique.mockResolvedValue(mockSchedule as any);
       prismaMock.transportSchedule.update.mockResolvedValue({
         ...mockSchedule,
@@ -282,7 +259,7 @@ describe('/api/transport/schedules/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/transport/schedules/schedule-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'schedule-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'schedule-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();

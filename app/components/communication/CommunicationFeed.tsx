@@ -250,11 +250,11 @@ export default function CommunicationFeed({ initialFilter, refreshTrigger }: Com
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                  {post.author.name[0].toUpperCase()}
+                  {post.author?.name?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div>
                   <div className="font-medium text-gray-900 dark:text-white">
-                    {post.author.name}
+                    {post.author?.name || 'Unknown'}
                   </div>
                   <div className="text-sm text-gray-500 dark:text-gray-400">
                     {formatTimestamp(post.createdAt)}

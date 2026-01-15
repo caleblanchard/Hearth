@@ -8,22 +8,22 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const { id } = await params
     const authContext = await getAuthContext();
 
     if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
@@ -50,6 +50,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const authContext = await getAuthContext();
 
@@ -57,14 +58,14 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
@@ -157,6 +158,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const authContext = await getAuthContext();
 
@@ -164,14 +166,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }

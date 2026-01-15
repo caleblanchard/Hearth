@@ -9,13 +9,14 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const authContext = await getAuthContext();
 
     if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -23,9 +24,12 @@ export async function POST(
     const result = await syncCalendarSubscription(id, familyId);
 
     return NextResponse.json({
-      success: true,
-      result,
-      message: 'Calendar synced successfully',
+      success: result.success,
+      eventsCreated: result.eventsCreated,
+      eventsUpdated: result.eventsUpdated,
+      eventsDeleted: result.eventsDeleted,
+      error: result.error,
+      message: result.success ? 'Calendar synced successfully' : 'Sync completed with errors',
     });
   } catch (error) {
     logger.error('Sync calendar subscription error:', error);

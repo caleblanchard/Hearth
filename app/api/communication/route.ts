@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -27,7 +27,26 @@ export async function GET(request: NextRequest) {
       pinned: pinnedOnly ? true : undefined,
     });
 
-    return NextResponse.json({ posts, total: posts.length });
+    // Map to camelCase for frontend
+    const mappedPosts = posts.map(post => ({
+      id: post.id,
+      familyId: post.family_id,
+      content: post.content,
+      isPinned: post.is_pinned,
+      createdAt: post.created_at,
+      updatedAt: post.updated_at,
+      author: post.author ? {
+        id: post.author.id,
+        name: post.author.name,
+        avatarUrl: post.author.avatar_url,
+      } : null,
+      reactions: post.reactions || [],
+      _count: {
+        reactions: (post.reactions || []).length,
+      },
+    }));
+
+    return NextResponse.json({ posts: mappedPosts, total: mappedPosts.length });
   } catch (error) {
     logger.error('Error fetching posts', error);
     return NextResponse.json(
@@ -46,15 +65,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
     
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const body = await request.json();
-    const { content, category, imageUrl } = body;
+    const { content, type, imageUrl } = body;
 
     // Validation
     if (!content || content.trim().length === 0) {
@@ -69,7 +88,7 @@ export async function POST(request: NextRequest) {
       family_id: familyId,
       author_id: memberId,
       content: content.trim(),
-      category: category || 'NOTE',
+      type: type || 'NOTE',
       image_url: imageUrl?.trim() || null,
       is_pinned: false,
     });
@@ -83,7 +102,7 @@ export async function POST(request: NextRequest) {
       entity_id: post.id,
       result: 'SUCCESS',
       metadata: {
-        category: post.category,
+        type: post.type,
       },
     });
 

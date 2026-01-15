@@ -7,6 +7,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -15,12 +16,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authContext.userId;
+    const userId = authContext.user.id;
     if (!userId) {
       return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }
-
-    const { id } = await params;
 
     // Verify notification belongs to user
     const { data: notification } = await supabase
@@ -66,6 +65,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -74,12 +74,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authContext.userId;
+    const userId = authContext.user.id;
     if (!userId) {
       return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }
-
-    const { id } = await params;
 
     // Verify notification belongs to user
     const { data: notification } = await supabase

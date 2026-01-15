@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -35,7 +35,23 @@ export async function GET(request: NextRequest) {
     // All family members can view maintenance items
     const items = await getMaintenanceItems(familyId);
 
-    return NextResponse.json({ items });
+    // Map to camelCase for frontend
+    const mappedItems = items.map(item => ({
+      id: item.id,
+      familyId: item.family_id,
+      name: item.name,
+      description: item.description,
+      category: item.category,
+      frequency: item.frequency,
+      season: item.season,
+      estimatedCost: item.estimated_cost,
+      lastCompletedAt: item.last_completed_at,
+      nextDueAt: item.next_due_at,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+
+    return NextResponse.json({ items: mappedItems });
   } catch (error) {
     logger.error('Error fetching maintenance items:', error);
     return NextResponse.json(
@@ -54,15 +70,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can add maintenance items
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can add maintenance items' },
@@ -105,14 +121,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const item = await createMaintenanceItem(familyId, {
+    const item = await createMaintenanceItem({
+      family_id: familyId,
       name,
       description: description || null,
       category,
       frequency,
       season: season || null,
-      nextDueAt: nextDueAt ? new Date(nextDueAt) : new Date(),
-      estimatedCost: estimatedCost || null,
+      next_due_at: nextDueAt ? new Date(nextDueAt).toISOString() : new Date().toISOString(),
+      estimated_cost: estimatedCost || null,
       notes: notes || null,
     });
 

@@ -32,7 +32,7 @@ export async function getCommunicationPosts(
       author:family_members!communication_posts_author_id_fkey(id, name, avatar_url, role),
       reactions:post_reactions(
         id,
-        reaction_type,
+        emoji,
         member:family_members(id, name, avatar_url)
       )
     `)
@@ -72,7 +72,7 @@ export async function getCommunicationPost(postId: string) {
       author:family_members!communication_posts_author_id_fkey(id, name, avatar_url, role),
       reactions:post_reactions(
         id,
-        reaction_type,
+        emoji,
         created_at,
         member:family_members(id, name, avatar_url)
       )
@@ -166,7 +166,7 @@ export async function getPinnedPosts(familyId: string) {
       author:family_members!communication_posts_author_id_fkey(id, name, avatar_url),
       reactions:post_reactions(
         id,
-        reaction_type,
+        emoji,
         member:family_members(id, name)
       )
     `)
@@ -206,7 +206,7 @@ export async function addPostReaction(
     // Update existing reaction
     const { data, error } = await supabase
       .from('post_reactions')
-      .update({ reaction_type: reactionType })
+      .update({ emoji: reactionType })
       .eq('id', existing.id)
       .select()
       .single()
@@ -220,7 +220,7 @@ export async function addPostReaction(
       .insert({
         post_id: postId,
         member_id: memberId,
-        reaction_type: reactionType,
+        emoji: reactionType,
       })
       .select()
       .single()
@@ -272,17 +272,17 @@ export async function getPostReactionSummary(postId: string) {
 
   const { data, error } = await supabase
     .from('post_reactions')
-    .select('reaction_type, member_id')
+    .select('emoji, member_id')
     .eq('post_id', postId)
 
   if (error) throw error
 
   const reactions = data || []
   const summary = reactions.reduce((acc, reaction) => {
-    if (!acc[reaction.reaction_type]) {
-      acc[reaction.reaction_type] = []
+    if (!acc[reaction.emoji]) {
+      acc[reaction.emoji] = []
     }
-    acc[reaction.reaction_type].push(reaction.member_id)
+    acc[reaction.emoji].push(reaction.member_id)
     return acc
   }, {} as Record<string, string[]>)
 
@@ -334,7 +334,7 @@ export async function getPostsByCategory(
     .select(`
       *,
       author:family_members!communication_posts_author_id_fkey(id, name, avatar_url),
-      reactions:post_reactions(id, reaction_type)
+      reactions:post_reactions(id, emoji)
     `)
     .eq('family_id', familyId)
     .eq('category', category)

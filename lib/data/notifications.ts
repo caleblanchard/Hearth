@@ -49,7 +49,7 @@ export async function getOrCreateNotificationPreferences(
   const { data, error } = await supabase
     .from('notification_preferences')
     .insert({
-      member_id: memberId,
+      user_id: memberId,
       push_enabled: true,
       email_enabled: false,
       enabled_types: ['CHORE_ASSIGNED', 'CHORE_COMPLETED', 'REWARD_REDEEMED'],

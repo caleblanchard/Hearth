@@ -18,7 +18,11 @@ describe('lib/logger.ts', () => {
   })
 
   afterEach(() => {
-    process.env.NODE_ENV = originalEnv
+    if (originalEnv === undefined) {
+      delete (process.env as any).NODE_ENV;
+    } else {
+      (process.env as any).NODE_ENV = originalEnv;
+    }
     consoleErrorSpy.mockRestore()
     consoleWarnSpy.mockRestore()
     consoleInfoSpy.mockRestore()
@@ -30,7 +34,7 @@ describe('lib/logger.ts', () => {
 
   describe('error', () => {
     it('should log error message', () => {
-      process.env.NODE_ENV = 'production'
+      (process.env as any).NODE_ENV = 'production'
       const { logger } = require('@/lib/logger')
 
       logger.error('Test error message')
@@ -44,7 +48,7 @@ describe('lib/logger.ts', () => {
     })
 
     it('should log error with Error object in development', () => {
-      process.env.NODE_ENV = 'development'
+      (process.env as any).NODE_ENV = 'development'
       const { logger } = require('@/lib/logger')
 
       const error = new Error('Test error')
@@ -61,7 +65,7 @@ describe('lib/logger.ts', () => {
     })
 
     it('should not include stack trace in production', () => {
-      process.env.NODE_ENV = 'production'
+      (process.env as any).NODE_ENV = 'production'
       const { logger } = require('@/lib/logger')
 
       const error = new Error('Test error')
@@ -73,7 +77,7 @@ describe('lib/logger.ts', () => {
     })
 
     it('should log error with non-Error object', () => {
-      process.env.NODE_ENV = 'production'
+      (process.env as any).NODE_ENV = 'production'
       const { logger } = require('@/lib/logger')
 
       logger.error('Error occurred', { code: 'ERR001', details: 'Something went wrong' })
@@ -85,7 +89,7 @@ describe('lib/logger.ts', () => {
     })
 
     it('should include context data', () => {
-      process.env.NODE_ENV = 'production'
+      (process.env as any).NODE_ENV = 'production'
       const { logger } = require('@/lib/logger')
 
       logger.error('Error occurred', undefined, { userId: 'user-1', action: 'login' })
@@ -99,7 +103,7 @@ describe('lib/logger.ts', () => {
 
   describe('warn', () => {
     it('should log warning message', () => {
-      process.env.NODE_ENV = 'production'
+      (process.env as any).NODE_ENV = 'production'
       const { logger } = require('@/lib/logger')
 
       logger.warn('Test warning')
@@ -113,7 +117,7 @@ describe('lib/logger.ts', () => {
     })
 
     it('should include context data', () => {
-      process.env.NODE_ENV = 'production'
+      (process.env as any).NODE_ENV = 'production'
       const { logger } = require('@/lib/logger')
 
       logger.warn('Warning message', { resource: 'api', endpoint: '/test' })
@@ -127,7 +131,7 @@ describe('lib/logger.ts', () => {
 
   describe('info', () => {
     it('should log info message in development', () => {
-      process.env.NODE_ENV = 'development'
+      (process.env as any).NODE_ENV = 'development'
       const { logger } = require('@/lib/logger')
 
       logger.info('Test info')
@@ -140,7 +144,7 @@ describe('lib/logger.ts', () => {
     })
 
     it('should not log info in production', () => {
-      process.env.NODE_ENV = 'production'
+      (process.env as any).NODE_ENV = 'production'
       const { logger } = require('@/lib/logger')
 
       logger.info('Test info')
@@ -149,7 +153,7 @@ describe('lib/logger.ts', () => {
     })
 
     it('should include context data', () => {
-      process.env.NODE_ENV = 'development'
+      (process.env as any).NODE_ENV = 'development'
       const { logger } = require('@/lib/logger')
 
       logger.info('Info message', { userId: 'user-1' })
@@ -162,7 +166,7 @@ describe('lib/logger.ts', () => {
 
   describe('debug', () => {
     it('should log debug message in development', () => {
-      process.env.NODE_ENV = 'development'
+      (process.env as any).NODE_ENV = 'development'
       const { logger } = require('@/lib/logger')
 
       logger.debug('Test debug')
@@ -175,7 +179,7 @@ describe('lib/logger.ts', () => {
     })
 
     it('should not log debug in production', () => {
-      process.env.NODE_ENV = 'production'
+      (process.env as any).NODE_ENV = 'production'
       const { logger } = require('@/lib/logger')
 
       logger.debug('Test debug')
@@ -184,7 +188,7 @@ describe('lib/logger.ts', () => {
     })
 
     it('should include context data', () => {
-      process.env.NODE_ENV = 'development'
+      (process.env as any).NODE_ENV = 'development'
       const { logger } = require('@/lib/logger')
 
       logger.debug('Debug message', { requestId: 'req-123' })

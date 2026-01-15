@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
   RectangleStackIcon,
   ArrowLeftIcon,
@@ -29,6 +30,7 @@ interface ProjectTemplate {
 export default function TemplatesPage() {
   const router = useRouter();
   const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -106,7 +108,7 @@ export default function TemplatesPage() {
     ? templates
     : templates.filter((t) => t.category === categoryFilter);
 
-  if (user?.user_metadata?.role !== 'PARENT') {
+  if (!isParent) {
     return (
       <div className="p-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">

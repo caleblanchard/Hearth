@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { PATCH } from '@/app/api/notifications/mark-all-read/route'
 import { mockChildSession } from '@/lib/test-utils/auth-mock'
 
-const { auth } = require('@/lib/auth')
-
 describe('/api/notifications/mark-all-read', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -31,7 +24,6 @@ describe('/api/notifications/mark-all-read', () => {
 
   describe('PATCH', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/notifications/mark-all-read', {
         method: 'PATCH',
@@ -45,8 +37,7 @@ describe('/api/notifications/mark-all-read', () => {
     })
 
     it('should mark all unread notifications as read', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.updateMany.mockResolvedValue({ count: 5 })
 
@@ -75,8 +66,7 @@ describe('/api/notifications/mark-all-read', () => {
     })
 
     it('should handle singular message correctly', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.updateMany.mockResolvedValue({ count: 1 })
 
@@ -92,8 +82,7 @@ describe('/api/notifications/mark-all-read', () => {
     })
 
     it('should handle zero notifications', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.updateMany.mockResolvedValue({ count: 0 })
 
@@ -110,8 +99,7 @@ describe('/api/notifications/mark-all-read', () => {
     })
 
     it('should return 500 on error', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.updateMany.mockRejectedValue(new Error('Database error'))
 

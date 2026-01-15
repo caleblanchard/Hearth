@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const currentMemberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const currentMemberId = authContext.activeMemberId;
 
     if (!familyId || !currentMemberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     // If viewing another member's settings, verify permissions
     if (memberId !== currentMemberId) {
-      const isParent = await isParentInFamily(currentMemberId, familyId);
+      const isParent = await isParentInFamily( familyId);
       if (!isParent) {
         return NextResponse.json(
           { error: 'Cannot view other members settings' },
@@ -68,8 +68,8 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const currentMemberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const currentMemberId = authContext.activeMemberId;
 
     if (!familyId || !currentMemberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -81,7 +81,7 @@ export async function PATCH(request: NextRequest) {
 
     // If updating another member's settings, verify permissions
     if (memberId !== currentMemberId) {
-      const isParent = await isParentInFamily(currentMemberId, familyId);
+      const isParent = await isParentInFamily( familyId);
       if (!isParent) {
         return NextResponse.json(
           { error: 'Cannot update other members settings' },

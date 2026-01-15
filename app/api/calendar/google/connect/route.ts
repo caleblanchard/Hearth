@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }

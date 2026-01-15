@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/transport/schedules/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/transport/schedules', () => {
   beforeEach(() => {
@@ -68,8 +65,6 @@ describe('/api/transport/schedules', () => {
 
   describe('GET /api/transport/schedules', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules', {
         method: 'GET',
       });
@@ -81,7 +76,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should return all schedules for family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findMany.mockResolvedValue([mockSchedule] as any);
 
       const request = new NextRequest('http://localhost:3000/api/transport/schedules', {
@@ -106,7 +100,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should filter schedules by member ID', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findMany.mockResolvedValue([mockSchedule] as any);
 
       const request = new NextRequest('http://localhost:3000/api/transport/schedules?memberId=child-test-123', {
@@ -123,7 +116,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should filter schedules by day of week', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportSchedule.findMany.mockResolvedValue([mockSchedule] as any);
 
       const request = new NextRequest('http://localhost:3000/api/transport/schedules?dayOfWeek=1', {
@@ -142,8 +134,6 @@ describe('/api/transport/schedules', () => {
 
   describe('POST /api/transport/schedules', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules', {
         method: 'POST',
         body: JSON.stringify({
@@ -159,8 +149,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules', {
         method: 'POST',
         body: JSON.stringify({
@@ -178,8 +166,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should return 400 if missing required fields', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules', {
         method: 'POST',
         body: JSON.stringify({
@@ -195,8 +181,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should return 400 if dayOfWeek is invalid', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules', {
         method: 'POST',
         body: JSON.stringify({
@@ -214,8 +198,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should return 400 if time format is invalid', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules', {
         method: 'POST',
         body: JSON.stringify({
@@ -233,8 +215,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should return 400 if type is invalid', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/schedules', {
         method: 'POST',
         body: JSON.stringify({
@@ -252,8 +232,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should create transport schedule successfully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -314,8 +292,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should return 400 if member does not belong to family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'other-family-123', // Different family
@@ -338,8 +314,6 @@ describe('/api/transport/schedules', () => {
     });
 
     it('should create schedule with carpool', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',

@@ -3,6 +3,15 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
+/**
+ * NOTE: This endpoint has a Next.js routing bug in development mode
+ * where it returns 404 despite the file existing. This appears to be
+ * caused by conflicts with nested routes (/api/family/members, etc).
+ * 
+ * Workaround: Use /api/family-data instead
+ * See: app/api/family-data/route.ts
+ */
+
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -12,7 +21,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -21,7 +30,7 @@ export async function GET() {
       .from('families')
       .select(`
         *,
-        members:family_members(id, name, email, role, birth_date, avatar_url, is_active, created_at)
+        members:family_members(id, user_id, name, email, role, birth_date, avatar_url, is_active, created_at)
       `)
       .eq('id', familyId)
       .order('role', { foreignTable: 'members', ascending: true })
@@ -48,7 +57,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }

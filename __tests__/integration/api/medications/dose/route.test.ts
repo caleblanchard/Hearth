@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/medications/dose/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/medications/dose', () => {
   beforeEach(() => {
@@ -47,8 +44,6 @@ describe('/api/medications/dose', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/medications/dose', {
         method: 'POST',
         body: JSON.stringify({}),
@@ -59,8 +54,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should return 400 if missing required fields', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/medications/dose', {
         method: 'POST',
         body: JSON.stringify({
@@ -76,7 +69,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should return 404 if medication safety config not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.medicationSafety.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/medications/dose', {
@@ -92,7 +84,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should return 403 if member belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.medicationSafety.findUnique.mockResolvedValue({
         ...mockMedicationSafety,
         member: {
@@ -114,8 +105,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should return 400 if dose locked due to minimum interval', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       // Next dose available 2 hours from now
       const futureTime = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
@@ -141,8 +130,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should return 400 if daily maximum reached', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       prismaMock.medicationSafety.findUnique.mockResolvedValue(mockMedicationSafety as any);
 
       // Mock 5 doses today (equal to maxDosesPerDay)
@@ -166,14 +153,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should return 403 if override attempted by non-parent', async () => {
-      mockAuth.mockResolvedValue({
-        user: {
-          id: 'child-test-123',
-          familyId: 'family-test-123',
-          role: 'CHILD',
-        },
-      } as any);
-
       const futureTime = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
       prismaMock.medicationSafety.findUnique.mockResolvedValue({
@@ -198,8 +177,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should return 400 if override without reason', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const futureTime = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
       prismaMock.medicationSafety.findUnique.mockResolvedValue({
@@ -224,8 +201,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should log dose successfully when safe', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       prismaMock.medicationSafety.findUnique.mockResolvedValue(mockMedicationSafety as any);
       prismaMock.medicationDose.count.mockResolvedValue(0);
 
@@ -302,8 +277,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should allow override with valid reason by parent', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const futureTime = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
       prismaMock.medicationSafety.findUnique.mockResolvedValue({
@@ -360,8 +333,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should calculate next dose time correctly', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const medWith6HourInterval = {
         ...mockMedicationSafety,
         minIntervalHours: 6,
@@ -405,7 +376,6 @@ describe('/api/medications/dose', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.medicationSafety.findUnique.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest('http://localhost:3000/api/medications/dose', {

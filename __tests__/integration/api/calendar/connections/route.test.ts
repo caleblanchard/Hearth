@@ -31,8 +31,6 @@ NextResponse.json = function (body: any, init?: any) {
 // Import route after mocking
 import { GET } from '@/app/api/calendar/connections/route';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/calendar/connections', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -41,7 +39,6 @@ describe('/api/calendar/connections', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/connections');
       const response = await GET(request);
@@ -53,7 +50,6 @@ describe('/api/calendar/connections', () => {
 
     it('should return empty array if user has no connections', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       // Mock family member lookup
       prismaMock.familyMember.findFirst.mockResolvedValue({
@@ -74,7 +70,6 @@ describe('/api/calendar/connections', () => {
 
     it('should return user calendar connections', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       // Mock family member lookup
       prismaMock.familyMember.findFirst.mockResolvedValue({
@@ -120,7 +115,6 @@ describe('/api/calendar/connections', () => {
 
     it('should not expose sensitive token fields', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -154,7 +148,6 @@ describe('/api/calendar/connections', () => {
 
     it('should return connections for child users', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -183,7 +176,6 @@ describe('/api/calendar/connections', () => {
 
     it('should return error if family member not found', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue(null);
 
@@ -197,7 +189,6 @@ describe('/api/calendar/connections', () => {
 
     it('should include sync error messages when present', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -226,7 +217,6 @@ describe('/api/calendar/connections', () => {
 
     it('should filter connections to only the current user', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,

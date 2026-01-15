@@ -21,8 +21,6 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/meals/recipes/search/route';
 import { mockParentSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/meals/recipes/search', () => {
   const familyId = 'family-test-123';
   const userId = 'parent-test-123';
@@ -30,12 +28,10 @@ describe('GET /api/meals/recipes/search', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   describe('Authentication', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/search?q=test');
       const response = await GET(request);
@@ -89,7 +85,7 @@ describe('GET /api/meals/recipes/search', () => {
         },
       ];
 
-      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes);
+      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/search?q=spaghetti');
       const response = await GET(request);
@@ -131,7 +127,7 @@ describe('GET /api/meals/recipes/search', () => {
         },
       ];
 
-      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes);
+      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/search?q=vegan');
       const response = await GET(request);
@@ -161,7 +157,7 @@ describe('GET /api/meals/recipes/search', () => {
         },
       ];
 
-      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes);
+      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/search?q=tomato');
       const response = await GET(request);
@@ -195,7 +191,7 @@ describe('GET /api/meals/recipes/search', () => {
         },
       ];
 
-      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes);
+      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/search?q=chicken');
       const response = await GET(request);
@@ -222,7 +218,7 @@ describe('GET /api/meals/recipes/search', () => {
         ingredients: [],
       }));
 
-      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes);
+      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/search?q=recipe');
       const response = await GET(request);
@@ -258,7 +254,7 @@ describe('GET /api/meals/recipes/search', () => {
         },
       ];
 
-      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes);
+      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/search?q=SPAGHETTI');
       const response = await GET(request);
@@ -283,7 +279,7 @@ describe('GET /api/meals/recipes/search', () => {
         },
       ];
 
-      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes);
+      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/search?q=test');
       const response = await GET(request);

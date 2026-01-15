@@ -256,8 +256,7 @@ export async function checkAndAwardAchievement(
         await supabase
           .from('notifications')
           .insert({
-            family_id: member.family_id,
-            recipient_id: userId,
+            user_id: userId,
             type: 'GENERAL',
             title: '🏆 Achievement Unlocked!',
             message: `You earned the "${achievement.name}" badge! ${achievement.description}`,
@@ -266,7 +265,7 @@ export async function checkAndAwardAchievement(
               achievementKey: achievement.key,
               achievementName: achievement.name,
               tier: achievement.tier,
-            },
+            } as any,
           });
       }
     }
@@ -298,8 +297,7 @@ export async function checkAndAwardAchievement(
       await supabase
         .from('notifications')
         .insert({
-          family_id: member.family_id,
-          recipient_id: userId,
+          user_id: userId,
           type: 'GENERAL',
           title: '🏆 Achievement Unlocked!',
           message: `You earned the "${achievement.name}" badge! ${achievement.description}`,
@@ -308,7 +306,7 @@ export async function checkAndAwardAchievement(
             achievementKey: achievement.key,
             achievementName: achievement.name,
             tier: achievement.tier,
-          },
+          } as any,
         });
     }
     

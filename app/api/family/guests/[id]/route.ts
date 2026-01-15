@@ -8,6 +8,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -16,15 +17,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can revoke invites
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can revoke guest invites' },

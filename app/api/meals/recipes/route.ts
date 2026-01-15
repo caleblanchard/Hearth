@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -45,7 +45,36 @@ export async function GET(request: NextRequest) {
       sortOrder: sortOrder || 'asc',
     });
 
-    return NextResponse.json({ recipes, total: recipes.length });
+    // Map to camelCase for frontend
+    const mappedRecipes = recipes.map((recipe: any) => ({
+      id: recipe.id,
+      name: recipe.name,
+      description: recipe.description,
+      prepTimeMinutes: recipe.prep_time_minutes,
+      cookTimeMinutes: recipe.cook_time_minutes,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      category: recipe.category,
+      dietaryTags: recipe.dietary_tags || [],
+      isFavorite: recipe.is_favorite,
+      imageUrl: recipe.image_url,
+      sourceUrl: recipe.source_url,
+      instructions: recipe.instructions,
+      notes: recipe.notes,
+      createdAt: recipe.created_at,
+      updatedAt: recipe.updated_at,
+      creator: recipe.created_by ? {
+        id: recipe.created_by,
+        name: 'Unknown', // We'd need to join to get this
+      } : undefined,
+      ingredients: [], // Need to join recipe_ingredients if needed
+      _count: {
+        ratings: recipe.ratingsCount || 0,
+      },
+      averageRating: recipe.averageRating || 0,
+    }));
+
+    return NextResponse.json({ recipes: mappedRecipes, total: mappedRecipes.length });
   } catch (error) {
     logger.error('Error fetching recipes:', error);
     return NextResponse.json({ error: 'Failed to fetch recipes' }, { status: 500 });
@@ -61,8 +90,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
     
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -83,6 +112,7 @@ export async function POST(request: NextRequest) {
       notes,
       category,
       dietaryTags,
+      ingredients,
     } = body;
 
     // Validate required fields
@@ -126,6 +156,27 @@ export async function POST(request: NextRequest) {
       dietary_tags: dietaryTags || [],
       created_by: memberId,
     });
+
+    // Create ingredients if provided
+    if (ingredients && Array.isArray(ingredients) && ingredients.length > 0) {
+      const ingredientRecords = ingredients.map((ing: any, index: number) => ({
+        recipe_id: recipe.id,
+        name: ing.name || '',
+        quantity: ing.quantity || null,
+        unit: ing.unit || null,
+        notes: ing.notes || null,
+        sort_order: index,
+      }));
+
+      const { error: ingredientsError } = await supabase
+        .from('recipe_ingredients')
+        .insert(ingredientRecords);
+
+      if (ingredientsError) {
+        logger.error('Error creating ingredients:', ingredientsError);
+        // Don't fail the whole request, just log the error
+      }
+    }
 
     // Create audit log
     await supabase.from('audit_logs').insert({

@@ -11,15 +11,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Check if user is a parent
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Forbidden - Parent access required' },
@@ -28,7 +28,11 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
+    const categoryParam = searchParams.get('category');
+    const validCategories = ['rewards', 'productivity', 'safety', 'convenience'] as const;
+    const category = categoryParam && validCategories.includes(categoryParam as any)
+      ? (categoryParam as 'rewards' | 'productivity' | 'safety' | 'convenience')
+      : undefined;
 
     const templates = category
       ? getTemplatesByCategory(category)

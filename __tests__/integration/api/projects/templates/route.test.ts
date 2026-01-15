@@ -11,8 +11,6 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/projects/templates/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/projects/templates', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -20,7 +18,6 @@ describe('GET /api/projects/templates', () => {
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates');
       const response = await GET(request);
@@ -31,7 +28,6 @@ describe('GET /api/projects/templates', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates');
       const response = await GET(request);
@@ -44,7 +40,6 @@ describe('GET /api/projects/templates', () => {
 
   describe('Template Listing', () => {
     it('should return all available templates', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates');
       const response = await GET(request);
@@ -57,7 +52,6 @@ describe('GET /api/projects/templates', () => {
     });
 
     it('should return templates with required fields', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates');
       const response = await GET(request);
@@ -76,7 +70,6 @@ describe('GET /api/projects/templates', () => {
     });
 
     it('should include task dependencies in templates', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates');
       const response = await GET(request);
@@ -99,7 +92,6 @@ describe('POST /api/projects/templates', () => {
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {
         method: 'POST',
@@ -113,7 +105,6 @@ describe('POST /api/projects/templates', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {
         method: 'POST',
@@ -129,7 +120,6 @@ describe('POST /api/projects/templates', () => {
 
   describe('Validation', () => {
     it('should return 400 if templateId is missing', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {
         method: 'POST',
@@ -143,7 +133,6 @@ describe('POST /api/projects/templates', () => {
     });
 
     it('should return 404 if template does not exist', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {
         method: 'POST',
@@ -159,7 +148,6 @@ describe('POST /api/projects/templates', () => {
 
   describe('Template Instantiation', () => {
     it('should create project from template with default values', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -197,7 +185,6 @@ describe('POST /api/projects/templates', () => {
     });
 
     it('should allow customizing project name', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -231,7 +218,6 @@ describe('POST /api/projects/templates', () => {
     });
 
     it('should allow customizing budget', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       prismaMock.project.create.mockResolvedValue({} as any);
       prismaMock.projectTask.create.mockResolvedValue({} as any);
@@ -258,7 +244,6 @@ describe('POST /api/projects/templates', () => {
     });
 
     it('should create all tasks from template', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -283,7 +268,6 @@ describe('POST /api/projects/templates', () => {
     });
 
     it('should set dates based on start date if provided', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       prismaMock.project.create.mockResolvedValue({} as any);
       prismaMock.projectTask.create.mockResolvedValue({} as any);
@@ -312,7 +296,6 @@ describe('POST /api/projects/templates', () => {
 
   describe('Audit Logging', () => {
     it('should create an audit log entry on successful instantiation', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -347,7 +330,6 @@ describe('POST /api/projects/templates', () => {
 
   describe('Error Handling', () => {
     it('should return 500 if database operation fails', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.project.create.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {

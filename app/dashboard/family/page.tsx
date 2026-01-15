@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
+import { useActiveFamily } from '@/contexts/ActiveFamilyContext';
+import { useFamilyFetch } from '@/hooks/useFamilyFetch';
 import { format } from 'date-fns';
 import { Modal, ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
@@ -63,6 +66,9 @@ interface Family {
 
 export default function FamilyPage() {
   const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
+  const { activeFamilyId } = useActiveFamily();
+  const familyFetch = useFamilyFetch();
   const { showToast } = useToast();
   const [family, setFamily] = useState<Family | null>(null);
   const [loading, setLoading] = useState(true);
@@ -121,8 +127,12 @@ export default function FamilyPage() {
   }>({ isOpen: false, type: 'success', title: '', message: '' });
 
   const fetchFamily = async () => {
+    if (!activeFamilyId) return;
+    
     try {
-      const response = await fetch('/api/family');
+      // Use /api/family-data instead of /api/family due to Next.js routing bug
+      // Pass active family ID as query param
+      const response = await fetch(`/api/family-data?familyId=${activeFamilyId}`);
       if (response.ok) {
         const data = await response.json();
         setFamily(data.family);
@@ -171,9 +181,11 @@ export default function FamilyPage() {
   };
 
   useEffect(() => {
-    fetchFamily();
-    fetchEnabledModules();
-  }, []);
+    if (activeFamilyId) {
+      fetchFamily();
+      fetchEnabledModules();
+    }
+  }, [activeFamilyId]);
 
   useEffect(() => {
     // Fetch modules for member when editing
@@ -263,16 +275,15 @@ export default function FamilyPage() {
   const handleSaveSettings = async () => {
     setSavingSettings(true);
     try {
-      const response = await fetch('/api/family', {
+      // Use /api/family-data instead of /api/family due to Next.js routing bug
+      const response = await fetch('/api/family-data', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: familySettings.name,
           timezone: familySettings.timezone,
-          settings: {
-            currency: familySettings.currency,
-            weekStartDay: familySettings.weekStartDay,
-          },
+          currency: familySettings.currency,
+          weekStartDay: familySettings.weekStartDay,
           location: familySettings.location || null,
           latitude: familySettings.latitude || null,
           longitude: familySettings.longitude || null,
@@ -569,7 +580,7 @@ export default function FamilyPage() {
   }
 
   // Only parents can access this page
-  if (user?.user_metadata?.role !== 'PARENT') {
+  if (!isParent) {
     return (
       <div className="p-8">
         <div className="max-w-6xl mx-auto">

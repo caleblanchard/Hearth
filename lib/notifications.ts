@@ -108,13 +108,12 @@ export async function createNotification(params: CreateNotificationParams) {
     const { data: notification, error } = await supabase
       .from('notifications')
       .insert({
-        family_id: familyId,
-        recipient_id: userId,
+        user_id: userId,
         type,
         title,
         message,
         action_url: actionUrl,
-        metadata,
+        metadata: metadata as any,
       })
       .select()
       .single();

@@ -12,30 +12,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
-    const { reason } = await request.json();
+    const body = await request.json();
+    const { allowanceId, minutes, reason } = body;
 
-    // Request grace period
-    const result = await requestGracePeriod(memberId, reason || null);
-
-    if (!result.success) {
+    if (!allowanceId) {
       return NextResponse.json(
-        { error: result.error },
+        { error: 'Allowance ID is required' },
         { status: 400 }
       );
     }
 
+    if (minutes === undefined) {
+      return NextResponse.json(
+        { error: 'Minutes are required' },
+        { status: 400 }
+      );
+    }
+
+    // Request grace period
+    const gracePeriod = await requestGracePeriod(allowanceId, memberId, minutes, reason || 'Grace period request');
+
     return NextResponse.json({
       success: true,
-      gracePeriod: result.gracePeriod,
-      requiresApproval: result.requiresApproval,
-      message: result.requiresApproval
-        ? 'Grace period request sent to parents for approval'
-        : 'Grace period granted automatically',
+      gracePeriod,
+      message: 'Grace period request sent to parents for approval',
     });
   } catch (error) {
     logger.error('Request grace period error:', error);

@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/health/events/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/health/events', () => {
   beforeEach(() => {
@@ -75,8 +72,6 @@ describe('/api/health/events', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/health/events', {
         method: 'GET',
       });
@@ -86,7 +81,6 @@ describe('/api/health/events', () => {
     });
 
     it('should return all health events for family', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findMany.mockResolvedValue([mockHealthEvent] as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/events', {
@@ -131,7 +125,6 @@ describe('/api/health/events', () => {
     });
 
     it('should filter health events by memberId', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -163,7 +156,6 @@ describe('/api/health/events', () => {
     });
 
     it('should filter health events by eventType', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findMany.mockResolvedValue([mockHealthEvent] as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/events?eventType=ILLNESS', {
@@ -190,7 +182,6 @@ describe('/api/health/events', () => {
     });
 
     it('should filter to show only active events', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findMany.mockResolvedValue([mockHealthEvent] as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/events?active=true', {
@@ -217,7 +208,6 @@ describe('/api/health/events', () => {
     });
 
     it('should allow children to view health events', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
       prismaMock.healthEvent.findMany.mockResolvedValue([mockHealthEvent] as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/events', {
@@ -231,7 +221,6 @@ describe('/api/health/events', () => {
     });
 
     it('should verify member belongs to family when filtering by memberId', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/health/events?memberId=other-family-member', {
@@ -247,8 +236,6 @@ describe('/api/health/events', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/health/events', {
         method: 'POST',
         body: JSON.stringify({
@@ -264,8 +251,6 @@ describe('/api/health/events', () => {
     });
 
     it('should return 403 if child tries to create health event for another member', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/events', {
         method: 'POST',
         body: JSON.stringify({
@@ -282,7 +267,6 @@ describe('/api/health/events', () => {
     });
 
     it('should allow parents to create health events for any family member', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -326,7 +310,6 @@ describe('/api/health/events', () => {
     });
 
     it('should allow children to create health events for themselves', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -351,8 +334,6 @@ describe('/api/health/events', () => {
     });
 
     it('should return 400 if memberId is missing', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/events', {
         method: 'POST',
         body: JSON.stringify({
@@ -368,8 +349,6 @@ describe('/api/health/events', () => {
     });
 
     it('should return 400 if eventType is missing', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/events', {
         method: 'POST',
         body: JSON.stringify({
@@ -385,8 +364,6 @@ describe('/api/health/events', () => {
     });
 
     it('should return 400 if eventType is invalid', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/events', {
         method: 'POST',
         body: JSON.stringify({
@@ -403,7 +380,6 @@ describe('/api/health/events', () => {
     });
 
     it('should return 404 if member not found', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/health/events', {
@@ -422,7 +398,6 @@ describe('/api/health/events', () => {
     });
 
     it('should return 404 if member belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'other-family-child',
         familyId: 'other-family-123',
@@ -445,7 +420,6 @@ describe('/api/health/events', () => {
     });
 
     it('should accept optional severity within valid range (1-10)', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -467,8 +441,6 @@ describe('/api/health/events', () => {
     });
 
     it('should return 400 if severity is below 1', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/events', {
         method: 'POST',
         body: JSON.stringify({
@@ -485,8 +457,6 @@ describe('/api/health/events', () => {
     });
 
     it('should return 400 if severity is above 10', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/events', {
         method: 'POST',
         body: JSON.stringify({
@@ -503,7 +473,6 @@ describe('/api/health/events', () => {
     });
 
     it('should accept optional notes', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -533,7 +502,6 @@ describe('/api/health/events', () => {
     });
 
     it('should log audit event on successful creation', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',

@@ -15,15 +15,15 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can approve
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
     }
@@ -31,10 +31,10 @@ export async function POST(
     const { id: completionId } = await params;
 
     // Use RPC function for atomic approval with credit award
-    const result = await approveChore(completionId, memberId);
+    const result = await approveChore(completionId, memberId) as any;
 
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
+    if (!result || !result.success) {
+      return NextResponse.json({ error: result?.error || 'Failed to approve chore' }, { status: 400 });
     }
 
     return NextResponse.json({

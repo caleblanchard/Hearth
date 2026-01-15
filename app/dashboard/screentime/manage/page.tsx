@@ -89,9 +89,8 @@ export default function ScreenTimeManagePage() {
   });
 
   useEffect(() => {
-    // Wait for auth to load before checking role
-    if (authLoading || loading) {
-      // Auth or data is still loading
+    // Wait for auth to load before fetching data
+    if (authLoading) {
       return;
     }
     
@@ -101,7 +100,7 @@ export default function ScreenTimeManagePage() {
     }
     
     loadData();
-  }, [user, authLoading, loading, router]);
+  }, [user, authLoading, router]);
 
   const loadData = async () => {
     try {
@@ -110,7 +109,7 @@ export default function ScreenTimeManagePage() {
 
       const [typesRes, familyRes, allowancesRes] = await Promise.all([
         fetch('/api/screentime/types'),
-        fetch('/api/family'),
+        fetch('/api/family-data'),
         fetch('/api/screentime/allowances'),
       ]);
 

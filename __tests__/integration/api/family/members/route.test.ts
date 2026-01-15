@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock bcrypt
 jest.mock('bcrypt', () => ({
   hash: jest.fn(),
@@ -28,7 +23,6 @@ import { mockParentSession } from '@/lib/test-utils/auth-mock'
 import { Role } from '@/app/generated/prisma'
 import { BCRYPT_ROUNDS } from '@/lib/constants'
 
-const { auth } = require('@/lib/auth')
 const { hash } = require('bcrypt')
 
 describe('/api/family/members', () => {
@@ -39,7 +33,6 @@ describe('/api/family/members', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/family/members', {
         method: 'POST',
@@ -59,7 +52,6 @@ describe('/api/family/members', () => {
 
     it('should return 403 if not a parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue({ ...session, user: { ...session.user, role: 'CHILD' } })
 
       const request = new NextRequest('http://localhost/api/family/members', {
         method: 'POST',
@@ -79,7 +71,6 @@ describe('/api/family/members', () => {
 
     it('should return 400 if name is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/family/members', {
         method: 'POST',
@@ -98,7 +89,6 @@ describe('/api/family/members', () => {
 
     it('should return 400 if role is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/family/members', {
         method: 'POST',
@@ -116,7 +106,6 @@ describe('/api/family/members', () => {
 
     it('should return 400 if parent created without password', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/family/members', {
         method: 'POST',
@@ -136,7 +125,6 @@ describe('/api/family/members', () => {
 
     it('should return 400 if child created without PIN', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/family/members', {
         method: 'POST',
@@ -155,7 +143,6 @@ describe('/api/family/members', () => {
 
     it('should create parent with hashed password', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       ;(hash as jest.Mock).mockResolvedValue('hashed-password')
 
@@ -203,7 +190,6 @@ describe('/api/family/members', () => {
 
     it('should create child with hashed PIN', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       ;(hash as jest.Mock).mockResolvedValue('hashed-pin')
 
@@ -257,7 +243,6 @@ describe('/api/family/members', () => {
 
     it('should return 400 if email already in use', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'existing-member',
@@ -283,7 +268,6 @@ describe('/api/family/members', () => {
 
     it('should handle invalid JSON gracefully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/family/members', {
         method: 'POST',

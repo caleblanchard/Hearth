@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { DELETE } from '@/app/api/family/guests/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/family/guests/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   const mockGuestInvite = {
@@ -40,24 +37,22 @@ describe('/api/family/guests/[id]', () => {
 
   describe('DELETE /api/family/guests/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/family/guests/invite-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'invite-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'invite-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if user is not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.guestInvite.findUnique.mockResolvedValue(mockGuestInvite as any);
 
       const request = new NextRequest('http://localhost:3000/api/family/guests/invite-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'invite-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'invite-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -70,7 +65,7 @@ describe('/api/family/guests/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/family/guests/invite-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'invite-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'invite-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -87,7 +82,7 @@ describe('/api/family/guests/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/family/guests/invite-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'invite-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'invite-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -114,7 +109,7 @@ describe('/api/family/guests/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/family/guests/invite-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'invite-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'invite-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -162,7 +157,7 @@ describe('/api/family/guests/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/family/guests/invite-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'invite-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'invite-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();

@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/maintenance/[id]/complete/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/maintenance/[id]/complete', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   const mockMaintenanceItem = {
@@ -37,13 +34,12 @@ describe('/api/maintenance/[id]/complete', () => {
   };
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/maintenance/item-1/complete', {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { id: 'item-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'item-1' }) });
 
     expect(response.status).toBe(401);
   });
@@ -55,7 +51,7 @@ describe('/api/maintenance/[id]/complete', () => {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { id: 'item-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'item-1' }) });
 
     expect(response.status).toBe(404);
     const data = await response.json();
@@ -73,7 +69,7 @@ describe('/api/maintenance/[id]/complete', () => {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { id: 'item-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'item-1' }) });
 
     expect(response.status).toBe(403);
     const data = await response.json();
@@ -112,7 +108,7 @@ describe('/api/maintenance/[id]/complete', () => {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { id: 'item-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'item-1' }) });
 
     expect(response.status).toBe(201);
     const data = await response.json();
@@ -191,7 +187,7 @@ describe('/api/maintenance/[id]/complete', () => {
         photoUrls: ['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
       }),
     });
-    const response = await POST(request, { params: { id: 'item-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'item-1' }) });
 
     expect(response.status).toBe(201);
     const data = await response.json();
@@ -203,7 +199,6 @@ describe('/api/maintenance/[id]/complete', () => {
   });
 
   it('should allow children to log completions', async () => {
-    auth.mockResolvedValue(mockChildSession());
     prismaMock.maintenanceItem.findUnique.mockResolvedValue(mockMaintenanceItem as any);
 
     const mockCompletion = {
@@ -225,7 +220,7 @@ describe('/api/maintenance/[id]/complete', () => {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { id: 'item-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'item-1' }) });
 
     expect(response.status).toBe(201);
     expect(prismaMock.maintenanceCompletion.create).toHaveBeenCalledWith(
@@ -245,7 +240,7 @@ describe('/api/maintenance/[id]/complete', () => {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { id: 'item-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'item-1' }) });
 
     expect(response.status).toBe(500);
     const data = await response.json();

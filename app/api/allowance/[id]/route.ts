@@ -16,7 +16,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -61,15 +61,15 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can update
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -120,6 +120,78 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Only parents can update
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await request.json();
+
+    // Verify schedule exists and belongs to family
+    const { data: existing } = await supabase
+      .from('allowance_schedules')
+      .select('*, member:family_members!inner(family_id)')
+      .eq('id', id)
+      .single();
+
+    if (!existing || existing.member.family_id !== familyId) {
+      return NextResponse.json(
+        { error: 'Allowance schedule not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update schedule (PATCH allows partial updates)
+    const { data: schedule, error } = await supabase
+      .from('allowance_schedules')
+      .update(body)
+      .eq('id', id)
+      .select(`
+        *,
+        member:family_members(id, name, email)
+      `)
+      .single();
+
+    if (error) {
+      logger.error('Error updating allowance schedule:', error);
+      return NextResponse.json({ error: 'Failed to update allowance schedule' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      schedule,
+      message: 'Allowance schedule updated successfully',
+    });
+  } catch (error) {
+    logger.error('Update allowance schedule error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update allowance schedule' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -133,15 +205,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can delete
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
 
-    const documents = await getDocuments(familyId, category || undefined);
+    const documents = await getDocuments(familyId, category ? { category } : undefined);
 
     return NextResponse.json({ documents });
   } catch (error) {
@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -84,19 +84,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const document = await createDocument(familyId, {
+    const document = await createDocument({
+      family_id: familyId,
       name,
       category,
-      fileUrl,
-      fileSize,
-      mimeType,
-      documentNumber: documentNumber || null,
-      issuedDate: issuedDate ? new Date(issuedDate) : null,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
-      tags: tags || [],
+      file_url: fileUrl,
+      file_size: fileSize,
+      mime_type: mimeType,
+      document_number: documentNumber || null,
+      issued_date: issuedDate ? new Date(issuedDate).toISOString() : null,
+      expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+      tags: tags || null,
       notes: notes || null,
-      accessList: accessList || [],
-      uploadedById: memberId,
+      uploaded_by: memberId,
     });
 
     // Audit log

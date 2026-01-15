@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, PUT } from '@/app/api/family/sick-mode/settings/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/family/sick-mode/settings', () => {
   beforeEach(() => {
@@ -52,8 +49,6 @@ describe('/api/family/sick-mode/settings', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
         method: 'GET',
       });
@@ -63,7 +58,6 @@ describe('/api/family/sick-mode/settings', () => {
     });
 
     it('should return settings for family', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
 
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
@@ -82,7 +76,6 @@ describe('/api/family/sick-mode/settings', () => {
     });
 
     it('should create default settings if none exist', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeSettings.findUnique.mockResolvedValue(null);
       prismaMock.sickModeSettings.create.mockResolvedValue(mockSettings as any);
 
@@ -103,7 +96,6 @@ describe('/api/family/sick-mode/settings', () => {
     });
 
     it('should allow children to view settings', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
       prismaMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
 
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
@@ -119,8 +111,6 @@ describe('/api/family/sick-mode/settings', () => {
 
   describe('PUT', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
         method: 'PUT',
         body: JSON.stringify({
@@ -133,8 +123,6 @@ describe('/api/family/sick-mode/settings', () => {
     });
 
     it('should return 403 if child tries to update settings', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
         method: 'PUT',
         body: JSON.stringify({
@@ -149,7 +137,6 @@ describe('/api/family/sick-mode/settings', () => {
     });
 
     it('should allow parents to update settings', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
       prismaMock.sickModeSettings.update.mockResolvedValue({
         ...mockSettings,
@@ -181,7 +168,6 @@ describe('/api/family/sick-mode/settings', () => {
     });
 
     it('should create settings if none exist during update', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeSettings.findUnique.mockResolvedValue(null);
       prismaMock.sickModeSettings.create.mockResolvedValue({
         ...mockSettings,
@@ -206,8 +192,6 @@ describe('/api/family/sick-mode/settings', () => {
     });
 
     it('should validate temperatureThreshold is a positive number', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
         method: 'PUT',
         body: JSON.stringify({
@@ -222,8 +206,6 @@ describe('/api/family/sick-mode/settings', () => {
     });
 
     it('should validate screenTimeBonus is non-negative', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
         method: 'PUT',
         body: JSON.stringify({
@@ -238,7 +220,6 @@ describe('/api/family/sick-mode/settings', () => {
     });
 
     it('should log audit event on successful update', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
       prismaMock.sickModeSettings.update.mockResolvedValue({
         ...mockSettings,

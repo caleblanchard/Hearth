@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
     
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -68,12 +68,12 @@ export async function POST(request: NextRequest) {
       description: description?.trim() || null,
       priority: priority || 'MEDIUM',
       due_date: dueDate || null,
-      assigned_to: assignedTo || null,
-      created_by: memberId,
+      assigned_to_id: assignedTo || null,
+      created_by_id: memberId,
     });
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
+    await (supabase as any).from('audit_logs').insert({
       family_id: familyId,
       member_id: memberId,
       action: 'TODO_CREATED',

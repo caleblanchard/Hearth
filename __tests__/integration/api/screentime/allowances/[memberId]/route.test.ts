@@ -26,7 +26,6 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/screentime/allowances/[memberId]/route';
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
 const { calculateRemainingTime } = require('@/lib/screentime-utils');
 
 describe('/api/screentime/allowances/[memberId]', () => {
@@ -37,10 +36,9 @@ describe('/api/screentime/allowances/[memberId]', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/screentime/allowances/child-1');
-      const response = await GET(request, { params: { memberId: 'child-1' } });
+      const response = await GET(request, { params: Promise.resolve({ memberId: 'child-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -49,12 +47,11 @@ describe('/api/screentime/allowances/[memberId]', () => {
 
     it('should return 404 if member not found', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/screentime/allowances/child-1');
-      const response = await GET(request, { params: { memberId: 'child-1' } });
+      const response = await GET(request, { params: Promise.resolve({ memberId: 'child-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(404);
@@ -63,7 +60,6 @@ describe('/api/screentime/allowances/[memberId]', () => {
 
     it('should return 404 if member belongs to different family', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -71,7 +67,7 @@ describe('/api/screentime/allowances/[memberId]', () => {
       } as any);
 
       const request = new NextRequest('http://localhost/api/screentime/allowances/child-1');
-      const response = await GET(request, { params: { memberId: 'child-1' } });
+      const response = await GET(request, { params: Promise.resolve({ memberId: 'child-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(404);
@@ -80,7 +76,6 @@ describe('/api/screentime/allowances/[memberId]', () => {
 
     it('should return allowances with remaining time calculations', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -116,7 +111,7 @@ describe('/api/screentime/allowances/[memberId]', () => {
       });
 
       const request = new NextRequest('http://localhost/api/screentime/allowances/child-1');
-      const response = await GET(request, { params: { memberId: 'child-1' } });
+      const response = await GET(request, { params: Promise.resolve({ memberId: 'child-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -129,7 +124,6 @@ describe('/api/screentime/allowances/[memberId]', () => {
 
     it('should only return allowances for active, non-archived types', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -147,7 +141,7 @@ describe('/api/screentime/allowances/[memberId]', () => {
       });
 
       const request = new NextRequest('http://localhost/api/screentime/allowances/child-1');
-      await GET(request, { params: { memberId: 'child-1' } });
+      await GET(request, { params: Promise.resolve({ memberId: 'child-1' }) });
 
       expect(prismaMock.screenTimeAllowance.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -164,7 +158,6 @@ describe('/api/screentime/allowances/[memberId]', () => {
 
     it('should handle member with no allowances', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -175,7 +168,7 @@ describe('/api/screentime/allowances/[memberId]', () => {
       prismaMock.screenTimeAllowance.findMany.mockResolvedValue([]);
 
       const request = new NextRequest('http://localhost/api/screentime/allowances/child-1');
-      const response = await GET(request, { params: { memberId: 'child-1' } });
+      const response = await GET(request, { params: Promise.resolve({ memberId: 'child-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);

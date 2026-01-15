@@ -10,8 +10,6 @@ import { POST as BulkApprove } from '@/app/api/approvals/bulk-approve/route';
 import { POST as BulkDeny } from '@/app/api/approvals/bulk-deny/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('Bulk Approval APIs', () => {
   beforeEach(() => {
     resetPrismaMock();
@@ -20,7 +18,6 @@ describe('Bulk Approval APIs', () => {
 
   describe('POST /api/approvals/bulk-approve', () => {
     it('should reject unauthenticated requests', async () => {
-      auth.mockResolvedValueOnce(null);
 
       const request = new Request('http://localhost/api/approvals/bulk-approve', {
         method: 'POST',
@@ -35,7 +32,6 @@ describe('Bulk Approval APIs', () => {
     });
 
     it('should reject child users', async () => {
-      auth.mockResolvedValueOnce(mockChildSession());
 
       const request = new Request('http://localhost/api/approvals/bulk-approve', {
         method: 'POST',
@@ -50,7 +46,6 @@ describe('Bulk Approval APIs', () => {
     });
 
     it('should validate itemIds is a non-empty array', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       const request = new Request('http://localhost/api/approvals/bulk-approve', {
         method: 'POST',
@@ -66,7 +61,6 @@ describe('Bulk Approval APIs', () => {
 
     it('should approve a chore completion and award credits', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValueOnce(session);
 
       const choreInstance = {
         id: 'chore-123',
@@ -119,7 +113,6 @@ describe('Bulk Approval APIs', () => {
 
     it('should approve a reward redemption', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValueOnce(session);
 
       const redemption = {
         id: 'redemption-1',
@@ -165,7 +158,6 @@ describe('Bulk Approval APIs', () => {
 
     it('should handle mixed success and failures', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValueOnce(session);
 
       const choreInstance = {
         id: 'chore-123',
@@ -217,7 +209,6 @@ describe('Bulk Approval APIs', () => {
 
     it('should enforce family isolation for chores', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValueOnce(session);
 
       const choreInstance = {
         id: 'chore-123',
@@ -252,7 +243,6 @@ describe('Bulk Approval APIs', () => {
 
     it('should not approve already processed chores', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValueOnce(session);
 
       const choreInstance = {
         id: 'chore-123',
@@ -287,7 +277,6 @@ describe('Bulk Approval APIs', () => {
 
   describe('POST /api/approvals/bulk-deny', () => {
     it('should reject unauthenticated requests', async () => {
-      auth.mockResolvedValueOnce(null);
 
       const request = new Request('http://localhost/api/approvals/bulk-deny', {
         method: 'POST',
@@ -302,7 +291,6 @@ describe('Bulk Approval APIs', () => {
     });
 
     it('should reject child users', async () => {
-      auth.mockResolvedValueOnce(mockChildSession());
 
       const request = new Request('http://localhost/api/approvals/bulk-deny', {
         method: 'POST',
@@ -318,7 +306,6 @@ describe('Bulk Approval APIs', () => {
 
     it('should deny a chore completion without awarding credits', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValueOnce(session);
 
       const choreInstance = {
         id: 'chore-123',
@@ -365,7 +352,6 @@ describe('Bulk Approval APIs', () => {
 
     it('should deny a reward redemption and refund credits', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValueOnce(session);
 
       const redemption = {
         id: 'redemption-1',
@@ -410,7 +396,6 @@ describe('Bulk Approval APIs', () => {
 
     it('should enforce family isolation for rewards', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValueOnce(session);
 
       const redemption = {
         id: 'redemption-1',
@@ -438,7 +423,6 @@ describe('Bulk Approval APIs', () => {
 
     it('should handle invalid item type', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValueOnce(session);
 
       const request = new Request('http://localhost/api/approvals/bulk-deny', {
         method: 'POST',

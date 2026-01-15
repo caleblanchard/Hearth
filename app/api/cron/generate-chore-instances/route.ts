@@ -107,7 +107,10 @@ export async function GET(request: Request) {
               .maybeSingle();
 
             assigneeId = getNextAssignee(
-              schedule.assignments,
+              (schedule.assignments || []).map(a => ({
+                memberId: a.member_id,
+                rotationOrder: a.rotation_order,
+              })),
               lastInstance?.assigned_to_id || null
             );
 

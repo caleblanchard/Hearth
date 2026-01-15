@@ -132,7 +132,7 @@ export async function evaluateInventoryLowTrigger(
   }
 
   // Get inventory item
-  const supabase = createClient();
+  const supabase = await createClient();
   let item;
   if (context.inventoryItemId) {
     const { data } = await supabase
@@ -160,13 +160,13 @@ export async function evaluateInventoryLowTrigger(
   const thresholdPercentage = config.thresholdPercentage || 20;
 
   // If item has low stock threshold set, use that
-  if (item.lowStockThreshold !== null && item.lowStockThreshold !== undefined) {
-    return item.currentQuantity <= item.lowStockThreshold;
+  if (item.low_stock_threshold !== null && item.low_stock_threshold !== undefined) {
+    return item.current_quantity <= item.low_stock_threshold;
   }
 
   // Otherwise, check if quantity is low (close to 0)
   // For items without explicit threshold, trigger if quantity < 2
-  return item.currentQuantity < 2;
+  return item.current_quantity < 2;
 }
 
 // ============================================
@@ -204,7 +204,7 @@ export async function evaluateCalendarBusyTrigger(
   endOfDay.setHours(23, 59, 59, 999);
 
   // Count events for the day
-  const supabase = createClient();
+  const supabase = await createClient();
   const { count: eventCount } = await supabase
     .from('calendar_events')
     .select('*', { count: 'exact', head: true })
@@ -284,7 +284,7 @@ export async function evaluateRoutineCompletedTrigger(
 
     // Otherwise look up the routine from database (need routineId for this)
     if (context.routineId) {
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data: routine } = await supabase
         .from('routines')
         .select('type')
@@ -332,7 +332,7 @@ export async function evaluateTimeBasedTrigger(
       return true;
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: member } = await supabase
       .from('family_members')
       .select('birth_date')

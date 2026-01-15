@@ -9,8 +9,8 @@ export async function GET(request: Request) {
   const redirectTo = requestUrl.searchParams.get('redirectTo') || '/dashboard'
 
   if (code) {
-    const cookieStore = cookies()
-    const supabase = createClient()
+    const cookieStore = await cookies()
+    const supabase = await createClient()
 
     // Exchange the code for a session
     const { error } = await supabase.auth.exchangeCodeForSession(code)

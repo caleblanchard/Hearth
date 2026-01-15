@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -68,7 +69,9 @@ interface PetWeight {
 export default function PetDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useSupabaseSession();
+  const session = useSupabaseSession();
+  const { user } = session;
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const petId = params.id as string;
 
   const [pet, setPet] = useState<Pet | null>(null);
@@ -373,7 +376,7 @@ export default function PetDetailPage() {
                 </p>
               </div>
             </div>
-            {user?.user_metadata?.role === 'PARENT' && (
+            {isParent && (
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowEditModal(true)}

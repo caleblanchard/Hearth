@@ -18,8 +18,6 @@ import { NextRequest } from 'next/server';
 import { PATCH } from '@/app/api/rules/[id]/toggle/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('PATCH /api/rules/[id]/toggle', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -53,12 +51,11 @@ describe('PATCH /api/rules/[id]/toggle', () => {
   };
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/toggle', {
       method: 'PATCH',
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(401);
@@ -66,12 +63,11 @@ describe('PATCH /api/rules/[id]/toggle', () => {
   });
 
   it('should return 403 if user is not a parent', async () => {
-    auth.mockResolvedValue(mockChildSession() as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/toggle', {
       method: 'PATCH',
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(403);
@@ -79,13 +75,12 @@ describe('PATCH /api/rules/[id]/toggle', () => {
   });
 
   it('should return 404 if rule not found', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/toggle', {
       method: 'PATCH',
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(404);
@@ -93,7 +88,6 @@ describe('PATCH /api/rules/[id]/toggle', () => {
   });
 
   it('should return 403 if rule belongs to different family', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue({
       ...mockRule,
       familyId: 'other-family',
@@ -102,7 +96,7 @@ describe('PATCH /api/rules/[id]/toggle', () => {
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/toggle', {
       method: 'PATCH',
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(403);
@@ -110,7 +104,6 @@ describe('PATCH /api/rules/[id]/toggle', () => {
   });
 
   it('should toggle enabled rule to disabled', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
     prismaMock.automationRule.update.mockResolvedValue({
       ...mockRule,
@@ -121,7 +114,7 @@ describe('PATCH /api/rules/[id]/toggle', () => {
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/toggle', {
       method: 'PATCH',
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -142,7 +135,6 @@ describe('PATCH /api/rules/[id]/toggle', () => {
   });
 
   it('should toggle disabled rule to enabled', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue({
       ...mockRule,
       isEnabled: false,
@@ -156,7 +148,7 @@ describe('PATCH /api/rules/[id]/toggle', () => {
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/toggle', {
       method: 'PATCH',
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -177,7 +169,6 @@ describe('PATCH /api/rules/[id]/toggle', () => {
   });
 
   it('should create RULE_ENABLED audit log when enabling', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue({
       ...mockRule,
       isEnabled: false,
@@ -191,7 +182,7 @@ describe('PATCH /api/rules/[id]/toggle', () => {
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/toggle', {
       method: 'PATCH',
     });
-    await PATCH(request, { params: { id: 'rule-1' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -206,7 +197,6 @@ describe('PATCH /api/rules/[id]/toggle', () => {
   });
 
   it('should create RULE_DISABLED audit log when disabling', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
     prismaMock.automationRule.update.mockResolvedValue({
       ...mockRule,
@@ -217,7 +207,7 @@ describe('PATCH /api/rules/[id]/toggle', () => {
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/toggle', {
       method: 'PATCH',
     });
-    await PATCH(request, { params: { id: 'rule-1' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -232,14 +222,13 @@ describe('PATCH /api/rules/[id]/toggle', () => {
   });
 
   it('should return 500 on database error', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
     prismaMock.automationRule.update.mockRejectedValue(new Error('Database error'));
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/toggle', {
       method: 'PATCH',
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(500);

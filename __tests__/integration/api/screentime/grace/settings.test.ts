@@ -8,11 +8,9 @@ jest.mock('@/lib/auth', () => ({
 
 // NOW import the route after mocks are set up
 import { NextRequest } from 'next/server';
-import { GET, PUT } from '@/app/api/screentime/grace/settings/route';
+import { GET, PATCH } from '@/app/api/screentime/grace/settings/route';
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
 import { GraceRepaymentMode } from '@/app/generated/prisma';
-
-const { auth } = require('@/lib/auth');
 
 describe('/api/screentime/grace/settings', () => {
   beforeEach(() => {
@@ -22,7 +20,6 @@ describe('/api/screentime/grace/settings', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new Request('http://localhost/api/screentime/grace/settings');
       const response = await GET(request as NextRequest);
@@ -34,7 +31,6 @@ describe('/api/screentime/grace/settings', () => {
 
     it('should return settings for current user', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       const settings = {
         id: 'settings-1',
@@ -61,13 +57,12 @@ describe('/api/screentime/grace/settings', () => {
 
     it('should allow parents to view child settings', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const childId = 'child-1';
       const settings = {
         id: 'settings-1',
         memberId: childId,
-        gracePeriodMinutes: 20,
+    gracePeriodMinutes: 20,
         maxGracePerDay: 2,
         maxGracePerWeek: 5,
         graceRepaymentMode: GraceRepaymentMode.EARN_BACK,
@@ -86,8 +81,13 @@ describe('/api/screentime/grace/settings', () => {
         familyId: session.user.familyId,
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: 'user-1',
-      });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
       prismaMock.screenTimeGraceSettings.findUnique.mockResolvedValue(settings);
 
@@ -103,7 +103,6 @@ describe('/api/screentime/grace/settings', () => {
 
     it('should prevent children from viewing other members settings', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       const otherChildId = 'other-child';
 
@@ -116,8 +115,13 @@ describe('/api/screentime/grace/settings', () => {
         familyId: session.user.familyId,
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: 'user-2',
-      });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
       const request = new Request(
         `http://localhost/api/screentime/grace/settings?memberId=${otherChildId}`
@@ -131,7 +135,6 @@ describe('/api/screentime/grace/settings', () => {
 
     it('should create default settings if none exist', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       const defaultSettings = {
         id: 'new-settings-1',
@@ -160,7 +163,6 @@ describe('/api/screentime/grace/settings', () => {
 
     it('should verify family ownership when viewing child settings', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const otherFamilyChildId = 'other-family-child';
 
@@ -173,8 +175,13 @@ describe('/api/screentime/grace/settings', () => {
         familyId: 'different-family',
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: 'user-3',
-      });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
       const request = new Request(
         `http://localhost/api/screentime/grace/settings?memberId=${otherFamilyChildId}`
@@ -189,13 +196,12 @@ describe('/api/screentime/grace/settings', () => {
 
   describe('PUT', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new Request('http://localhost/api/screentime/grace/settings', {
         method: 'PUT',
         body: JSON.stringify({ memberId: 'child-1', gracePeriodMinutes: 20 }),
       });
-      const response = await PUT(request as NextRequest);
+      const response = await PATCH(request as NextRequest);
 
       expect(response.status).toBe(401);
       const data = await response.json();
@@ -204,13 +210,12 @@ describe('/api/screentime/grace/settings', () => {
 
     it('should return 403 if not a parent', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       const request = new Request('http://localhost/api/screentime/grace/settings', {
         method: 'PUT',
         body: JSON.stringify({ memberId: 'child-1', gracePeriodMinutes: 20 }),
       });
-      const response = await PUT(request as NextRequest);
+      const response = await PATCH(request as NextRequest);
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -219,7 +224,6 @@ describe('/api/screentime/grace/settings', () => {
 
     it('should validate positive numbers', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -229,8 +233,13 @@ describe('/api/screentime/grace/settings', () => {
         familyId: session.user.familyId,
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: 'user-1',
-      });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
       const request = new Request('http://localhost/api/screentime/grace/settings', {
         method: 'PUT',
@@ -244,7 +253,7 @@ describe('/api/screentime/grace/settings', () => {
           requiresApproval: false,
         }),
       });
-      const response = await PUT(request as NextRequest);
+      const response = await PATCH(request as NextRequest);
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -253,7 +262,6 @@ describe('/api/screentime/grace/settings', () => {
 
     it('should validate enum values', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -263,8 +271,13 @@ describe('/api/screentime/grace/settings', () => {
         familyId: session.user.familyId,
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: 'user-1',
-      });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
       const request = new Request('http://localhost/api/screentime/grace/settings', {
         method: 'PUT',
@@ -278,7 +291,7 @@ describe('/api/screentime/grace/settings', () => {
           requiresApproval: false,
         }),
       });
-      const response = await PUT(request as NextRequest);
+      const response = await PATCH(request as NextRequest);
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -287,7 +300,6 @@ describe('/api/screentime/grace/settings', () => {
 
     it('should update settings successfully', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const updatedSettings = {
         id: 'settings-1',
@@ -310,8 +322,13 @@ describe('/api/screentime/grace/settings', () => {
         familyId: session.user.familyId,
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: 'user-1',
-      });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
       prismaMock.screenTimeGraceSettings.upsert.mockResolvedValue(updatedSettings);
 
@@ -327,7 +344,7 @@ describe('/api/screentime/grace/settings', () => {
           requiresApproval: true,
         }),
       });
-      const response = await PUT(request as NextRequest);
+      const response = await PATCH(request as NextRequest);
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -337,7 +354,6 @@ describe('/api/screentime/grace/settings', () => {
 
     it('should verify family ownership', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -347,8 +363,13 @@ describe('/api/screentime/grace/settings', () => {
         familyId: 'different-family',
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: 'user-1',
-      });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
       const request = new Request('http://localhost/api/screentime/grace/settings', {
         method: 'PUT',
@@ -362,7 +383,7 @@ describe('/api/screentime/grace/settings', () => {
           requiresApproval: false,
         }),
       });
-      const response = await PUT(request as NextRequest);
+      const response = await PATCH(request as NextRequest);
 
       expect(response.status).toBe(403);
       const data = await response.json();

@@ -11,8 +11,6 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/projects/[id]/tasks/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/projects/[id]/tasks', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -20,11 +18,10 @@ describe('GET /api/projects/[id]/tasks', () => {
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const response = await GET(
         new NextRequest('http://localhost:3000/api/projects/project-1/tasks'),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(401);
@@ -33,11 +30,10 @@ describe('GET /api/projects/[id]/tasks', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const response = await GET(
         new NextRequest('http://localhost:3000/api/projects/project-1/tasks'),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(403);
@@ -48,7 +44,6 @@ describe('GET /api/projects/[id]/tasks', () => {
 
   describe('Task Listing', () => {
     it('should return all tasks for a project', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -104,7 +99,7 @@ describe('GET /api/projects/[id]/tasks', () => {
 
       const response = await GET(
         new NextRequest('http://localhost:3000/api/projects/project-1/tasks'),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(200);
@@ -115,12 +110,11 @@ describe('GET /api/projects/[id]/tasks', () => {
     });
 
     it('should return 404 if project not found', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.project.findUnique.mockResolvedValue(null);
 
       const response = await GET(
         new NextRequest('http://localhost:3000/api/projects/nonexistent/tasks'),
-        { params: { id: 'nonexistent' } }
+        { params: Promise.resolve({ id: 'nonexistent' }) }
       );
 
       expect(response.status).toBe(404);
@@ -129,7 +123,6 @@ describe('GET /api/projects/[id]/tasks', () => {
     });
 
     it('should return 403 if project belongs to different family', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -140,7 +133,7 @@ describe('GET /api/projects/[id]/tasks', () => {
 
       const response = await GET(
         new NextRequest('http://localhost:3000/api/projects/project-1/tasks'),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(403);
@@ -149,7 +142,6 @@ describe('GET /api/projects/[id]/tasks', () => {
     });
 
     it('should return empty array when project has no tasks', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -161,7 +153,7 @@ describe('GET /api/projects/[id]/tasks', () => {
 
       const response = await GET(
         new NextRequest('http://localhost:3000/api/projects/project-1/tasks'),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(200);
@@ -172,7 +164,6 @@ describe('GET /api/projects/[id]/tasks', () => {
 
   describe('Error Handling', () => {
     it('should return 500 if database query fails', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -184,7 +175,7 @@ describe('GET /api/projects/[id]/tasks', () => {
 
       const response = await GET(
         new NextRequest('http://localhost:3000/api/projects/project-1/tasks'),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(500);
@@ -201,14 +192,13 @@ describe('POST /api/projects/[id]/tasks', () => {
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const response = await POST(
         new NextRequest('http://localhost:3000/api/projects/project-1/tasks', {
           method: 'POST',
           body: JSON.stringify({ name: 'New Task' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(401);
@@ -217,14 +207,13 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const response = await POST(
         new NextRequest('http://localhost:3000/api/projects/project-1/tasks', {
           method: 'POST',
           body: JSON.stringify({ name: 'New Task' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(403);
@@ -235,7 +224,6 @@ describe('POST /api/projects/[id]/tasks', () => {
 
   describe('Validation', () => {
     it('should return 404 if project not found', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.project.findUnique.mockResolvedValue(null);
 
       const response = await POST(
@@ -243,7 +231,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           method: 'POST',
           body: JSON.stringify({ name: 'New Task' }),
         }),
-        { params: { id: 'nonexistent' } }
+        { params: Promise.resolve({ id: 'nonexistent' }) }
       );
 
       expect(response.status).toBe(404);
@@ -252,7 +240,6 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should return 403 if project belongs to different family', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -266,7 +253,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           method: 'POST',
           body: JSON.stringify({ name: 'New Task' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(403);
@@ -275,7 +262,6 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should return 400 if name is missing', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -289,7 +275,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           method: 'POST',
           body: JSON.stringify({ description: 'Task description' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(400);
@@ -298,7 +284,6 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should return 400 if name is empty string', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -312,7 +297,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           method: 'POST',
           body: JSON.stringify({ name: '   ' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(400);
@@ -321,7 +306,6 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should return 400 if status is invalid', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -338,7 +322,7 @@ describe('POST /api/projects/[id]/tasks', () => {
             status: 'INVALID_STATUS',
           }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(400);
@@ -347,7 +331,6 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should return 400 if estimatedHours is negative', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -364,7 +347,7 @@ describe('POST /api/projects/[id]/tasks', () => {
             estimatedHours: -5,
           }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(400);
@@ -373,7 +356,6 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should return 400 if actualHours is negative', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -390,7 +372,7 @@ describe('POST /api/projects/[id]/tasks', () => {
             actualHours: -3,
           }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(400);
@@ -401,7 +383,6 @@ describe('POST /api/projects/[id]/tasks', () => {
 
   describe('Task Creation', () => {
     it('should create a task with minimal data', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -433,7 +414,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           method: 'POST',
           body: JSON.stringify({ name: 'New Task' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(201);
@@ -444,7 +425,6 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should create a task with all fields', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -469,7 +449,7 @@ describe('POST /api/projects/[id]/tasks', () => {
             actualHours: 0.5,
           }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(201);
@@ -489,7 +469,6 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should auto-increment sortOrder', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -506,7 +485,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           method: 'POST',
           body: JSON.stringify({ name: 'New Task' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(prismaMock.projectTask.create).toHaveBeenCalledWith(
@@ -519,7 +498,6 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should trim whitespace from name', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -536,7 +514,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           method: 'POST',
           body: JSON.stringify({ name: '  New Task  ' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(prismaMock.projectTask.create).toHaveBeenCalledWith(
@@ -549,7 +527,6 @@ describe('POST /api/projects/[id]/tasks', () => {
     });
 
     it('should default status to PENDING', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -566,7 +543,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           method: 'POST',
           body: JSON.stringify({ name: 'New Task' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(prismaMock.projectTask.create).toHaveBeenCalledWith(
@@ -581,7 +558,6 @@ describe('POST /api/projects/[id]/tasks', () => {
 
   describe('Audit Logging', () => {
     it('should create audit log on successful task creation', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -603,7 +579,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           method: 'POST',
           body: JSON.stringify({ name: 'New Task' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
@@ -624,7 +600,6 @@ describe('POST /api/projects/[id]/tasks', () => {
 
   describe('Error Handling', () => {
     it('should return 500 if database operation fails', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -640,7 +615,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           method: 'POST',
           body: JSON.stringify({ name: 'New Task' }),
         }),
-        { params: { id: 'project-1' } }
+        { params: Promise.resolve({ id: 'project-1' }) }
       );
 
       expect(response.status).toBe(500);

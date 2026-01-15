@@ -3,6 +3,60 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Fetch all family members
+    const { data: members, error } = await supabase
+      .from('family_members')
+      .select('*')
+      .eq('family_id', familyId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      logger.error('Error fetching family members:', error);
+      return NextResponse.json({ error: 'Failed to fetch family members' }, { status: 500 });
+    }
+
+    // Map to camelCase
+    const mappedMembers = members.map((member: any) => ({
+      id: member.id,
+      familyId: member.family_id,
+      userId: member.auth_user_id,
+      name: member.name,
+      email: member.email,
+      role: member.role,
+      birthDate: member.birth_date,
+      avatarUrl: member.avatar_url,
+      isActive: member.is_active,
+      createdAt: member.created_at,
+      updatedAt: member.updated_at,
+    }));
+
+    console.log('[API] /api/family/members - Found', mappedMembers.length, 'members');
+    return NextResponse.json({
+      success: true,
+      members: mappedMembers,
+    });
+  } catch (error) {
+    logger.error('Error fetching family members:', error);
+    return NextResponse.json({ error: 'Failed to fetch family members' }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -12,15 +66,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can add members
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
@@ -73,7 +127,7 @@ export async function POST(request: Request) {
     }
 
     // Audit log
-    await supabase.from('audit_logs').insert({
+    await (supabase as any).from('audit_logs').insert({
       family_id: familyId,
       member_id: memberId,
       action: 'MEMBER_CREATED',

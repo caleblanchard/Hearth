@@ -8,6 +8,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const authContext = await getAuthContext();
 
@@ -15,7 +16,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -34,7 +35,23 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    return NextResponse.json({ item });
+    // Map to camelCase for frontend
+    const mappedItem = {
+      id: item.id,
+      familyId: item.family_id,
+      name: item.name,
+      description: item.description,
+      category: item.category,
+      frequency: item.frequency,
+      season: item.season,
+      estimatedCost: item.estimated_cost,
+      lastCompletedAt: item.last_completed_at,
+      nextDueAt: item.next_due_at,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    };
+
+    return NextResponse.json({ item: mappedItem });
   } catch (error) {
     logger.error('Error fetching maintenance item:', error);
     return NextResponse.json({ error: 'Failed to fetch maintenance item' }, { status: 500 });
@@ -45,6 +62,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -53,7 +71,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -67,9 +85,25 @@ export async function PATCH(
     const body = await request.json();
     const item = await updateMaintenanceItem(id, body);
 
+    // Map to camelCase for frontend
+    const mappedItem = {
+      id: item.id,
+      familyId: item.family_id,
+      name: item.name,
+      description: item.description,
+      category: item.category,
+      frequency: item.frequency,
+      season: item.season,
+      estimatedCost: item.estimated_cost,
+      lastCompletedAt: item.last_completed_at,
+      nextDueAt: item.next_due_at,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    };
+
     return NextResponse.json({
       success: true,
-      item,
+      item: mappedItem,
       message: 'Maintenance item updated successfully',
     });
   } catch (error) {
@@ -82,6 +116,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const authContext = await getAuthContext();
 
@@ -89,7 +124,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }

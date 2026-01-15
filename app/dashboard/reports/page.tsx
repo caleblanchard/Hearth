@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
   LineChart,
   Line,
@@ -86,8 +87,77 @@ interface ReportData {
   }>;
 }
 
+// Transform API response to match UI expectations
+function transformReportData(apiReport: any, periodType: string): ReportData {
+  const startDate = new Date(apiReport.period.start);
+  const endDate = new Date(apiReport.period.end);
+  
+  return {
+    period: {
+      type: periodType,
+      startDate: startDate.toLocaleDateString(),
+      endDate: endDate.toLocaleDateString(),
+    },
+    summary: {
+      chores: {
+        completed: apiReport.family.totalChoresCompleted || 0,
+        assigned: (apiReport.family.totalChoresCompleted || 0) + (apiReport.family.totalCreditsPending || 0),
+        completionRate: apiReport.family.totalChoresCompleted > 0
+          ? Math.round((apiReport.family.totalChoresCompleted / ((apiReport.family.totalChoresCompleted || 0) + (apiReport.family.totalCreditsPending || 1))) * 100)
+          : 0,
+      },
+      credits: {
+        earned: apiReport.family.totalCreditsEarned || 0,
+        spent: apiReport.family.totalCreditsSpent || 0,
+        net: (apiReport.family.totalCreditsEarned || 0) - (apiReport.family.totalCreditsSpent || 0),
+      },
+      screenTime: {
+        totalMinutes: 0,
+        hours: 0,
+        minutes: 0,
+      },
+      todos: {
+        created: apiReport.family.totalPostsCreated || 0,
+        completed: apiReport.family.totalRoutinesCompleted || 0,
+        completionRate: apiReport.family.totalPostsCreated > 0
+          ? Math.round((apiReport.family.totalRoutinesCompleted / apiReport.family.totalPostsCreated) * 100)
+          : 0,
+      },
+    },
+    children: apiReport.members
+      ?.filter((m: any) => m.role === 'CHILD')
+      .map((member: any) => ({
+        id: member.memberId,
+        name: member.name,
+        chores: {
+          completed: member.stats.choresCompleted || 0,
+          assigned: (member.stats.choresCompleted || 0) + (member.stats.choresPending || 0),
+          completionRate: member.stats.choresCompleted > 0
+            ? Math.round((member.stats.choresCompleted / ((member.stats.choresCompleted || 0) + (member.stats.choresPending || 1))) * 100)
+            : 0,
+        },
+        credits: {
+          earned: member.stats.creditsEarned || 0,
+          spent: member.stats.creditsSpent || 0,
+          net: (member.stats.creditsEarned || 0) - (member.stats.creditsSpent || 0),
+        },
+        screenTime: {
+          used: 0,
+          hours: 0,
+          minutes: 0,
+        },
+        todos: {
+          completed: member.stats.routinesCompleted || 0,
+          total: member.stats.postsCreated || 0,
+        },
+      })) || [],
+    trends: [], // Empty for now - would need daily breakdown data
+  };
+}
+
 export default function ReportsPage() {
   const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const router = useRouter();
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,10 +165,10 @@ export default function ReportsPage() {
 
   // Redirect non-parents
   useEffect(() => {
-    if (user?.user_metadata?.role !== 'PARENT') {
+    if (!memberLoading && !isParent && user) {
       router.push('/dashboard');
     }
-  }, [user, router]);
+  }, [memberLoading, isParent, user, router]);
 
   const fetchReportData = async (selectedPeriod: 'week' | 'month' = period) => {
     setLoading(true);
@@ -106,7 +176,11 @@ export default function ReportsPage() {
       const response = await fetch(`/api/reports/family?period=${selectedPeriod}`);
       if (response.ok) {
         const data = await response.json();
-        setReportData(data);
+        // Transform the API response to match the expected format
+        if (data.report) {
+          const transformedData = transformReportData(data.report, selectedPeriod);
+          setReportData(transformedData);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch report data:', error);
@@ -116,10 +190,10 @@ export default function ReportsPage() {
   };
 
   useEffect(() => {
-    if (user?.user_metadata?.role === 'PARENT') {
+    if (!memberLoading && isParent) {
       fetchReportData();
     }
-  }, [user]);
+  }, [memberLoading, isParent]);
 
   const handlePeriodChange = (newPeriod: 'week' | 'month') => {
     setPeriod(newPeriod);
@@ -307,44 +381,46 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* Trend Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Activity Trends */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Daily Activity Trends
-            </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={reportData.trends}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tickFormatter={formatDate} />
-                <YAxis />
-                <Tooltip labelFormatter={formatDate} />
-                <Legend />
-                <Line type="monotone" dataKey="chores" stroke="#10b981" name="Chores" />
-                <Line type="monotone" dataKey="todos" stroke="#8b5cf6" name="Tasks" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+        {/* Trend Charts - Hide if no trend data */}
+        {reportData.trends && reportData.trends.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Activity Trends */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Daily Activity Trends
+              </h2>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={reportData.trends}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickFormatter={formatDate} />
+                  <YAxis />
+                  <Tooltip labelFormatter={formatDate} />
+                  <Legend />
+                  <Line type="monotone" dataKey="chores" stroke="#10b981" name="Chores" />
+                  <Line type="monotone" dataKey="todos" stroke="#8b5cf6" name="Tasks" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
 
-          {/* Credits & Screen Time Trends */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Credits & Screen Time
-            </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={reportData.trends}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tickFormatter={formatDate} />
-                <YAxis />
-                <Tooltip labelFormatter={formatDate} />
-                <Legend />
-                <Line type="monotone" dataKey="credits" stroke="#f59e0b" name="Credits" />
-                <Line type="monotone" dataKey="screenTime" stroke="#3b82f6" name="Screen Time (min)" />
-              </LineChart>
-            </ResponsiveContainer>
+            {/* Credits & Screen Time Trends */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Credits & Screen Time
+              </h2>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={reportData.trends}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickFormatter={formatDate} />
+                  <YAxis />
+                  <Tooltip labelFormatter={formatDate} />
+                  <Legend />
+                  <Line type="monotone" dataKey="credits" stroke="#f59e0b" name="Credits" />
+                  <Line type="monotone" dataKey="screenTime" stroke="#3b82f6" name="Screen Time (min)" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Child Performance Comparison */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">

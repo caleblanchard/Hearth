@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 interface FamilyMember {
@@ -14,6 +15,7 @@ interface FamilyMember {
 export default function NewTaskPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -33,7 +35,7 @@ export default function NewTaskPage({ params }: { params: { id: string } }) {
 
   const fetchFamilyMembers = async () => {
     try {
-      const res = await fetch('/api/family');
+      const res = await fetch('/api/family-data');
       if (res.ok) {
         const data = await res.json();
         setFamilyMembers(data.family.members || []);
@@ -80,7 +82,7 @@ export default function NewTaskPage({ params }: { params: { id: string } }) {
     }
   };
 
-  if (user?.user_metadata?.role !== 'PARENT') {
+  if (!isParent) {
     return (
       <div className="p-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">

@@ -12,8 +12,6 @@ import { GET, POST } from '@/app/api/communication/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { PostType } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/communication', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,7 +19,6 @@ describe('GET /api/communication', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/communication', {
       method: 'GET',
@@ -34,7 +31,6 @@ describe('GET /api/communication', () => {
 
   it('should return empty array if no posts exist', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.communicationPost.findMany.mockResolvedValue([]);
     prismaMock.communicationPost.count.mockResolvedValue(0);
@@ -52,7 +48,6 @@ describe('GET /api/communication', () => {
 
   it('should return all family posts', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockPosts = [
       {
@@ -126,7 +121,6 @@ describe('GET /api/communication', () => {
 
   it('should filter posts by type', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.communicationPost.findMany.mockResolvedValue([]);
     prismaMock.communicationPost.count.mockResolvedValue(0);
@@ -148,7 +142,6 @@ describe('GET /api/communication', () => {
 
   it('should return only pinned posts when filter applied', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.communicationPost.findMany.mockResolvedValue([]);
     prismaMock.communicationPost.count.mockResolvedValue(0);
@@ -170,7 +163,6 @@ describe('GET /api/communication', () => {
 
   it('should support pagination', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.communicationPost.findMany.mockResolvedValue([]);
     prismaMock.communicationPost.count.mockResolvedValue(50);
@@ -194,7 +186,6 @@ describe('GET /api/communication', () => {
 
   it('should order posts by pinned first then created desc', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.communicationPost.findMany.mockResolvedValue([]);
     prismaMock.communicationPost.count.mockResolvedValue(0);
@@ -214,7 +205,6 @@ describe('GET /api/communication', () => {
 
   it('should not return posts from other families', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.communicationPost.findMany.mockResolvedValue([]);
     prismaMock.communicationPost.count.mockResolvedValue(0);
@@ -242,7 +232,6 @@ describe('POST /api/communication', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/communication', {
       method: 'POST',
@@ -260,7 +249,6 @@ describe('POST /api/communication', () => {
 
   it('should return 403 if child tries to post announcement', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/communication', {
       method: 'POST',
@@ -281,7 +269,6 @@ describe('POST /api/communication', () => {
 
   it('should allow parent to create announcement', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockPost = {
       id: 'post-1',
@@ -320,7 +307,6 @@ describe('POST /api/communication', () => {
 
   it('should allow child to post kudos', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const mockPost = {
       id: 'post-1',
@@ -357,7 +343,6 @@ describe('POST /api/communication', () => {
 
   it('should allow parent to create note', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockPost = {
       id: 'post-1',
@@ -392,7 +377,6 @@ describe('POST /api/communication', () => {
 
   it('should create post with photo', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockPost = {
       id: 'post-1',
@@ -431,7 +415,6 @@ describe('POST /api/communication', () => {
 
   it('should return 400 if content is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/communication', {
       method: 'POST',
@@ -450,7 +433,6 @@ describe('POST /api/communication', () => {
 
   it('should return 400 if type is invalid', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/communication', {
       method: 'POST',
@@ -470,7 +452,6 @@ describe('POST /api/communication', () => {
 
   it('should create audit log on post creation', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockPost = {
       id: 'post-1',

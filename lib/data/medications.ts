@@ -20,11 +20,10 @@ export async function getMemberMedications(memberId: string) {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('health_medications')
+    .from('medication_safety')
     .select('*')
     .eq('member_id', memberId)
-    .eq('is_active', true)
-    .order('name')
+    .order('medication_name')
 
   if (error) throw error
   return data || []
@@ -109,8 +108,8 @@ export async function deactivateMedication(medicationId: string) {
   const supabase = await createClient()
 
   const { error } = await supabase
-    .from('health_medications')
-    .update({ is_active: false })
+    .from('medication_safety')
+    .delete()
     .eq('id', medicationId)
 
   if (error) throw error

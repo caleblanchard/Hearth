@@ -12,18 +12,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
-    const memberId = searchParams.get('memberId') || undefined;
-    const limit = parseInt(searchParams.get('limit') || '100');
-    const startDate = searchParams.get('startDate') || undefined;
-    const endDate = searchParams.get('endDate') || undefined;
+    const targetMemberId = searchParams.get('memberId') || authContext.activeMemberId;
+    const daysParam = searchParams.get('days');
+    const days = daysParam ? parseInt(daysParam, 10) : 7;
 
-    const readings = await getTemperatureReadings(familyId, { memberId, limit, startDate, endDate });
+    if (!targetMemberId) {
+      return NextResponse.json({ error: 'Member ID is required' }, { status: 400 });
+    }
+
+    const readings = await getTemperatureReadings(targetMemberId, days);
 
     return NextResponse.json({ readings });
   } catch (error) {
@@ -40,13 +43,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
     const body = await request.json();
-    const reading = await recordTemperatureReading(body.memberId, memberId, body);
+    const targetMemberId = body.memberId || memberId;
+    const reading = await recordTemperatureReading(targetMemberId, body.temperature, body.unit);
 
     return NextResponse.json({
       success: true,

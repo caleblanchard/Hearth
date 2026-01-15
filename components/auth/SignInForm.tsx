@@ -60,21 +60,21 @@ export function SignInForm() {
   return (
     <div className="w-full max-w-md space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold">Welcome Back</h1>
-        <p className="mt-2 text-gray-600">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome Back</h1>
+        <p className="mt-2 text-gray-700 dark:text-gray-300">
           Sign in to your Hearth family account
         </p>
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
+          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
         </div>
       )}
 
       <form onSubmit={handleEmailSignIn} className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-gray-900 dark:text-gray-100">
             Email
           </label>
           <input
@@ -83,13 +83,13 @@ export function SignInForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
             placeholder="you@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-900 dark:text-gray-100">
             Password
           </label>
           <input
@@ -98,7 +98,7 @@ export function SignInForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
             placeholder="••••••••"
           />
         </div>
@@ -106,7 +106,7 @@ export function SignInForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          className="w-full rounded-md bg-orange-600 px-4 py-2 text-white font-medium hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
@@ -114,10 +114,10 @@ export function SignInForm() {
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-300" />
+          <div className="w-full border-t border-gray-300 dark:border-gray-600" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="bg-white px-2 text-gray-500">Or continue with</span>
+          <span className="bg-gray-50 dark:bg-gray-900 px-2 text-gray-600 dark:text-gray-400">Or continue with</span>
         </div>
       </div>
 
@@ -125,7 +125,7 @@ export function SignInForm() {
         type="button"
         onClick={handleGoogleSignIn}
         disabled={loading}
-        className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+        className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
       >
         <div className="flex items-center justify-center gap-2">
           <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -151,10 +151,10 @@ export function SignInForm() {
       </button>
 
       <div className="text-center text-sm">
-        <span className="text-gray-600">Don't have an account? </span>
+        <span className="text-gray-700 dark:text-gray-300">Don't have an account? </span>
         <a
           href="/auth/signup"
-          className="font-medium text-blue-600 hover:text-blue-500"
+          className="font-medium text-orange-600 dark:text-orange-400 hover:text-orange-500 dark:hover:text-orange-300"
         >
           Sign up
         </a>

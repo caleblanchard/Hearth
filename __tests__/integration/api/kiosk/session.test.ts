@@ -95,7 +95,7 @@ describe('Kiosk Session API Endpoints', () => {
 
       const mockKioskSettings = {
         id: 'settings-1',
-        family_id: session.user.app_metadata.familyId,
+        family_id: session.user.app_metadata!.familyId,
         is_enabled: true,
         auto_lock_minutes: 15,
         enabled_widgets: ['transport', 'medication'],
@@ -114,11 +114,12 @@ describe('Kiosk Session API Endpoints', () => {
       createKioskSession.mockResolvedValue(mockKioskSession);
 
       const auditQuery = mockSupabase.from('audit_logs');
-      auditQuery.insert.mockResolvedValue({ data: null, error: null });
+      // @ts-expect-error - Mock typing
+      auditQuery.insert.mockResolvedValue({ data: null, error: null } as any);
 
       const request = new Request('http://localhost/api/kiosk/session/start', {
         method: 'POST',
-        body: JSON.stringify({ deviceId: 'device-123', familyId: session.user.app_metadata.familyId }),
+        body: JSON.stringify({ deviceId: 'device-123', familyId: session.user.app_metadata!.familyId }),
       });
 
       const response = await StartSession(request as NextRequest);
@@ -137,7 +138,7 @@ describe('Kiosk Session API Endpoints', () => {
 
       const mockKioskSettings = {
         id: 'settings-1',
-        family_id: session.user.app_metadata.familyId,
+        family_id: session.user.app_metadata!.familyId,
         is_enabled: false, // Kiosk disabled
         auto_lock_minutes: 15,
         enabled_widgets: [],
@@ -151,7 +152,7 @@ describe('Kiosk Session API Endpoints', () => {
 
       const request = new Request('http://localhost/api/kiosk/session/start', {
         method: 'POST',
-        body: JSON.stringify({ deviceId: 'device-123', familyId: session.user.app_metadata.familyId }),
+        body: JSON.stringify({ deviceId: 'device-123', familyId: session.user.app_metadata!.familyId }),
       });
 
       const response = await StartSession(request as NextRequest);
@@ -360,7 +361,8 @@ describe('Kiosk Session API Endpoints', () => {
       unlockKioskSession.mockResolvedValue({ success: true });
 
       const auditQuery = mockSupabase.from('audit_logs');
-      auditQuery.insert.mockResolvedValue({ data: null, error: null });
+      // @ts-expect-error - Mock typing
+      auditQuery.insert.mockResolvedValue({ data: null, error: null } as any);
 
       const request = new Request('http://localhost/api/kiosk/session/unlock', {
         method: 'POST',
@@ -503,7 +505,8 @@ describe('Kiosk Session API Endpoints', () => {
       memberQuery.single.mockResolvedValue({ data: { role: 'PARENT' }, error: null });
 
       const auditQuery = mockSupabase.from('audit_logs');
-      auditQuery.insert.mockResolvedValue({ data: null, error: null });
+      // @ts-expect-error - Mock typing
+      auditQuery.insert.mockResolvedValue({ data: null, error: null } as any);
 
       const request = new Request('http://localhost/api/kiosk/session', {
         method: 'DELETE',

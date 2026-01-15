@@ -12,8 +12,6 @@ import { GET } from '@/app/api/routines/completions/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { RoutineType } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/routines/completions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,7 +19,6 @@ describe('GET /api/routines/completions', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/routines/completions', {
       method: 'GET',
@@ -34,7 +31,6 @@ describe('GET /api/routines/completions', () => {
 
   it('should return empty array if no completions exist', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routineCompletion.findMany.mockResolvedValue([]);
 
@@ -51,7 +47,6 @@ describe('GET /api/routines/completions', () => {
 
   it('should return all family completions for parent', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockCompletions = [
       {
@@ -106,7 +101,6 @@ describe('GET /api/routines/completions', () => {
 
   it('should return only own completions for child', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const mockCompletions = [
       {
@@ -150,7 +144,6 @@ describe('GET /api/routines/completions', () => {
 
   it('should filter completions by memberId for parent', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockCompletions = [
       {
@@ -194,7 +187,6 @@ describe('GET /api/routines/completions', () => {
 
   it('should filter completions by routineId', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockCompletions = [
       {
@@ -236,7 +228,6 @@ describe('GET /api/routines/completions', () => {
 
   it('should filter completions by date range', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const startDate = '2026-01-01';
     const endDate = '2026-01-07';
@@ -267,7 +258,6 @@ describe('GET /api/routines/completions', () => {
 
   it('should support pagination with limit and offset', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routineCompletion.findMany.mockResolvedValue([]);
     prismaMock.routineCompletion.count.mockResolvedValue(50);
@@ -296,7 +286,6 @@ describe('GET /api/routines/completions', () => {
 
   it('should default to limit 50 if not specified', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routineCompletion.findMany.mockResolvedValue([]);
     prismaMock.routineCompletion.count.mockResolvedValue(100);
@@ -316,7 +305,6 @@ describe('GET /api/routines/completions', () => {
 
   it('should order completions by most recent first', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routineCompletion.findMany.mockResolvedValue([]);
     prismaMock.routineCompletion.count.mockResolvedValue(0);
@@ -338,7 +326,6 @@ describe('GET /api/routines/completions', () => {
 
   it('should include routine and member details', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routineCompletion.findMany.mockResolvedValue([]);
 

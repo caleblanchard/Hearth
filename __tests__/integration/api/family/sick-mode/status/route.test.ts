@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/family/sick-mode/status/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/family/sick-mode/status', () => {
   beforeEach(() => {
@@ -57,8 +54,6 @@ describe('/api/family/sick-mode/status', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/status', {
         method: 'GET',
       });
@@ -68,7 +63,6 @@ describe('/api/family/sick-mode/status', () => {
     });
 
     it('should return all active sick mode instances for family', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeInstance.findMany.mockResolvedValue(mockSickModeInstances as any);
 
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/status', {
@@ -101,7 +95,6 @@ describe('/api/family/sick-mode/status', () => {
     });
 
     it('should allow children to view sick mode status', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
       prismaMock.sickModeInstance.findMany.mockResolvedValue(mockSickModeInstances as any);
 
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/status', {
@@ -115,7 +108,6 @@ describe('/api/family/sick-mode/status', () => {
     });
 
     it('should filter by memberId if provided', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -149,7 +141,6 @@ describe('/api/family/sick-mode/status', () => {
     });
 
     it('should return 404 if filtered member not found', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest(
@@ -166,7 +157,6 @@ describe('/api/family/sick-mode/status', () => {
     });
 
     it('should return empty array if no active instances', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeInstance.findMany.mockResolvedValue([]);
 
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/status', {
@@ -180,7 +170,6 @@ describe('/api/family/sick-mode/status', () => {
     });
 
     it('should include all instances if includeEnded=true', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       const allInstances = [
         ...mockSickModeInstances,
         {

@@ -5,15 +5,17 @@ import { useRouter } from 'next/navigation';
 
 interface MaintenanceItem {
   id: string;
-  name: string;
+  title: string;
   description: string | null;
   category: string;
   frequency: string;
-  season: string | null;
+  seasonalMonths: string[] | null;
   lastCompletedAt: string | null;
   nextDueAt: string | null;
   estimatedCost: number | null;
-  notes: string | null;
+  familyId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface MaintenanceResponse {
@@ -48,7 +50,7 @@ export default function MaintenanceList() {
       }
 
       const data: MaintenanceResponse = await response.json();
-      setItems(data.items);
+      setItems(data.items || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load maintenance items');
     } finally {
@@ -195,7 +197,7 @@ export default function MaintenanceList() {
                 <div className="text-3xl">{getCategoryEmoji(item.category)}</div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
-                    {item.name}
+                    {item.title}
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {getCategoryLabel(item.category)}
@@ -245,9 +247,9 @@ export default function MaintenanceList() {
               </p>
 
               {/* Estimated Cost */}
-              {item.estimatedCost !== null && (
+              {item.estimatedCost !== null && item.estimatedCost !== undefined && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Est. cost: ${item.estimatedCost.toFixed(2)}
+                  Est. cost: ${Number(item.estimatedCost).toFixed(2)}
                 </p>
               )}
 

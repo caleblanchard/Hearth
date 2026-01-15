@@ -139,7 +139,11 @@ export async function updateModuleConfiguration(
       module_id: moduleId,
       is_enabled: updates.is_enabled ?? true,
       enabled_at: updates.is_enabled ? new Date().toISOString() : null,
+      disabled_at: updates.is_enabled === false ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'family_id,module_id',
+      ignoreDuplicates: false,
     })
     .select()
     .single()

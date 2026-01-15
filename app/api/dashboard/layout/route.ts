@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
@@ -40,7 +40,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }

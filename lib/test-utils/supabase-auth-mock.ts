@@ -23,12 +23,13 @@ export interface MockSupabaseUser extends Partial<User> {
   }
 }
 
-export interface MockSupabaseSession extends Partial<Session> {
+export interface MockSupabaseSession {
   user: MockSupabaseUser
   access_token: string
   refresh_token: string
   expires_at?: number
   expires_in: number
+  token_type: string
 }
 
 /**
@@ -52,7 +53,7 @@ export function mockSupabaseParentUser(overrides?: Partial<MockSupabaseUser>): M
     },
     user_metadata: {
       name: 'Test Parent',
-      avatar_url: null,
+      avatar_url: undefined,
     },
     identities: [],
     created_at: new Date().toISOString(),
@@ -108,7 +109,7 @@ export function mockSupabaseChildUser(overrides?: Partial<MockSupabaseUser>): Mo
     },
     user_metadata: {
       name: 'Test Child',
-      avatar_url: null,
+      avatar_url: undefined,
     },
     identities: [],
     created_at: new Date().toISOString(),

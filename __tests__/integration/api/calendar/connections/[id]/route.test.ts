@@ -31,8 +31,6 @@ NextResponse.json = function (body: any, init?: any) {
 // Import routes after mocking
 import { GET, PATCH, DELETE } from '@/app/api/calendar/connections/[id]/route';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/calendar/connections/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -41,10 +39,9 @@ describe('/api/calendar/connections/[id]', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/connection-1');
-      const response = await GET(request, { params: { id: 'connection-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'connection-1' }) });
 
       expect(response.status).toBe(401);
       const json = await response.json();
@@ -53,7 +50,6 @@ describe('/api/calendar/connections/[id]', () => {
 
     it('should return connection details', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -72,7 +68,7 @@ describe('/api/calendar/connections/[id]', () => {
       } as any);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/connection-1');
-      const response = await GET(request, { params: { id: 'connection-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'connection-1' }) });
 
       expect(response.status).toBe(200);
       const json = await response.json();
@@ -85,7 +81,6 @@ describe('/api/calendar/connections/[id]', () => {
 
     it('should return 404 if connection not found', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -95,7 +90,7 @@ describe('/api/calendar/connections/[id]', () => {
       prismaMock.calendarConnection.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/nonexistent');
-      const response = await GET(request, { params: { id: 'nonexistent' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'nonexistent' }) });
 
       expect(response.status).toBe(404);
       const json = await response.json();
@@ -104,7 +99,6 @@ describe('/api/calendar/connections/[id]', () => {
 
     it('should return 403 if connection belongs to different user', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -118,7 +112,7 @@ describe('/api/calendar/connections/[id]', () => {
       } as any);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/connection-other');
-      const response = await GET(request, { params: { id: 'connection-other' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'connection-other' }) });
 
       expect(response.status).toBe(403);
       const json = await response.json();
@@ -128,20 +122,18 @@ describe('/api/calendar/connections/[id]', () => {
 
   describe('PATCH', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/connection-1', {
         method: 'PATCH',
         body: JSON.stringify({ syncEnabled: false }),
       });
-      const response = await PATCH(request, { params: { id: 'connection-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'connection-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should update sync settings', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -172,7 +164,7 @@ describe('/api/calendar/connections/[id]', () => {
           exportToGoogle: false,
         }),
       });
-      const response = await PATCH(request, { params: { id: 'connection-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'connection-1' }) });
 
       expect(response.status).toBe(200);
       expect(prismaMock.calendarConnection.update).toHaveBeenCalledWith({
@@ -188,7 +180,6 @@ describe('/api/calendar/connections/[id]', () => {
 
     it('should only update provided fields', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -210,7 +201,7 @@ describe('/api/calendar/connections/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ syncEnabled: false }),
       });
-      const response = await PATCH(request, { params: { id: 'connection-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'connection-1' }) });
 
       expect(response.status).toBe(200);
       expect(prismaMock.calendarConnection.update).toHaveBeenCalledWith({
@@ -222,7 +213,6 @@ describe('/api/calendar/connections/[id]', () => {
 
     it('should return 400 for invalid fields', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -239,7 +229,7 @@ describe('/api/calendar/connections/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ invalidField: true }),
       });
-      const response = await PATCH(request, { params: { id: 'connection-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'connection-1' }) });
 
       expect(response.status).toBe(400);
       const json = await response.json();
@@ -248,7 +238,6 @@ describe('/api/calendar/connections/[id]', () => {
 
     it('should return 403 if connection belongs to different user', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -265,14 +254,13 @@ describe('/api/calendar/connections/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ syncEnabled: false }),
       });
-      const response = await PATCH(request, { params: { id: 'connection-other' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'connection-other' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should clear sync error when re-enabling sync', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -296,7 +284,7 @@ describe('/api/calendar/connections/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ syncEnabled: true }),
       });
-      const response = await PATCH(request, { params: { id: 'connection-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'connection-1' }) });
 
       expect(response.status).toBe(200);
       expect(prismaMock.calendarConnection.update).toHaveBeenCalledWith(
@@ -311,19 +299,17 @@ describe('/api/calendar/connections/[id]', () => {
 
   describe('DELETE', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/connection-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'connection-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'connection-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should delete calendar connection', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -343,7 +329,7 @@ describe('/api/calendar/connections/[id]', () => {
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/connection-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'connection-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'connection-1' }) });
 
       expect(response.status).toBe(200);
       expect(prismaMock.calendarConnection.delete).toHaveBeenCalledWith({
@@ -356,7 +342,6 @@ describe('/api/calendar/connections/[id]', () => {
 
     it('should return 404 if connection not found', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -368,14 +353,13 @@ describe('/api/calendar/connections/[id]', () => {
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/nonexistent', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'nonexistent' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'nonexistent' }) });
 
       expect(response.status).toBe(404);
     });
 
     it('should return 403 if connection belongs to different user', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -391,14 +375,13 @@ describe('/api/calendar/connections/[id]', () => {
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/connection-other', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'connection-other' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'connection-other' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should allow child users to delete their own connections', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.familyMember.findFirst.mockResolvedValue({
         id: session.user.id,
@@ -418,7 +401,7 @@ describe('/api/calendar/connections/[id]', () => {
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/connection-child', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'connection-child' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'connection-child' }) });
 
       expect(response.status).toBe(200);
     });

@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -28,7 +28,28 @@ export async function GET(request: Request) {
     // Use data module
     const events = await getCalendarEvents(familyId, startDate, endDate);
 
-    return NextResponse.json({ events });
+    // Map to camelCase for frontend
+    const mappedEvents = events.map(event => ({
+      id: event.id,
+      familyId: event.family_id,
+      title: event.title,
+      description: event.description,
+      startTime: event.start_time,
+      endTime: event.end_time,
+      isAllDay: event.is_all_day,
+      location: event.location,
+      eventType: event.event_type,
+      color: event.color,
+      externalId: event.external_id,
+      externalSubscriptionId: event.external_subscription_id,
+      createdById: event.created_by_id,
+      createdAt: event.created_at,
+      updatedAt: event.updated_at,
+      createdBy: event.creator || { id: event.created_by_id || '', name: 'System' },
+      assignments: event.assignments || [],
+    }));
+
+    return NextResponse.json({ events: mappedEvents });
   } catch (error) {
     logger.error('Error fetching events:', error);
     return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
@@ -44,8 +65,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
     
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -87,7 +108,7 @@ export async function POST(request: Request) {
     });
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
+    await (supabase as any).from('audit_logs').insert({
       family_id: familyId,
       member_id: memberId,
       action: 'CALENDAR_EVENT_CREATED',

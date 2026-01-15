@@ -12,8 +12,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -21,7 +21,29 @@ export async function GET() {
 
     const goals = await getSavingsGoals(familyId, memberId);
 
-    return NextResponse.json({ goals });
+    // Map to camelCase for frontend
+    const mappedGoals = goals.map((goal: any) => ({
+      id: goal.id,
+      memberId: goal.member_id,
+      name: goal.name,
+      description: goal.description,
+      targetAmount: goal.target_amount,
+      currentAmount: goal.current_amount,
+      iconName: goal.icon_name,
+      color: goal.color,
+      deadline: goal.deadline,
+      isCompleted: goal.is_completed,
+      completedAt: goal.completed_at,
+      createdAt: goal.created_at,
+      updatedAt: goal.updated_at,
+      member: goal.member ? {
+        id: goal.member.id,
+        name: goal.member.name,
+        role: goal.member.role,
+      } : null,
+    }));
+
+    return NextResponse.json({ goals: mappedGoals });
   } catch (error) {
     logger.error('Get savings goals error:', error);
     return NextResponse.json({ error: 'Failed to get savings goals' }, { status: 500 });
@@ -36,8 +58,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -45,14 +67,22 @@ export async function POST(request: NextRequest) {
 
     // Only parents can create goals for other members
     const body = await request.json();
-    if (body.memberId && body.memberId !== memberId) {
-      const isParent = await isParentInFamily(memberId, familyId);
+    const targetMemberId = body.memberId || memberId;
+    
+    if (targetMemberId !== memberId) {
+      const isParent = await isParentInFamily(familyId);
       if (!isParent) {
         return NextResponse.json({ error: 'Parent access required' }, { status: 403 });
       }
     }
 
-    const goal = await createSavingsGoal(familyId, body);
+    // Ensure memberId is set in the data
+    const goalData = {
+      ...body,
+      memberId: targetMemberId,
+    };
+
+    const goal = await createSavingsGoal(familyId, goalData);
 
     return NextResponse.json({
       success: true,

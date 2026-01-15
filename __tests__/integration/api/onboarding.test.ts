@@ -107,12 +107,12 @@ describe('POST /api/onboarding/setup', () => {
     prismaMock.choreDefinition.create.mockResolvedValue({} as any);
     prismaMock.todoItem.create.mockResolvedValue({} as any);
     prismaMock.shoppingList.create.mockResolvedValue({ id: 'list-1' } as any);
-    prismaMock.shoppingListItem.create.mockResolvedValue({} as any);
+    prismaMock.shoppingList.create.mockResolvedValue({} as any);
     prismaMock.calendarEvent.create.mockResolvedValue({} as any);
     prismaMock.recipe.create.mockResolvedValue({ id: 'recipe-1' } as any);
     prismaMock.recipe.findMany.mockResolvedValue([]);
     prismaMock.mealPlan.create.mockResolvedValue({ id: 'plan-1' } as any);
-    prismaMock.mealPlanItem.create.mockResolvedValue({} as any);
+    prismaMock.mealPlan.create.mockResolvedValue({} as any);
     prismaMock.routine.create.mockResolvedValue({ id: 'routine-1' } as any);
     prismaMock.routineStep.create.mockResolvedValue({} as any);
     prismaMock.communicationPost.create.mockResolvedValue({} as any);

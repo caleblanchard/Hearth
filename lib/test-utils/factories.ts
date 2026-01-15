@@ -5,13 +5,13 @@ export interface TestAllowanceSchedule {
   memberId: string
   amount: number
   frequency: Frequency
-  dayOfWeek?: number | null
-  dayOfMonth?: number | null
+  dayOfWeek: number | null
+  dayOfMonth: number | null
   isActive: boolean
   isPaused: boolean
   startDate: Date
-  endDate?: Date | null
-  lastProcessedAt?: Date | null
+  endDate: Date | null
+  lastProcessedAt: Date | null
   createdAt: Date
   updatedAt: Date
 }

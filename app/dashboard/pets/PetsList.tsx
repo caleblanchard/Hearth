@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 
 interface Pet {
   id: string;
@@ -23,6 +24,7 @@ interface PetsResponse {
 export default function PetsList() {
   const router = useRouter();
   const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,7 +214,7 @@ export default function PetsList() {
             </p>
           )}
         </div>
-        {user?.user_metadata?.role === 'PARENT' && (
+        {isParent && (
           <button
             onClick={() => setShowAddDialog(true)}
             className="px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg transition-colors"

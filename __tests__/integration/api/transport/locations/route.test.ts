@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/transport/locations/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/transport/locations', () => {
   beforeEach(() => {
@@ -45,8 +42,6 @@ describe('/api/transport/locations', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/locations', {
         method: 'GET',
       });
@@ -56,7 +51,6 @@ describe('/api/transport/locations', () => {
     });
 
     it('should return all locations for family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportLocation.findMany.mockResolvedValue([mockLocation] as any);
 
       const request = new NextRequest('http://localhost:3000/api/transport/locations', {
@@ -73,8 +67,6 @@ describe('/api/transport/locations', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/locations', {
         method: 'POST',
         body: JSON.stringify({ name: 'School', address: '123 Main St' }),
@@ -85,8 +77,6 @@ describe('/api/transport/locations', () => {
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/locations', {
         method: 'POST',
         body: JSON.stringify({ name: 'School' }),
@@ -97,8 +87,6 @@ describe('/api/transport/locations', () => {
     });
 
     it('should return 400 if name is missing', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/locations', {
         method: 'POST',
         body: JSON.stringify({ address: '123 Main St' }),
@@ -109,7 +97,6 @@ describe('/api/transport/locations', () => {
     });
 
     it('should create location successfully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportLocation.create.mockResolvedValue(mockLocation as any);
       prismaMock.auditLog.create.mockResolvedValue({} as any);
 

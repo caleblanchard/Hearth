@@ -9,13 +9,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const authContext = await getAuthContext();
 
     if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
@@ -38,13 +39,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const authContext = await getAuthContext();
 
     if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
@@ -73,13 +75,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const authContext = await getAuthContext();
 
     if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }

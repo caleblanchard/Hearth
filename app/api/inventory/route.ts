@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -43,7 +43,25 @@ export async function GET(request: NextRequest) {
     // All family members can view inventory
     const items = await getInventoryItems(familyId);
 
-    return NextResponse.json({ items });
+    // Map to camelCase for frontend
+    const mappedItems = items.map(item => ({
+      id: item.id,
+      familyId: item.family_id,
+      name: item.name,
+      category: item.category,
+      location: item.location,
+      currentQuantity: item.current_quantity,
+      unit: item.unit,
+      lowStockThreshold: item.low_stock_threshold,
+      expiresAt: item.expires_at,
+      barcode: item.barcode,
+      notes: item.notes,
+      lastRestockedAt: item.last_restocked_at,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+
+    return NextResponse.json({ items: mappedItems });
   } catch (error) {
     logger.error('Error fetching inventory items:', error);
     return NextResponse.json(
@@ -62,15 +80,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can add inventory items
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can add inventory items' },
@@ -119,14 +137,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const item = await createInventoryItem(familyId, {
+    const item = await createInventoryItem({
+      family_id: familyId,
       name,
       category,
       location,
-      currentQuantity: currentQuantity || 0,
+      current_quantity: currentQuantity || 0,
       unit,
-      lowStockThreshold: lowStockThreshold || null,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      low_stock_threshold: lowStockThreshold || null,
+      expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
       barcode: barcode || null,
       notes: notes || null,
     });

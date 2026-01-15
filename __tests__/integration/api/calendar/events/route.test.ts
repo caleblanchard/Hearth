@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { GET, POST } from '@/app/api/calendar/events/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 
-const { auth } = require('@/lib/auth')
-
 describe('/api/calendar/events', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -31,7 +24,6 @@ describe('/api/calendar/events', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/calendar/events')
       const response = await GET(request)
@@ -43,7 +35,6 @@ describe('/api/calendar/events', () => {
 
     it('should return events for authenticated user', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const mockEvents = [
         {
@@ -77,7 +68,6 @@ describe('/api/calendar/events', () => {
 
     it('should filter by date range if provided', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.calendarEvent.findMany.mockResolvedValue([])
 
@@ -129,7 +119,6 @@ describe('/api/calendar/events', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/calendar/events', {
         method: 'POST',
@@ -145,7 +134,6 @@ describe('/api/calendar/events', () => {
 
     it('should return 404 if family not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.family.findUnique.mockResolvedValue(null)
 
@@ -163,7 +151,6 @@ describe('/api/calendar/events', () => {
 
     it('should return 400 if title is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.family.findUnique.mockResolvedValue({ id: session.user.familyId } as any)
 
@@ -184,7 +171,6 @@ describe('/api/calendar/events', () => {
 
     it('should return 400 if startTime is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.family.findUnique.mockResolvedValue({ id: session.user.familyId } as any)
 
@@ -205,7 +191,6 @@ describe('/api/calendar/events', () => {
 
     it('should create event successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.family.findUnique.mockResolvedValue({ id: session.user.familyId } as any)
 
@@ -245,7 +230,6 @@ describe('/api/calendar/events', () => {
 
     it('should use startTime as endTime if endTime not provided', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.family.findUnique.mockResolvedValue({ id: session.user.familyId } as any)
 
@@ -293,7 +277,6 @@ describe('/api/calendar/events', () => {
 
     it('should create assignments if provided', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.family.findUnique.mockResolvedValue({ id: session.user.familyId } as any)
 

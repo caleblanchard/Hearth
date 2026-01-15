@@ -63,3 +63,6 @@ next-env.d.ts
 
 # Uploads
 /uploads
+
+# Claude IDE settings
+.claude/

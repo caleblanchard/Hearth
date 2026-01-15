@@ -15,7 +15,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
@@ -35,11 +35,11 @@ export async function POST(
     const { notes } = body;
 
     // Use RPC function for atomic redemption
-    const result = await redeemReward(rewardId, memberId);
+    const result = await redeemReward(rewardId, memberId) as any;
 
-    if (!result.success) {
+    if (!result || !result.success) {
       return NextResponse.json(
-        { error: result.error },
+        { error: result?.error || 'Failed to redeem reward' },
         { status: 400 }
       );
     }

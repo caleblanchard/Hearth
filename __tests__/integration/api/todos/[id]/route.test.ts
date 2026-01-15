@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { PATCH, DELETE } from '@/app/api/todos/[id]/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { TodoStatus } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/todos/[id]', () => {
   beforeEach(() => {
@@ -53,14 +46,13 @@ describe('/api/todos/[id]', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/todos/123', {
         method: 'PATCH',
         body: JSON.stringify({ title: 'Updated Todo' }),
       })
 
-      const response = await PATCH(request, { params: { id: todoId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -69,7 +61,6 @@ describe('/api/todos/[id]', () => {
 
     it('should return 404 if todo not found', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.findUnique.mockResolvedValue(null)
 
@@ -78,7 +69,7 @@ describe('/api/todos/[id]', () => {
         body: JSON.stringify({ title: 'Updated Todo' }),
       })
 
-      const response = await PATCH(request, { params: { id: todoId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -87,7 +78,6 @@ describe('/api/todos/[id]', () => {
 
     it('should return 403 if todo belongs to different family', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.findUnique.mockResolvedValue({
         ...mockTodo,
@@ -99,7 +89,7 @@ describe('/api/todos/[id]', () => {
         body: JSON.stringify({ title: 'Updated Todo' }),
       })
 
-      const response = await PATCH(request, { params: { id: todoId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -107,8 +97,7 @@ describe('/api/todos/[id]', () => {
     })
 
     it('should update todo successfully', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.todoItem.findUnique.mockResolvedValue({
         ...mockTodo,
@@ -124,7 +113,7 @@ describe('/api/todos/[id]', () => {
         }),
       })
 
-      const response = await PATCH(request, { params: { id: todoId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -157,8 +146,7 @@ describe('/api/todos/[id]', () => {
     })
 
     it('should set completedAt when status is COMPLETED', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.todoItem.findUnique.mockResolvedValue({
         ...mockTodo,
@@ -175,7 +163,7 @@ describe('/api/todos/[id]', () => {
         body: JSON.stringify({ status: TodoStatus.COMPLETED }),
       })
 
-      const response = await PATCH(request, { params: { id: todoId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -183,8 +171,7 @@ describe('/api/todos/[id]', () => {
     })
 
     it('should return 500 on error', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockTodoWithFamily = {
         ...mockTodo,
@@ -198,7 +185,7 @@ describe('/api/todos/[id]', () => {
         body: JSON.stringify({ title: 'Updated Todo' }),
       })
 
-      const response = await PATCH(request, { params: { id: todoId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)
@@ -215,13 +202,12 @@ describe('/api/todos/[id]', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/todos/123', {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: todoId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -230,7 +216,6 @@ describe('/api/todos/[id]', () => {
 
     it('should return 404 if todo not found', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.findUnique.mockResolvedValue(null)
 
@@ -238,7 +223,7 @@ describe('/api/todos/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: todoId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -247,7 +232,6 @@ describe('/api/todos/[id]', () => {
 
     it('should return 403 if todo belongs to different family', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.findUnique.mockResolvedValue({
         ...mockTodo,
@@ -258,7 +242,7 @@ describe('/api/todos/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: todoId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -266,8 +250,7 @@ describe('/api/todos/[id]', () => {
     })
 
     it('should delete todo successfully', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.todoItem.findUnique.mockResolvedValue({
         ...mockTodo,
@@ -279,7 +262,7 @@ describe('/api/todos/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: todoId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -292,8 +275,7 @@ describe('/api/todos/[id]', () => {
     })
 
     it('should return 500 on error', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.todoItem.findUnique.mockResolvedValue({
         ...mockTodo,
@@ -305,7 +287,7 @@ describe('/api/todos/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: todoId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: todoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)

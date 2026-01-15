@@ -60,7 +60,7 @@ describe('/api/documents/shared/[token]', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/shared/invalid-token', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { token: 'invalid-token' } });
+      const response = await GET(request, { params: Promise.resolve({ token: 'invalid-token' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -78,7 +78,7 @@ describe('/api/documents/shared/[token]', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/shared/expired-token', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { token: 'expired-token' } });
+      const response = await GET(request, { params: Promise.resolve({ token: 'expired-token' }) });
 
       expect(response.status).toBe(410);
       const data = await response.json();
@@ -97,7 +97,7 @@ describe('/api/documents/shared/[token]', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/shared/revoked-token', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { token: 'revoked-token' } });
+      const response = await GET(request, { params: Promise.resolve({ token: 'revoked-token' }) });
 
       expect(response.status).toBe(410);
       const data = await response.json();
@@ -113,7 +113,7 @@ describe('/api/documents/shared/[token]', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/shared/valid-token-123', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { token: 'valid-token-123' } });
+      const response = await GET(request, { params: Promise.resolve({ token: 'valid-token-123' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -169,7 +169,7 @@ describe('/api/documents/shared/[token]', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/shared/valid-token-123', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { token: 'valid-token-123' } });
+      const response = await GET(request, { params: Promise.resolve({ token: 'valid-token-123' }) });
 
       const data = await response.json();
 
@@ -195,7 +195,7 @@ describe('/api/documents/shared/[token]', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/shared/valid-token-123', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { token: 'valid-token-123' } });
+      const response = await GET(request, { params: Promise.resolve({ token: 'valid-token-123' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();

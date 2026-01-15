@@ -7,7 +7,6 @@
 
 import { isRateLimited, clearRateLimitCache } from '@/lib/rules-engine/index';
 import { detectInfiniteLoopRisk } from '@/lib/rules-engine/validation';
-import type { AutomationRule } from '@prisma/client';
 
 describe('Rules Engine Safety Features', () => {
   // Clear rate limit cache before each test
@@ -132,12 +131,12 @@ describe('Rules Engine Safety Features', () => {
   describe('Infinite Loop Detection', () => {
     it('should detect chore_completed + reduce_chores loop risk', () => {
       const trigger = {
-        type: 'chore_completed',
+        type: 'chore_completed' as const,
         config: {},
       };
       const actions = [
         {
-          type: 'reduce_chores',
+          type: 'reduce_chores' as const,
           config: { percentage: 10 },
         },
       ];
@@ -149,12 +148,12 @@ describe('Rules Engine Safety Features', () => {
 
     it('should detect screentime_low + adjust_screentime loop risk', () => {
       const trigger = {
-        type: 'screentime_low',
+        type: 'screentime_low' as const,
         config: { thresholdMinutes: 30 },
       };
       const actions = [
         {
-          type: 'adjust_screentime',
+          type: 'adjust_screentime' as const,
           config: { amountMinutes: 15 },
         },
       ];
@@ -166,12 +165,12 @@ describe('Rules Engine Safety Features', () => {
 
     it('should allow safe chore_completed + award_credits combination', () => {
       const trigger = {
-        type: 'chore_completed',
+        type: 'chore_completed' as const,
         config: {},
       };
       const actions = [
         {
-          type: 'award_credits',
+          type: 'award_credits' as const,
           config: { amount: 10 },
         },
       ];
@@ -183,12 +182,12 @@ describe('Rules Engine Safety Features', () => {
 
     it('should allow safe screentime_low + send_notification combination', () => {
       const trigger = {
-        type: 'screentime_low',
+        type: 'screentime_low' as const,
         config: { thresholdMinutes: 30 },
       };
       const actions = [
         {
-          type: 'send_notification',
+          type: 'send_notification' as const,
           config: { recipients: ['member-1'], title: 'Low Screen Time', message: 'Running low' },
         },
       ];
@@ -200,13 +199,13 @@ describe('Rules Engine Safety Features', () => {
 
     it('should allow multiple safe actions', () => {
       const trigger = {
-        type: 'chore_streak',
+        type: 'chore_streak' as const,
         config: { days: 7 },
       };
       const actions = [
-        { type: 'award_credits', config: { amount: 10 } },
-        { type: 'send_notification', config: { recipients: ['member'], title: 'Streak!', message: 'Great job!' } },
-        { type: 'create_todo', config: { title: 'Keep it up!' } },
+        { type: 'award_credits' as const, config: { amount: 10 } },
+        { type: 'send_notification' as const, config: { recipients: ['member'], title: 'Streak!', message: 'Great job!' } },
+        { type: 'create_todo' as const, config: { title: 'Keep it up!' } },
       ];
 
       const result = detectInfiniteLoopRisk(trigger, actions);
@@ -216,12 +215,12 @@ describe('Rules Engine Safety Features', () => {
 
     it('should detect loop risk even with multiple actions', () => {
       const trigger = {
-        type: 'chore_completed',
+        type: 'chore_completed' as const,
         config: {},
       };
       const actions = [
-        { type: 'award_credits', config: { amount: 10 } },
-        { type: 'reduce_chores', config: { percentage: 10 } }, // This is the risky one
+        { type: 'award_credits' as const, config: { amount: 10 } },
+        { type: 'reduce_chores' as const, config: { percentage: 10 } }, // This is the risky one
       ];
 
       const result = detectInfiniteLoopRisk(trigger, actions);
@@ -231,12 +230,12 @@ describe('Rules Engine Safety Features', () => {
 
     it('should allow time_based triggers with any actions', () => {
       const trigger = {
-        type: 'time_based',
+        type: 'time_based' as const,
         config: { cron: '0 9 * * *' },
       };
       const actions = [
-        { type: 'adjust_screentime', config: { amountMinutes: 60 } },
-        { type: 'reduce_chores', config: { percentage: 20 } },
+        { type: 'adjust_screentime' as const, config: { amountMinutes: 60 } },
+        { type: 'reduce_chores' as const, config: { percentage: 20 } },
       ];
 
       // Time-based triggers can't cause infinite loops since they're scheduled
@@ -247,7 +246,7 @@ describe('Rules Engine Safety Features', () => {
 
     it('should handle rules with no actions gracefully', () => {
       const trigger = {
-        type: 'chore_completed',
+        type: 'chore_completed' as const,
         config: {},
       };
       const actions: any[] = [];

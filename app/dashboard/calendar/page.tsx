@@ -48,7 +48,7 @@ interface FamilyMember {
 type CalendarView = 'month' | 'week' | 'day';
 
 export default function CalendarPage() {
-  const { user } = useSupabaseSession();
+  const { user, loading: sessionLoading } = useSupabaseSession();
   const searchParams = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
@@ -61,6 +61,44 @@ export default function CalendarPage() {
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
   const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('MONDAY');
+  const [familyTimezone, setFamilyTimezone] = useState<string>('America/New_York');
+
+  // Helper: Get current date in family timezone
+  const getNowInTimezone = (): Date => {
+    const now = new Date();
+    const timeString = now.toLocaleString('en-US', { timeZone: familyTimezone });
+    return new Date(timeString);
+  };
+
+  // Helper: Calculate week start based on family preference
+  const getWeekStartDate = (date: Date): Date => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const day = d.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    if (weekStartDay === 'SUNDAY') {
+      const diff = day; // Days since Sunday
+      d.setDate(d.getDate() - diff);
+    } else {
+      const diff = day === 0 ? 6 : day - 1; // Days since Monday
+      d.setDate(d.getDate() - diff);
+    }
+    
+    return d;
+  };
+
+  // Helper: Get ordered week day names based on family preference
+  const getWeekDayNames = (short: boolean = true): string[] => {
+    const shortNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const longNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const names = short ? shortNames : longNames;
+    
+    if (weekStartDay === 'MONDAY') {
+      // Rotate array: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      return [...names.slice(1), names[0]];
+    }
+    return names; // [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
+  };
 
   const [eventForm, setEventForm] = useState({
     title: '',
@@ -95,6 +133,7 @@ export default function CalendarPage() {
 
   const fetchEvents = async (date: Date, viewType: CalendarView = view) => {
     try {
+      setLoading(true);
       let startDate: Date;
       let endDate: Date;
 
@@ -105,11 +144,8 @@ export default function CalendarPage() {
         endDate = new Date(date);
         endDate.setHours(23, 59, 59, 999);
       } else if (viewType === 'week') {
-        // Week view - get the week containing the date
-        const dayOfWeek = date.getDay();
-        startDate = new Date(date);
-        startDate.setDate(date.getDate() - dayOfWeek);
-        startDate.setHours(0, 0, 0, 0);
+        // Week view - get the week containing the date respecting family week start
+        startDate = getWeekStartDate(date);
         endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + 6);
         endDate.setHours(23, 59, 59, 999);
@@ -139,9 +175,11 @@ export default function CalendarPage() {
       const mealEvents = await fetchMealEvents(startDate, endDate);
 
       // Combine events
-      setEvents([...calendarEvents, ...mealEvents]);
+      const combinedEvents = [...calendarEvents, ...mealEvents];
+      setEvents(combinedEvents);
     } catch (error) {
       console.error('Failed to fetch events:', error);
+      setEvents([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -171,16 +209,27 @@ export default function CalendarPage() {
       const weekStart = getWeekStart(startDate);
       const weekStr = weekStart.toISOString().split('T')[0];
 
+      console.log('[Calendar] Current date:', new Date());
+      console.log('[Calendar] Start date:', startDate);
+      console.log('[Calendar] Week start for query:', weekStart);
+      console.log('[Calendar] Week string:', weekStr);
+
       const response = await fetch(`/api/meals/plan?week=${weekStr}`);
       if (!response.ok) return [];
 
       const data = await response.json();
-      if (!data.mealPlan || !data.mealPlan.meals) return [];
+      console.log('[Calendar] Meal plan data:', data);
+      
+      if (!data.mealPlan || !data.mealPlan.meals) {
+        console.log('[Calendar] No meal plan or meals found');
+        return [];
+      }
 
       // Filter meals within date range and convert to calendar events
       const mealEvents: CalendarEvent[] = [];
       
       for (const meal of data.mealPlan.meals) {
+        console.log('[Calendar] Processing meal:', meal);
         const mealDate = new Date(meal.date);
         
         // Compare dates by day (ignore time) to avoid timezone issues
@@ -264,14 +313,17 @@ export default function CalendarPage() {
 
   const fetchFamilyMembers = async () => {
     try {
-      const response = await fetch('/api/family');
+      // Use /api/family-data instead of /api/family due to Next.js routing bug
+      const response = await fetch('/api/family-data');
       if (response.ok) {
         const data = await response.json();
         setFamilyMembers(data.family.members.filter((m: any) => m.isActive));
         
-        // Also get week start setting
+        // Get week start setting and timezone
         const weekStartSetting = data.family?.settings?.weekStartDay || 'MONDAY';
+        const timezone = data.family?.timezone || 'America/New_York';
         setWeekStartDay(weekStartSetting);
+        setFamilyTimezone(timezone);
       }
     } catch (error) {
       console.error('Failed to fetch family members:', error);
@@ -279,11 +331,15 @@ export default function CalendarPage() {
   };
 
   useEffect(() => {
-    if (user?.familyId) {
+    if (user) {
       fetchEvents(currentDate, view);
       fetchFamilyMembers();
+    } else if (!sessionLoading) {
+      // User is not authenticated and loading is complete
+      setLoading(false);
     }
-  }, [user, currentDate, view]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, currentDate.toISOString(), view]);
 
   // Update view when URL parameter changes or on initial load
   useEffect(() => {
@@ -364,7 +420,13 @@ export default function CalendarPage() {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startDayOfWeek = firstDay.getDay();
+    let startDayOfWeek = firstDay.getDay();
+
+    // Adjust padding based on week start preference
+    if (weekStartDay === 'MONDAY') {
+      // Monday = 0, Sunday = 6
+      startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+    }
 
     const days = [];
 
@@ -384,16 +446,19 @@ export default function CalendarPage() {
   const getEventsForDay = (date: Date | null) => {
     if (!date) return [];
     
-    // Create date range for the day (start and end of day in local time)
+    // Create date range for the day in local time
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(date);
     dayEnd.setHours(23, 59, 59, 999);
     
     return events.filter((event) => {
-      const eventDate = new Date(event.startTime);
-      // Check if event falls within the day range (handles timezone correctly)
-      return eventDate >= dayStart && eventDate <= dayEnd;
+      const eventStart = new Date(event.startTime);
+      const eventEnd = new Date(event.endTime);
+      
+      // Check if event overlaps with this day
+      // Event overlaps if: event starts before day ends AND event ends after day starts
+      return eventStart <= dayEnd && eventEnd >= dayStart;
     });
   };
 
@@ -630,10 +695,7 @@ export default function CalendarPage() {
 
   // Get days for week view
   const getWeekDays = () => {
-    const dayOfWeek = currentDate.getDay();
-    const weekStart = new Date(currentDate);
-    weekStart.setDate(currentDate.getDate() - dayOfWeek);
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStart = getWeekStartDate(currentDate);
     
     const days: Date[] = [];
     for (let i = 0; i < 7; i++) {
@@ -646,8 +708,8 @@ export default function CalendarPage() {
 
   const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
   const days = getDaysInMonth(currentDate);
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const weekDaysFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const weekDays = getWeekDayNames(true);
+  const weekDaysFull = getWeekDayNames(false);
 
   if (loading) {
     return (
@@ -847,17 +909,39 @@ export default function CalendarPage() {
                   date.getMonth() === new Date().getMonth() &&
                   date.getFullYear() === new Date().getFullYear();
                 
+                const dayEvents = getEventsForDay(date);
+                const allDayEvents = dayEvents.filter(e => e.isAllDay);
+                
                 return (
                   <div
                     key={day}
-                    className={`p-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 ${
+                    className={`p-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 overflow-hidden ${
                       isToday ? 'bg-ember-50 dark:bg-ember-900' : ''
                     }`}
+                    style={{ minHeight: '80px', maxHeight: '120px' }}
                   >
-                    <div>{day}</div>
-                    <div className={`text-xs mt-1 ${isToday ? 'font-bold text-ember-700 dark:text-ember-300' : ''}`}>
-                      {date?.getDate()}
+                    <div className="flex-shrink-0">
+                      <div>{day}</div>
+                      <div className={`text-xs mt-1 mb-2 ${isToday ? 'font-bold text-ember-700 dark:text-ember-300' : ''}`}>
+                        {date?.getDate()}
+                      </div>
                     </div>
+                    {/* All-day events - scrollable if needed */}
+                    {allDayEvents.length > 0 && (
+                      <div className="space-y-1 mt-2 overflow-y-auto" style={{ maxHeight: '60px' }}>
+                        {allDayEvents.map((event) => (
+                          <div
+                            key={event.id}
+                            onClick={() => handleEditEvent(event)}
+                            className="text-xs px-2 py-1 rounded truncate text-white font-normal cursor-pointer hover:opacity-80 flex-shrink-0"
+                            style={{ backgroundColor: event.color || '#9CA3AF' }}
+                            title={event.title}
+                          >
+                            {event.title}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -930,7 +1014,7 @@ export default function CalendarPage() {
                       
                       {/* Events */}
                       <div className="absolute inset-0 pointer-events-none">
-                        {dayEvents.map((event) => {
+                        {dayEvents.filter(event => !event.isAllDay).map((event) => {
                           const position = getEventPosition(event);
                           return (
                             <div
@@ -944,15 +1028,13 @@ export default function CalendarPage() {
                                 backgroundColor: event.color || '#9CA3AF',
                                 top: position.top,
                                 height: position.height,
-                                minHeight: event.isAllDay ? 'auto' : '24px',
+                                minHeight: '24px',
                               }}
-                              title={`${event.title}${event.isAllDay ? '' : ` - ${new Date(event.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}`}
+                              title={`${event.title} - ${new Date(event.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}
                             >
                               <div className="flex items-center gap-1">
                                 {event.isMeal ? (
                                   <CakeIcon className="h-3 w-3 flex-shrink-0" />
-                                ) : event.isAllDay ? (
-                                  <CalendarIcon className="h-3 w-3 flex-shrink-0" />
                                 ) : (
                                   <ClockIcon className="h-3 w-3 flex-shrink-0" />
                                 )}
@@ -974,7 +1056,7 @@ export default function CalendarPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden flex flex-col">
             {/* Day header - fixed */}
             <div className="border-b border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                     {weekDaysFull[currentDate.getDay()]}
@@ -1000,6 +1082,35 @@ export default function CalendarPage() {
                   </button>
                 </div>
               </div>
+              
+              {/* All-day events section */}
+              {(() => {
+                const allDayEvents = getEventsForDay(currentDate).filter(e => e.isAllDay);
+                if (allDayEvents.length === 0) return null;
+                
+                return (
+                  <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">ALL-DAY EVENTS</div>
+                    <div className="space-y-2">
+                      {allDayEvents.map((event) => (
+                        <div
+                          key={event.id}
+                          onClick={() => handleEditEvent(event)}
+                          className="px-3 py-2 rounded-lg text-white font-medium cursor-pointer hover:opacity-80 flex items-center gap-2"
+                          style={{ backgroundColor: event.color || '#9CA3AF' }}
+                        >
+                          {event.isMeal ? (
+                            <CakeIcon className="h-4 w-4 flex-shrink-0" />
+                          ) : (
+                            <CalendarIcon className="h-4 w-4 flex-shrink-0" />
+                          )}
+                          <span className="flex-1">{event.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Day grid with time slots - scrollable */}
@@ -1046,9 +1157,8 @@ export default function CalendarPage() {
 
                   {/* Events */}
                   <div className="absolute inset-0 pointer-events-none">
-                    {getEventsForDay(currentDate).map((event) => {
+                    {getEventsForDay(currentDate).filter(event => !event.isAllDay).map((event) => {
                       const getEventPosition = (event: CalendarEvent) => {
-                        if (event.isAllDay) return { top: 0, height: 48 };
                         const start = new Date(event.startTime);
                         const end = new Date(event.endTime);
                         const startHour = start.getHours() + start.getMinutes() / 60;
@@ -1071,25 +1181,21 @@ export default function CalendarPage() {
                             backgroundColor: event.color || '#9CA3AF',
                             top: position.top,
                             height: position.height,
-                            minHeight: event.isAllDay ? 'auto' : '48px',
+                            minHeight: '48px',
                           }}
-                          title={`${event.title}${event.isAllDay ? '' : ` - ${new Date(event.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${new Date(event.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}`}
+                          title={`${event.title} - ${new Date(event.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${new Date(event.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}
                         >
                           <div className="flex items-center gap-2">
                             {event.isMeal ? (
                               <CakeIcon className="h-4 w-4 flex-shrink-0" />
-                            ) : event.isAllDay ? (
-                              <CalendarIcon className="h-4 w-4 flex-shrink-0" />
                             ) : (
                               <ClockIcon className="h-4 w-4 flex-shrink-0" />
                             )}
                             <div className="flex-1 min-w-0">
                               <div className="font-semibold truncate">{event.title}</div>
-                              {!event.isAllDay && (
-                                <div className="text-xs opacity-90">
-                                  {new Date(event.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - {new Date(event.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                                </div>
-                              )}
+                              <div className="text-xs opacity-90">
+                                {new Date(event.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - {new Date(event.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                              </div>
                               {event.location && (
                                 <div className="text-xs opacity-75 truncate mt-1">{event.location}</div>
                               )}

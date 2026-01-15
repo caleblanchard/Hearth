@@ -12,8 +12,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -21,7 +21,33 @@ export async function GET() {
 
     const budgets = await getBudgets(familyId, memberId);
 
-    return NextResponse.json({ budgets });
+    // Map to camelCase for frontend
+    const mappedBudgets = budgets.map((budget: any) => ({
+      id: budget.id,
+      memberId: budget.member_id,
+      category: budget.category,
+      limitAmount: budget.limit_amount,
+      period: budget.period,
+      resetDay: budget.reset_day,
+      isActive: budget.is_active,
+      createdAt: budget.created_at,
+      updatedAt: budget.updated_at,
+      member: budget.member ? {
+        id: budget.member.id,
+        name: budget.member.name,
+        role: budget.member.role,
+      } : null,
+      periods: (budget.periods || []).map((period: any) => ({
+        id: period.id,
+        periodKey: period.period_key,
+        periodStart: period.period_start,
+        periodEnd: period.period_end,
+        spent: period.spent,
+        createdAt: period.created_at,
+      })),
+    }));
+
+    return NextResponse.json({ budgets: mappedBudgets });
   } catch (error) {
     logger.error('Get budgets error:', error);
     return NextResponse.json({ error: 'Failed to get budgets' }, { status: 500 });
@@ -36,8 +62,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -45,14 +71,26 @@ export async function POST(request: NextRequest) {
 
     // Only parents can create budgets for other members
     const body = await request.json();
-    if (body.memberId && body.memberId !== memberId) {
-      const isParent = await isParentInFamily(memberId, familyId);
+    const targetMemberId = body.memberId || memberId;
+    
+    if (targetMemberId !== memberId) {
+      const isParent = await isParentInFamily(familyId);
       if (!isParent) {
         return NextResponse.json({ error: 'Parent access required' }, { status: 403 });
       }
     }
 
-    const budget = await createBudget(familyId, body);
+    // Map request body to match database schema
+    const budgetData = {
+      memberId: targetMemberId,
+      category: body.category,
+      limitAmount: body.amount || body.limitAmount, // Support both field names
+      period: body.period || 'MONTHLY',
+      resetDay: body.resetDay || 0,
+      isActive: body.isActive ?? true,
+    };
+
+    const budget = await createBudget(familyId, budgetData);
 
     return NextResponse.json({
       success: true,

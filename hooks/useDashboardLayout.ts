@@ -17,11 +17,15 @@ export function useDashboardLayout() {
       }
 
       const data: DashboardLayoutResponse = await response.json();
-      setLayout(data.layout.widgets);
-      setAvailableWidgets(data.availableWidgets);
+      setLayout(data.layout?.widgets || []);
+      setAvailableWidgets(data.availableWidgets || []);
       setError(null);
     } catch (err) {
+      console.error('Dashboard layout fetch error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
+      // Set defaults on error
+      setLayout([]);
+      setAvailableWidgets([]);
     } finally {
       setLoading(false);
     }
@@ -41,7 +45,7 @@ export function useDashboardLayout() {
     }
 
     const data = await response.json();
-    setLayout(data.layout.widgets);
+    setLayout(data.layout?.widgets || []);
   };
 
   const resetLayout = async () => {
@@ -54,8 +58,8 @@ export function useDashboardLayout() {
     }
 
     const data = await response.json();
-    setLayout(data.layout.widgets);
-    setAvailableWidgets(data.availableWidgets);
+    setLayout(data.layout?.widgets || []);
+    setAvailableWidgets(data.availableWidgets || []);
   };
 
   useEffect(() => {

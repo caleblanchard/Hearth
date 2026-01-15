@@ -8,6 +8,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -16,7 +17,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -38,7 +39,24 @@ export async function GET(
 
     const medications = await getPetMedications(id);
 
-    return NextResponse.json({ medications });
+    // Map to camelCase for frontend
+    const mappedMedications = medications.map(med => ({
+      id: med.id,
+      petId: med.pet_id,
+      medicationName: med.medication_name,
+      dosage: med.dosage,
+      frequency: med.frequency,
+      minIntervalHours: med.min_interval_hours,
+      lastGivenAt: med.last_given_at,
+      lastGivenBy: med.last_given_by,
+      nextDoseAt: med.next_dose_at,
+      notes: med.notes,
+      isActive: med.is_active,
+      createdAt: med.created_at,
+      updatedAt: med.updated_at,
+    }));
+
+    return NextResponse.json({ medications: mappedMedications });
   } catch (error) {
     logger.error('Get pet medications error:', error);
     return NextResponse.json({ error: 'Failed to get medications' }, { status: 500 });
@@ -49,6 +67,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -57,8 +76,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -78,9 +97,26 @@ export async function POST(
     const body = await request.json();
     const medication = await addPetMedication(id, memberId, body);
 
+    // Map to camelCase for frontend
+    const mappedMedication = {
+      id: medication.id,
+      petId: medication.pet_id,
+      medicationName: medication.medication_name,
+      dosage: medication.dosage,
+      frequency: medication.frequency,
+      minIntervalHours: medication.min_interval_hours,
+      lastGivenAt: medication.last_given_at,
+      lastGivenBy: medication.last_given_by,
+      nextDoseAt: medication.next_dose_at,
+      notes: medication.notes,
+      isActive: medication.is_active,
+      createdAt: medication.created_at,
+      updatedAt: medication.updated_at,
+    };
+
     return NextResponse.json({
       success: true,
-      medication,
+      medication: mappedMedication,
       message: 'Medication recorded successfully',
     });
   } catch (error) {

@@ -23,7 +23,6 @@ import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/rules/[id]/test/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
 const { dryRunRule } = require('@/lib/rules-engine');
 
 describe('POST /api/rules/[id]/test', () => {
@@ -55,13 +54,12 @@ describe('POST /api/rules/[id]/test', () => {
   };
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/test', {
       method: 'POST',
       body: JSON.stringify({ context: {} }),
     });
-    const response = await POST(request, { params: { id: 'rule-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(401);
@@ -69,13 +67,12 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should return 403 if user is not a parent', async () => {
-    auth.mockResolvedValue(mockChildSession() as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/test', {
       method: 'POST',
       body: JSON.stringify({ context: {} }),
     });
-    const response = await POST(request, { params: { id: 'rule-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(403);
@@ -83,13 +80,12 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should return 400 if request body is invalid JSON', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/test', {
       method: 'POST',
       body: 'invalid json',
     });
-    const response = await POST(request, { params: { id: 'rule-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -97,13 +93,12 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should return 400 if context is missing', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/test', {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { id: 'rule-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -111,14 +106,13 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should return 404 if rule not found', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1/test', {
       method: 'POST',
       body: JSON.stringify({ context: {} }),
     });
-    const response = await POST(request, { params: { id: 'rule-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(404);
@@ -126,7 +120,6 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should return 403 if rule belongs to different family', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue({
       ...mockRule,
       familyId: 'other-family',
@@ -136,7 +129,7 @@ describe('POST /api/rules/[id]/test', () => {
       method: 'POST',
       body: JSON.stringify({ context: {} }),
     });
-    const response = await POST(request, { params: { id: 'rule-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(403);
@@ -144,7 +137,6 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should perform dry-run and return results', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
 
     const dryRunResult = {
@@ -173,7 +165,7 @@ describe('POST /api/rules/[id]/test', () => {
       method: 'POST',
       body: JSON.stringify({ context: testContext }),
     });
-    const response = await POST(request, { params: { id: 'rule-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -186,7 +178,6 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should include familyId in simulated context', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
     dryRunRule.mockResolvedValue({
       wouldExecute: false,
@@ -201,7 +192,7 @@ describe('POST /api/rules/[id]/test', () => {
       method: 'POST',
       body: JSON.stringify({ context: { memberId: 'member-1' } }),
     });
-    await POST(request, { params: { id: 'rule-1' } });
+    await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
 
     expect(dryRunRule).toHaveBeenCalledWith('rule-1', {
       memberId: 'member-1',
@@ -210,7 +201,6 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should handle dry-run with no actions executed', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
 
     dryRunRule.mockResolvedValue({
@@ -226,7 +216,7 @@ describe('POST /api/rules/[id]/test', () => {
       method: 'POST',
       body: JSON.stringify({ context: {} }),
     });
-    const response = await POST(request, { params: { id: 'rule-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -235,7 +225,6 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should handle dry-run errors', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
 
     dryRunRule.mockResolvedValue({
@@ -251,7 +240,7 @@ describe('POST /api/rules/[id]/test', () => {
       method: 'POST',
       body: JSON.stringify({ context: {} }),
     });
-    const response = await POST(request, { params: { id: 'rule-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -259,7 +248,6 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should create audit log for test run', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
     prismaMock.auditLog.create.mockResolvedValue({} as any);
 
@@ -276,7 +264,7 @@ describe('POST /api/rules/[id]/test', () => {
       method: 'POST',
       body: JSON.stringify({ context: {} }),
     });
-    await POST(request, { params: { id: 'rule-1' } });
+    await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -291,7 +279,6 @@ describe('POST /api/rules/[id]/test', () => {
   });
 
   it('should return 500 on dry-run failure', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
     dryRunRule.mockRejectedValue(new Error('Dry-run failed'));
 
@@ -299,7 +286,7 @@ describe('POST /api/rules/[id]/test', () => {
       method: 'POST',
       body: JSON.stringify({ context: {} }),
     });
-    const response = await POST(request, { params: { id: 'rule-1' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(500);

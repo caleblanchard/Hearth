@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ServiceWorkerRegistration from './components/ServiceWorkerRegistration';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import FetchInterceptor from '@/components/FetchInterceptor';
 import { ToastProvider } from '@/components/ui/Toast';
 
 export const metadata: Metadata = {
@@ -61,6 +62,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        <FetchInterceptor />
         <ServiceWorkerRegistration />
         <ToastProvider>
           {children}

@@ -126,7 +126,7 @@ export class GoogleCalendarClient {
     }
 
     try {
-      const refreshToken = decryptToken(connection.refreshToken);
+      const refreshToken = decryptToken(connection.refresh_token);
 
       this.oauth2Client.setCredentials({
         refresh_token: refreshToken,
@@ -225,16 +225,16 @@ export class GoogleCalendarClient {
     }
 
     const calendar = await this.getCalendar(connectionId);
-    const calendarId = connection.googleCalendarId || 'primary';
+    const calendarId = connection.google_calendar_id || 'primary';
 
     try {
       let response;
 
-      if (connection.syncToken) {
+      if (connection.sync_token) {
         // Incremental sync using sync token
         response = await calendar.events.list({
           calendarId: calendarId,
-          syncToken: connection.syncToken,
+          syncToken: connection.sync_token,
           singleEvents: true,
         });
       } else {
@@ -319,7 +319,7 @@ export class GoogleCalendarClient {
     }
 
     const calendar = await this.getCalendar(connectionId);
-    const calendarId = connection.googleCalendarId || 'primary';
+    const calendarId = connection.google_calendar_id || 'primary';
 
     const requestBody: calendar_v3.Schema$Event = {
       summary: event.title,
@@ -385,7 +385,7 @@ export class GoogleCalendarClient {
     }
 
     const calendar = await this.getCalendar(connectionId);
-    const calendarId = connection.googleCalendarId || 'primary';
+    const calendarId = connection.google_calendar_id || 'primary';
 
     const requestBody: calendar_v3.Schema$Event = {
       summary: event.title,
@@ -442,7 +442,7 @@ export class GoogleCalendarClient {
     }
 
     const calendar = await this.getCalendar(connectionId);
-    const calendarId = connection.googleCalendarId || 'primary';
+    const calendarId = connection.google_calendar_id || 'primary';
 
     try {
       await calendar.events.delete({
@@ -478,7 +478,7 @@ export class GoogleCalendarClient {
       throw new Error('Calendar connection not found');
     }
 
-    const accessToken = decryptToken(connection.accessToken);
+    const accessToken = decryptToken(connection.access_token);
 
     this.oauth2Client.setCredentials({
       access_token: accessToken,

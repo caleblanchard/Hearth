@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -47,15 +47,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can add pets
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can add pets' },
@@ -82,17 +82,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pet = await createPet(familyId, {
+    const pet = await createPet({
+      family_id: familyId,
       name,
       species,
       breed: breed || null,
-      birthday: birthday ? new Date(birthday) : null,
-      imageUrl: imageUrl || null,
+      birthday: birthday ? new Date(birthday).toISOString() : null,
+      image_url: imageUrl || null,
       notes: notes || null,
     });
 
     // Audit log
-    await supabase.from('audit_logs').insert({
+    await (supabase as any).from('audit_logs').insert({
       family_id: familyId,
       member_id: memberId,
       action: 'PET_CREATED',

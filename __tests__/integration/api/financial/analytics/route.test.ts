@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -29,7 +24,6 @@ import { GET } from '@/app/api/financial/analytics/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { CreditTransactionType, SpendingCategory } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
 const {
   calculateAnalytics,
   getSpendingByCategory,
@@ -46,14 +40,14 @@ describe('/api/financial/analytics', () => {
     const mockTransactions = [
       {
         id: 'tx-1',
-        type: CreditTransactionType.EARNED,
+        type: CreditTransactionType.BONUS,
         amount: 100,
-        category: SpendingCategory.CHORES,
+        category: SpendingCategory.OTHER,
         createdAt: new Date('2024-01-01'),
       },
       {
         id: 'tx-2',
-        type: CreditTransactionType.SPENT,
+        type: CreditTransactionType.REWARD_REDEMPTION,
         amount: 50,
         category: SpendingCategory.REWARDS,
         createdAt: new Date('2024-01-02'),
@@ -69,7 +63,7 @@ describe('/api/financial/analytics', () => {
 
     const mockSpendingByCategory = {
       [SpendingCategory.REWARDS]: 50,
-      [SpendingCategory.CHORES]: 0,
+      [SpendingCategory.OTHER]: 0,
     }
 
     const mockTrends = [
@@ -77,7 +71,6 @@ describe('/api/financial/analytics', () => {
     ]
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/financial/analytics')
       const response = await GET(request)
@@ -89,7 +82,6 @@ describe('/api/financial/analytics', () => {
 
     it('should return analytics for child (own data only)', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.creditTransaction.findMany.mockResolvedValue(mockTransactions as any)
       calculateAnalytics.mockReturnValue(mockSummary)
@@ -128,7 +120,6 @@ describe('/api/financial/analytics', () => {
 
     it('should return analytics for parent (all family data)', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.creditTransaction.findMany.mockResolvedValue(mockTransactions as any)
       calculateAnalytics.mockReturnValue(mockSummary)
@@ -163,7 +154,6 @@ describe('/api/financial/analytics', () => {
 
     it('should filter by memberId for parent when provided', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.creditTransaction.findMany.mockResolvedValue(mockTransactions as any)
       calculateAnalytics.mockReturnValue(mockSummary)
@@ -200,7 +190,6 @@ describe('/api/financial/analytics', () => {
 
     it('should filter by date range when provided', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.creditTransaction.findMany.mockResolvedValue(mockTransactions as any)
       calculateAnalytics.mockReturnValue(mockSummary)
@@ -240,7 +229,6 @@ describe('/api/financial/analytics', () => {
 
     it('should use weekly period when specified', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.creditTransaction.findMany.mockResolvedValue(mockTransactions as any)
       calculateAnalytics.mockReturnValue(mockSummary)
@@ -260,7 +248,6 @@ describe('/api/financial/analytics', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.creditTransaction.findMany.mockRejectedValue(new Error('Database error'))
 

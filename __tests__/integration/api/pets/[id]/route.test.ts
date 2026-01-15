@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { GET, PATCH, DELETE } from '@/app/api/pets/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/pets/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   const mockPet = {
@@ -35,10 +32,9 @@ describe('/api/pets/[id]', () => {
 
   describe('GET /api/pets/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1');
-      const response = await GET(request, { params: { id: 'pet-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(401);
     });
@@ -47,7 +43,7 @@ describe('/api/pets/[id]', () => {
       prismaMock.pet.findUnique.mockResolvedValue(mockPet as any);
 
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1');
-      const response = await GET(request, { params: { id: 'pet-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -63,7 +59,7 @@ describe('/api/pets/[id]', () => {
       prismaMock.pet.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/pets/nonexistent');
-      const response = await GET(request, { params: { id: 'nonexistent' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'nonexistent' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -78,7 +74,7 @@ describe('/api/pets/[id]', () => {
       prismaMock.pet.findUnique.mockResolvedValue(otherFamilyPet as any);
 
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1');
-      const response = await GET(request, { params: { id: 'pet-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -86,11 +82,10 @@ describe('/api/pets/[id]', () => {
     });
 
     it('should allow children to view pets', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.pet.findUnique.mockResolvedValue(mockPet as any);
 
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1');
-      const response = await GET(request, { params: { id: 'pet-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -100,26 +95,24 @@ describe('/api/pets/[id]', () => {
 
   describe('PATCH /api/pets/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       });
-      const response = await PATCH(request, { params: { id: 'pet-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.pet.findUnique.mockResolvedValue(mockPet as any);
 
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       });
-      const response = await PATCH(request, { params: { id: 'pet-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -133,7 +126,7 @@ describe('/api/pets/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       });
-      const response = await PATCH(request, { params: { id: 'nonexistent' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'nonexistent' }) });
 
       expect(response.status).toBe(404);
     });
@@ -149,7 +142,7 @@ describe('/api/pets/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       });
-      const response = await PATCH(request, { params: { id: 'pet-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(403);
     });
@@ -172,7 +165,7 @@ describe('/api/pets/[id]', () => {
           notes: 'Updated notes',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'pet-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -210,7 +203,7 @@ describe('/api/pets/[id]', () => {
           species: 'INVALID',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'pet-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -225,7 +218,7 @@ describe('/api/pets/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       });
-      const response = await PATCH(request, { params: { id: 'pet-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();
@@ -235,24 +228,22 @@ describe('/api/pets/[id]', () => {
 
   describe('DELETE /api/pets/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'pet-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.pet.findUnique.mockResolvedValue(mockPet as any);
 
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'pet-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -265,7 +256,7 @@ describe('/api/pets/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/pets/nonexistent', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'nonexistent' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'nonexistent' }) });
 
       expect(response.status).toBe(404);
     });
@@ -280,7 +271,7 @@ describe('/api/pets/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'pet-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(403);
     });
@@ -293,7 +284,7 @@ describe('/api/pets/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'pet-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -324,7 +315,7 @@ describe('/api/pets/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/pets/pet-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'pet-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'pet-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();

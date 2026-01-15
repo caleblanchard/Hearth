@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/medications/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/medications', () => {
   beforeEach(() => {
@@ -60,8 +57,6 @@ describe('/api/medications', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/medications', {
         method: 'GET',
       });
@@ -71,7 +66,6 @@ describe('/api/medications', () => {
     });
 
     it('should return all medications for family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.medicationSafety.findMany.mockResolvedValue([mockMedication] as any);
 
       const request = new NextRequest('http://localhost:3000/api/medications', {
@@ -111,7 +105,6 @@ describe('/api/medications', () => {
     });
 
     it('should filter by memberId', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.medicationSafety.findMany.mockResolvedValue([mockMedication] as any);
 
       const request = new NextRequest('http://localhost:3000/api/medications?memberId=child-test-123', {
@@ -133,7 +126,6 @@ describe('/api/medications', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.medicationSafety.findMany.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest('http://localhost:3000/api/medications', {
@@ -149,8 +141,6 @@ describe('/api/medications', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/medications', {
         method: 'POST',
         body: JSON.stringify({}),
@@ -161,14 +151,6 @@ describe('/api/medications', () => {
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue({
-        user: {
-          id: 'child-test-123',
-          familyId: 'family-test-123',
-          role: 'CHILD',
-        },
-      } as any);
-
       const request = new NextRequest('http://localhost:3000/api/medications', {
         method: 'POST',
         body: JSON.stringify({
@@ -183,8 +165,6 @@ describe('/api/medications', () => {
     });
 
     it('should return 400 if missing required fields', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/medications', {
         method: 'POST',
         body: JSON.stringify({
@@ -200,7 +180,6 @@ describe('/api/medications', () => {
     });
 
     it('should return 400 if member not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/medications', {
@@ -219,7 +198,6 @@ describe('/api/medications', () => {
     });
 
     it('should return 400 if member belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'different-family-123',
@@ -241,8 +219,6 @@ describe('/api/medications', () => {
     });
 
     it('should create medication successfully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -311,8 +287,6 @@ describe('/api/medications', () => {
     });
 
     it('should handle optional fields correctly', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',

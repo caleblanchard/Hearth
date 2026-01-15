@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -28,7 +23,6 @@ import { POST } from '@/app/api/rewards/[id]/redeem/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { RewardStatus, RedemptionStatus } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
 const { checkBudgetStatus } = require('@/lib/budget-tracker')
 
 describe('/api/rewards/[id]/redeem', () => {
@@ -56,14 +50,13 @@ describe('/api/rewards/[id]/redeem', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/rewards/123/redeem', {
         method: 'POST',
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: rewardId } })
+      const response = await POST(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -72,7 +65,6 @@ describe('/api/rewards/[id]/redeem', () => {
 
     it('should return 404 if reward not found', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardItem.findUnique.mockResolvedValue(null)
 
@@ -81,7 +73,7 @@ describe('/api/rewards/[id]/redeem', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: rewardId } })
+      const response = await POST(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -89,8 +81,7 @@ describe('/api/rewards/[id]/redeem', () => {
     })
 
     it('should return 403 if reward belongs to different family', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -102,7 +93,7 @@ describe('/api/rewards/[id]/redeem', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: rewardId } })
+      const response = await POST(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -110,8 +101,7 @@ describe('/api/rewards/[id]/redeem', () => {
     })
 
     it('should return 400 if reward is not active', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -124,7 +114,7 @@ describe('/api/rewards/[id]/redeem', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: rewardId } })
+      const response = await POST(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -132,8 +122,7 @@ describe('/api/rewards/[id]/redeem', () => {
     })
 
     it('should return 400 if insufficient credits', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -149,7 +138,7 @@ describe('/api/rewards/[id]/redeem', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: rewardId } })
+      const response = await POST(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -157,8 +146,7 @@ describe('/api/rewards/[id]/redeem', () => {
     })
 
     it('should return 400 if reward is out of stock', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -173,7 +161,7 @@ describe('/api/rewards/[id]/redeem', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: rewardId } })
+      const response = await POST(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -181,8 +169,7 @@ describe('/api/rewards/[id]/redeem', () => {
     })
 
     it('should successfully redeem reward with sufficient credits', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -243,7 +230,7 @@ describe('/api/rewards/[id]/redeem', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: rewardId } })
+      const response = await POST(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -260,8 +247,7 @@ describe('/api/rewards/[id]/redeem', () => {
     })
 
     it('should handle budget warnings', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -311,7 +297,7 @@ describe('/api/rewards/[id]/redeem', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: rewardId } })
+      const response = await POST(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -320,8 +306,7 @@ describe('/api/rewards/[id]/redeem', () => {
     })
 
     it('should handle notification creation failures gracefully', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -358,7 +343,7 @@ describe('/api/rewards/[id]/redeem', () => {
       })
 
       // Should still succeed even if notifications fail
-      const response = await POST(request, { params: { id: rewardId } })
+      const response = await POST(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -367,14 +352,13 @@ describe('/api/rewards/[id]/redeem', () => {
 
     it('should handle invalid JSON gracefully', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/rewards/123/redeem', {
         method: 'POST',
         body: 'invalid json{',
       })
 
-      const response = await POST(request, { params: { id: rewardId } })
+      const response = await POST(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -382,8 +366,7 @@ describe('/api/rewards/[id]/redeem', () => {
     })
 
     it('should update reward quantity when redeemed', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -422,7 +405,7 @@ describe('/api/rewards/[id]/redeem', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      await POST(request, { params: { id: rewardId } })
+      await POST(request, { params: Promise.resolve({ id: rewardId }) })
 
       expect(mockTransaction.rewardItem.update).toHaveBeenCalledWith({
         where: { id: rewardId },
@@ -434,8 +417,7 @@ describe('/api/rewards/[id]/redeem', () => {
     })
 
     it('should mark reward as out of stock when quantity reaches zero', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -477,7 +459,7 @@ describe('/api/rewards/[id]/redeem', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      await POST(request, { params: { id: rewardId } })
+      await POST(request, { params: Promise.resolve({ id: rewardId }) })
 
       expect(mockTransaction.rewardItem.update).toHaveBeenCalledWith({
         where: { id: rewardId },

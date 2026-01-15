@@ -12,32 +12,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || 'weekly'; // weekly, monthly, all-time
+    const periodParam = searchParams.get('period') || 'weekly';
+    
+    // Map period param to enum
+    const periodMap: Record<string, 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ALL_TIME'> = {
+      'daily': 'DAILY',
+      'weekly': 'WEEKLY',
+      'monthly': 'MONTHLY',
+      'all-time': 'ALL_TIME',
+      'alltime': 'ALL_TIME',
+    };
+    const period = periodMap[periodParam.toLowerCase()] || 'WEEKLY';
 
-    // Calculate period key
-    const now = new Date();
-    let periodKey: string;
-    if (period === 'weekly') {
-      const weekNum = Math.ceil((now.getDate() - now.getDay() + 1) / 7);
-      periodKey = `${now.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
-    } else if (period === 'monthly') {
-      periodKey = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-    } else {
-      periodKey = 'all-time';
-    }
-
-    const leaderboard = await getLeaderboard(familyId, periodKey);
+    const leaderboard = await getLeaderboard(familyId, period);
 
     return NextResponse.json({
       leaderboard,
       period,
-      periodKey,
     });
   } catch (error) {
     logger.error('Fetch leaderboard error:', error);

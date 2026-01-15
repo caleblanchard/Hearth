@@ -15,15 +15,15 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can reject
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
     }
@@ -31,16 +31,12 @@ export async function POST(
     const { id: completionId } = await params;
     const { reason } = await request.json();
 
-    // Use RPC function for rejection
-    const result = await rejectChore(completionId, memberId, reason || '');
-
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
-    }
+    // Reject the chore
+    const rejectedChore = await rejectChore(completionId, memberId, reason || '');
 
     return NextResponse.json({
       success: true,
-      chore: result.completion,
+      chore: rejectedChore,
       message: 'Chore rejected. Please try again!',
     });
   } catch (error) {

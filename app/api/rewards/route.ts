@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -40,15 +40,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can create rewards
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
     }
@@ -90,14 +90,14 @@ export async function POST(request: NextRequest) {
     const sanitizedCategory = category && validCategories.includes(category) ? category : 'OTHER';
 
     // Create reward
-    const reward = await createRewardItem(familyId, {
+    const reward = await createRewardItem(familyId, memberId, {
       name: sanitizedName,
       description: sanitizedDescription,
       category: sanitizedCategory,
-      costCredits: sanitizedCostCredits,
+      cost_credits: sanitizedCostCredits,
       quantity: sanitizedQuantity,
-      imageUrl: sanitizedImageUrl,
-      createdById: memberId,
+      image_url: sanitizedImageUrl,
+      status: 'ACTIVE',
     });
 
     return NextResponse.json({

@@ -13,23 +13,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const currentMemberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const currentMemberId = authContext.activeMemberId;
 
     if (!familyId || !currentMemberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
     const queryMemberId = searchParams.get('memberId');
 
     // Determine which member's history to fetch
     let targetMemberId = currentMemberId;
     if (queryMemberId) {
       // If requesting another member's history, verify parent access
-      const isParent = await isParentInFamily(currentMemberId, familyId);
+      const isParent = await isParentInFamily( familyId);
       if (!isParent) {
         return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
       }
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       targetMemberId = queryMemberId;
     }
 
-    const history = await getScreenTimeHistory(targetMemberId, { limit, offset });
+    const history = await getScreenTimeHistory(targetMemberId, startDate, endDate);
 
     return NextResponse.json({ history });
   } catch (error) {

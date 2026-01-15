@@ -30,7 +30,7 @@ jest.mock('@/lib/logger', () => ({
 // NOW import the route after mocks are set up
 import { NextRequest } from 'next/server'
 import { GET, POST } from '@/app/api/cron/generate-chore-instances/route'
-import { AssignmentType, ChoreFrequency, Frequency } from '@/app/generated/prisma'
+import { AssignmentType, Frequency } from '@/app/generated/prisma'
 
 const { getNextDueDates, getNextAssignee } = require('@/lib/chore-scheduler')
 

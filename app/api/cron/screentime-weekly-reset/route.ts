@@ -75,11 +75,12 @@ export async function GET(request: NextRequest) {
           .eq('member_id', balance.member_id)
           .single();
 
-        if (!updatedBalance || !updatedBalance.member.screen_time_settings?.[0]) {
+        const settings = (updatedBalance?.member?.screen_time_settings as any)?.[0];
+        if (!updatedBalance || !settings) {
           throw new Error(`Balance or settings not found for member ${balance.member_id}`);
         }
 
-        const weeklyAllocation = updatedBalance.member.screen_time_settings[0].weekly_allocation_minutes;
+        const weeklyAllocation = settings.weekly_allocation_minutes;
 
         // Reset to weekly allocation
         await supabase
@@ -121,11 +122,10 @@ export async function GET(request: NextRequest) {
           });
 
         // Create notification for the reset
-        await supabase
+        await (supabase as any)
           .from('notifications')
           .insert({
-            family_id: balance.member.family_id,
-            recipient_id: balance.member_id,
+            user_id: balance.member_id,
             type: 'SCREENTIME_ADJUSTED',
             title: 'Screen Time Reset',
             message: `Your screen time has been reset to ${weeklyAllocation} minutes for the week!`,

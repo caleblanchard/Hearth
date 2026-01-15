@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authContext.userId;
+    const userId = authContext.user.id;
     if (!userId) {
       return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }
@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authContext.userId;
+    const userId = authContext.user.id;
     if (!userId) {
       return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }

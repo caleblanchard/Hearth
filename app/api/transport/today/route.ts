@@ -12,15 +12,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const memberId = searchParams.get('memberId') || undefined;
-
-    const schedules = await getTodaysTransportSchedules(familyId, memberId);
+    const schedules = await getTodaysTransportSchedules(familyId);
 
     return NextResponse.json({ schedules });
   } catch (error) {

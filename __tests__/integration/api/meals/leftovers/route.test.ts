@@ -11,8 +11,6 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/meals/leftovers/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/meals/leftovers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -20,7 +18,6 @@ describe('GET /api/meals/leftovers', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/meals/leftovers', {
       method: 'GET',
@@ -33,7 +30,6 @@ describe('GET /api/meals/leftovers', () => {
 
   it('should return empty array when no leftovers exist', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.leftover.findMany.mockResolvedValue([]);
 
@@ -50,7 +46,6 @@ describe('GET /api/meals/leftovers', () => {
 
   it('should return only active leftovers (not used or tossed)', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const activeLeftover = {
       id: 'leftover-1',
@@ -102,7 +97,6 @@ describe('GET /api/meals/leftovers', () => {
 
   it('should only return leftovers from user family', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.leftover.findMany.mockResolvedValue([]);
 
@@ -123,7 +117,6 @@ describe('GET /api/meals/leftovers', () => {
 
   it('should allow children to view leftovers', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.leftover.findMany.mockResolvedValue([]);
 
@@ -138,7 +131,6 @@ describe('GET /api/meals/leftovers', () => {
 
   it('should order leftovers by expiration date (soonest first)', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.leftover.findMany.mockResolvedValue([]);
 
@@ -165,7 +157,6 @@ describe('POST /api/meals/leftovers', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/meals/leftovers', {
       method: 'POST',
@@ -184,7 +175,6 @@ describe('POST /api/meals/leftovers', () => {
 
   it('should return 400 if name is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/meals/leftovers', {
       method: 'POST',
@@ -204,7 +194,6 @@ describe('POST /api/meals/leftovers', () => {
 
   it('should create leftover with default expiration (3 days)', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const now = new Date('2026-01-01T12:00:00Z');
     jest.useFakeTimers();
@@ -259,7 +248,6 @@ describe('POST /api/meals/leftovers', () => {
 
   it('should create leftover with custom expiration days', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const now = new Date('2026-01-01T12:00:00Z');
     jest.useFakeTimers();
@@ -308,7 +296,6 @@ describe('POST /api/meals/leftovers', () => {
 
   it('should create leftover with notes', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const now = new Date('2026-01-01T12:00:00Z');
     const mockLeftover = {
@@ -351,7 +338,6 @@ describe('POST /api/meals/leftovers', () => {
 
   it('should create audit log on leftover creation', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const now = new Date('2026-01-01T12:00:00Z');
     const mockLeftover = {
@@ -395,7 +381,6 @@ describe('POST /api/meals/leftovers', () => {
 
   it('should allow parents to create leftovers', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const now = new Date('2026-01-01T12:00:00Z');
     const mockLeftover = {
@@ -431,7 +416,6 @@ describe('POST /api/meals/leftovers', () => {
 
   it('should allow children to create leftovers', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const now = new Date('2026-01-01T12:00:00Z');
     const mockLeftover = {

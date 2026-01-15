@@ -36,7 +36,7 @@ describe('/api/auth/guest/[code]', () => {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { code: '999999' } });
+    const response = await POST(request, { params: Promise.resolve({ code: '999999' }) });
 
     expect(response.status).toBe(404);
     const data = await response.json();
@@ -55,7 +55,7 @@ describe('/api/auth/guest/[code]', () => {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { code: '123456' } });
+    const response = await POST(request, { params: Promise.resolve({ code: '123456' }) });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -75,7 +75,7 @@ describe('/api/auth/guest/[code]', () => {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { code: '123456' } });
+    const response = await POST(request, { params: Promise.resolve({ code: '123456' }) });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -95,7 +95,7 @@ describe('/api/auth/guest/[code]', () => {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { code: '123456' } });
+    const response = await POST(request, { params: Promise.resolve({ code: '123456' }) });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -140,7 +140,7 @@ describe('/api/auth/guest/[code]', () => {
         'user-agent': 'Mozilla/5.0',
       },
     });
-    const response = await POST(request, { params: { code: '123456' } });
+    const response = await POST(request, { params: Promise.resolve({ code: '123456' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -193,7 +193,7 @@ describe('/api/auth/guest/[code]', () => {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    const response = await POST(request, { params: { code: '123456' } });
+    const response = await POST(request, { params: Promise.resolve({ code: '123456' }) });
 
     expect(response.status).toBe(500);
     const data = await response.json();

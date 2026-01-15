@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -58,9 +58,75 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
 
+    // Transform OpenWeatherMap forecast data
+    // The API returns 3-hour intervals for 5 days
+    const list = data.list || [];
+    
+    if (list.length === 0) {
+      return NextResponse.json(
+        { error: 'No weather data available' },
+        { status: 404 }
+      );
+    }
+
+    // Get current weather (first forecast entry)
+    const current = list[0];
+    
+    // Get today's high/low
+    const today = new Date().toDateString();
+    const todayForecasts = list.filter((item: any) => {
+      const itemDate = new Date(item.dt * 1000).toDateString();
+      return itemDate === today;
+    });
+    
+    const todayTemps = todayForecasts.map((f: any) => f.main.temp);
+    const todayHigh = todayTemps.length > 0 ? Math.round(Math.max(...todayTemps)) : Math.round(current.main.temp_max);
+    const todayLow = todayTemps.length > 0 ? Math.round(Math.min(...todayTemps)) : Math.round(current.main.temp_min);
+
+    // Get forecast for next 3 days (taking noon forecast for each day)
+    const dailyForecasts: any[] = [];
+    const processedDates = new Set<string>();
+    
+    for (const item of list) {
+      const itemDate = new Date(item.dt * 1000);
+      const dateString = itemDate.toDateString();
+      
+      // Skip today and already processed dates
+      if (dateString === today || processedDates.has(dateString)) {
+        continue;
+      }
+      
+      // Get noon forecast (12:00) or closest to it
+      const hour = itemDate.getHours();
+      if (hour >= 11 && hour <= 13) {
+        dailyForecasts.push({
+          date: itemDate.toISOString(),
+          high: Math.round(item.main.temp_max),
+          low: Math.round(item.main.temp_min),
+          condition: item.weather[0].main,
+          description: item.weather[0].description,
+          icon: item.weather[0].icon,
+        });
+        processedDates.add(dateString);
+        
+        if (dailyForecasts.length >= 3) break;
+      }
+    }
+
     return NextResponse.json({
       location: family.location,
-      forecast: data,
+      current: {
+        temp: Math.round(current.main.temp),
+        feelsLike: Math.round(current.main.feels_like),
+        condition: current.weather[0].main,
+        description: current.weather[0].description,
+        icon: current.weather[0].icon,
+      },
+      today: {
+        high: todayHigh,
+        low: todayLow,
+      },
+      forecast: dailyForecasts,
     });
   } catch (error) {
     logger.error('Weather API error:', error);

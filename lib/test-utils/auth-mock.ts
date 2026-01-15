@@ -2,14 +2,19 @@ import { Session } from 'next-auth'
 
 export interface MockUser {
   id: string
-  name: string
-  email: string | null
-  role: 'PARENT' | 'CHILD'
+  name?: string | null
+  email?: string | null
+  role: 'PARENT' | 'CHILD' | 'GUEST'
   familyId: string
   familyName: string
 }
 
-export function mockParentSession(overrides?: Partial<Session>): Session {
+export interface SessionOverrides {
+  user?: Partial<MockUser>
+  expires?: string
+}
+
+export function mockParentSession(overrides?: SessionOverrides): Session {
   const defaultSession: Session = {
     user: {
       id: 'parent-test-123',
@@ -42,7 +47,7 @@ export function mockParentSession(overrides?: Partial<Session>): Session {
   } as Session
 }
 
-export function mockChildSession(overrides?: Partial<Session>): Session {
+export function mockChildSession(overrides?: SessionOverrides): Session {
   const defaultSession: Session = {
     user: {
       id: 'child-test-123',
@@ -75,6 +80,6 @@ export function mockChildSession(overrides?: Partial<Session>): Session {
   } as Session
 }
 
-export function mockSession(role: 'PARENT' | 'CHILD' = 'PARENT', overrides?: Partial<Session>): Session {
+export function mockSession(role: 'PARENT' | 'CHILD' = 'PARENT', overrides?: SessionOverrides): Session {
   return role === 'PARENT' ? mockParentSession(overrides) : mockChildSession(overrides)
 }

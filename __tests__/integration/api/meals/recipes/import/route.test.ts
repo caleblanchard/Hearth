@@ -18,7 +18,6 @@ jest.mock('@/lib/recipe-extractor', () => ({
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/meals/recipes/import/route';
 
-const { auth } = require('@/lib/auth');
 const { extractRecipeFromUrl } = require('@/lib/recipe-extractor');
 
 describe('POST /api/meals/recipes/import', () => {
@@ -60,7 +59,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 1: Authentication required
   it('should return 401 if user is not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
       method: 'POST',
@@ -76,7 +74,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 2: URL validation - missing URL
   it('should return 400 if URL is missing', async () => {
-    auth.mockResolvedValue(mockSession as any);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
       method: 'POST',
@@ -92,7 +89,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 3: URL validation - invalid type
   it('should return 400 if URL is not a string', async () => {
-    auth.mockResolvedValue(mockSession as any);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
       method: 'POST',
@@ -108,7 +104,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 4: URL must be valid HTTP/HTTPS
   it('should return 400 if URL protocol is not HTTP or HTTPS', async () => {
-    auth.mockResolvedValue(mockSession as any);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
       method: 'POST',
@@ -124,7 +119,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 5: URL format validation
   it('should return 400 if URL format is invalid', async () => {
-    auth.mockResolvedValue(mockSession as any);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
       method: 'POST',
@@ -140,7 +134,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 6: Successful extraction from valid recipe URL
   it('should return 200 with extracted recipe data', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -158,7 +151,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 7: Returns 404 if URL doesn't contain recipe data
   it('should return 404 if no recipe data found at URL', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockRejectedValue(new Error('No recipe data found'));
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -175,7 +167,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 8: Handles extraction errors
   it('should return 500 if extraction fails', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockRejectedValue(new Error('Network error'));
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -192,7 +183,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 9: Extracts name (required field)
   it('should extract recipe name', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -208,7 +198,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 10: Extracts description (optional)
   it('should extract recipe description if present', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -224,7 +213,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 11: Parses ISO 8601 prep time
   it('should parse prep time from ISO 8601 duration', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -240,7 +228,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 12: Parses ISO 8601 cook time
   it('should parse cook time from ISO 8601 duration', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -256,7 +243,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 13: Extracts servings with default fallback
   it('should extract servings count', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -272,7 +258,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 14: Extracts ingredients array
   it('should extract ingredients list', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -293,7 +278,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 15: Extracts instructions (recipeInstructions)
   it('should extract cooking instructions', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -310,7 +294,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 16: Extracts imageUrl
   it('should extract image URL if present', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -326,7 +309,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 17: Stores sourceUrl in response
   it('should include source URL in response', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -342,7 +324,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 18: Infers difficulty from cook times
   it('should infer difficulty level from cooking times', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -358,7 +339,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 19: Maps category to enum values
   it('should map recipe category to valid enum', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -374,7 +354,6 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 20: Extracts dietary tags
   it('should extract dietary tags from recipe data', async () => {
-    auth.mockResolvedValue(mockSession as any);
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {

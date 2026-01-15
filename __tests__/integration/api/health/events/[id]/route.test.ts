@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, PATCH } from '@/app/api/health/events/[id]/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/health/events/[id]', () => {
   beforeEach(() => {
@@ -75,24 +72,21 @@ describe('/api/health/events/[id]', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/health/events/event-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'event-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return health event details', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(mockHealthEvent as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/events/event-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'event-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -126,13 +120,12 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should return 404 if health event not found', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/health/events/non-existent', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'non-existent' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'non-existent' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -140,7 +133,6 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should return 404 if health event belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue({
         ...mockHealthEvent,
         member: {
@@ -152,7 +144,7 @@ describe('/api/health/events/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/health/events/event-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'event-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -160,13 +152,12 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should allow children to view health events', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(mockHealthEvent as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/events/event-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'event-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -176,21 +167,18 @@ describe('/api/health/events/[id]', () => {
 
   describe('PATCH', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/health/events/event-1', {
         method: 'PATCH',
         body: JSON.stringify({
           severity: 6,
         }),
       });
-      const response = await PATCH(request, { params: { id: 'event-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if child tries to update another member\'s event', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue({
         ...mockHealthEvent,
         memberId: 'other-child-123',
@@ -207,7 +195,7 @@ describe('/api/health/events/[id]', () => {
           severity: 6,
         }),
       });
-      const response = await PATCH(request, { params: { id: 'event-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -215,7 +203,6 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should allow parents to update any health event', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(mockHealthEvent as any);
       prismaMock.healthEvent.update.mockResolvedValue({
         ...mockHealthEvent,
@@ -230,7 +217,7 @@ describe('/api/health/events/[id]', () => {
           notes: 'Fever getting worse',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'event-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -264,7 +251,6 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should allow children to update their own health events', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(mockHealthEvent as any);
       prismaMock.healthEvent.update.mockResolvedValue({
         ...mockHealthEvent,
@@ -277,7 +263,7 @@ describe('/api/health/events/[id]', () => {
           notes: 'Feeling a bit better',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'event-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -285,7 +271,6 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should return 404 if health event not found', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/health/events/non-existent', {
@@ -294,7 +279,7 @@ describe('/api/health/events/[id]', () => {
           severity: 6,
         }),
       });
-      const response = await PATCH(request, { params: { id: 'non-existent' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'non-existent' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -302,7 +287,6 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should return 404 if health event belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue({
         ...mockHealthEvent,
         member: {
@@ -317,7 +301,7 @@ describe('/api/health/events/[id]', () => {
           severity: 6,
         }),
       });
-      const response = await PATCH(request, { params: { id: 'event-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -325,7 +309,6 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should allow ending a health event by setting endedAt', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(mockHealthEvent as any);
       const endedAt = new Date('2026-01-02T10:00:00Z');
       prismaMock.healthEvent.update.mockResolvedValue({
@@ -339,7 +322,7 @@ describe('/api/health/events/[id]', () => {
           endedAt: endedAt.toISOString(),
         }),
       });
-      const response = await PATCH(request, { params: { id: 'event-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -355,7 +338,6 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should return 400 if severity is below 1', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(mockHealthEvent as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/events/event-1', {
@@ -364,7 +346,7 @@ describe('/api/health/events/[id]', () => {
           severity: 0,
         }),
       });
-      const response = await PATCH(request, { params: { id: 'event-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -372,7 +354,6 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should return 400 if severity is above 10', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(mockHealthEvent as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/events/event-1', {
@@ -381,7 +362,7 @@ describe('/api/health/events/[id]', () => {
           severity: 11,
         }),
       });
-      const response = await PATCH(request, { params: { id: 'event-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -389,7 +370,6 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should log audit event on successful update', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(mockHealthEvent as any);
       prismaMock.healthEvent.update.mockResolvedValue({
         ...mockHealthEvent,
@@ -402,7 +382,7 @@ describe('/api/health/events/[id]', () => {
           severity: 6,
         }),
       });
-      const response = await PATCH(request, { params: { id: 'event-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(200);
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
@@ -418,7 +398,6 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should log audit event when ending a health event', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.healthEvent.findUnique.mockResolvedValue(mockHealthEvent as any);
       const endedAt = new Date('2026-01-02T10:00:00Z');
       prismaMock.healthEvent.update.mockResolvedValue({
@@ -432,7 +411,7 @@ describe('/api/health/events/[id]', () => {
           endedAt: endedAt.toISOString(),
         }),
       });
-      const response = await PATCH(request, { params: { id: 'event-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'event-1' }) });
 
       expect(response.status).toBe(200);
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({

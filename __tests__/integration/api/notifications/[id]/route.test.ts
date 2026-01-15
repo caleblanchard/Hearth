@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { PATCH, DELETE } from '@/app/api/notifications/[id]/route'
 import { mockChildSession } from '@/lib/test-utils/auth-mock'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/notifications/[id]', () => {
   beforeEach(() => {
@@ -45,13 +38,12 @@ describe('/api/notifications/[id]', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/notifications/123', {
         method: 'PATCH',
       })
 
-      const response = await PATCH(request, { params: { id: notificationId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: notificationId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -59,8 +51,7 @@ describe('/api/notifications/[id]', () => {
     })
 
     it('should return 404 if notification not found', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findUnique.mockResolvedValue(null)
 
@@ -68,7 +59,7 @@ describe('/api/notifications/[id]', () => {
         method: 'PATCH',
       })
 
-      const response = await PATCH(request, { params: { id: notificationId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: notificationId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -76,8 +67,7 @@ describe('/api/notifications/[id]', () => {
     })
 
     it('should return 403 if notification belongs to different user', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findUnique.mockResolvedValue({
         ...mockNotification,
@@ -88,7 +78,7 @@ describe('/api/notifications/[id]', () => {
         method: 'PATCH',
       })
 
-      const response = await PATCH(request, { params: { id: notificationId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: notificationId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -96,8 +86,7 @@ describe('/api/notifications/[id]', () => {
     })
 
     it('should mark notification as read', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findUnique.mockResolvedValue(mockNotification as any)
       prismaMock.notification.update.mockResolvedValue(mockUpdatedNotification as any)
@@ -106,7 +95,7 @@ describe('/api/notifications/[id]', () => {
         method: 'PATCH',
       })
 
-      const response = await PATCH(request, { params: { id: notificationId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: notificationId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -122,8 +111,7 @@ describe('/api/notifications/[id]', () => {
     })
 
     it('should return 500 on error', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findUnique.mockResolvedValue(mockNotification as any)
       prismaMock.notification.update.mockRejectedValue(new Error('Database error'))
@@ -132,7 +120,7 @@ describe('/api/notifications/[id]', () => {
         method: 'PATCH',
       })
 
-      const response = await PATCH(request, { params: { id: notificationId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: notificationId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)
@@ -148,13 +136,12 @@ describe('/api/notifications/[id]', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/notifications/123', {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: notificationId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: notificationId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -162,8 +149,7 @@ describe('/api/notifications/[id]', () => {
     })
 
     it('should return 404 if notification not found', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findUnique.mockResolvedValue(null)
 
@@ -171,7 +157,7 @@ describe('/api/notifications/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: notificationId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: notificationId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -179,8 +165,7 @@ describe('/api/notifications/[id]', () => {
     })
 
     it('should return 403 if notification belongs to different user', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findUnique.mockResolvedValue({
         ...mockNotification,
@@ -191,7 +176,7 @@ describe('/api/notifications/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: notificationId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: notificationId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -199,8 +184,7 @@ describe('/api/notifications/[id]', () => {
     })
 
     it('should delete notification successfully', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findUnique.mockResolvedValue(mockNotification as any)
       prismaMock.notification.delete.mockResolvedValue(mockNotification as any)
@@ -209,7 +193,7 @@ describe('/api/notifications/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: notificationId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: notificationId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -221,8 +205,7 @@ describe('/api/notifications/[id]', () => {
     })
 
     it('should return 500 on error', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findUnique.mockResolvedValue(mockNotification as any)
       prismaMock.notification.delete.mockRejectedValue(new Error('Database error'))
@@ -231,7 +214,7 @@ describe('/api/notifications/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: notificationId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: notificationId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)

@@ -91,7 +91,7 @@ export default function WeatherWidget() {
         </div>
       )}
 
-      {!loading && !error && data && (
+      {!loading && !error && data && data.current && (
         <div>
           {/* Current Weather */}
           <div className="text-center mb-4">
@@ -101,9 +101,11 @@ export default function WeatherWidget() {
             <div className="text-gray-600 dark:text-gray-400 capitalize mb-1">
               {data.current.description}
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              H: {data.today.high}° L: {data.today.low}°
-            </div>
+            {data.today && (
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                H: {data.today.high}° L: {data.today.low}°
+              </div>
+            )}
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
               {data.location}
             </div>

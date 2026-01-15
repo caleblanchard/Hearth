@@ -12,15 +12,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Check if user is a parent
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can approve grace requests' },
@@ -30,13 +30,13 @@ export async function POST(request: NextRequest) {
 
     const { graceLogId, approved } = await request.json();
 
-    const result = approved
+    const graceLog = approved
       ? await approveGracePeriod(graceLogId, memberId)
-      : await rejectGracePeriod(graceLogId);
+      : await rejectGracePeriod(graceLogId, memberId);
 
     return NextResponse.json({
       success: true,
-      graceLog: result.graceLog,
+      graceLog,
       message: approved ? 'Grace period approved' : 'Grace period rejected',
     });
   } catch (error) {

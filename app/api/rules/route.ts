@@ -28,15 +28,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Check if user is a parent
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Forbidden - Parent access required' },
@@ -48,18 +48,33 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const enabledParam = searchParams.get('enabled');
 
-    // Build filters
-    const filters: any = {};
-    if (enabledParam !== null) {
-      filters.enabled = enabledParam === 'true';
-    }
+    // If enabled param is not provided, show ALL rules (both enabled and disabled)
+    // If enabled=true, show only enabled rules
+    // If enabled=false, show only disabled rules (though this is unusual)
+    const activeOnly = enabledParam === null ? false : enabledParam === 'true';
 
     // Fetch rules
-    const rules = await getAutomationRules(familyId, filters);
+    const rules = await getAutomationRules(familyId, activeOnly);
+
+    // Map to camelCase for frontend
+    const mappedRules = rules.map(rule => ({
+      id: rule.id,
+      familyId: rule.family_id,
+      name: rule.name,
+      description: rule.description,
+      trigger: rule.trigger,
+      conditions: rule.conditions,
+      actions: rule.actions,
+      isEnabled: rule.is_enabled,
+      createdById: rule.created_by_id,
+      createdAt: rule.created_at,
+      updatedAt: rule.updated_at,
+      created_by_member: rule.created_by_member,
+    }));
 
     return NextResponse.json({
-      rules,
-      total: rules.length,
+      rules: mappedRules,
+      total: mappedRules.length,
     });
   } catch (error) {
     logger.error('[API] Error fetching automation rules', error);
@@ -84,15 +99,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Check if user is a parent
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Forbidden - Parent access required' },
@@ -127,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate rule configuration
-    const validation = validateRuleConfiguration({ trigger, actions, conditions });
+    const validation = validateRuleConfiguration(trigger, conditions || null, actions);
     if (!validation.valid) {
       return NextResponse.json(
         { error: 'Invalid rule configuration', details: validation.errors },
@@ -136,14 +151,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Create rule
-    const rule = await createAutomationRule(familyId, {
+    const rule = await createAutomationRule({
+      family_id: familyId,
       name: name.trim(),
       description: description?.trim() || null,
-      isEnabled: isEnabled ?? true,
-      trigger,
-      actions,
-      conditions: conditions || [],
-      createdById: memberId,
+      is_enabled: isEnabled ?? true,
+      trigger: trigger as any,
+      actions: actions as any,
+      conditions: conditions || null,
+      created_by_id: memberId,
     });
 
     // Audit log

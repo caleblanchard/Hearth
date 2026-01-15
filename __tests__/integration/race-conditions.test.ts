@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -29,7 +24,6 @@ import { POST as redeemReward } from '@/app/api/rewards/[id]/redeem/route'
 import { mockChildSession } from '@/lib/test-utils/auth-mock'
 import { ChoreStatus, RewardStatus, RedemptionStatus } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
 const { checkBudgetStatus } = require('@/lib/budget-tracker')
 
 describe('Race Condition Tests - Concurrent Credit Operations', () => {
@@ -40,8 +34,7 @@ describe('Race Condition Tests - Concurrent Credit Operations', () => {
 
   describe('Concurrent Chore Completions', () => {
     it('should prevent double-crediting when same chore is completed concurrently', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const choreInstanceId = 'chore-instance-1'
       const mockChoreInstance = {
@@ -145,8 +138,8 @@ describe('Race Condition Tests - Concurrent Credit Operations', () => {
 
       // Execute both requests concurrently
       const [response1, response2] = await Promise.allSettled([
-        completeChore(request1, { params: { id: choreInstanceId } }),
-        completeChore(request2, { params: { id: choreInstanceId } }),
+        completeChore(request1, { params: Promise.resolve({ id: choreInstanceId }) }),
+        completeChore(request2, { params: Promise.resolve({ id: choreInstanceId }) }),
       ])
 
       // One should succeed, one should fail
@@ -163,7 +156,6 @@ describe('Race Condition Tests - Concurrent Credit Operations', () => {
   describe('Concurrent Reward Redemptions', () => {
     it('should prevent double-deduction when same reward is redeemed concurrently', async () => {
       const session = mockChildSession({ user: { id: 'child-1', familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
 
       const rewardId = 'reward-1'
       const mockReward = {
@@ -253,8 +245,8 @@ describe('Race Condition Tests - Concurrent Credit Operations', () => {
 
       // Execute both requests concurrently
       const [response1, response2] = await Promise.allSettled([
-        redeemReward(request1, { params: { id: rewardId } }),
-        redeemReward(request2, { params: { id: rewardId } }),
+        redeemReward(request1, { params: Promise.resolve({ id: rewardId }) }),
+        redeemReward(request2, { params: Promise.resolve({ id: rewardId }) }),
       ])
 
       // One should succeed, one should fail
@@ -278,7 +270,6 @@ describe('Race Condition Tests - Concurrent Credit Operations', () => {
 
     it('should prevent overdraft when concurrent redemptions exceed balance', async () => {
       const session = mockChildSession({ user: { id: 'child-1', familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
 
       const rewardId = 'reward-1'
       const mockReward = {
@@ -358,8 +349,8 @@ describe('Race Condition Tests - Concurrent Credit Operations', () => {
 
       // Execute both requests concurrently
       const [response1, response2] = await Promise.allSettled([
-        redeemReward(request1, { params: { id: rewardId } }),
-        redeemReward(request2, { params: { id: rewardId } }),
+        redeemReward(request1, { params: Promise.resolve({ id: rewardId }) }),
+        redeemReward(request2, { params: Promise.resolve({ id: rewardId }) }),
       ])
 
       // At most one should succeed (if balance allows)

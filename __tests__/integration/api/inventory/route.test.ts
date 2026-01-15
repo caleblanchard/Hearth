@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/inventory/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/inventory', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   const mockInventoryItem = {
@@ -39,7 +36,6 @@ describe('/api/inventory', () => {
 
   describe('GET /api/inventory', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/inventory');
       const response = await GET(request);
@@ -95,7 +91,6 @@ describe('/api/inventory', () => {
     });
 
     it('should allow children to view inventory items', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.inventoryItem.findMany.mockResolvedValue([mockInventoryItem] as any);
 
       const request = new NextRequest('http://localhost:3000/api/inventory');
@@ -120,7 +115,6 @@ describe('/api/inventory', () => {
 
   describe('POST /api/inventory', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/inventory', {
         method: 'POST',
@@ -138,7 +132,6 @@ describe('/api/inventory', () => {
     });
 
     it('should return 403 if user is not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/inventory', {
         method: 'POST',

@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/transport/carpools/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/transport/carpools', () => {
   beforeEach(() => {
@@ -60,8 +57,6 @@ describe('/api/transport/carpools', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/carpools', {
         method: 'GET',
       });
@@ -71,7 +66,6 @@ describe('/api/transport/carpools', () => {
     });
 
     it('should return all carpools for family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.carpoolGroup.findMany.mockResolvedValue([mockCarpool] as any);
 
       const request = new NextRequest('http://localhost:3000/api/transport/carpools', {
@@ -89,8 +83,6 @@ describe('/api/transport/carpools', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/carpools', {
         method: 'POST',
         body: JSON.stringify({ name: 'Soccer Carpool' }),
@@ -101,8 +93,6 @@ describe('/api/transport/carpools', () => {
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/carpools', {
         method: 'POST',
         body: JSON.stringify({ name: 'Soccer Carpool' }),
@@ -113,8 +103,6 @@ describe('/api/transport/carpools', () => {
     });
 
     it('should return 400 if name is missing', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/carpools', {
         method: 'POST',
         body: JSON.stringify({ members: [] }),
@@ -125,8 +113,6 @@ describe('/api/transport/carpools', () => {
     });
 
     it('should create carpool without members', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const carpoolWithoutMembers = {
         id: 'carpool-1',
         familyId: 'family-test-123',
@@ -166,7 +152,6 @@ describe('/api/transport/carpools', () => {
     });
 
     it('should create carpool with members', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.carpoolGroup.create.mockResolvedValue(mockCarpool as any);
       prismaMock.auditLog.create.mockResolvedValue({} as any);
 
@@ -204,8 +189,6 @@ describe('/api/transport/carpools', () => {
     });
 
     it('should return 400 if member is missing name', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/carpools', {
         method: 'POST',
         body: JSON.stringify({

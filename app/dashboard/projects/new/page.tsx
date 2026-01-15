@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 export default function NewProjectPage() {
   const router = useRouter();
   const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -59,7 +61,7 @@ export default function NewProjectPage() {
     }
   };
 
-  if (user?.user_metadata?.role !== 'PARENT') {
+  if (!isParent) {
     return (
       <div className="p-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">

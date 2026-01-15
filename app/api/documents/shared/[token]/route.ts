@@ -6,6 +6,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const { token } = await params
   try {
     const supabase = await createClient();
     

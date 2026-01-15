@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -25,8 +20,6 @@ import { GET as getSavingsGoals } from '@/app/api/financial/savings-goals/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { RewardStatus } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
-
 describe('Family Isolation Tests - Data Security', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -36,7 +29,6 @@ describe('Family Isolation Tests - Data Security', () => {
   describe('Chores Isolation', () => {
     it('should only return chores for user\'s family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const family1Chores = [
         { id: 'chore-1', familyId: session.user.familyId, name: 'Family 1 Chore' },
@@ -45,7 +37,8 @@ describe('Family Isolation Tests - Data Security', () => {
 
       prismaMock.choreDefinition.findMany.mockResolvedValue(family1Chores as any)
 
-      const response = await getChores()
+      const request = new NextRequest('http://localhost/api/chores')
+      const response = await getChores(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -70,14 +63,14 @@ describe('Family Isolation Tests - Data Security', () => {
 
     it('should prevent accessing chores from different family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       // Mock should only return data for the session's family
       prismaMock.choreDefinition.findMany.mockResolvedValue([
         { id: 'chore-1', familyId: session.user.familyId, name: 'Family Chore' },
       ] as any)
 
-      const response = await getChores()
+      const request = new NextRequest("http://localhost/api/chores")
+      const response = await getChores(request)
 
       // The query should filter by familyId
       expect(prismaMock.choreDefinition.findMany).toHaveBeenCalledWith(
@@ -92,8 +85,7 @@ describe('Family Isolation Tests - Data Security', () => {
 
   describe('Rewards Isolation', () => {
     it('should only return rewards for user\'s family', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const family1Rewards = [
         {
@@ -106,7 +98,8 @@ describe('Family Isolation Tests - Data Security', () => {
 
       prismaMock.rewardItem.findMany.mockResolvedValue(family1Rewards as any)
 
-      const response = await getRewards()
+      const request = new NextRequest("http://localhost/api/rewards")
+      const response = await getRewards(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -124,8 +117,7 @@ describe('Family Isolation Tests - Data Security', () => {
     })
 
     it('should prevent accessing rewards from different family', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.rewardItem.findMany.mockResolvedValue([
         {
@@ -136,7 +128,8 @@ describe('Family Isolation Tests - Data Security', () => {
         },
       ] as any)
 
-      const response = await getRewards()
+      const request = new NextRequest("http://localhost/api/rewards")
+      const response = await getRewards(request)
 
       // Verify query filters by familyId
       expect(prismaMock.rewardItem.findMany).toHaveBeenCalledWith(
@@ -152,7 +145,6 @@ describe('Family Isolation Tests - Data Security', () => {
   describe('Financial Transactions Isolation', () => {
     it('should only return transactions for user\'s family', async () => {
       const session = mockChildSession({ user: { id: 'child-1', familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
 
       const family1Transactions = [
         {
@@ -186,7 +178,6 @@ describe('Family Isolation Tests - Data Security', () => {
 
     it('should prevent accessing transactions from different family', async () => {
       const session = mockChildSession({ user: { id: 'child-1', familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
 
       prismaMock.creditTransaction.findMany.mockResolvedValue([])
 
@@ -206,8 +197,7 @@ describe('Family Isolation Tests - Data Security', () => {
     })
 
     it('should allow parents to see all family transactions but not other families', async () => {
-      const session = mockParentSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       const family1Transactions = [
         {
@@ -246,7 +236,6 @@ describe('Family Isolation Tests - Data Security', () => {
   describe('Savings Goals Isolation', () => {
     it('should only return savings goals for user\'s family', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const family1Goals = [
         {
@@ -269,13 +258,12 @@ describe('Family Isolation Tests - Data Security', () => {
       const calls = prismaMock.savingsGoal.findMany.mock.calls
       expect(calls.length).toBeGreaterThan(0)
       const query = calls[0][0]
-      expect(query.where.member.familyId).toBe(session.user.familyId)
-      expect(query.where.memberId).toBe(session.user.id)
+      expect(query?.where?.member?.familyId).toBe(session.user.familyId)
+      expect(query?.where?.memberId).toBe(session.user.id)
     })
 
     it('should prevent accessing savings goals from different family', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.savingsGoal.findMany.mockResolvedValue([])
 
@@ -285,8 +273,8 @@ describe('Family Isolation Tests - Data Security', () => {
       const calls = prismaMock.savingsGoal.findMany.mock.calls
       expect(calls.length).toBeGreaterThan(0)
       const query = calls[0][0]
-      expect(query.where.member.familyId).toBe(session.user.familyId)
-      expect(query.where.memberId).toBe(session.user.id)
+      expect(query?.where?.member?.familyId).toBe(session.user.familyId)
+      expect(query?.where?.memberId).toBe(session.user.id)
     })
   })
 
@@ -305,13 +293,12 @@ describe('Family Isolation Tests - Data Security', () => {
 
       for (const endpoint of endpoints) {
         jest.clearAllMocks()
-        auth.mockResolvedValue(session1)
 
         const request = new NextRequest(`http://localhost/api/${endpoint.name}`)
         await endpoint.handler(request)
 
         // Verify all queries filter by familyId
-        const calls = prismaMock[Object.keys(prismaMock).find((key) => key.includes('findMany')) || '']?.mock?.calls || []
+        const calls = (prismaMock as any)[Object.keys(prismaMock).find((key) => key.includes('findMany')) || '']?.mock?.calls || []
         if (calls.length > 0) {
           const query = calls[0][0]
           if (query?.where) {

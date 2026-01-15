@@ -15,15 +15,15 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can approve redemptions
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
     }
@@ -31,12 +31,12 @@ export async function POST(
     const { id } = await params;
 
     // Get redemption
-    const { data: redemption } = await supabase
+    const { data: redemption } = await (supabase as any)
       .from('reward_redemptions')
       .select(`
         *,
         reward:reward_items!inner(*, family_id),
-        member:family_members!inner(id, name)
+        member:family_members!member_id(id, name)
       `)
       .eq('id', id)
       .single();
@@ -74,7 +74,7 @@ export async function POST(
       .select(`
         *,
         reward:reward_items(*),
-        member:family_members(id, name)
+        member:family_members!member_id(id, name)
       `)
       .single();
 
@@ -93,7 +93,7 @@ export async function POST(
       metadata: {
         redemptionId: id,
         rewardName: redemption.reward.name,
-        approvedBy: authContext.memberships[0]?.memberName,
+        approvedBy: authContext.memberships[0]?.name,
       },
     });
 

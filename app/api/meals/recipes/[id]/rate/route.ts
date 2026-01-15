@@ -8,6 +8,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -16,8 +17,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -53,12 +54,16 @@ export async function POST(
       );
     }
 
-    const result = await rateRecipe(id, memberId, rating, notes || null);
+    const ratingRecord = await rateRecipe({
+      recipe_id: id,
+      member_id: memberId,
+      rating,
+      notes: notes || null,
+    });
 
     return NextResponse.json({
       success: true,
-      rating: result.rating,
-      recipe: result.recipe,
+      rating: ratingRecord,
       message: 'Recipe rated successfully',
     });
   } catch (error) {

@@ -104,7 +104,7 @@ export default function DashboardContent() {
     if (!stillLoading && !session?.user && !guestSession) {
       router.push('/auth/signin');
     }
-  }, [user, sessionStatus, guestSession, guestLoading, router]);
+  }, [session, sessionStatus, guestSession, guestLoading, router]);
 
   useEffect(() => {
     async function fetchEnabledModules() {
@@ -166,7 +166,7 @@ export default function DashboardContent() {
 
     fetchEnabledModules();
     fetchDashboard();
-  }, [user, sessionStatus, guestSession, guestLoading]);
+  }, [session, sessionStatus, guestSession, guestLoading]);
 
   if (loading) {
     return (

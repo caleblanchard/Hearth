@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Example Test: Supabase Mock Usage
  * 
@@ -43,9 +44,11 @@ describe('Supabase Mock Utilities', () => {
 
       mockSupabaseSelect(mockClient, mockData)
 
-      const { data, error } = await mockClient
+      const result: any = await mockClient
         .from('families')
         .select('*')
+      
+      const { data, error } = result
 
       expect(error).toBeNull()
       expect(data).toEqual(mockData)
@@ -121,7 +124,7 @@ describe('Supabase Mock Utilities', () => {
       }
       
       // Override the from method for this test
-      mockClient.from = jest.fn().mockReturnValue(testQueryBuilder)
+      mockClient.from = jest.fn().mockReturnValue(testQueryBuilder) as any
 
       const { data, error } = await mockClient
         .from('families')

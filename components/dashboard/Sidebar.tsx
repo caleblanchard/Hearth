@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useMemberContext } from '@/hooks/useMemberContext';
 import { useDashboardCustomize } from '@/contexts/DashboardCustomizeContext';
+import { FamilySwitcher } from '@/components/FamilySwitcher';
 import {
   HomeIcon,
   CheckCircleIcon,
@@ -300,6 +301,11 @@ export default function Sidebar() {
       {/* Sidebar Footer */}
       {isOpen && user && (
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          {/* Family Switcher */}
+          <div className="mb-3">
+            <FamilySwitcher />
+          </div>
+          
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-ember-700 dark:bg-ember-500 rounded-full flex items-center justify-center text-white font-bold">
               {user.name?.charAt(0) || 'U'}

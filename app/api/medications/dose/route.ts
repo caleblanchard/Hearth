@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
@@ -27,18 +27,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await recordMedicationDose(
-      medicationSafetyId,
-      memberId,
+    const dose = await recordMedicationDose({
+      medication_safety_id: medicationSafetyId,
+      given_by: memberId,
       dosage,
-      notes || null,
-      override || false,
-      overrideReason || null
-    );
+      notes: notes || null,
+      was_override: override || false,
+      override_reason: overrideReason || null,
+    });
 
     return NextResponse.json({
       success: true,
-      dose: result.dose,
+      dose,
       message: 'Medication dose recorded successfully',
     });
   } catch (error) {

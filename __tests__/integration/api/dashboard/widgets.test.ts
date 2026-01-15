@@ -33,7 +33,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GET as GetWidgets } from '@/app/api/dashboard/widgets/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
 const { getKioskSession } = require('@/lib/kiosk-session');
 const { GET: GetTransport } = require('@/app/api/transport/today/route');
 const { GET: GetMedications } = require('@/app/api/medications/route');
@@ -68,7 +67,6 @@ describe('/api/dashboard/widgets', () => {
 
   describe('GET /api/dashboard/widgets', () => {
     it('should return 401 if not authenticated and no kiosk token', async () => {
-      auth.mockResolvedValue(null);
       getKioskSession.mockResolvedValue(null);
 
       const request = new NextRequest(
@@ -83,7 +81,6 @@ describe('/api/dashboard/widgets', () => {
 
     it('should fetch single widget for authenticated user', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       GetTransport.mockResolvedValue(
         NextResponse.json(mockTransportData, { status: 200 })
@@ -103,7 +100,6 @@ describe('/api/dashboard/widgets', () => {
 
     it('should fetch multiple widgets in parallel', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       GetTransport.mockResolvedValue(
         NextResponse.json(mockTransportData, { status: 200 })
@@ -128,7 +124,6 @@ describe('/api/dashboard/widgets', () => {
     });
 
     it('should authenticate via kiosk token if no regular session', async () => {
-      auth.mockResolvedValue(null);
 
       const mockKioskSession = {
         id: 'session-123',
@@ -164,7 +159,6 @@ describe('/api/dashboard/widgets', () => {
 
     it('should handle widget fetch failures gracefully', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       GetTransport.mockResolvedValue(
         NextResponse.json(mockTransportData, { status: 200 })
@@ -187,7 +181,6 @@ describe('/api/dashboard/widgets', () => {
 
     it('should return 400 if no widgets parameter provided', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = new NextRequest('http://localhost:3000/api/dashboard/widgets');
       const response = await GetWidgets(request);
@@ -199,7 +192,6 @@ describe('/api/dashboard/widgets', () => {
 
     it('should return 400 for invalid widget names', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = new NextRequest(
         'http://localhost:3000/api/dashboard/widgets?widgets[]=invalid-widget'
@@ -213,7 +205,6 @@ describe('/api/dashboard/widgets', () => {
 
     it('should handle all valid widget types', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       GetTransport.mockResolvedValue(NextResponse.json({}, { status: 200 }));
       GetMedications.mockResolvedValue(NextResponse.json({}, { status: 200 }));

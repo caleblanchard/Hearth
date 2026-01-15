@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { useToast } from '@/components/ui/Toast';
 
@@ -46,6 +47,7 @@ interface FamilyMember {
 
 export default function MedicationsPage() {
   const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const [medications, setMedications] = useState<Medication[]>([]);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +77,8 @@ export default function MedicationsPage() {
 
   const loadFamilyMembers = async () => {
     try {
-      const response = await fetch('/api/family');
+      // Use /api/family-data instead of /api/family due to Next.js routing bug
+      const response = await fetch('/api/family-data');
       if (response.ok) {
         const data = await response.json();
         setFamilyMembers(
@@ -257,7 +260,7 @@ export default function MedicationsPage() {
             Track medications with safety interlock to prevent double-dosing
           </p>
         </div>
-        {user?.user_metadata?.role === 'PARENT' && (
+        {isParent && (
           <button
             onClick={() => setShowAddModal(true)}
             className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
@@ -273,7 +276,7 @@ export default function MedicationsPage() {
           <p className="text-gray-500 dark:text-gray-400 mb-4">
             No medications configured yet.
           </p>
-          {user?.user_metadata?.role === 'PARENT' && (
+          {isParent && (
             <button
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 mx-auto"

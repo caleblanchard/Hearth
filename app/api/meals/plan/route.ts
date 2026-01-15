@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse and validate date
-    const weekDate = new Date(weekParam);
+    const weekDate = new Date(weekParam + 'T00:00:00'); // Parse as local date
     if (isNaN(weekDate.getTime())) {
       return NextResponse.json(
         { error: 'Invalid date format' },
@@ -45,22 +45,42 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Normalize to start of week (Monday)
-    const weekStartDate = new Date(weekDate);
-    weekStartDate.setUTCHours(0, 0, 0, 0);
-    const day = weekStartDate.getUTCDay();
-    const diff = weekStartDate.getUTCDate() - day + (day === 0 ? -6 : 1);
-    weekStartDate.setUTCDate(diff);
+    // Use the week parameter directly as the week start
+    // The frontend already calculates the correct week start based on family settings
+    const weekStart = weekParam;
 
     // Use data module
-    const mealPlan = await getMealPlanWithEntries(
-      familyId,
-      weekStartDate.toISOString().split('T')[0]
-    );
+    const mealPlan = await getMealPlanWithEntries(familyId, weekStart);
+
+    // Map 'entries' to 'meals' for frontend compatibility with camelCase
+    const response = mealPlan ? {
+      id: mealPlan.id,
+      weekStart: mealPlan.week_start,
+      meals: (mealPlan.entries || []).map((entry: any) => ({
+        id: entry.id,
+        date: entry.date,
+        mealType: entry.meal_type,
+        customName: entry.custom_name,
+        notes: entry.notes,
+        recipeId: entry.recipe_id,
+        dishes: (entry.dishes || []).map((dish: any) => ({
+          id: dish.id,
+          dishName: dish.dish_name,
+          recipeId: dish.recipe_id,
+          sortOrder: dish.sort_order,
+          recipe: dish.recipe ? {
+            id: dish.recipe.id,
+            name: dish.recipe.name,
+            prepTimeMinutes: dish.recipe.prep_time_minutes,
+            cookTimeMinutes: dish.recipe.cook_time_minutes,
+          } : null,
+        })),
+      }))
+    } : null;
 
     return NextResponse.json({
-      mealPlan,
-      weekStart: weekStartDate.toISOString().split('T')[0],
+      mealPlan: response,
+      weekStart: weekStart,
     });
   } catch (error) {
     logger.error('Error fetching meal plan:', error);
@@ -80,8 +100,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
     
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });

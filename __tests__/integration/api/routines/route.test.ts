@@ -12,8 +12,6 @@ import { GET, POST } from '@/app/api/routines/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { RoutineType } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/routines', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,7 +19,6 @@ describe('GET /api/routines', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/routines', {
       method: 'GET',
@@ -36,7 +33,6 @@ describe('GET /api/routines', () => {
 
   it('should return empty array if no routines exist', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routine.findMany.mockResolvedValue([]);
 
@@ -53,7 +49,6 @@ describe('GET /api/routines', () => {
 
   it('should return all family routines for parent', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRoutines = [
       {
@@ -120,7 +115,6 @@ describe('GET /api/routines', () => {
 
   it('should filter routines by type', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRoutines = [
       {
@@ -160,7 +154,6 @@ describe('GET /api/routines', () => {
 
   it('should filter routines by assignedTo', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRoutines = [
       {
@@ -197,7 +190,6 @@ describe('GET /api/routines', () => {
 
   it('should apply OR filter for children (assigned or unassigned)', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routine.findMany.mockResolvedValue([]);
 
@@ -227,7 +219,6 @@ describe('POST /api/routines', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/routines', {
       method: 'POST',
@@ -245,7 +236,6 @@ describe('POST /api/routines', () => {
 
   it('should return 403 if child attempts to create routine', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/routines', {
       method: 'POST',
@@ -265,7 +255,6 @@ describe('POST /api/routines', () => {
 
   it('should create routine with basic fields', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRoutine = {
       id: 'routine-1',
@@ -304,7 +293,6 @@ describe('POST /api/routines', () => {
 
   it('should create routine with steps', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRoutine = {
       id: 'routine-1',
@@ -364,7 +352,6 @@ describe('POST /api/routines', () => {
 
   it('should create routine assigned to specific child', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.familyMember.findFirst.mockResolvedValue({
       id: 'child-123',
@@ -414,7 +401,6 @@ describe('POST /api/routines', () => {
 
   it('should create routine with weekday/weekend flags', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRoutine = {
       id: 'routine-1',
@@ -454,7 +440,6 @@ describe('POST /api/routines', () => {
 
   it('should return 400 if name is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/routines', {
       method: 'POST',
@@ -473,7 +458,6 @@ describe('POST /api/routines', () => {
 
   it('should return 400 if type is invalid', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/routines', {
       method: 'POST',
@@ -493,7 +477,6 @@ describe('POST /api/routines', () => {
 
   it('should return 400 if assignedTo is not a family member', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.familyMember.findFirst.mockResolvedValue(null);
 
@@ -516,7 +499,6 @@ describe('POST /api/routines', () => {
 
   it('should create audit log on routine creation', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRoutine = {
       id: 'routine-1',

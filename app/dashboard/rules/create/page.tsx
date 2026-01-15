@@ -86,7 +86,7 @@ function CreateRuleContent() {
           fetch('/api/medications').catch(() => null),
           fetch('/api/routines').catch(() => null),
           fetch('/api/inventory').catch(() => null),
-          fetch('/api/family').catch(() => null),
+          fetch('/api/family-data').catch(() => null),
         ]);
 
         if (choresRes?.ok) {

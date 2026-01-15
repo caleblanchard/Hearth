@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -126,14 +126,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Create event
+    const severityMap: Record<string, number> = {
+      'LOW': 1,
+      'MODERATE': 2,
+      'HIGH': 3,
+      'CRITICAL': 4,
+    };
     const event = await createHealthEvent({
-      memberId: targetMemberId,
-      eventType,
-      title: title.trim(),
-      description: description?.trim() || null,
-      severity: severity || 'MODERATE',
-      startedAt: startedAt ? new Date(startedAt) : new Date(),
-      recordedById: memberId,
+      member_id: targetMemberId,
+      event_type: eventType,
+      notes: description?.trim() || title.trim() || null,
+      severity: severity ? severityMap[severity] || 2 : 2,
+      started_at: startedAt ? new Date(startedAt).toISOString() : new Date().toISOString(),
     });
 
     // Audit log

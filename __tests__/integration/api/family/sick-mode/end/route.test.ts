@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/family/sick-mode/end/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/family/sick-mode/end', () => {
   beforeEach(() => {
@@ -47,8 +44,6 @@ describe('/api/family/sick-mode/end', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/end', {
         method: 'POST',
         body: JSON.stringify({
@@ -61,7 +56,6 @@ describe('/api/family/sick-mode/end', () => {
     });
 
     it('should allow parents to end sick mode', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeInstance.findUnique.mockResolvedValue(mockSickModeInstance as any);
       prismaMock.sickModeInstance.update.mockResolvedValue({
         ...mockSickModeInstance,
@@ -102,8 +96,6 @@ describe('/api/family/sick-mode/end', () => {
     });
 
     it('should return 400 if instanceId is missing', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/end', {
         method: 'POST',
         body: JSON.stringify({}),
@@ -116,7 +108,6 @@ describe('/api/family/sick-mode/end', () => {
     });
 
     it('should return 404 if instance not found', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeInstance.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/end', {
@@ -133,7 +124,6 @@ describe('/api/family/sick-mode/end', () => {
     });
 
     it('should return 404 if instance belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeInstance.findUnique.mockResolvedValue({
         ...mockSickModeInstance,
         familyId: 'other-family-123',
@@ -153,7 +143,6 @@ describe('/api/family/sick-mode/end', () => {
     });
 
     it('should return 409 if sick mode already ended', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeInstance.findUnique.mockResolvedValue({
         ...mockSickModeInstance,
         isActive: false,
@@ -174,7 +163,6 @@ describe('/api/family/sick-mode/end', () => {
     });
 
     it('should log audit event on successful end', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.sickModeInstance.findUnique.mockResolvedValue(mockSickModeInstance as any);
       prismaMock.sickModeInstance.update.mockResolvedValue({
         ...mockSickModeInstance,

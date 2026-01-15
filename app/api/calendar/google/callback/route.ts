@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/signin', request.url));
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.redirect(new URL('/auth/signin', request.url));
     }
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     // Check for OAuth error
     if (error) {
-      logger.warn('Google OAuth error:', error);
+      logger.warn('Google OAuth error', { error });
       return NextResponse.redirect(
         new URL(`${settingsUrl}?error=oauth_failed`, request.url)
       );

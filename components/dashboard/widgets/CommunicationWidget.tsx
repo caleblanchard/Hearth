@@ -171,7 +171,7 @@ export default function CommunicationWidget() {
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   by {post.author.name}
                 </span>
-                {post._count.reactions > 0 && (
+                {post._count?.reactions > 0 && (
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     {post._count.reactions} reaction{post._count.reactions !== 1 ? 's' : ''}
                   </span>

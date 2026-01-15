@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/chores/schedules/[scheduleId]/assignments/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { AssignmentType } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/chores/schedules/[scheduleId]/assignments', () => {
   beforeEach(() => {
@@ -56,14 +49,13 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
     }
 
     it('should return 403 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/chores/schedules/123/assignments', {
         method: 'POST',
         body: JSON.stringify({ memberId: 'child-1' }),
       })
 
-      const response = await POST(request, { params: { scheduleId } })
+      const response = await POST(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -72,7 +64,6 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
 
     it('should return 400 if memberId is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreSchedule.findUnique.mockResolvedValue(getMockSchedule(session) as any)
 
@@ -81,7 +72,7 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
         body: JSON.stringify({}),
       })
 
-      const response = await POST(request, { params: { scheduleId } })
+      const response = await POST(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -90,7 +81,6 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
 
     it('should return 400 if member is already assigned', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const mockScheduleWithAssignment = {
         ...getMockSchedule(session),
@@ -107,7 +97,7 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
         body: JSON.stringify({ memberId: 'child-1' }),
       })
 
-      const response = await POST(request, { params: { scheduleId } })
+      const response = await POST(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -116,7 +106,6 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
 
     it('should create assignment successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreSchedule.findUnique.mockResolvedValue(getMockSchedule(session) as any)
       prismaMock.familyMember.findUnique.mockResolvedValue({
@@ -130,7 +119,7 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
         body: JSON.stringify({ memberId: 'child-1' }),
       })
 
-      const response = await POST(request, { params: { scheduleId } })
+      const response = await POST(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -141,7 +130,6 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
 
     it('should auto-assign rotationOrder for ROTATING type', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const mockScheduleWithAssignments = {
         ...getMockSchedule(session),
@@ -162,7 +150,7 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
         body: JSON.stringify({ memberId: 'child-2' }),
       })
 
-      const response = await POST(request, { params: { scheduleId } })
+      const response = await POST(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -177,7 +165,6 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreSchedule.findUnique.mockResolvedValue(getMockSchedule(session) as any)
       prismaMock.familyMember.findUnique.mockResolvedValue({
@@ -191,7 +178,7 @@ describe('/api/chores/schedules/[scheduleId]/assignments', () => {
         body: JSON.stringify({ memberId: 'child-1' }),
       })
 
-      const response = await POST(request, { params: { scheduleId } })
+      const response = await POST(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)

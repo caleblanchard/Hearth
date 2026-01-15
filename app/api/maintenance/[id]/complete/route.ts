@@ -8,6 +8,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -16,8 +17,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -42,20 +43,14 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { cost, serviceProvider, notes, photoUrls } = body;
+    const { notes } = body;
 
     // Log completion - all family members can log completions
-    const result = await completeMaintenanceItem(id, memberId, {
-      cost: cost || null,
-      serviceProvider: serviceProvider || null,
-      notes: notes || null,
-      photoUrls: photoUrls || [],
-    });
+    const completion = await completeMaintenanceItem(id, memberId, notes);
 
     return NextResponse.json({
       success: true,
-      completion: result.completion,
-      item: result.item,
+      completion,
       message: 'Maintenance completed successfully',
     });
   } catch (error) {

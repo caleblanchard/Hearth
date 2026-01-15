@@ -14,15 +14,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const parentMemberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const parentMemberId = authContext.activeMemberId;
 
     if (!familyId || !parentMemberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can adjust allowances
-    const isParent = await isParentInFamily(parentMemberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
@@ -50,16 +50,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
+    // Find the allowance
+    const { data: allowance } = await supabase
+      .from('screen_time_allowances')
+      .select('id')
+      .eq('member_id', memberId)
+      .eq('screen_time_type_id', screenTimeTypeId)
+      .single();
+
+    if (!allowance) {
+      return NextResponse.json({ error: 'Allowance not found' }, { status: 404 });
+    }
+
     // Adjust allowance
-    const result = await adjustScreenTimeAllowance(memberId, screenTimeTypeId, amountMinutes, reason || 'Manual adjustment');
+    const updatedAllowance = await adjustScreenTimeAllowance(allowance.id, amountMinutes, reason || 'Manual adjustment');
 
     // Audit log
-    await supabase.from('audit_logs').insert({
+    await (supabase as any).from('audit_logs').insert({
       family_id: familyId,
       member_id: parentMemberId,
       action: amountMinutes > 0 ? 'SCREENTIME_ALLOWANCE_INCREASED' : 'SCREENTIME_ALLOWANCE_DECREASED',
       entity_type: 'SCREENTIME_ALLOWANCE',
-      entity_id: result.allowance.id,
+      entity_id: updatedAllowance.id,
       result: 'SUCCESS',
       metadata: {
         targetMember: targetMember.name,
@@ -70,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      allowance: result.allowance,
+      allowance: updatedAllowance,
       message: `Adjusted ${targetMember.name}'s screen time by ${amountMinutes} minutes`,
     });
   } catch (error) {

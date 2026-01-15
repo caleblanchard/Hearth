@@ -13,6 +13,7 @@ export async function POST(
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
+    const { code } = await params
     const supabase = await createClient();
     
     // Find invite by code

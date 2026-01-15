@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { GET, PATCH, DELETE } from '@/app/api/maintenance/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/maintenance/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   const mockMaintenanceItem = {
@@ -38,10 +35,9 @@ describe('/api/maintenance/[id]', () => {
 
   describe('GET /api/maintenance/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1');
-      const response = await GET(request, { params: { id: 'item-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(401);
     });
@@ -50,7 +46,7 @@ describe('/api/maintenance/[id]', () => {
       prismaMock.maintenanceItem.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1');
-      const response = await GET(request, { params: { id: 'item-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -65,7 +61,7 @@ describe('/api/maintenance/[id]', () => {
       prismaMock.maintenanceItem.findUnique.mockResolvedValue(otherFamilyItem as any);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1');
-      const response = await GET(request, { params: { id: 'item-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -94,7 +90,7 @@ describe('/api/maintenance/[id]', () => {
       prismaMock.maintenanceItem.findUnique.mockResolvedValue(itemWithCompletions as any);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1');
-      const response = await GET(request, { params: { id: 'item-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -124,14 +120,13 @@ describe('/api/maintenance/[id]', () => {
     });
 
     it('should allow children to view maintenance items', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.maintenanceItem.findUnique.mockResolvedValue({
         ...mockMaintenanceItem,
         completions: [],
       } as any);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1');
-      const response = await GET(request, { params: { id: 'item-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(200);
     });
@@ -139,26 +134,24 @@ describe('/api/maintenance/[id]', () => {
 
   describe('PATCH /api/maintenance/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if user is not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.maintenanceItem.findUnique.mockResolvedValue(mockMaintenanceItem as any);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -172,7 +165,7 @@ describe('/api/maintenance/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(404);
     });
@@ -188,7 +181,7 @@ describe('/api/maintenance/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(403);
     });
@@ -217,7 +210,7 @@ describe('/api/maintenance/[id]', () => {
           nextDueAt: '2026-04-01T00:00:00Z',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -249,7 +242,7 @@ describe('/api/maintenance/[id]', () => {
           category: 'INVALID_CATEGORY',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -264,7 +257,7 @@ describe('/api/maintenance/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated' }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();
@@ -274,24 +267,22 @@ describe('/api/maintenance/[id]', () => {
 
   describe('DELETE /api/maintenance/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if user is not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.maintenanceItem.findUnique.mockResolvedValue(mockMaintenanceItem as any);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -304,7 +295,7 @@ describe('/api/maintenance/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(404);
     });
@@ -319,7 +310,7 @@ describe('/api/maintenance/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(403);
     });
@@ -332,7 +323,7 @@ describe('/api/maintenance/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -363,7 +354,7 @@ describe('/api/maintenance/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();

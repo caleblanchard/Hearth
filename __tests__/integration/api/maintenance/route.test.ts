@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/maintenance/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/maintenance', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   const mockMaintenanceItem = {
@@ -38,7 +35,6 @@ describe('/api/maintenance', () => {
 
   describe('GET /api/maintenance', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance');
       const response = await GET(request);
@@ -92,7 +88,6 @@ describe('/api/maintenance', () => {
     });
 
     it('should allow children to view maintenance items', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.maintenanceItem.findMany.mockResolvedValue([mockMaintenanceItem] as any);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance');
@@ -117,7 +112,6 @@ describe('/api/maintenance', () => {
 
   describe('POST /api/maintenance', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance', {
         method: 'POST',
@@ -133,7 +127,6 @@ describe('/api/maintenance', () => {
     });
 
     it('should return 403 if user is not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/maintenance', {
         method: 'POST',

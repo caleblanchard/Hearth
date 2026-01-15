@@ -8,6 +8,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -16,15 +17,15 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Check if user is a parent
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Forbidden - Parent access required' },
@@ -48,7 +49,7 @@ export async function PATCH(
     }
 
     // Toggle the rule
-    const updatedRule = await toggleAutomationRule(id);
+    const updatedRule = await toggleAutomationRule(id, !rule.is_enabled);
 
     // Audit log
     await supabase.from('audit_logs').insert({
@@ -61,9 +62,24 @@ export async function PATCH(
       metadata: { previousState: rule.is_enabled },
     });
 
+    // Map to camelCase for frontend
+    const mappedRule = {
+      id: updatedRule.id,
+      familyId: updatedRule.family_id,
+      name: updatedRule.name,
+      description: updatedRule.description,
+      trigger: updatedRule.trigger,
+      conditions: updatedRule.conditions,
+      actions: updatedRule.actions,
+      isEnabled: updatedRule.is_enabled,
+      createdById: updatedRule.created_by_id,
+      createdAt: updatedRule.created_at,
+      updatedAt: updatedRule.updated_at,
+    };
+
     return NextResponse.json({
       success: true,
-      rule: updatedRule,
+      rule: mappedRule,
       message: `Rule ${updatedRule.is_enabled ? 'enabled' : 'disabled'} successfully`,
     });
   } catch (error) {

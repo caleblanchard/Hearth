@@ -41,6 +41,8 @@ export async function createClient() {
 /**
  * Get the current authenticated user and their family context
  * Returns null if not authenticated
+ * 
+ * Multi-family support: Reads x-active-family-id header and validates access
  */
 export async function getAuthContext() {
   const supabase = await createClient()
@@ -67,11 +69,35 @@ export async function getAuthContext() {
     .eq('auth_user_id', user.id)
     .eq('is_active', true)
 
+  // Read active family ID from request header (if provided)
+  let activeFamilyId: string | null = null;
+  let activeMemberId: string | null = null;
+  
+  try {
+    const { headers } = await import('next/headers');
+    const headersList = await headers();
+    const requestedFamilyId = headersList.get('x-active-family-id');
+    
+    if (requestedFamilyId && memberships) {
+      // Verify user has access to this family
+      const membership = memberships.find(m => m.family_id === requestedFamilyId);
+      if (membership) {
+        activeFamilyId = requestedFamilyId;
+        activeMemberId = membership.id;
+      }
+    }
+  } catch (error) {
+    // Header reading failed - not a problem, will use default
+  }
+
   return {
     user,
     memberships: memberships || [],
     defaultFamilyId: memberships?.[0]?.family_id || null,
     defaultMemberId: memberships?.[0]?.id || null,
+    // Active family (from header) or falls back to default
+    activeFamilyId: activeFamilyId || memberships?.[0]?.family_id || null,
+    activeMemberId: activeMemberId || memberships?.[0]?.id || null,
   }
 }
 

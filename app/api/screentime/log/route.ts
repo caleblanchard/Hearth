@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
@@ -52,10 +52,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const session = await logScreenTimeSession(memberId, screenTimeTypeId, minutes, {
-      deviceType: rawDeviceType ? sanitizeString(rawDeviceType) : null,
-      notes: rawNotes ? sanitizeString(rawNotes) : null,
-    });
+    const session = await logScreenTimeSession(memberId, screenTimeTypeId, minutes);
 
     return NextResponse.json({
       success: true,

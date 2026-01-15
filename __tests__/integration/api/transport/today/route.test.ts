@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/transport/today/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/transport/today', () => {
   beforeEach(() => {
@@ -87,8 +84,6 @@ describe('/api/transport/today', () => {
   ];
 
   it('should return 401 if not authenticated', async () => {
-    mockAuth.mockResolvedValue(null);
-
     const request = new NextRequest('http://localhost:3000/api/transport/today', {
       method: 'GET',
     });
@@ -98,8 +93,6 @@ describe('/api/transport/today', () => {
   });
 
   it('should return today\'s transport schedules', async () => {
-    mockAuth.mockResolvedValue(mockSession as any);
-
     // Mock Date to return Monday (day 1)
     const mockDate = new Date('2026-01-05T10:00:00Z'); // Monday
     jest.spyOn(global, 'Date').mockImplementation(() => mockDate as any);
@@ -136,8 +129,6 @@ describe('/api/transport/today', () => {
   });
 
   it('should filter by member ID if provided', async () => {
-    mockAuth.mockResolvedValue(mockSession as any);
-
     const mockDate = new Date('2026-01-05T10:00:00Z'); // Monday
     jest.spyOn(global, 'Date').mockImplementation(() => mockDate as any);
 
@@ -164,8 +155,6 @@ describe('/api/transport/today', () => {
   });
 
   it('should return empty array if no schedules for today', async () => {
-    mockAuth.mockResolvedValue(mockSession as any);
-
     const mockDate = new Date('2026-01-05T10:00:00Z'); // Monday
     jest.spyOn(global, 'Date').mockImplementation(() => mockDate as any);
 
@@ -184,8 +173,6 @@ describe('/api/transport/today', () => {
   });
 
   it('should handle different days of week correctly', async () => {
-    mockAuth.mockResolvedValue(mockSession as any);
-
     // Mock Date to return Sunday (day 0)
     const mockDate = new Date('2026-01-04T10:00:00Z'); // Sunday
     jest.spyOn(global, 'Date').mockImplementation(() => mockDate as any);

@@ -12,6 +12,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ memberId: string }> }
 ) {
+  const { memberId } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -20,7 +21,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }

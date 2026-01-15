@@ -12,15 +12,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can view approval queue
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can view the approval queue' },
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const memberIdFilter = searchParams.get('memberId');
 
     // Fetch pending chore completions (COMPLETED status, awaiting approval)
-    const { data: choreCompletions } = await supabase
+    const { data: choreCompletions } = await (supabase as any)
       .from('chore_completions')
       .select(`
         *,
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       .order('completed_at', { ascending: true });
 
     // Fetch pending reward redemptions
-    const { data: rewardRedemptions } = await supabase
+    const { data: rewardRedemptions } = await (supabase as any)
       .from('reward_redemptions')
       .select(`
         *,

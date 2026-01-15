@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { PATCH } from '@/app/api/chores/schedules/[scheduleId]/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { Frequency } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/chores/schedules/[scheduleId]', () => {
   beforeEach(() => {
@@ -53,14 +46,13 @@ describe('/api/chores/schedules/[scheduleId]', () => {
     })
 
     it('should return 403 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/chores/schedules/123', {
         method: 'PATCH',
         body: JSON.stringify({ frequency: 'WEEKLY' }),
       })
 
-      const response = await PATCH(request, { params: { scheduleId } })
+      const response = await PATCH(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -69,14 +61,13 @@ describe('/api/chores/schedules/[scheduleId]', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores/schedules/123', {
         method: 'PATCH',
         body: JSON.stringify({ frequency: 'WEEKLY' }),
       })
 
-      const response = await PATCH(request, { params: { scheduleId } })
+      const response = await PATCH(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -85,7 +76,6 @@ describe('/api/chores/schedules/[scheduleId]', () => {
 
     it('should return 404 if schedule not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreSchedule.findUnique.mockResolvedValue(null)
 
@@ -94,7 +84,7 @@ describe('/api/chores/schedules/[scheduleId]', () => {
         body: JSON.stringify({ frequency: 'WEEKLY' }),
       })
 
-      const response = await PATCH(request, { params: { scheduleId } })
+      const response = await PATCH(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -103,7 +93,6 @@ describe('/api/chores/schedules/[scheduleId]', () => {
 
     it('should return 400 if frequency is invalid', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreSchedule.findUnique.mockResolvedValue(getMockSchedule(session) as any)
 
@@ -112,7 +101,7 @@ describe('/api/chores/schedules/[scheduleId]', () => {
         body: JSON.stringify({ frequency: 'INVALID' }),
       })
 
-      const response = await PATCH(request, { params: { scheduleId } })
+      const response = await PATCH(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -121,7 +110,6 @@ describe('/api/chores/schedules/[scheduleId]', () => {
 
     it('should return 400 if weekly frequency missing dayOfWeek', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreSchedule.findUnique.mockResolvedValue(getMockSchedule(session) as any)
 
@@ -130,7 +118,7 @@ describe('/api/chores/schedules/[scheduleId]', () => {
         body: JSON.stringify({ frequency: 'WEEKLY' }),
       })
 
-      const response = await PATCH(request, { params: { scheduleId } })
+      const response = await PATCH(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -139,7 +127,6 @@ describe('/api/chores/schedules/[scheduleId]', () => {
 
     it('should return 400 if custom frequency missing customCron', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreSchedule.findUnique.mockResolvedValue(getMockSchedule(session) as any)
 
@@ -148,7 +135,7 @@ describe('/api/chores/schedules/[scheduleId]', () => {
         body: JSON.stringify({ frequency: 'CUSTOM' }),
       })
 
-      const response = await PATCH(request, { params: { scheduleId } })
+      const response = await PATCH(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -157,7 +144,6 @@ describe('/api/chores/schedules/[scheduleId]', () => {
 
     it('should update schedule successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreSchedule.findUnique.mockResolvedValue(getMockSchedule(session) as any)
       prismaMock.choreSchedule.update.mockResolvedValue(getMockUpdatedSchedule(session) as any)
@@ -172,7 +158,7 @@ describe('/api/chores/schedules/[scheduleId]', () => {
         }),
       })
 
-      const response = await PATCH(request, { params: { scheduleId } })
+      const response = await PATCH(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -188,7 +174,6 @@ describe('/api/chores/schedules/[scheduleId]', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreSchedule.findUnique.mockResolvedValue(getMockSchedule(session) as any)
       prismaMock.choreSchedule.update.mockRejectedValue(new Error('Database error'))
@@ -198,7 +183,7 @@ describe('/api/chores/schedules/[scheduleId]', () => {
         body: JSON.stringify({ frequency: 'DAILY' }),
       })
 
-      const response = await PATCH(request, { params: { scheduleId } })
+      const response = await PATCH(request, { params: Promise.resolve({ scheduleId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)

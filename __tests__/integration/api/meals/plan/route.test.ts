@@ -12,8 +12,6 @@ import { GET, POST } from '@/app/api/meals/plan/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { MealType } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/meals/plan', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,7 +19,6 @@ describe('GET /api/meals/plan', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/meals/plan?week=2026-01-06', {
       method: 'GET',
@@ -34,7 +31,6 @@ describe('GET /api/meals/plan', () => {
 
   it('should return 400 if week parameter is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/meals/plan', {
       method: 'GET',
@@ -49,7 +45,6 @@ describe('GET /api/meals/plan', () => {
 
   it('should return 400 if week parameter is invalid date', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/meals/plan?week=invalid-date', {
       method: 'GET',
@@ -64,7 +59,6 @@ describe('GET /api/meals/plan', () => {
 
   it('should return empty meal plan if none exists for week', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.mealPlan.findUnique.mockResolvedValue(null);
 
@@ -83,7 +77,6 @@ describe('GET /api/meals/plan', () => {
 
   it('should return meal plan with entries for the week', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const weekStart = new Date('2026-01-06');
     const mockMealPlan = {
@@ -135,7 +128,6 @@ describe('GET /api/meals/plan', () => {
 
   it('should normalize week start to Monday', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.mealPlan.findUnique.mockResolvedValue(null);
 
@@ -176,7 +168,6 @@ describe('GET /api/meals/plan', () => {
 
   it('should not return meal plans from other families', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.mealPlan.findUnique.mockResolvedValue(null);
 
@@ -199,7 +190,6 @@ describe('GET /api/meals/plan', () => {
 
   it('should allow children to view meal plans', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.mealPlan.findUnique.mockResolvedValue(null);
 
@@ -220,7 +210,6 @@ describe('POST /api/meals/plan', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/meals/plan', {
       method: 'POST',
@@ -239,7 +228,6 @@ describe('POST /api/meals/plan', () => {
 
   it('should return 400 if date is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/meals/plan', {
       method: 'POST',
@@ -259,7 +247,6 @@ describe('POST /api/meals/plan', () => {
 
   it('should return 400 if mealType is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/meals/plan', {
       method: 'POST',
@@ -279,7 +266,6 @@ describe('POST /api/meals/plan', () => {
 
   it('should return 400 if meal type is invalid', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/meals/plan', {
       method: 'POST',
@@ -300,7 +286,6 @@ describe('POST /api/meals/plan', () => {
 
   it('should return 400 if neither customName nor recipeId provided', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/meals/plan', {
       method: 'POST',
@@ -320,7 +305,6 @@ describe('POST /api/meals/plan', () => {
 
   it('should create meal plan entry successfully', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const weekStart = new Date('2026-01-05');
     const mockMealPlan = {
@@ -372,7 +356,6 @@ describe('POST /api/meals/plan', () => {
 
   it('should create meal plan if it does not exist for week', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const weekStart = new Date('2026-01-05');
     const mockMealPlan = {
@@ -416,7 +399,6 @@ describe('POST /api/meals/plan', () => {
 
   it('should create audit log on entry creation', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.mealPlan.upsert.mockResolvedValue({ id: 'plan-1' } as any);
     prismaMock.mealPlanEntry.create.mockResolvedValue({
@@ -451,7 +433,6 @@ describe('POST /api/meals/plan', () => {
 
   it('should allow parents to create meal entries', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.mealPlan.upsert.mockResolvedValue({ id: 'plan-1' } as any);
     prismaMock.mealPlanEntry.create.mockResolvedValue({
@@ -478,7 +459,6 @@ describe('POST /api/meals/plan', () => {
 
   it('should allow children to create meal entries', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.mealPlan.upsert.mockResolvedValue({ id: 'plan-1' } as any);
     prismaMock.mealPlanEntry.create.mockResolvedValue({
@@ -505,7 +485,6 @@ describe('POST /api/meals/plan', () => {
 
   it('should handle all meal types', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mealTypes = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'];
 

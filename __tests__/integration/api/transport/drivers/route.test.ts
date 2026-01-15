@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/transport/drivers/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/transport/drivers', () => {
   beforeEach(() => {
@@ -46,8 +43,6 @@ describe('/api/transport/drivers', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/drivers', {
         method: 'GET',
       });
@@ -57,7 +52,6 @@ describe('/api/transport/drivers', () => {
     });
 
     it('should return all drivers for family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportDriver.findMany.mockResolvedValue([mockDriver] as any);
 
       const request = new NextRequest('http://localhost:3000/api/transport/drivers', {
@@ -74,8 +68,6 @@ describe('/api/transport/drivers', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/transport/drivers', {
         method: 'POST',
         body: JSON.stringify({ name: 'Mom' }),
@@ -86,8 +78,6 @@ describe('/api/transport/drivers', () => {
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/drivers', {
         method: 'POST',
         body: JSON.stringify({ name: 'Mom' }),
@@ -98,8 +88,6 @@ describe('/api/transport/drivers', () => {
     });
 
     it('should return 400 if name is missing', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/transport/drivers', {
         method: 'POST',
         body: JSON.stringify({ phone: '555-1234' }),
@@ -110,7 +98,6 @@ describe('/api/transport/drivers', () => {
     });
 
     it('should create driver successfully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.transportDriver.create.mockResolvedValue(mockDriver as any);
       prismaMock.auditLog.create.mockResolvedValue({} as any);
 

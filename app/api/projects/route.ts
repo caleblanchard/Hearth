@@ -16,15 +16,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can manage projects
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage projects' },
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    const projects = await getProjects(familyId, status || undefined);
+    const projects = await getProjects(familyId, status ? { status } : undefined);
 
     return NextResponse.json({ data: projects, total: projects.length });
   } catch (error) {
@@ -56,15 +56,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can manage projects
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage projects' },
@@ -93,13 +93,14 @@ export async function POST(request: NextRequest) {
 
     const sanitizedDescription = description ? sanitizeString(description) : null;
 
-    const project = await createProject(familyId, {
+    const project = await createProject({
+      family_id: familyId,
       name: sanitizedName,
       description: sanitizedDescription,
-      startDate: startDate ? new Date(startDate) : null,
-      endDate: endDate ? new Date(endDate) : null,
+      start_date: startDate ? new Date(startDate).toISOString() : null,
+      due_date: endDate ? new Date(endDate).toISOString() : null,
       budget: budget || null,
-      createdById: memberId,
+      created_by_id: memberId,
     });
 
     // Audit log

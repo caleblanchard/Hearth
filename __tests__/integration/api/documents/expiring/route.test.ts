@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/documents/expiring/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/documents/expiring', () => {
   beforeEach(() => {
@@ -28,8 +25,6 @@ describe('/api/documents/expiring', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/documents/expiring', {
         method: 'GET',
       });
@@ -39,8 +34,6 @@ describe('/api/documents/expiring', () => {
     });
 
     it('should return documents expiring within default 90 days', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const mockExpiringDocuments = [
         {
           id: 'doc-1',
@@ -86,7 +79,6 @@ describe('/api/documents/expiring', () => {
     });
 
     it('should accept custom days parameter', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findMany.mockResolvedValue([]);
 
       const request = new NextRequest('http://localhost:3000/api/documents/expiring?days=30', {
@@ -104,7 +96,6 @@ describe('/api/documents/expiring', () => {
     });
 
     it('should only return documents from user family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findMany.mockResolvedValue([]);
 
       const request = new NextRequest('http://localhost:3000/api/documents/expiring', {
@@ -124,8 +115,6 @@ describe('/api/documents/expiring', () => {
     });
 
     it('should order documents by expiration date ascending', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
-
       const mockDocuments = [
         {
           id: 'doc-1',
@@ -160,7 +149,6 @@ describe('/api/documents/expiring', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findMany.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest('http://localhost:3000/api/documents/expiring', {

@@ -8,6 +8,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -16,26 +17,26 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can reject redemptions
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { reason } = await request.json();
 
-    const result = await rejectRewardRedemption(id, reason || null);
+    const redemption = await rejectRewardRedemption(id, reason || null);
 
     return NextResponse.json({
       success: true,
-      redemption: result.redemption,
+      redemption,
       message: 'Redemption rejected successfully',
     });
   } catch (error) {

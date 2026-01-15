@@ -12,8 +12,6 @@ import { DELETE, PATCH } from '@/app/api/meals/plan/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { MealType } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('DELETE /api/meals/plan/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,20 +19,18 @@ describe('DELETE /api/meals/plan/[id]', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/meals/plan/entry-123', {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'entry-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return 404 if meal entry not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.mealPlanEntry.findUnique.mockResolvedValue(null);
 
@@ -42,14 +38,13 @@ describe('DELETE /api/meals/plan/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'entry-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(response.status).toBe(404);
   });
 
   it('should return 403 if entry belongs to different family', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingEntry = {
       id: 'entry-123',
@@ -76,14 +71,13 @@ describe('DELETE /api/meals/plan/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'entry-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(response.status).toBe(403);
   });
 
   it('should delete meal entry successfully', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingEntry = {
       id: 'entry-123',
@@ -112,7 +106,7 @@ describe('DELETE /api/meals/plan/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'entry-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(response.status).toBe(200);
     expect(prismaMock.mealPlanEntry.delete).toHaveBeenCalledWith({
@@ -122,7 +116,6 @@ describe('DELETE /api/meals/plan/[id]', () => {
 
   it('should create audit log on deletion', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingEntry = {
       id: 'entry-123',
@@ -151,7 +144,7 @@ describe('DELETE /api/meals/plan/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    await DELETE(request, { params: { id: 'entry-123' } });
+    await DELETE(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -164,7 +157,6 @@ describe('DELETE /api/meals/plan/[id]', () => {
 
   it('should allow children to delete meal entries', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const existingEntry = {
       id: 'entry-123',
@@ -193,7 +185,7 @@ describe('DELETE /api/meals/plan/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'entry-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(response.status).toBe(200);
   });
@@ -206,7 +198,6 @@ describe('PATCH /api/meals/plan/[id]', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/meals/plan/entry-123', {
       method: 'PATCH',
@@ -214,14 +205,13 @@ describe('PATCH /api/meals/plan/[id]', () => {
       body: JSON.stringify({ customName: 'Updated meal' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'entry-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return 404 if meal entry not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.mealPlanEntry.findUnique.mockResolvedValue(null);
 
@@ -231,14 +221,13 @@ describe('PATCH /api/meals/plan/[id]', () => {
       body: JSON.stringify({ customName: 'Updated meal' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'entry-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(response.status).toBe(404);
   });
 
   it('should return 403 if entry belongs to different family', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingEntry = {
       id: 'entry-123',
@@ -267,14 +256,13 @@ describe('PATCH /api/meals/plan/[id]', () => {
       body: JSON.stringify({ customName: 'Updated meal' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'entry-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(response.status).toBe(403);
   });
 
   it('should update meal entry successfully', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingEntry = {
       id: 'entry-123',
@@ -314,7 +302,7 @@ describe('PATCH /api/meals/plan/[id]', () => {
       }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'entry-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -324,7 +312,6 @@ describe('PATCH /api/meals/plan/[id]', () => {
 
   it('should create audit log on update', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingEntry = {
       id: 'entry-123',
@@ -355,7 +342,7 @@ describe('PATCH /api/meals/plan/[id]', () => {
       body: JSON.stringify({ customName: 'Waffles' }),
     }) as NextRequest;
 
-    await PATCH(request, { params: { id: 'entry-123' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -368,7 +355,6 @@ describe('PATCH /api/meals/plan/[id]', () => {
 
   it('should allow children to update meal entries', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const existingEntry = {
       id: 'entry-123',
@@ -399,7 +385,7 @@ describe('PATCH /api/meals/plan/[id]', () => {
       body: JSON.stringify({ notes: 'With milk' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'entry-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'entry-123' }) });
 
     expect(response.status).toBe(200);
   });

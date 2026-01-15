@@ -63,7 +63,8 @@ export default function HealthEventsList() {
   useEffect(() => {
     const loadMembers = async () => {
       try {
-        const response = await fetch('/api/family');
+        // Use /api/family-data instead of /api/family due to Next.js routing bug
+        const response = await fetch('/api/family-data');
         if (response.ok) {
           const data = await response.json();
           setMembers(data.family.members.filter((m: FamilyMember) => m.role === 'CHILD' || user?.user_metadata?.role === 'PARENT'));

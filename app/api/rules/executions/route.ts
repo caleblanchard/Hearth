@@ -12,15 +12,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Check if user is a parent
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Forbidden - Parent access required' },
@@ -29,16 +29,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const filters = {
-      ruleId: searchParams.get('ruleId') || undefined,
-      status: searchParams.get('status') || undefined,
-      startDate: searchParams.get('startDate') || undefined,
-      endDate: searchParams.get('endDate') || undefined,
-      limit: parseInt(searchParams.get('limit') || '50'),
-      offset: parseInt(searchParams.get('offset') || '0'),
-    };
+    const ruleId = searchParams.get('ruleId') || undefined;
+    const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    const executions = await getRuleExecutions(familyId, filters);
+    const executions = await getRuleExecutions(familyId, ruleId, limit);
 
     return NextResponse.json({ executions });
   } catch (error) {

@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { DELETE } from '@/app/api/todos/clear-completed/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 
-const { auth } = require('@/lib/auth')
-
 describe('/api/todos/clear-completed', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -30,7 +23,6 @@ describe('/api/todos/clear-completed', () => {
 
   describe('DELETE', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const response = await DELETE()
       const data = await response.json()
@@ -41,7 +33,6 @@ describe('/api/todos/clear-completed', () => {
 
     it('should clear completed todos for family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.deleteMany.mockResolvedValue({ count: 5 })
 
@@ -63,7 +54,6 @@ describe('/api/todos/clear-completed', () => {
 
     it('should handle singular message correctly', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.deleteMany.mockResolvedValue({ count: 1 })
 
@@ -76,7 +66,6 @@ describe('/api/todos/clear-completed', () => {
 
     it('should handle zero completed todos', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.deleteMany.mockResolvedValue({ count: 0 })
 
@@ -90,7 +79,6 @@ describe('/api/todos/clear-completed', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.todoItem.deleteMany.mockRejectedValue(new Error('Database error'))
 

@@ -11,17 +11,13 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/maintenance/upcoming/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/maintenance/upcoming', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/maintenance/upcoming');
     const response = await GET(request);
@@ -136,7 +132,6 @@ describe('/api/maintenance/upcoming', () => {
   });
 
   it('should allow children to view upcoming items', async () => {
-    auth.mockResolvedValue(mockChildSession());
 
     const upcomingItems = [
       {

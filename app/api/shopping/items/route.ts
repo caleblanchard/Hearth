@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -57,18 +57,20 @@ export async function POST(request: NextRequest) {
     const sanitizedPriority = priority && validPriorities.includes(priority) ? priority : 'NORMAL';
 
     // Get or create active shopping list
-    const shoppingList = await getOrCreateShoppingList(familyId, 'Family Shopping List');
+    const shoppingList = await getOrCreateShoppingList(familyId);
 
     // Create item
-    const item = await addShoppingItem(shoppingList.id, {
+    const item = await addShoppingItem({
+      list_id: shoppingList.id,
       name: sanitizedName,
-      category: sanitizedCategory,
+      category: sanitizedCategory || null,
       quantity: sanitizedQuantity,
-      unit: sanitizedUnit,
-      priority: sanitizedPriority,
-      notes: sanitizedNotes,
-      requestedById: memberId,
-      addedById: memberId,
+      unit: sanitizedUnit || null,
+      priority: sanitizedPriority || 'MEDIUM',
+      notes: sanitizedNotes || null,
+      requested_by_id: memberId,
+      added_by_id: memberId,
+      status: 'PENDING',
     });
 
     // Log audit

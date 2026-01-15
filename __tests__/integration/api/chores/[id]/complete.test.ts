@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/chores/[id]/complete/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { ChoreStatus } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/chores/[id]/complete', () => {
   beforeEach(() => {
@@ -47,14 +40,13 @@ describe('/api/chores/[id]/complete', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/chores/123/complete', {
         method: 'POST',
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -63,7 +55,6 @@ describe('/api/chores/[id]/complete', () => {
 
     it('should return 404 if chore instance not found', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(null)
 
@@ -72,7 +63,7 @@ describe('/api/chores/[id]/complete', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -80,8 +71,7 @@ describe('/api/chores/[id]/complete', () => {
     })
 
     it('should return 403 if user is not assigned and not a parent', async () => {
-      const session = mockChildSession({ user: { id: 'other-child' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.choreInstance.findUnique.mockResolvedValue({
         ...mockChoreInstance,
@@ -93,7 +83,7 @@ describe('/api/chores/[id]/complete', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -102,7 +92,6 @@ describe('/api/chores/[id]/complete', () => {
 
     it('should allow parent to complete any chore', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -136,7 +125,7 @@ describe('/api/chores/[id]/complete', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -145,8 +134,7 @@ describe('/api/chores/[id]/complete', () => {
     })
 
     it('should complete chore without approval and award credits atomically', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -187,7 +175,7 @@ describe('/api/chores/[id]/complete', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -196,8 +184,7 @@ describe('/api/chores/[id]/complete', () => {
     })
 
     it('should handle chore requiring approval', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const choreRequiringApproval = {
         ...mockChoreInstance,
@@ -232,7 +219,7 @@ describe('/api/chores/[id]/complete', () => {
         body: JSON.stringify({ notes: 'Test notes' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -254,15 +241,14 @@ describe('/api/chores/[id]/complete', () => {
     })
 
     it('should handle invalid JSON gracefully', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const request = new NextRequest('http://localhost/api/chores/123/complete', {
         method: 'POST',
         body: 'invalid json{',
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -270,8 +256,7 @@ describe('/api/chores/[id]/complete', () => {
     })
 
     it('should handle notification creation failures gracefully', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const choreRequiringApproval = {
         ...mockChoreInstance,
@@ -304,7 +289,7 @@ describe('/api/chores/[id]/complete', () => {
       })
 
       // Should still succeed even if notifications fail
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -312,8 +297,7 @@ describe('/api/chores/[id]/complete', () => {
     })
 
     it('should verify family membership', async () => {
-      const session = mockChildSession({ user: { id: 'child-1', familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession({ user: { id: 'child-1', familyId: 'family-1', name: 'Test Child', email: null, role: 'CHILD', familyName: 'Test Family' } })
 
       // Chore from different family
       const otherFamilyChore = {
@@ -342,7 +326,7 @@ describe('/api/chores/[id]/complete', () => {
 
       // This should be caught by the assignment check, but we should verify
       // that family verification happens at the query level
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
 
       // Should fail either at assignment check or family check
       expect([403, 404]).toContain(response.status)

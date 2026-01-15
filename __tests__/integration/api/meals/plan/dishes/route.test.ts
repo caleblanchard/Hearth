@@ -16,8 +16,6 @@ import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/meals/plan/dishes/route';
 import { mockParentSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('POST /api/meals/plan/dishes', () => {
   const familyId = 'family-test-123';
   const userId = 'parent-test-123';
@@ -25,12 +23,10 @@ describe('POST /api/meals/plan/dishes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   describe('Authentication', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/meals/plan/dishes', {
         method: 'POST',
@@ -246,7 +242,7 @@ describe('POST /api/meals/plan/dishes', () => {
       };
 
       prismaMock.mealPlanEntry.findUnique.mockResolvedValue(mockMealEntry);
-      prismaMock.recipe.findUnique.mockResolvedValue(mockRecipe);
+      prismaMock.recipe.findUnique.mockResolvedValue(mockRecipe as any);
       prismaMock.mealPlanDish.count.mockResolvedValue(1);
       prismaMock.mealPlanDish.create.mockResolvedValue({
         id: 'dish-2',
@@ -307,7 +303,7 @@ describe('POST /api/meals/plan/dishes', () => {
       };
 
       prismaMock.mealPlanEntry.findUnique.mockResolvedValue(mockMealEntry);
-      prismaMock.recipe.findUnique.mockResolvedValue(mockRecipe);
+      prismaMock.recipe.findUnique.mockResolvedValue(mockRecipe as any);
       prismaMock.mealPlanDish.count.mockResolvedValue(0);
       prismaMock.mealPlanDish.create.mockResolvedValue({
         id: 'dish-1',

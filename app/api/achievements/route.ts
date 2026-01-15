@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -38,19 +38,19 @@ export async function GET(request: NextRequest) {
     const userAchievements = await getUserAchievements(targetMemberId);
 
     // Get user stats for progress calculation (simplified - would need proper data module functions)
-    const { data: choresData } = await supabase
+    const { count: choresCount } = await (supabase as any)
       .from('chore_completions')
-      .select('id', { count: 'exact', head: true })
+      .select('*', { count: 'exact', head: true })
       .eq('member_id', targetMemberId)
       .eq('status', 'APPROVED');
 
-    const { data: creditBalance } = await supabase
+    const { data: creditBalance } = await (supabase as any)
       .from('credit_balances')
       .select('lifetime_earned')
       .eq('member_id', targetMemberId)
       .single();
 
-    const choresCompleted = choresData || 0;
+    const choresCompleted = choresCount || 0;
     const creditsEarned = creditBalance?.lifetime_earned || 0;
 
     const achievementsWithProgress = achievements.map((achievement: any) => {

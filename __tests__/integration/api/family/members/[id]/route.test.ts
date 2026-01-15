@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock bcrypt
 jest.mock('bcrypt', () => ({
   hash: jest.fn(),
@@ -28,7 +23,6 @@ import { mockParentSession } from '@/lib/test-utils/auth-mock'
 import { Role } from '@/app/generated/prisma'
 import { BCRYPT_ROUNDS } from '@/lib/constants'
 
-const { auth } = require('@/lib/auth')
 const { hash } = require('bcrypt')
 
 describe('/api/family/members/[id]', () => {
@@ -50,14 +44,13 @@ describe('/api/family/members/[id]', () => {
 
     it('should return 403 if not a parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue({ ...session, user: { ...session.user, role: 'CHILD' } })
 
       const request = new NextRequest('http://localhost/api/family/members/123', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       })
 
-      const response = await PATCH(request, { params: { id: memberId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -66,7 +59,6 @@ describe('/api/family/members/[id]', () => {
 
     it('should return 404 if member not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue(null)
 
@@ -75,7 +67,7 @@ describe('/api/family/members/[id]', () => {
         body: JSON.stringify({ name: 'Updated Name' }),
       })
 
-      const response = await PATCH(request, { params: { id: memberId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -84,11 +76,9 @@ describe('/api/family/members/[id]', () => {
 
     it('should return 404 if member belongs to different family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
-        familyId: session.user.familyId,
         familyId: 'different-family', // Different from session.user.familyId
       } as any)
 
@@ -97,7 +87,7 @@ describe('/api/family/members/[id]', () => {
         body: JSON.stringify({ name: 'Updated Name' }),
       })
 
-      const response = await PATCH(request, { params: { id: memberId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -111,7 +101,6 @@ describe('/api/family/members/[id]', () => {
         ...session,
         user: { ...session.user, id: memberId },
       }
-      auth.mockResolvedValue(sessionWithMatchingId)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
@@ -124,7 +113,7 @@ describe('/api/family/members/[id]', () => {
         body: JSON.stringify({ isActive: false }),
       })
 
-      const response = await PATCH(request, { params: { id: memberId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -133,7 +122,6 @@ describe('/api/family/members/[id]', () => {
 
     it('should return 400 if email already in use by another member', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique
         .mockResolvedValueOnce({
@@ -151,7 +139,7 @@ describe('/api/family/members/[id]', () => {
         body: JSON.stringify({ email: 'existing@test.com' }),
       })
 
-      const response = await PATCH(request, { params: { id: memberId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -160,11 +148,9 @@ describe('/api/family/members/[id]', () => {
 
     it('should update member name', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
-        familyId: session.user.familyId,
         familyId: session.user.familyId,
       } as any)
       prismaMock.familyMember.update.mockResolvedValue({
@@ -177,7 +163,7 @@ describe('/api/family/members/[id]', () => {
         body: JSON.stringify({ name: 'Updated Name' }),
       })
 
-      const response = await PATCH(request, { params: { id: memberId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -191,7 +177,6 @@ describe('/api/family/members/[id]', () => {
 
     it('should update parent password with hashing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const parentMember = {
         ...mockMember,
@@ -212,7 +197,7 @@ describe('/api/family/members/[id]', () => {
         body: JSON.stringify({ password: 'newpassword123' }),
       })
 
-      const response = await PATCH(request, { params: { id: memberId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -226,13 +211,11 @@ describe('/api/family/members/[id]', () => {
 
     it('should update child PIN with hashing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       ;(hash as jest.Mock).mockResolvedValue('new-hashed-pin')
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
-        familyId: session.user.familyId,
         familyId: session.user.familyId,
       } as any)
       prismaMock.familyMember.update.mockResolvedValue({
@@ -245,7 +228,7 @@ describe('/api/family/members/[id]', () => {
         body: JSON.stringify({ pin: '5678' }),
       })
 
-      const response = await PATCH(request, { params: { id: memberId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -259,14 +242,13 @@ describe('/api/family/members/[id]', () => {
 
     it('should handle invalid JSON gracefully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/family/members/123', {
         method: 'PATCH',
         body: 'invalid json{',
       })
 
-      const response = await PATCH(request, { params: { id: memberId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       // Next.js Request.json() throws SyntaxError which is caught by try-catch, returning 500
@@ -287,13 +269,12 @@ describe('/api/family/members/[id]', () => {
 
     it('should return 403 if not a parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue({ ...session, user: { ...session.user, role: 'CHILD' } })
 
       const request = new NextRequest('http://localhost/api/family/members/123', {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: memberId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -302,7 +283,6 @@ describe('/api/family/members/[id]', () => {
 
     it('should return 404 if member not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue(null)
 
@@ -310,7 +290,7 @@ describe('/api/family/members/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: memberId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -324,7 +304,6 @@ describe('/api/family/members/[id]', () => {
         ...session,
         user: { ...session.user, id: memberId },
       }
-      auth.mockResolvedValue(sessionWithMatchingId)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
@@ -336,7 +315,7 @@ describe('/api/family/members/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: memberId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -345,7 +324,6 @@ describe('/api/family/members/[id]', () => {
 
     it('should return 400 if trying to delete last parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const parentMember = {
         ...mockMember,
@@ -360,7 +338,7 @@ describe('/api/family/members/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: memberId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -369,11 +347,9 @@ describe('/api/family/members/[id]', () => {
 
     it('should deactivate child member', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
-        familyId: session.user.familyId,
         familyId: session.user.familyId,
       } as any)
       prismaMock.familyMember.update.mockResolvedValue({
@@ -385,7 +361,7 @@ describe('/api/family/members/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: memberId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -398,7 +374,6 @@ describe('/api/family/members/[id]', () => {
 
     it('should deactivate parent if not last parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const parentMember = {
         ...mockMember,
@@ -417,7 +392,7 @@ describe('/api/family/members/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: memberId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: memberId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)

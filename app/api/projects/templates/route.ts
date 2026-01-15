@@ -12,15 +12,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can manage projects
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage projects' },
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const templates = await getProjectTemplates();
+    const templates = await getProjectTemplates(familyId);
 
     return NextResponse.json({ templates });
   } catch (error) {
@@ -45,15 +45,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     // Only parents can manage projects
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage projects' },
@@ -68,7 +68,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Template ID is required' }, { status: 400 });
     }
 
-    const project = await createProjectFromTemplate(familyId, templateId, name);
+    const project = await createProjectFromTemplate(templateId, {
+      familyId,
+      title: name,
+    });
 
     return NextResponse.json({
       success: true,

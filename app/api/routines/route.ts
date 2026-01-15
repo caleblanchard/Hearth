@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
     
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
@@ -58,10 +58,10 @@ export async function POST(request: NextRequest) {
     const routine = await createRoutine({
       family_id: familyId,
       name: name.trim(),
-      time_of_day: timeOfDay,
+      type: timeOfDay || 'CUSTOM',
       assigned_to: assignedTo || null,
-      description: description?.trim() || null,
-      is_active: true,
+      is_weekday: true,
+      is_weekend: true,
     });
 
     // Create audit log
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       result: 'SUCCESS',
       metadata: {
         name: routine.name,
-        timeOfDay: routine.time_of_day,
+        type: routine.type,
       },
     });
 

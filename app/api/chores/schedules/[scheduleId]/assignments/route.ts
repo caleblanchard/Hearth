@@ -8,6 +8,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ scheduleId: string }> }
 ) {
+  const { scheduleId } = await params
   try {
     const supabase = await createClient();
     const authContext = await getAuthContext();
@@ -16,14 +17,14 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
-    const memberId = authContext.defaultMemberId;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
     if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const isParent = await isParentInFamily(memberId, familyId);
+    const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }

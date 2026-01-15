@@ -3,6 +3,7 @@
 import { useMemberContext } from '@/hooks/useMemberContext';
 import { signOut } from '@/hooks/useSupabaseSession';
 import { useRouter, usePathname } from 'next/navigation';
+import { FamilySwitcher } from '@/components/FamilySwitcher';
 import {
   HomeIcon,
   CheckCircleIcon,
@@ -41,7 +42,7 @@ export default function DashboardNav() {
   }
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/auth/signin' });
+    await signOut();
   };
 
   return (
@@ -82,6 +83,8 @@ export default function DashboardNav() {
 
           {/* User Info & Sign Out */}
           <div className="flex items-center gap-4">
+            <FamilySwitcher />
+            
             <div className="text-sm text-gray-700 dark:text-gray-300">
               <span className="font-medium">{member?.name || user?.email}</span>
               {member?.role && (

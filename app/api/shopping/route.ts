@@ -12,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -22,17 +22,23 @@ export async function GET() {
 
     // Create list if it doesn't exist
     if (!shoppingList) {
-      shoppingList = await getOrCreateShoppingList(familyId, 'Family Shopping List');
+      await getOrCreateShoppingList(familyId);
+      // Fetch again to get items relation
+      shoppingList = await getActiveShoppingList(familyId);
+    }
+
+    if (!shoppingList) {
+      return NextResponse.json({ error: 'Failed to create shopping list' }, { status: 500 });
     }
 
     return NextResponse.json({
       list: {
         id: shoppingList.id,
         name: shoppingList.name,
-        itemCount: shoppingList.items?.length || 0,
-        urgentCount: shoppingList.items?.filter((i: any) => i.priority === 'URGENT').length || 0,
+        itemCount: (shoppingList as any).items?.length || 0,
+        urgentCount: (shoppingList as any).items?.filter((i: any) => i.priority === 'URGENT').length || 0,
       },
-      items: shoppingList.items || [],
+      items: (shoppingList as any).items || [],
     });
   } catch (error) {
     logger.error('Shopping list API error:', error);

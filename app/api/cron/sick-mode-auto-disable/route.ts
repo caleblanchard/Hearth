@@ -37,11 +37,11 @@ export async function POST(request: NextRequest) {
       const cutoffTime = new Date(now.getTime() - hoursThreshold * 60 * 60 * 1000);
 
       // Find active instances that started before the cutoff
-      const { data: expiredInstances } = await supabase
+      const { data: expiredInstances } = await (supabase as any)
         .from('sick_mode_instances')
         .select(`
           *,
-          member:family_members(
+          member:family_members!member_id(
             id,
             name
           )

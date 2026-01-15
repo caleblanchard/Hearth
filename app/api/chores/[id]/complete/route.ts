@@ -15,7 +15,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = authContext.defaultMemberId;
+    const memberId = authContext.activeMemberId;
     if (!memberId) {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
@@ -35,10 +35,10 @@ export async function POST(
     const { notes } = body;
 
     // Use RPC function for atomic completion with credit award
-    const result = await completeChore(assignmentId, memberId, notes || '');
+    const result = await completeChore(assignmentId, memberId, notes || '') as any;
 
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
+    if (!result || !result.success) {
+      return NextResponse.json({ error: result?.error || 'Failed to complete chore' }, { status: 400 });
     }
 
     return NextResponse.json({

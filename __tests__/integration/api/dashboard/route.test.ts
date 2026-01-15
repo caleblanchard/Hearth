@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -28,7 +23,6 @@ import { GET } from '@/app/api/dashboard/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { ChoreStatus, TodoStatus } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
 const { calculateRemainingTime } = require('@/lib/screentime-utils')
 
 describe('/api/dashboard', () => {
@@ -44,7 +38,6 @@ describe('/api/dashboard', () => {
     tomorrow.setDate(tomorrow.getDate() + 1)
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/dashboard')
       const response = await GET(request)
@@ -56,7 +49,6 @@ describe('/api/dashboard', () => {
 
     it('should return dashboard data for child', async () => {
       const session = mockChildSession({ user: { id: 'child-1', familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
 
       const mockChores = [
         {
@@ -216,7 +208,6 @@ describe('/api/dashboard', () => {
 
     it('should return dashboard data for parent', async () => {
       const session = mockParentSession({ user: { id: 'parent-1', familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findMany.mockResolvedValue([])
       prismaMock.screenTimeBalance.findUnique.mockResolvedValue(null)
@@ -242,7 +233,6 @@ describe('/api/dashboard', () => {
 
     it('should filter events for child (only assigned)', async () => {
       const session = mockChildSession({ user: { id: 'child-1', familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findMany.mockResolvedValue([])
       prismaMock.screenTimeBalance.findUnique.mockResolvedValue(null)
@@ -289,7 +279,6 @@ describe('/api/dashboard', () => {
 
     it('should return 500 on error', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findMany.mockRejectedValue(new Error('Database error'))
 

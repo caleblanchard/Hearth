@@ -628,7 +628,7 @@ export async function syncExternalCalendar(subscriptionId: string): Promise<{
     
     // Map by startTime + title for recurring events (since UIDs might differ)
     // Key format: startTime-timestamp + title
-    const existingEventsByTimeAndTitle = new Map<string, typeof existingEvents[0]>();
+    const existingEventsByTimeAndTitle = new Map<string, NonNullable<typeof existingEvents>[0]>();
     for (const e of (existingEvents || [])) {
       // Use startTime (rounded to nearest minute) + title as key for recurring events
       const timeKey = `${Math.floor(new Date(e.start_time).getTime() / 60000)}-${e.title}`;

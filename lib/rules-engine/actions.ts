@@ -60,8 +60,8 @@ export async function executeAwardCredits(
     }
 
     // Execute credit award using Supabase
-    const supabase = createClient();
-    
+    const supabase = await createClient();
+
     // Get or create credit balance
     const { data: existingBalance } = await supabase
       .from('credit_balances')
@@ -158,7 +158,7 @@ export async function executeSendNotification(
       };
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
     let recipientIds: string[] = [];
 
     // Resolve recipient IDs
@@ -170,8 +170,8 @@ export async function executeSendNotification(
           .select('id')
           .eq('family_id', context.familyId)
           .eq('is_active', true);
-        
-        recipientIds = members?.map(m => m.id) || [];
+
+        recipientIds = members?.map((m: any) => m.id) || [];
         break;
       } else if (recipient === 'parents') {
         // Get all parents
@@ -181,8 +181,8 @@ export async function executeSendNotification(
           .eq('family_id', context.familyId)
           .eq('role', 'PARENT')
           .eq('is_active', true);
-        
-        recipientIds.push(...(parents?.map(p => p.id) || []));
+
+        recipientIds.push(...(parents?.map((p: any) => p.id) || []));
       } else if (recipient === 'child' && context.memberId) {
         // Use context member
         recipientIds.push(context.memberId);
@@ -196,16 +196,16 @@ export async function executeSendNotification(
     recipientIds = [...new Set(recipientIds)];
 
     // Create notifications
-    const notifications = recipientIds.map(recipient_id => ({
-      family_id: context.familyId,
-      recipient_id,
-      type: 'GENERAL',
+    const notifications = recipientIds.map(user_id => ({
+      user_id,
+      type: 'GENERAL' as any,
       title: config.title,
       message: config.message,
       action_url: config.actionUrl || null,
       metadata: {
         triggeredBy: 'automation_rule',
         ruleId: context.ruleId,
+        familyId: context.familyId,
       },
     }));
 
@@ -240,7 +240,7 @@ export async function executeAddShoppingItem(
   try {
     let itemName = config.itemName;
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // If fromInventory is true, get item name from inventory
     if (config.fromInventory && context.inventoryItemId) {
@@ -310,10 +310,10 @@ export async function executeAddShoppingItem(
         name: itemName,
         quantity: config.quantity || 1,
         category: config.category || 'OTHER',
-        priority: config.priority || 'MEDIUM',
-        requested_by: systemUser.id,
-        added_by: systemUser.id,
-        is_checked: false,
+        priority: (config.priority || 'NORMAL') as any,
+        requested_by_id: systemUser.id,
+        added_by_id: systemUser.id,
+        status: 'PENDING',
       })
       .select()
       .single();
@@ -353,7 +353,7 @@ export async function executeCreateTodo(
       };
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get a parent user to be the creator
     const { data: creator } = await supabase
@@ -377,11 +377,11 @@ export async function executeCreateTodo(
         family_id: context.familyId,
         title: config.title,
         description: config.description || null,
-        assigned_to: config.assignedTo || null,
+        assigned_to_id: config.assignedToId || null,
         priority: config.priority || 'MEDIUM',
         due_date: config.dueDate || null,
-        created_by: creator.id,
-        is_completed: false,
+        created_by_id: creator.id,
+        status: 'PENDING',
       })
       .select()
       .single();
@@ -422,17 +422,17 @@ export async function executeLockMedication(
       };
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
-    // Update medication safety record
+    // Update medication safety record - set next dose available time to lock it
+    const lockUntil = config.hours
+      ? new Date(Date.now() + config.hours * 3600000).toISOString()
+      : new Date(Date.now() + 86400000).toISOString(); // Default 24 hours
+
     const { data: medication, error } = await supabase
-      .from('medication_safeties')
+      .from('medication_safety')
       .update({
-        is_locked: true,
-        lock_reason: config.reason || 'Locked by automation rule',
-        locked_until: config.lockDurationMinutes
-          ? new Date(Date.now() + config.lockDurationMinutes * 60000).toISOString()
-          : null,
+        next_dose_available_at: lockUntil,
       })
       .eq('id', medicationId)
       .select()
@@ -465,28 +465,20 @@ export async function executeSuggestMeal(
   context: RuleContext
 ): Promise<ActionResult> {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Build recipe filter
-    const where: any = {
-      family_id: context.familyId,
-    };
-
-    if (config.mealType) {
-      where.category = config.mealType;
-    }
-
-    if (config.dietaryTags && config.dietaryTags.length > 0) {
-      // Supabase doesn't support array contains, so we'll fetch and filter client-side
-    }
-
     let query = supabase
       .from('recipes')
       .select('*')
       .eq('family_id', context.familyId);
 
-    if (config.mealType) {
-      query = query.eq('category', config.mealType);
+    if (config.category) {
+      query = query.eq('category', config.category as any);
+    }
+
+    if (config.difficulty) {
+      query = query.eq('difficulty', config.difficulty as any);
     }
 
     query = query.limit(3);
@@ -508,14 +500,18 @@ export async function executeSuggestMeal(
       .eq('role', 'PARENT')
       .eq('is_active', true);
 
-    const recipeList = recipes.map(r => `${r.name} (${r.difficulty})`).join(', ');
+    const recipeList = recipes.map((r: any) => `${r.name} (${r.difficulty})`).join(', ');
 
-    const notifications = (parents || []).map(p => ({
-      family_id: context.familyId,
-      recipient_id: p.id,
-      type: 'MEAL_SUGGESTION',
+    const notifications = (parents || []).map((p: any) => ({
+      user_id: p.id,
+      type: 'GENERAL' as any,
       title: 'Meal Suggestion',
       message: `Suggested meals: ${recipeList}`,
+      metadata: {
+        triggeredBy: 'automation_rule',
+        ruleId: context.ruleId,
+        familyId: context.familyId,
+      },
     }));
 
     await supabase
@@ -556,24 +552,51 @@ export async function executeReduceChores(
       };
     }
 
-    // Validate count
-    if (config.count < 1 || config.count > DEFAULT_SAFETY_LIMITS.maxChoresReduced) {
+    // Validate percentage (0-100)
+    if (config.percentage < 1 || config.percentage > 100) {
       return {
         success: false,
-        error: `Chore reduction count must be between 1 and ${DEFAULT_SAFETY_LIMITS.maxChoresReduced}`,
+        error: 'Chore reduction percentage must be between 1 and 100',
       };
     }
 
-    const supabase = createClient();
+    // Validate duration (1-30 days)
+    if (config.duration < 1 || config.duration > 30) {
+      return {
+        success: false,
+        error: 'Chore reduction duration must be between 1 and 30 days',
+      };
+    }
 
-    // Find pending chore instances for the member
-    const { data: pendingChores } = await supabase
-      .from('chore_completions')
+    const supabase = await createClient();
+
+    // Calculate number of chores to skip based on percentage
+    // For simplicity, we'll skip pending chores proportional to the percentage
+    const { data: allPendingChores } = await supabase
+      .from('chore_instances')
       .select('id')
-      .eq('completed_by', targetMemberId)
+      .eq('assigned_to_id', targetMemberId)
+      .eq('status', 'PENDING')
+      .order('due_date', { ascending: true });
+
+    if (!allPendingChores || allPendingChores.length === 0) {
+      return {
+        success: false,
+        error: 'No pending chores found for member',
+      };
+    }
+
+    // Calculate how many to skip based on percentage
+    const countToSkip = Math.max(1, Math.ceil((allPendingChores.length * config.percentage) / 100));
+
+    // Find pending chore instances to skip
+    const { data: pendingChores } = await supabase
+      .from('chore_instances')
+      .select('id')
+      .eq('assigned_to_id', targetMemberId)
       .eq('status', 'PENDING')
       .order('due_date', { ascending: true })
-      .limit(config.count);
+      .limit(countToSkip);
 
     if (!pendingChores || pendingChores.length === 0) {
       return {
@@ -584,9 +607,9 @@ export async function executeReduceChores(
 
     // Mark them as skipped
     const { error } = await supabase
-      .from('chore_completions')
+      .from('chore_instances')
       .update({ status: 'SKIPPED' })
-      .in('id', pendingChores.map(c => c.id));
+      .in('id', pendingChores.map((c: any) => c.id));
 
     if (error) throw error;
 
@@ -625,25 +648,25 @@ export async function executeAdjustScreenTime(
     }
 
     // Validate adjustment
-    if (typeof config.minutes !== 'number') {
+    if (typeof config.amountMinutes !== 'number') {
       return {
         success: false,
-        error: 'Screentime adjustment requires minutes (number)',
+        error: 'Screentime adjustment requires amountMinutes (number)',
       };
     }
 
-    if (Math.abs(config.minutes) > DEFAULT_SAFETY_LIMITS.maxScreentimeAdjustment) {
+    if (Math.abs(config.amountMinutes) > 480) { // Max 8 hours
       return {
         success: false,
-        error: `Screentime adjustment must be within +/- ${DEFAULT_SAFETY_LIMITS.maxScreentimeAdjustment} minutes`,
+        error: 'Screentime adjustment must be within +/- 480 minutes (8 hours)',
       };
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get current balance
     const { data: balance } = await supabase
-      .from('screentime_balances')
+      .from('screen_time_balances')
       .select('*')
       .eq('member_id', targetMemberId)
       .maybeSingle();
@@ -655,11 +678,11 @@ export async function executeAdjustScreenTime(
       };
     }
 
-    const newBalance = Math.max(0, balance.current_balance_minutes + config.minutes);
+    const newBalance = Math.max(0, (balance.current_balance_minutes || 0) + config.amountMinutes);
 
     // Update balance
     const { data: updatedBalance, error } = await supabase
-      .from('screentime_balances')
+      .from('screen_time_balances')
       .update({ current_balance_minutes: newBalance })
       .eq('member_id', targetMemberId)
       .select()
@@ -678,19 +701,19 @@ export async function executeAdjustScreenTime(
 
     // Log transaction
     await supabase
-      .from('screentime_transactions')
+      .from('screen_time_transactions')
       .insert({
         member_id: targetMemberId,
-        type: config.minutes > 0 ? 'CREDIT' : 'DEBIT',
-        amount_minutes: Math.abs(config.minutes),
+        type: config.amountMinutes > 0 ? 'EARNED' : 'SPENT',
+        amount_minutes: Math.abs(config.amountMinutes),
         balance_after: newBalance,
         reason: config.reason || 'Automation rule adjustment',
-        adjusted_by: parent?.id || null,
+        created_by_id: parent?.id || context.memberId || targetMemberId,
       });
 
     return {
       success: true,
-      result: { newBalance, adjustment: config.minutes },
+      result: { newBalance, adjustment: config.amountMinutes },
     };
   } catch (error) {
     console.error('Error executing adjust screentime action:', error);

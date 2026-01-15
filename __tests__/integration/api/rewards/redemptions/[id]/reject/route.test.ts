@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/rewards/redemptions/[id]/reject/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { RedemptionStatus, RewardStatus } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/rewards/redemptions/[id]/reject', () => {
   beforeEach(() => {
@@ -70,14 +63,13 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/rewards/redemptions/123/reject', {
         method: 'POST',
         body: JSON.stringify({ reason: 'Test reason' }),
       })
 
-      const response = await POST(request, { params: { id: redemptionId } })
+      const response = await POST(request, { params: Promise.resolve({ id: redemptionId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -86,14 +78,13 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/rewards/redemptions/123/reject', {
         method: 'POST',
         body: JSON.stringify({ reason: 'Test reason' }),
       })
 
-      const response = await POST(request, { params: { id: redemptionId } })
+      const response = await POST(request, { params: Promise.resolve({ id: redemptionId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -102,7 +93,6 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
 
     it('should return 404 if redemption not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardRedemption.findUnique.mockResolvedValue(null)
 
@@ -111,7 +101,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Test reason' }),
       })
 
-      const response = await POST(request, { params: { id: redemptionId } })
+      const response = await POST(request, { params: Promise.resolve({ id: redemptionId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -120,7 +110,6 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
 
     it('should return 403 if redemption belongs to different family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardRedemption.findUnique.mockResolvedValue({
         ...mockRedemption,
@@ -135,7 +124,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Test reason' }),
       })
 
-      const response = await POST(request, { params: { id: redemptionId } })
+      const response = await POST(request, { params: Promise.resolve({ id: redemptionId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -144,7 +133,6 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
 
     it('should return 400 if redemption already processed', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardRedemption.findUnique.mockResolvedValue({
         ...mockRedemption,
@@ -160,7 +148,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Test reason' }),
       })
 
-      const response = await POST(request, { params: { id: redemptionId } })
+      const response = await POST(request, { params: Promise.resolve({ id: redemptionId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -169,7 +157,6 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
 
     it('should reject redemption and refund credits successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardRedemption.findUnique.mockResolvedValue({
         ...mockRedemption,
@@ -201,7 +188,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
           },
         })
       })
-      prismaMock.$transaction = mockTransaction
+      prismaMock.$transaction = mockTransaction as any
       prismaMock.notification.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/rewards/redemptions/123/reject', {
@@ -209,7 +196,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Test reason' }),
       })
 
-      const response = await POST(request, { params: { id: redemptionId } })
+      const response = await POST(request, { params: Promise.resolve({ id: redemptionId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -239,7 +226,6 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
 
     it('should use default reason if not provided', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardRedemption.findUnique.mockResolvedValue({
         ...mockRedemption,
@@ -270,7 +256,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
           },
         })
       })
-      prismaMock.$transaction = mockTransaction
+      prismaMock.$transaction = mockTransaction as any
       prismaMock.notification.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/rewards/redemptions/123/reject', {
@@ -278,7 +264,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         body: JSON.stringify({}),
       })
 
-      const response = await POST(request, { params: { id: redemptionId } })
+      const response = await POST(request, { params: Promise.resolve({ id: redemptionId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -295,7 +281,6 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
 
     it('should restore quantity if reward has quantity', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardRedemption.findUnique.mockResolvedValue({
         ...mockRedemption,
@@ -334,7 +319,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         })
         return result
       })
-      prismaMock.$transaction = mockTransaction
+      prismaMock.$transaction = mockTransaction as any
       prismaMock.notification.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/rewards/redemptions/123/reject', {
@@ -342,14 +327,13 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Test reason' }),
       })
 
-      const response = await POST(request, { params: { id: redemptionId } })
+      const response = await POST(request, { params: Promise.resolve({ id: redemptionId }) })
 
       expect(response.status).toBe(200)
     })
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardRedemption.findUnique.mockResolvedValue({
         ...mockRedemption,
@@ -365,7 +349,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Test reason' }),
       })
 
-      const response = await POST(request, { params: { id: redemptionId } })
+      const response = await POST(request, { params: Promise.resolve({ id: redemptionId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)

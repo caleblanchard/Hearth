@@ -30,7 +30,7 @@ export async function getAutomationRules(
     .eq('family_id', familyId)
 
   if (activeOnly) {
-    query = query.eq('is_active', true)
+    query = query.eq('is_enabled', true)
   }
 
   query = query.order('created_at', { ascending: false })
@@ -56,7 +56,7 @@ export async function getAutomationRule(ruleId: string) {
         id,
         executed_at,
         success,
-        error_message
+        error
       )
     `)
     .eq('id', ruleId)
@@ -114,7 +114,7 @@ export async function toggleAutomationRule(ruleId: string, isActive: boolean) {
 
   const { data, error } = await supabase
     .from('automation_rules')
-    .update({ is_active: isActive })
+    .update({ is_enabled: isActive })
     .eq('id', ruleId)
     .select()
     .single()
@@ -185,9 +185,9 @@ export async function recordRuleExecution(
   execution: {
     rule_id: string
     success: boolean
-    error_message?: string
-    trigger_data?: any
-    result_data?: any
+    error?: string
+    metadata?: any
+    result?: any
   }
 ): Promise<RuleExecution> {
   const supabase = await createClient()
@@ -198,9 +198,9 @@ export async function recordRuleExecution(
       rule_id: execution.rule_id,
       executed_at: new Date().toISOString(),
       success: execution.success,
-      error_message: execution.error_message || null,
-      trigger_data: execution.trigger_data || null,
-      result_data: execution.result_data || null,
+      error: execution.error || null,
+      metadata: execution.metadata || null,
+      result: execution.result || null,
     })
     .select()
     .single()
@@ -222,8 +222,8 @@ export async function getRulesByTrigger(
     .from('automation_rules')
     .select('*')
     .eq('family_id', familyId)
-    .eq('is_active', true)
-    .eq('trigger_type', triggerType)
+    .eq('is_enabled', true)
+    .contains('trigger', { type: triggerType })
 
   if (error) throw error
   return data || []
@@ -273,10 +273,11 @@ export async function executeAction(
   if (!rule) throw new Error('Rule not found')
 
   // Record execution
-  await recordRuleExecution(ruleId, {
-    triggered_at: new Date().toISOString(),
-    action_data: actionData,
-    status: 'SUCCESS',
+  await recordRuleExecution({
+    rule_id: ruleId,
+    success: true,
+    metadata: { timestamp: new Date().toISOString() },
+    result: actionData,
   })
 
   // The actual action execution would be handled by the rules engine

@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -18,8 +13,6 @@ jest.mock('@/lib/logger', () => ({
 
 // NOW import the route after mocks are set up
 import { GET } from '@/app/api/children/route'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/children', () => {
   beforeEach(() => {

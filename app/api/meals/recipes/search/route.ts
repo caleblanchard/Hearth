@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const familyId = authContext.defaultFamilyId;
+    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -36,7 +36,22 @@ export async function GET(request: NextRequest) {
 
     const results = await searchRecipes(familyId, query);
 
-    return NextResponse.json({ results });
+    // Map to camelCase for frontend
+    const mappedResults = results.map((recipe: any) => ({
+      id: recipe.id,
+      name: recipe.name,
+      description: recipe.description,
+      imageUrl: recipe.image_url,
+      category: recipe.category,
+      dietaryTags: recipe.dietary_tags || [],
+      prepTimeMinutes: recipe.prep_time_minutes,
+      cookTimeMinutes: recipe.cook_time_minutes,
+      difficulty: recipe.difficulty,
+      averageRating: recipe.averageRating,
+      matchScore: recipe.matchScore,
+    }));
+
+    return NextResponse.json({ results: mappedResults });
   } catch (error) {
     logger.error('Recipe search error:', error);
     return NextResponse.json({ error: 'Failed to search recipes' }, { status: 500 });
