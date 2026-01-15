@@ -1,218 +1,221 @@
-# Cron Job Alternatives for Vercel Hobby Plan
+# Calendar Sync Alternatives for Vercel Hobby Plan
 
-**Issue:** Vercel Hobby (free) plan does not support cron jobs. Cron jobs require a Pro plan ($20/month).
+**Issue:** Vercel Hobby (free) plan supports daily cron jobs only. The hourly calendar sync needs an alternative solution.
 
 ---
 
 ## Scheduled Tasks in Hearth
 
-The application has three cron jobs that need to run periodically:
+The application has three scheduled tasks:
 
-| Task | Schedule | Purpose |
-|------|----------|---------|
-| Generate Chore Instances | Daily at midnight | Creates daily chore assignments |
-| Distribute Allowances | Daily at 1 AM | Processes allowance distributions |
-| Sync External Calendars | Every hour | Syncs with Google Calendar |
+| Task | Schedule | Vercel Hobby Support |
+|------|----------|---------------------|
+| Generate Chore Instances | Daily at midnight | ✅ Supported |
+| Distribute Allowances | Daily at 1 AM | ✅ Supported |
+| Sync External Calendars | Every hour | ❌ Requires Pro or alternative |
 
 ---
 
-## Solution Options
+## What's Configured in vercel.json
 
-### Option 1: Upgrade to Vercel Pro (Recommended for Production)
+✅ **Included (runs on Hobby plan):**
+- Generate chore instances (daily at midnight)
+- Distribute allowances (daily at 1 AM)
+
+❌ **Excluded (needs alternative):**
+- Sync external calendars (hourly)
+
+---
+
+## Options for Hourly Calendar Sync
+
+### Option 1: Upgrade to Vercel Pro
 
 **Cost:** $20/month  
 **Pros:**
-- Native cron support
+- Native support for hourly cron
 - No external dependencies
 - Reliable execution
 - Integrated logging
 
 **Setup:**
 1. Upgrade to Vercel Pro plan
-2. Rename `vercel.json.pro` to `vercel.json`
+2. Copy `vercel.json.pro` to replace `vercel.json`
 3. Redeploy
 
-### Option 2: External Cron Service (Free Alternatives)
+---
 
-Use a free external service to trigger your API endpoints:
+### Option 2: External Cron Service (Free)
 
-#### A. GitHub Actions (Free for Public Repos)
+Use a free external service to trigger the calendar sync endpoint hourly:
 
-Create `.github/workflows/cron-jobs.yml`:
+#### A. cron-job.org (Recommended - Free)
+
+**URL:** https://cron-job.org/
+
+**Free Plan:**
+- Unlimited cron jobs
+- 1-minute precision
+- Email notifications on failures
+
+**Setup:**
+1. Sign up for cron-job.org
+2. Create a new cron job:
+   - **URL:** `https://your-app.vercel.app/api/cron/sync-external-calendars`
+   - **Schedule:** `0 * * * *` (every hour on the hour)
+   - **Request Method:** POST
+   - **Headers:** Add `Authorization: Bearer YOUR_CRON_SECRET`
+3. Enable email notifications for failures
+
+**Pros:**
+- Completely free
+- Very reliable
+- Easy web UI
+- Email alerts on failures
+
+---
+
+#### B. GitHub Actions (Free for Public Repos)
+
+Create `.github/workflows/calendar-sync.yml`:
 
 ```yaml
-name: Scheduled Tasks
+name: Hourly Calendar Sync
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Daily at midnight UTC
-    - cron: '0 1 * * *'  # Daily at 1 AM UTC
-    - cron: '0 * * * *'  # Every hour
+    - cron: '0 * * * *'  # Every hour at minute 0
 
 jobs:
-  run-crons:
+  sync-calendars:
     runs-on: ubuntu-latest
     steps:
-      - name: Generate Chore Instances
-        if: github.event.schedule == '0 0 * * *'
-        run: |
-          curl -X POST https://your-app.vercel.app/api/cron/generate-chore-instances \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
-      
-      - name: Distribute Allowances
-        if: github.event.schedule == '0 1 * * *'
-        run: |
-          curl -X POST https://your-app.vercel.app/api/cron/distribute-allowances \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
-      
       - name: Sync External Calendars
-        if: github.event.schedule == '0 * * * *'
         run: |
           curl -X POST https://your-app.vercel.app/api/cron/sync-external-calendars \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -f || exit 1
 ```
 
 **Setup:**
 1. Add `CRON_SECRET` to GitHub repository secrets
 2. Add `CRON_SECRET` to Vercel environment variables
-3. Protect cron endpoints with secret validation
-4. Commit workflow file
+3. Commit workflow file to `.github/workflows/`
 
 **Pros:**
 - Free for public repositories
 - Reliable
-- Easy to set up
-- Logs available in GitHub Actions
+- Built-in logging in GitHub Actions tab
 
 **Cons:**
 - Requires public repository (or GitHub Pro)
-- Separate logging location
 
-#### B. EasyCron (Free Tier: 5 URLs)
+---
+
+#### C. EasyCron (Free Tier)
 
 **URL:** https://www.easycron.com/
 
 **Free Plan:**
-- 5 cron jobs
-- Every 30 minutes minimum
+- 1 cron job (perfect!)
+- Runs every hour
 
 **Setup:**
 1. Sign up for EasyCron
-2. Create 3 cron jobs pointing to:
-   - `https://your-app.vercel.app/api/cron/generate-chore-instances`
-   - `https://your-app.vercel.app/api/cron/distribute-allowances`
-   - `https://your-app.vercel.app/api/cron/sync-external-calendars`
-3. Set schedules
-4. Add authorization headers
+2. Create cron job:
+   - **URL:** `https://your-app.vercel.app/api/cron/sync-external-calendars`
+   - **Schedule:** Every hour
+   - **Method:** POST
+   - **Custom Headers:** `Authorization: Bearer YOUR_CRON_SECRET`
 
-**Pros:**
-- Easy to set up
-- Web UI for management
+---
 
-**Cons:**
-- External dependency
-- 30-minute minimum interval (can't do hourly calendar sync exactly on the hour)
+#### D. UptimeRobot (Creative Solution)
 
-#### C. cron-job.org (Free Tier: 3 URLs)
-
-**URL:** https://cron-job.org/
+**URL:** https://uptimerobot.com/
 
 **Free Plan:**
-- 3 cron jobs
-- 1-minute intervals
+- 50 monitors
+- 5-minute check intervals
 
 **Setup:**
-1. Sign up for cron-job.org
-2. Create jobs for each endpoint
-3. Configure schedules and headers
+1. Sign up for UptimeRobot
+2. Create a "HTTP(S)" monitor
+3. Set URL: `https://your-app.vercel.app/api/cron/sync-external-calendars`
+4. Set interval: 5 minutes
+5. Add custom header: `Authorization: Bearer YOUR_CRON_SECRET`
 
-**Pros:**
-- Completely free
-- 1-minute precision
-- Email notifications on failures
+**Note:** This will sync every 5 minutes (not hourly). Good for testing or if you want more frequent syncs!
 
-**Cons:**
-- Limited to 3 jobs (perfect for our use case)
-- External dependency
+---
 
-#### D. Render.com Cron Jobs (Free)
+### Option 3: On-Demand Sync (No Cron)
 
-**URL:** https://render.com/
+Instead of hourly automatic sync, sync when users access calendar:
 
-**Setup:**
-1. Create a Render account
-2. Deploy a simple cron service:
-
-```javascript
-// server.js
-const express = require('express');
-const axios = require('axios');
-const app = express();
-
-const VERCEL_URL = process.env.VERCEL_URL;
-const CRON_SECRET = process.env.CRON_SECRET;
-
-// Trigger all crons on a schedule
-setInterval(async () => {
-  const hour = new Date().getUTCHours();
+**Implementation:**
+```typescript
+// lib/data/calendar.ts
+export async function shouldSyncCalendars(familyId: string): Promise<boolean> {
+  const supabase = createClient();
   
-  // Midnight: Generate chores
-  if (hour === 0) {
-    await axios.post(`${VERCEL_URL}/api/cron/generate-chore-instances`, {}, {
-      headers: { 'Authorization': `Bearer ${CRON_SECRET}` }
-    });
+  const { data: lastSync } = await supabase
+    .from('calendar_connections')
+    .select('last_synced_at')
+    .eq('family_id', familyId)
+    .eq('is_active', true)
+    .single();
+  
+  if (!lastSync?.last_synced_at) return true;
+  
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  return new Date(lastSync.last_synced_at) < oneHourAgo;
+}
+
+// app/dashboard/calendar/page.tsx
+export default async function CalendarPage() {
+  const { familyId } = await getAuthContext();
+  
+  // Check if sync needed
+  const needsSync = await shouldSyncCalendars(familyId);
+  
+  if (needsSync) {
+    // Trigger sync in background (fire and forget)
+    fetch('/api/cron/sync-external-calendars', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.CRON_SECRET}` }
+    }).catch(() => {}); // Ignore errors
   }
   
-  // 1 AM: Distribute allowances
-  if (hour === 1) {
-    await axios.post(`${VERCEL_URL}/api/cron/distribute-allowances`, {}, {
-      headers: { 'Authorization': `Bearer ${CRON_SECRET}` }
-    });
-  }
-  
-  // Every hour: Sync calendars
-  await axios.post(`${VERCEL_URL}/api/cron/sync-external-calendars`, {}, {
-    headers: { 'Authorization': `Bearer ${CRON_SECRET}` }
-  });
-}, 3600000); // Every hour
-
-app.listen(3000);
+  // Load calendar data
+  const events = await getCalendarEvents(familyId);
+  return <CalendarView events={events} />;
+}
 ```
 
 **Pros:**
-- Free tier available
-- You control the code
-- Reliable
-
-**Cons:**
-- Need to maintain separate service
-
-### Option 3: Client-Side Scheduling (Not Recommended)
-
-Trigger crons from Next.js middleware on user visits.
-
-**Pros:**
-- No external dependencies
 - Free
+- No external dependencies
+- Syncs when actually needed (user-driven)
+- Smart throttling (max once per hour)
 
 **Cons:**
-- Unreliable (requires user traffic)
-- May not run if no users visit
-- Performance impact
-- Not suitable for time-critical tasks
+- Only syncs when users visit calendar
+- First user after 1 hour may experience slight delay
 
 ---
 
 ## Recommended Approach
 
+### For Hobby Plan (Free)
+**Immediate:** Use Vercel's built-in daily crons (chores & allowances) ✓  
+**Calendar Sync:** Use **cron-job.org** (free, reliable, 1 job needed)
+
+### For Pro Plan ($20/month)
+Use Vercel native crons for all three tasks (copy vercel.json.pro)
+
 ### For Development/Testing
-Use **GitHub Actions** (Option 2A) - Free and reliable
-
-### For Production
-Use **Vercel Pro** (Option 1) - Best integration and reliability
-
-### For Small Deployments
-Use **cron-job.org** (Option 2C) - Free, simple, works well for 3 jobs
+Use **on-demand sync** (Option 3) - simplest, no setup needed
 
 ---
 
@@ -220,21 +223,22 @@ Use **cron-job.org** (Option 2C) - Free, simple, works well for 3 jobs
 
 Whichever option you choose, protect your cron endpoints:
 
-### 1. Add Environment Variable
+### 1. Generate CRON_SECRET
 
-In Vercel dashboard, add:
-```
-CRON_SECRET=your-random-secret-here
-```
-
-Generate a secure secret:
 ```bash
 openssl rand -hex 32
 ```
 
-### 2. Update Cron Route Handlers
+### 2. Add to Vercel Environment Variables
 
-Update each cron route to validate the secret:
+In Vercel dashboard → Settings → Environment Variables:
+```
+CRON_SECRET=your-generated-secret-here
+```
+
+### 3. Update Cron Routes
+
+All cron routes should validate the secret:
 
 ```typescript
 // app/api/cron/[route]/route.ts
@@ -253,67 +257,77 @@ export async function POST(request: NextRequest) {
   }
   
   // Your cron logic here
-  // ...
-  
-  return NextResponse.json({ success: true });
-}
-
-// For Vercel's native cron (Pro plan), also allow verification token
-export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    // ... perform task ...
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Cron error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
-  
-  return POST(request);
 }
 ```
-
----
-
-## Migration Path
-
-### Current State (Hobby Plan)
-1. Remove `crons` from `vercel.json` ✓
-2. Choose temporary solution (GitHub Actions or cron-job.org)
-3. Deploy successfully
-
-### When Ready for Production
-1. Upgrade to Vercel Pro
-2. Copy `vercel.json.pro` to `vercel.json`
-3. Redeploy
-4. Remove external cron service
 
 ---
 
 ## Testing Cron Jobs Manually
 
-You can test cron endpoints manually:
+Test cron endpoints locally or in production:
 
 ```bash
-# Generate chore instances
+# Set your secret
+export CRON_SECRET="your-secret-here"
+
+# Test locally (http://localhost:3000)
+curl -X POST http://localhost:3000/api/cron/generate-chore-instances \
+  -H "Authorization: Bearer $CRON_SECRET"
+
+curl -X POST http://localhost:3000/api/cron/distribute-allowances \
+  -H "Authorization: Bearer $CRON_SECRET"
+
+curl -X POST http://localhost:3000/api/cron/sync-external-calendars \
+  -H "Authorization: Bearer $CRON_SECRET"
+
+# Test in production
 curl -X POST https://your-app.vercel.app/api/cron/generate-chore-instances \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
-
-# Distribute allowances
-curl -X POST https://your-app.vercel.app/api/cron/distribute-allowances \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
-
-# Sync external calendars
-curl -X POST https://your-app.vercel.app/api/cron/sync-external-calendars \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
+  -H "Authorization: Bearer $CRON_SECRET"
 ```
+
+Expected response:
+```json
+{"success": true}
+```
+
+---
+
+## Monitoring
+
+### Vercel Logs
+- View cron execution in Vercel Dashboard → Logs
+- Filter by `/api/cron/` to see all cron activity
+
+### External Service Logs
+- **cron-job.org:** Dashboard shows execution history and failures
+- **GitHub Actions:** Check Actions tab for run history
+- **EasyCron:** Execution logs in dashboard
+
+### Email Alerts
+Set up email notifications for failures:
+- cron-job.org: Built-in email alerts
+- GitHub Actions: Configure workflow notifications
+- UptimeRobot: Email on monitor down
 
 ---
 
 ## Further Reading
 
 - [Vercel Cron Jobs Documentation](https://vercel.com/docs/cron-jobs)
-- [GitHub Actions Schedule Syntax](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule)
 - [Vercel Pricing](https://vercel.com/pricing)
+- [GitHub Actions Schedule Syntax](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule)
 
 ---
 
 **Last Updated:** January 15, 2026  
-**Status:** Ready for deployment on Vercel Hobby plan (crons disabled)
+**Status:** Ready for Vercel Hobby deployment (2 daily crons enabled)

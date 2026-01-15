@@ -338,22 +338,25 @@ Vercel should auto-detect Next.js. Verify these settings:
 
 **Do NOT click "Deploy" yet!** First, configure environment variables.
 
-### 6.4 Important: Cron Jobs Limitation
+### 6.4 Important: Cron Jobs on Hobby Plan
 
-⚠️ **Vercel Hobby (free) plan does NOT support cron jobs.** The repository includes `vercel.json` which has been configured for Hobby plans.
+✅ **Vercel Hobby (free) plan supports daily cron jobs!** 
 
-**Scheduled tasks in Hearth:**
-- Generate chore instances (daily at midnight)
-- Distribute allowances (daily at 1 AM)
-- Sync external calendars (hourly)
+The application uses these scheduled tasks:
 
-**Options:**
-1. **Upgrade to Vercel Pro** ($20/month) - Enables native cron support
-2. **Use free alternatives** - GitHub Actions, cron-job.org, etc.
+| Task | Schedule | Hobby Plan Support |
+|------|----------|-------------------|
+| Generate chore instances | Daily at midnight | ✅ Included |
+| Distribute allowances | Daily at 1 AM | ✅ Included |
+| Sync external calendars | Every hour | ⚠️ Requires Pro or alternative |
 
-See **CRON_ALTERNATIVES.md** for detailed setup instructions for free alternatives.
+**What's Configured:**
+- `vercel.json` includes the 2 daily cron jobs (works on Hobby)
+- Calendar sync (hourly) requires either:
+  - **Upgrade to Vercel Pro** ($20/month) - enables hourly crons
+  - **Use free service** like cron-job.org - see `CRON_ALTERNATIVES.md`
 
-For now, you can deploy without cron jobs and set them up later.
+**Action:** You can deploy now with the daily crons. Calendar sync can be added later.
 
 ---
 
