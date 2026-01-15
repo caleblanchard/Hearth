@@ -74,11 +74,37 @@ export async function isModuleEnabled(moduleId: ModuleId): Promise<boolean> {
     .maybeSingle();
 
   // If no config exists, check if it's in default enabled list
-  if (!config) {
-    return DEFAULT_ENABLED_MODULES.includes(moduleId);
+  const familyEnabled = config ? config.is_enabled : DEFAULT_ENABLED_MODULES.includes(moduleId);
+  if (!familyEnabled) {
+    return false;
   }
 
-  return config.is_enabled;
+  const memberId = authContext.activeMemberId || authContext.defaultMemberId;
+  if (!memberId) {
+    return familyEnabled;
+  }
+
+  const { data: member } = await supabase
+    .from('family_members')
+    .select('role')
+    .eq('id', memberId)
+    .single();
+
+  if (member?.role !== 'CHILD') {
+    return familyEnabled;
+  }
+
+  const { data: accessRows } = await supabase
+    .from('member_module_access')
+    .select('module_id, has_access')
+    .eq('member_id', memberId);
+
+  if (!accessRows || accessRows.length === 0) {
+    return familyEnabled;
+  }
+
+  const accessRow = accessRows.find((row) => row.module_id === moduleId);
+  return accessRow?.has_access ?? false;
 }
 
 /**
@@ -119,7 +145,8 @@ export async function getEnabledModules(): Promise<ModuleId[]> {
 
   // If no configurations exist, return all defaults
   if (!configs || configs.length === 0) {
-    return DEFAULT_ENABLED_MODULES;
+    const defaults = DEFAULT_ENABLED_MODULES;
+    return filterMemberAccess(supabase, authContext, defaults);
   }
 
   // Get all configured modules
@@ -129,7 +156,7 @@ export async function getEnabledModules(): Promise<ModuleId[]> {
     .eq('family_id', authContext.defaultFamilyId);
 
   if (!allConfigs) {
-    return DEFAULT_ENABLED_MODULES;
+    return filterMemberAccess(supabase, authContext, DEFAULT_ENABLED_MODULES);
   }
 
   const configuredModuleIds = new Set(allConfigs.map((c) => c.module_id));
@@ -138,8 +165,45 @@ export async function getEnabledModules(): Promise<ModuleId[]> {
     .map((c) => c.module_id as ModuleId);
 
   // Combine enabled configured + default unconfigured
-  return [
+  const enabled = [
     ...enabledConfiguredIds,
     ...DEFAULT_ENABLED_MODULES.filter((m) => !configuredModuleIds.has(m)),
   ];
+
+  return filterMemberAccess(supabase, authContext, enabled);
+}
+
+async function filterMemberAccess(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  authContext: Awaited<ReturnType<typeof getAuthContext>>,
+  enabled: ModuleId[]
+): Promise<ModuleId[]> {
+  const memberId = authContext?.activeMemberId || authContext?.defaultMemberId;
+  if (!memberId) {
+    return enabled;
+  }
+
+  const { data: member } = await supabase
+    .from('family_members')
+    .select('role')
+    .eq('id', memberId)
+    .single();
+
+  if (member?.role !== 'CHILD') {
+    return enabled;
+  }
+
+  const { data: accessRows } = await supabase
+    .from('member_module_access')
+    .select('module_id, has_access')
+    .eq('member_id', memberId);
+
+  if (!accessRows || accessRows.length === 0) {
+    return enabled;
+  }
+
+  const allowed = new Set(
+    accessRows.filter((row) => row.has_access).map((row) => row.module_id)
+  );
+  return enabled.filter((moduleId) => allowed.has(moduleId));
 }

@@ -35,7 +35,7 @@
               <table role="presentation" style="width: 100%; margin: 0 0 30px;">
                 <tr>
                   <td style="text-align: center;">
-                    <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 14px 32px; background-color: #E65100; color: #FFFFFF; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; transition: background-color 0.2s;">Accept Invitation</a>
+                    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next={{ .RedirectTo }}" style="display: inline-block; padding: 14px 32px; background-color: #E65100; color: #FFFFFF; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; transition: background-color 0.2s;">Accept Invitation</a>
                   </td>
                 </tr>
               </table>
@@ -45,7 +45,7 @@
               </p>
               
               <p style="margin: 0 0 30px; font-size: 14px; line-height: 1.6; color: #E65100; word-break: break-all;">
-                {{ .ConfirmationURL }}
+                {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next={{ .RedirectTo }}
               </p>
               
               <div style="padding: 20px; background-color: #F5F5F5; border-radius: 6px; margin: 0 0 30px;">
@@ -65,10 +65,13 @@
           <tr>
             <td style="padding: 30px 40px; background-color: #F5F5F5; border-top: 1px solid #CFD8DC; border-radius: 0 0 8px 8px;">
               <p style="margin: 0 0 10px; font-size: 12px; color: #78909C; text-align: center;">
-                © 2026 Hearth. All rights reserved.
+                This is a one-time invitation email. You will not receive marketing emails from this invitation.
+              </p>
+              <p style="margin: 0 0 10px; font-size: 12px; color: #78909C; text-align: center;">
+                Hearth - Family Management App
               </p>
               <p style="margin: 0; font-size: 12px; color: #78909C; text-align: center;">
-                Questions? Reply to this email or visit our support center.
+                If you did not expect this email, please ignore it. No action is required.
               </p>
             </td>
           </tr>
