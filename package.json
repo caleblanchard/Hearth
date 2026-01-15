@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:webpack": "next dev --webpack",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "build:all-ts-errors": "tsc --noEmit --pretty --incremental false",
     "start": "next start",
     "lint": "next lint",
@@ -14,7 +14,8 @@
     "test:watch": "jest --watch",
     "type-check": "tsc --noEmit",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "npx prisma migrate reset --force"
+    "db:reset": "npx prisma migrate reset --force",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

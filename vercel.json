@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/distribute-allowances",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/sync-external-calendars",
+      "schedule": "0 2 * * *"
     }
   ]
 }
