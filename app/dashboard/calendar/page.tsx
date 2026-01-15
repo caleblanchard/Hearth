@@ -1,5 +1,8 @@
 'use client';
 
+// Force dynamic rendering to avoid useSearchParams SSG issues
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState, useRef } from 'react';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useSearchParams } from 'next/navigation';
