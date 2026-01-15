@@ -414,7 +414,7 @@ export default function FamilyPage() {
           });
         }
       } else {
-        // Create child account directly
+        // Create child account directly (or send invite if email provided)
         const response = await fetch('/api/family/members', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -431,7 +431,11 @@ export default function FamilyPage() {
             isOpen: true,
             type: 'success',
             title: 'Success!',
-            message: 'Family member added successfully',
+            message:
+              data.message ||
+              (newMember.email
+                ? `An invitation has been sent to ${newMember.email}.`
+                : 'Family member added successfully'),
           });
           setAddMemberModal(false);
           setNewMember({
@@ -1241,19 +1245,39 @@ export default function FamilyPage() {
             </>
           )}
           {newMember.role === 'CHILD' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                PIN (4 digits) *
-              </label>
-              <input
-                type="text"
-                value={newMember.pin}
-                onChange={(e) => setNewMember({ ...newMember, pin: e.target.value })}
-                maxLength={4}
-                placeholder="1234"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-              />
-            </div>
+            <>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Optional: add an email to invite this child to create an account.
+                  They can still use their PIN to sign into kiosk mode.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Email (optional)
+                </label>
+                <input
+                  type="email"
+                  value={newMember.email}
+                  onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                  placeholder="they@example.com"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  PIN (4 digits) *
+                </label>
+                <input
+                  type="text"
+                  value={newMember.pin}
+                  onChange={(e) => setNewMember({ ...newMember, pin: e.target.value })}
+                  maxLength={4}
+                  placeholder="1234"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </>
           )}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

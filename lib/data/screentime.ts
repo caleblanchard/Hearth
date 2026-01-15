@@ -396,13 +396,13 @@ export async function getScreenTimeStats(
   if (error) throw error
 
   const totalMinutes = (transactions || []).reduce(
-    (sum, t) => t.type === 'SPEND' ? sum + Math.abs(t.amount_minutes || 0) : sum,
+    (sum, t) => t.type === 'SPENT' ? sum + Math.abs(t.amount_minutes || 0) : sum,
     0
   )
 
   // Group by type
   const byType = (transactions || []).reduce((acc, t) => {
-    if (t.type === 'SPEND') {
+    if (t.type === 'SPENT') {
       const typeName = t.screen_type?.name || 'Unknown'
       if (!acc[typeName]) {
         acc[typeName] = 0
@@ -415,7 +415,7 @@ export async function getScreenTimeStats(
   return {
     totalMinutes,
     byType,
-    sessionCount: transactions?.filter(t => t.type === 'SPEND').length || 0,
+    sessionCount: transactions?.filter(t => t.type === 'SPENT').length || 0,
   }
 }
 
@@ -429,18 +429,10 @@ export async function adjustScreenTimeAllowance(
 ) {
   const supabase = await createClient()
 
-  const { data: allowance } = await supabase
-    .from('screen_time_allowances')
-    .select('remaining_minutes')
-    .eq('id', allowanceId)
-    .single()
-
-  if (!allowance) throw new Error('Allowance not found')
-
   const { data, error } = await supabase
     .from('screen_time_allowances')
     .update({
-      remaining_minutes: Math.max(0, (allowance.remaining_minutes || 0) + adjustmentMinutes),
+      remaining_minutes: supabase.sql`GREATEST(0, remaining_minutes + ${adjustmentMinutes})`,
       updated_at: new Date().toISOString(),
     })
     .eq('id', allowanceId)
@@ -448,6 +440,7 @@ export async function adjustScreenTimeAllowance(
     .single()
 
   if (error) throw error
+  if (!data) throw new Error('Allowance not found')
   return data
 }
 
@@ -472,12 +465,13 @@ export async function checkGraceEligibility(memberId: string) {
   const supabase = await createClient()
 
   // Get active grace settings
-  const { data: settings } = await supabase
+  const { data: settings, error: settingsError } = await supabase
     .from('screen_time_grace_settings')
     .select('*')
-    .eq('family_id', (await supabase.from('family_members').select('family_id').eq('id', memberId).single()).data?.family_id)
-    .eq('is_active', true)
-    .single()
+    .eq('member_id', memberId)
+    .maybeSingle()
+
+  if (settingsError) throw settingsError
 
   if (!settings) {
     return { eligible: false, reason: 'Grace periods not enabled' }
@@ -492,7 +486,7 @@ export async function checkGraceEligibility(memberId: string) {
     .eq('status', 'APPROVED')
     .gte('created_at', today)
 
-  const dailyLimit = settings.max_daily_grace_periods || 3
+  const dailyLimit = settings.max_grace_per_day || 3
   if ((count || 0) >= dailyLimit) {
     return { eligible: false, reason: 'Daily grace limit reached' }
   }
@@ -506,29 +500,82 @@ export async function checkGraceEligibility(memberId: string) {
 export async function getFamilyScreenTimeOverview(familyId: string) {
   const supabase = await createClient()
 
-  const { data: members } = await supabase
+  const { data: members, error: membersError } = await supabase
     .from('family_members')
     .select('id, name, avatar_url')
     .eq('family_id', familyId)
     .eq('is_active', true)
 
-  const overview = await Promise.all(
-    (members || []).map(async (member) => {
-      const allowances = await getMemberAllowances(member.id)
-      const stats = await getScreenTimeStats(
-        member.id,
-        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        new Date().toISOString()
-      )
-      return {
-        member,
-        allowances,
-        stats,
+  if (membersError) throw membersError
+  if (!members || members.length === 0) return []
+
+  const memberIds = members.map((member) => member.id)
+  const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const endDate = new Date().toISOString()
+
+  const [allowancesResult, transactionsResult] = await Promise.all([
+    supabase
+      .from('screen_time_allowances')
+      .select(`
+        *,
+        screen_type:screen_time_types(id, name)
+      `)
+      .in('member_id', memberIds)
+      .order('screen_time_type_id'),
+    supabase
+      .from('screen_time_transactions')
+      .select(`
+        member_id,
+        amount_minutes,
+        type,
+        screen_type:screen_time_types(name)
+      `)
+      .in('member_id', memberIds)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate),
+  ])
+
+  if (allowancesResult.error) throw allowancesResult.error
+  if (transactionsResult.error) throw transactionsResult.error
+
+  const allowancesByMemberId = (allowancesResult.data || []).reduce(
+    (acc, allowance) => {
+      if (!acc[allowance.member_id]) {
+        acc[allowance.member_id] = []
       }
-    })
+      acc[allowance.member_id].push(allowance)
+      return acc
+    },
+    {} as Record<string, any[]>
   )
 
-  return overview
+  const statsByMemberId = memberIds.reduce((acc, memberId) => {
+    acc[memberId] = { totalMinutes: 0, byType: {}, sessionCount: 0 }
+    return acc
+  }, {} as Record<string, { totalMinutes: number; byType: Record<string, number>; sessionCount: number }>)
+
+  for (const transaction of transactionsResult.data || []) {
+    if (transaction.type !== 'SPENT') continue
+    const memberStats = statsByMemberId[transaction.member_id] || {
+      totalMinutes: 0,
+      byType: {},
+      sessionCount: 0,
+    }
+    const minutes = Math.abs(transaction.amount_minutes || 0)
+    const typeName = transaction.screen_type?.name || 'Unknown'
+
+    memberStats.totalMinutes += minutes
+    memberStats.byType[typeName] = (memberStats.byType[typeName] || 0) + minutes
+    memberStats.sessionCount += 1
+
+    statsByMemberId[transaction.member_id] = memberStats
+  }
+
+  return members.map((member) => ({
+    member,
+    allowances: allowancesByMemberId[member.id] || [],
+    stats: statsByMemberId[member.id] || { totalMinutes: 0, byType: {}, sessionCount: 0 },
+  }))
 }
 
 /**

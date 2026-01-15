@@ -156,21 +156,21 @@ export async function POST(request: NextRequest) {
       const family = result.family;
       const admin = result.member;
 
-      // Create module configurations for selected modules using admin client
+      // Create module configurations for all modules using admin client
       const adminClient = createAdminClient();
-      const moduleConfigurations = [];
-      for (const moduleId of selectedModules) {
-        const { data: config } = await adminClient
-          .from('module_configurations')
-          .insert({
-            family_id: family.id,
-            module_id: moduleId as ModuleId,
-            is_enabled: true,
-            enabled_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
-        if (config) moduleConfigurations.push(config);
+      const selectedModuleSet = new Set(selectedModules);
+      const moduleConfigurations = validModuleIds.map((moduleId) => ({
+        family_id: family.id,
+        module_id: moduleId,
+        is_enabled: selectedModuleSet.has(moduleId),
+        enabled_at: selectedModuleSet.has(moduleId) ? new Date().toISOString() : null,
+        disabled_at: selectedModuleSet.has(moduleId) ? null : new Date().toISOString(),
+      }));
+      const { error: moduleConfigError } = await adminClient
+        .from('module_configurations')
+        .upsert(moduleConfigurations, { onConflict: 'family_id,module_id' });
+      if (moduleConfigError) {
+        throw moduleConfigError;
       }
 
       // Generate sample data if requested

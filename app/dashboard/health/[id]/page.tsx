@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import Link from 'next/link';
 import { ConfirmModal } from '@/components/ui/Modal';
 import StartSickModeButton from '@/components/sick-mode/StartSickModeButton';
@@ -44,7 +44,7 @@ interface Medication {
 export default function HealthEventDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useSupabaseSession();
+  const { isParent } = useCurrentMember();
   const eventId = params.id as string;
 
   const [event, setEvent] = useState<HealthEvent | null>(null);
@@ -273,7 +273,7 @@ export default function HealthEventDetailPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            {!event.endedAt && event.eventType === 'ILLNESS' && user?.user_metadata?.role === 'PARENT' && (
+            {!event.endedAt && event.eventType === 'ILLNESS' && isParent && (
               <StartSickModeButton 
                 memberId={event.memberId}
                 memberName={event.member.name}
@@ -281,7 +281,7 @@ export default function HealthEventDetailPage() {
                 onStarted={loadEvent}
               />
             )}
-            {!event.endedAt && user?.user_metadata?.role === 'PARENT' && (
+            {!event.endedAt && isParent && (
               <button
                 onClick={handleEndEvent}
                 className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
@@ -401,7 +401,7 @@ export default function HealthEventDetailPage() {
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Medications ({event.medications.length})
           </h3>
-          {!event.endedAt && user?.user_metadata?.role === 'PARENT' && (
+          {!event.endedAt && isParent && (
             <button
               onClick={() => setShowMedDialog(true)}
               className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white text-sm rounded-lg transition-colors"

@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { getAuthContext } from '@/lib/supabase/server';
+import { getEnabledModules } from '@/lib/data/settings';
 import { redirect } from 'next/navigation';
 import KioskLayout from '@/components/kiosk/KioskLayout';
 import KioskDashboard from '@/components/kiosk/KioskDashboard';
@@ -25,10 +26,12 @@ export default async function KioskPage() {
     redirect('/dashboard');
   }
 
+  const enabledModules = await getEnabledModules(firstMembership.family_id);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <KioskLayout familyId={firstMembership.family_id}>
-        <KioskDashboard />
+        <KioskDashboard enabledModules={enabledModules} />
       </KioskLayout>
     </div>
   );

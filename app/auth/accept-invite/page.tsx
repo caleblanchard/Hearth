@@ -20,10 +20,57 @@ function AcceptInviteContent() {
   const [error, setError] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const token = searchParams.get('token');
 
+  // First, handle any auth tokens from Supabase redirect
   useEffect(() => {
+    async function handleAuthCallback() {
+      const supabase = createClient();
+
+      // Check for hash fragment (contains access_token after email confirmation)
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+
+        if (accessToken) {
+          // Set the session from the hash tokens
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+          });
+
+          if (!error) {
+            // Clear the hash from URL
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
+        }
+      }
+
+      // Check for code parameter (PKCE flow)
+      const code = searchParams.get('code');
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
+          // Remove code from URL
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('code');
+          window.history.replaceState(null, '', newUrl.toString());
+        }
+      }
+
+      setAuthChecked(true);
+    }
+
+    handleAuthCallback();
+  }, [searchParams]);
+
+  // Then verify invitation and auth status
+  useEffect(() => {
+    if (!authChecked) return;
+
     async function verifyInvitationAndAuth() {
       if (!token) {
         setError('Invalid invitation link. No token provided.');
@@ -61,7 +108,7 @@ function AcceptInviteContent() {
     }
 
     verifyInvitationAndAuth();
-  }, [token]);
+  }, [token, authChecked]);
 
   const acceptInvitation = async () => {
     if (!token) return;

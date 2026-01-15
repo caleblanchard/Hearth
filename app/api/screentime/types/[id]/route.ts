@@ -6,6 +6,18 @@ import { logger } from '@/lib/logger';
 import { sanitizeString } from '@/lib/input-sanitization';
 import { parseJsonBody } from '@/lib/request-validation';
 
+const normalizeScreenTimeType = (type: any) => ({
+  id: type.id,
+  familyId: type.family_id ?? type.familyId,
+  name: type.name,
+  description: type.description ?? null,
+  isActive: type.is_active ?? type.isActive ?? false,
+  isArchived: type.is_archived ?? type.isArchived ?? false,
+  createdAt: type.created_at ?? type.createdAt,
+  updatedAt: type.updated_at ?? type.updatedAt,
+  _count: type._count,
+});
+
 /**
  * GET /api/screentime/types/[id]
  * Get a specific screen time type
@@ -42,7 +54,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ type });
+    return NextResponse.json({ type: normalizeScreenTimeType(type) });
   } catch (error) {
     logger.error('Error fetching screen time type:', error);
     return NextResponse.json(
@@ -82,11 +94,19 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const type = await updateScreenTimeType(id, body);
+    const updateData: Record<string, any> = {};
+    if (body.name !== undefined) updateData.name = sanitizeString(body.name);
+    if (body.description !== undefined) {
+      updateData.description = body.description ? sanitizeString(body.description) : null;
+    }
+    if (body.isActive !== undefined) updateData.is_active = body.isActive;
+    if (body.isArchived !== undefined) updateData.is_archived = body.isArchived;
+
+    const type = await updateScreenTimeType(id, updateData);
 
     return NextResponse.json({
       success: true,
-      type,
+      type: normalizeScreenTimeType(type),
       message: 'Screen time type updated successfully',
     });
   } catch (error) {

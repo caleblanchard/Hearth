@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 interface Creator {
   id: string;
@@ -55,6 +55,7 @@ export default function RecipesList() {
   const [error, setError] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadRecipes = async () => {
     setLoading(true);
@@ -64,6 +65,8 @@ export default function RecipesList() {
       const params = new URLSearchParams();
       if (categoryFilter) params.set('category', categoryFilter);
       if (favoritesOnly) params.set('isFavorite', 'true');
+      const trimmedSearch = searchQuery.trim();
+      if (trimmedSearch) params.set('search', trimmedSearch);
 
       const response = await fetch(`/api/meals/recipes?${params.toString()}`, {
         method: 'GET',
@@ -90,7 +93,7 @@ export default function RecipesList() {
 
   useEffect(() => {
     loadRecipes();
-  }, [categoryFilter, favoritesOnly]);
+  }, [categoryFilter, favoritesOnly, searchQuery]);
 
   const toggleFavorite = async (id: string, currentStatus: boolean) => {
     try {
@@ -125,14 +128,6 @@ export default function RecipesList() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <div className="text-gray-600 dark:text-gray-400">Loading recipes...</div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -141,6 +136,8 @@ export default function RecipesList() {
     );
   }
 
+  const hasFilters = favoritesOnly || categoryFilter || searchQuery.trim().length > 0;
+
   return (
     <div className="space-y-6">
       {/* Header with filters */}
@@ -148,7 +145,18 @@ export default function RecipesList() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
           Recipe Collection
         </h2>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search recipes"
+              placeholder="Search recipes..."
+              className="w-56 pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-ember-500 focus:border-transparent"
+            />
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          </div>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
@@ -185,10 +193,14 @@ export default function RecipesList() {
       </div>
 
       {/* Recipes Grid */}
-      {!recipes || recipes.length === 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[200px]">
+          <div className="text-gray-600 dark:text-gray-400">Loading recipes...</div>
+        </div>
+      ) : !recipes || recipes.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <p className="text-gray-500 dark:text-gray-400">
-            {favoritesOnly || categoryFilter
+            {hasFilters
               ? 'No recipes match your filters'
               : 'No recipes yet. Add one to get started!'}
           </p>

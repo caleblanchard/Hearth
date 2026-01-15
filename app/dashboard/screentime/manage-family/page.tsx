@@ -78,25 +78,41 @@ export default function FamilyScreenTimeManagement() {
       }
       const data = await response.json();
       // API returns { overview } where each item has { member, allowances, stats }
-      const transformedMembers = (data.overview || []).map((item: any) => ({
-        id: item.member.id,
-        name: item.member.name,
-        avatarUrl: item.member.avatar_url,
-        role: item.member.role || 'CHILD',
-        currentBalance: item.stats?.totalMinutes || 0,
-        weeklyAllocation: item.stats?.totalMinutes || 0,
-        weeklyUsage: item.stats?.usedMinutes || 0,
-        weekStartDate: null,
-        allowances: item.allowances?.map((a: any) => ({
-          id: a.id,
-          screenTimeTypeId: a.screen_time_type_id,
-          screenTimeTypeName: a.screen_type?.name || 'Unknown',
-          allowanceMinutes: a.allowance_minutes,
-          period: a.period,
-          remainingMinutes: a.remaining_minutes,
-        })) || [],
-      }));
-      setMembers(transformedMembers);
+      const transformedMembers = (data.overview || []).map((item: any) => {
+        const allowances =
+          item.allowances?.map((a: any) => ({
+            id: a.id,
+            screenTimeTypeId: a.screen_time_type_id,
+            screenTimeTypeName: a.screen_type?.name || 'Unknown',
+            allowanceMinutes: a.allowance_minutes,
+            period: a.period,
+            remainingMinutes: a.remaining_minutes,
+          })) || [];
+
+        const weeklyAllocation = allowances.reduce(
+          (sum: number, allowance: Allowance) =>
+            sum +
+            (allowance.period === 'DAILY'
+              ? allowance.allowanceMinutes * 7
+              : allowance.allowanceMinutes),
+          0
+        );
+        const weeklyUsage = item.stats?.totalMinutes || 0;
+        const currentBalance = Math.max(0, weeklyAllocation - weeklyUsage);
+
+        return {
+          id: item.member.id,
+          name: item.member.name,
+          avatarUrl: item.member.avatar_url,
+          role: item.member.role || 'CHILD',
+          currentBalance,
+          weeklyAllocation,
+          weeklyUsage,
+          weekStartDate: null,
+          allowances,
+        };
+      });
+      setMembers(transformedMembers.filter((member: FamilyMember) => member.allowances?.length));
     } catch (error) {
       console.error('Error fetching family screen time:', error);
       setAlertModal({

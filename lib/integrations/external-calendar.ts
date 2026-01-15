@@ -7,6 +7,8 @@
 
 import ICAL from 'ical.js';
 import { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/database.types';
 import { logger } from '@/lib/logger';
 
 interface ParsedEvent {
@@ -516,14 +518,17 @@ export function parseICalData(icalData: string): ParsedEvent[] {
  * Sync external calendar subscription
  * Fetches calendar data, parses events, and creates/updates calendar events
  */
-export async function syncExternalCalendar(subscriptionId: string): Promise<{
+export async function syncExternalCalendar(
+  subscriptionId: string,
+  supabaseClient?: SupabaseClient<Database>
+): Promise<{
   success: boolean;
   eventsCreated: number;
   eventsUpdated: number;
   eventsDeleted: number;
   error?: string;
 }> {
-  const supabase = await createClient();
+  const supabase = supabaseClient ?? (await createClient());
   
   const { data: subscription } = await supabase
     .from('external_calendar_subscriptions')

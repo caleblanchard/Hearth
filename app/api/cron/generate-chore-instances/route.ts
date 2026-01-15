@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getNextDueDates, getNextAssignee, startOfDay, endOfDay } from '@/lib/chore-scheduler';
 import { logger } from '@/lib/logger';
 import { isMemberInSickMode } from '@/lib/sick-mode';
@@ -13,7 +14,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = await createClient();
+    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createAdminClient()
+      : await createClient();
     const lookAheadDays = 7; // Generate instances for next 7 days
     const startDate = new Date();
     let created = 0;
@@ -22,7 +25,7 @@ export async function GET(request: Request) {
     const errors: string[] = [];
 
     // Fetch all active chore schedules
-    const { data: schedules } = await supabase
+    const { data: schedules, error: schedulesError } = await supabase
       .from('chore_schedules')
       .select(`
         *,
@@ -36,6 +39,10 @@ export async function GET(request: Request) {
       .eq('chore_definition.is_active', true)
       .eq('assignments.is_active', true)
       .order('assignments.rotation_order', { ascending: true });
+
+    if (schedulesError) {
+      throw schedulesError;
+    }
 
     // Process each schedule
     for (const schedule of schedules || []) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { shouldProcessAllowance } from '@/lib/allowance-scheduler'
 import { logger } from '@/lib/logger'
 
@@ -22,14 +23,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supabase = await createClient()
+    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createAdminClient()
+      : await createClient()
     const currentDate = new Date()
     let processed = 0
     let skipped = 0
     let errors = 0
 
     // Fetch all active schedules with member info
-    const { data: schedules } = await supabase
+    const { data: schedules, error: schedulesError } = await supabase
       .from('allowance_schedules')
       .select(`
         *,
@@ -40,6 +43,10 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('is_active', true)
+
+    if (schedulesError) {
+      throw schedulesError
+    }
 
     // Process schedules in parallel batches for better performance
     const BATCH_SIZE = 20
@@ -160,4 +167,8 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+export async function POST(request: NextRequest) {
+  return GET(request)
 }

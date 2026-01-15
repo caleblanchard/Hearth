@@ -1,7 +1,7 @@
 /**
  * External Calendar Sync Cron Job
  *
- * POST /api/cron/sync-external-calendars
+ * GET/POST /api/cron/sync-external-calendars
  * Syncs all active external calendar subscriptions that are due for sync.
  * This endpoint should be called periodically (e.g., every hour) to keep
  * external calendars up to date.
@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
 import { syncExternalCalendar } from '@/lib/integrations/external-calendar';
 
@@ -28,16 +29,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = await createClient();
+    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createAdminClient()
+      : await createClient();
 
     // Find all active subscriptions that are due for sync
     const now = new Date();
-    const { data: subscriptions } = await supabase
+    const { data: subscriptions, error: subscriptionsError } = await supabase
       .from('external_calendar_subscriptions')
       .select('*')
       .eq('is_active', true)
       .or(`next_sync_at.lte.${now.toISOString()},next_sync_at.is.null`)
       .order('next_sync_at', { ascending: true });
+
+    if (subscriptionsError) {
+      throw subscriptionsError;
+    }
 
     logger.info('Starting external calendar sync cron job', {
       subscriptionCount: subscriptions?.length || 0,
@@ -62,7 +69,7 @@ export async function POST(request: NextRequest) {
     // Sync each subscription
     for (const subscription of subscriptions || []) {
       try {
-        const result = await syncExternalCalendar(subscription.id);
+        const result = await syncExternalCalendar(subscription.id, supabase);
 
         if (result.success) {
           results.successful++;
@@ -119,4 +126,8 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  return POST(request);
 }

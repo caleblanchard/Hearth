@@ -6,6 +6,18 @@ import { logger } from '@/lib/logger';
 import { sanitizeString } from '@/lib/input-sanitization';
 import { parseJsonBody } from '@/lib/request-validation';
 
+const normalizeScreenTimeType = (type: any) => ({
+  id: type.id,
+  familyId: type.family_id ?? type.familyId,
+  name: type.name,
+  description: type.description ?? null,
+  isActive: type.is_active ?? type.isActive ?? false,
+  isArchived: type.is_archived ?? type.isArchived ?? false,
+  createdAt: type.created_at ?? type.createdAt,
+  updatedAt: type.updated_at ?? type.updatedAt,
+  _count: type._count,
+});
+
 /**
  * GET /api/screentime/types
  * List all screen time types for the family
@@ -25,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     const types = await getScreenTimeTypes(familyId);
 
-    return NextResponse.json({ types });
+    return NextResponse.json({ types: types.map(normalizeScreenTimeType) });
   } catch (error) {
     logger.error('Error fetching screen time types:', error);
     return NextResponse.json(
@@ -77,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      type,
+      type: normalizeScreenTimeType(type),
       message: 'Screen time type created successfully',
     });
   } catch (error) {

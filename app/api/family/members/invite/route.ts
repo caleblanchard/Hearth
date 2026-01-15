@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { BCRYPT_ROUNDS } from '@/lib/constants';
+import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 
 const INVITE_EXPIRY_DAYS = 7;
@@ -32,7 +34,16 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, email, birthDate, avatarUrl } = body;
+    const {
+      name,
+      email,
+      birthDate,
+      avatarUrl,
+      role = 'PARENT',
+      pin,
+      allowedModules,
+    } = body;
+    const normalizedRole = role === 'CHILD' ? 'CHILD' : 'PARENT';
 
     // Validation
     if (!name || !name.trim()) {
@@ -41,7 +52,7 @@ export async function POST(request: Request) {
 
     if (!email || !email.trim()) {
       return NextResponse.json(
-        { error: 'Email is required for inviting adult family members' },
+        { error: 'Email is required for invitations' },
         { status: 400 }
       );
     }
@@ -53,6 +64,22 @@ export async function POST(request: Request) {
         { error: 'Invalid email format' },
         { status: 400 }
       );
+    }
+
+    if (normalizedRole === 'CHILD') {
+      const pinValue = typeof pin === 'string' ? pin.trim() : '';
+      if (!pinValue) {
+        return NextResponse.json(
+          { error: 'PIN is required for child accounts' },
+          { status: 400 }
+        );
+      }
+      if (!/^\d{4,6}$/.test(pinValue)) {
+        return NextResponse.json(
+          { error: 'PIN must be 4-6 digits' },
+          { status: 400 }
+        );
+      }
     }
 
     const adminClient = createAdminClient();
@@ -108,6 +135,10 @@ export async function POST(request: Request) {
     const inviteToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
+    const pinHash =
+      normalizedRole === 'CHILD' && typeof pin === 'string'
+        ? await bcrypt.hash(pin.trim(), BCRYPT_ROUNDS)
+        : null;
 
     // Create the family member record with PENDING status
     const { data: member, error: memberError } = await adminClient
@@ -116,7 +147,8 @@ export async function POST(request: Request) {
         family_id: familyId,
         name: name.trim(),
         email: email.toLowerCase().trim(),
-        role: 'PARENT',
+        role: normalizedRole,
+        pin: pinHash,
         birth_date: birthDate ? new Date(birthDate).toISOString() : null,
         avatar_url: avatarUrl || null,
         is_active: true,
@@ -137,6 +169,31 @@ export async function POST(request: Request) {
       );
     }
 
+    const moduleIds = Array.isArray(allowedModules)
+      ? [...new Set(allowedModules.filter(Boolean))]
+      : [];
+
+    if (normalizedRole === 'CHILD' && moduleIds.length > 0) {
+      const { error: modulesError } = await adminClient
+        .from('member_module_access')
+        .insert(
+          moduleIds.map((moduleId) => ({
+            member_id: member.id,
+            module_id: moduleId,
+            has_access: true,
+          }))
+        );
+
+      if (modulesError) {
+        await adminClient.from('family_members').delete().eq('id', member.id);
+        logger.error('Error setting member module access:', modulesError);
+        return NextResponse.json(
+          { error: 'Failed to create invitation' },
+          { status: 500 }
+        );
+      }
+    }
+
     // Get the app URL for the invitation
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
@@ -148,6 +205,7 @@ export async function POST(request: Request) {
         redirectTo: `${appUrl}/auth/accept-invite?token=${inviteToken}`,
         data: {
           name: name.trim(),
+          role: normalizedRole,
           invite_token: inviteToken,
           family_id: familyId,
           family_name: family?.name || 'Your Family',
@@ -178,12 +236,18 @@ export async function POST(request: Request) {
       metadata: {
         invited_email: email,
         invited_name: name,
+        role: normalizedRole,
         expires_at: expiresAt.toISOString(),
       },
     });
 
     // Cast member to any since the new columns may not be in types yet
     const memberData = member as any;
+    const inviteMessage =
+      normalizedRole === 'CHILD'
+        ? `Invitation sent to ${email}. They can create an account and still use their PIN for kiosk access.`
+        : `Invitation sent to ${email}. They will receive an email to set up their account.`;
+
     return NextResponse.json({
       success: true,
       member: {
@@ -195,7 +259,7 @@ export async function POST(request: Request) {
         inviteSentAt: memberData.invite_sent_at,
         inviteExpiresAt: memberData.invite_expires_at,
       },
-      message: `Invitation sent to ${email}. They will receive an email to set up their account.`,
+      message: inviteMessage,
     });
   } catch (error) {
     logger.error('Error inviting family member:', error);
