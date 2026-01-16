@@ -29,9 +29,22 @@ export async function GET(request: Request) {
 
     // For invite type, redirect to password setup page
     if (type === 'invite') {
-      // The user needs to set their password
-      // Redirect to our set-password page with the next URL
-      return NextResponse.redirect(`${origin}/auth/set-password?next=${encodeURIComponent(next)}`)
+      const redirectUrl = new URL(`${origin}/auth/set-password`)
+      redirectUrl.searchParams.set('next', next)
+      redirectUrl.searchParams.set('token_hash', token_hash)
+      redirectUrl.searchParams.set('type', type)
+
+      try {
+        const nextUrl = new URL(next, origin)
+        const inviteToken = nextUrl.searchParams.get('token')
+        if (inviteToken) {
+          redirectUrl.searchParams.set('inviteToken', inviteToken)
+        }
+      } catch (parseError) {
+        // Ignore invalid next URL and continue without invite token
+      }
+
+      return NextResponse.redirect(redirectUrl.toString())
     }
 
     // For other types (signup confirmation, recovery), redirect to next

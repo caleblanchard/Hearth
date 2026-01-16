@@ -10,21 +10,50 @@ function SetPasswordContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [verifyingInvite, setVerifyingInvite] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const next = searchParams.get('next') || '/dashboard';
+  const inviteToken = searchParams.get('inviteToken');
+  const tokenHash = searchParams.get('token_hash');
+  const tokenType = searchParams.get('type') as
+    | 'invite'
+    | 'signup'
+    | 'recovery'
+    | 'email_change'
+    | null;
 
   useEffect(() => {
     async function getUser() {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      let { data: { user } } = await supabase.auth.getUser();
+
+      if (!user && tokenHash && tokenType) {
+        setVerifyingInvite(true);
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          type: tokenType,
+          token_hash: tokenHash,
+        });
+        if (verifyError) {
+          setError(verifyError.message || 'Invalid or expired invitation link');
+          setVerifyingInvite(false);
+          setAuthReady(true);
+          return;
+        }
+        const result = await supabase.auth.getUser();
+        user = result.data.user;
+        setVerifyingInvite(false);
+      }
+
       if (user?.email) {
         setUserEmail(user.email);
       }
+      setAuthReady(true);
     }
     getUser();
-  }, []);
+  }, [tokenHash, tokenType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +85,30 @@ function SetPasswordContent() {
         return;
       }
 
+      if (inviteToken) {
+        const response = await fetch('/api/family/members/invite/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ inviteToken }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setError(data.error || 'Failed to accept invitation');
+          setLoading(false);
+          return;
+        }
+
+        router.push('/dashboard?welcome=true');
+        return;
+      }
+
+      if (next.startsWith('http')) {
+        window.location.href = next;
+        return;
+      }
+
       // Success! Redirect to the next page
       router.push(next);
     } catch (err) {
@@ -63,6 +116,17 @@ function SetPasswordContent() {
       setLoading(false);
     }
   };
+
+  if (!authReady || verifyingInvite) {
+    return (
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600 dark:text-gray-400">
+          Preparing your account...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md space-y-6">
