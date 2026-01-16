@@ -1,42 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getHealthEvent, updateHealthEvent, deleteHealthEvent } from '@/lib/data/health';
 import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const event = await prisma.healthEvent.findUnique({
-      where: { id: params.id },
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-            familyId: true,
-          },
-        },
-        symptoms: {
-          orderBy: {
-            recordedAt: 'desc',
-          },
-        },
-        medications: {
-          orderBy: {
-            givenAt: 'desc',
-          },
-        },
-      },
-    });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    if (!event || event.member.familyId !== session.user.familyId) {
+    const event = await getHealthEvent(id);
+
+    if (!event) {
+      return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
+    }
+
+    // Verify belongs to family (check via member relationship)
+    const supabase = await createClient()
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('id', event.member_id)
+      .single();
+
+    if (!member || member.family_id !== familyId) {
       return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
     }
 
@@ -52,103 +51,94 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { severity, notes, endedAt } = body;
-
-    // Validate severity if provided
-    if (severity !== undefined && severity !== null) {
-      if (severity < 1 || severity > 10) {
-        return NextResponse.json(
-          { error: 'Severity must be between 1 and 10' },
-          { status: 400 }
-        );
-      }
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    // Get existing event
-    const existingEvent = await prisma.healthEvent.findUnique({
-      where: { id: params.id },
-      include: {
-        member: {
-          select: {
-            id: true,
-            familyId: true,
-          },
-        },
-      },
-    });
-
-    if (!existingEvent || existingEvent.member.familyId !== session.user.familyId) {
+    // Verify event exists and belongs to family
+    const existing = await getHealthEvent(id);
+    if (!existing) {
       return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
     }
 
-    // Children can only update their own events
-    if (session.user.role === 'CHILD' && session.user.id !== existingEvent.memberId) {
-      return NextResponse.json(
-        { error: 'Children can only update their own health events' },
-        { status: 403 }
-      );
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('id', existing.member_id)
+      .single();
+
+    if (!member || member.family_id !== familyId) {
+      return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
     }
 
-    // Build update data
-    const updateData: any = {};
-    if (severity !== undefined) updateData.severity = severity;
-    if (notes !== undefined) updateData.notes = notes;
-    if (endedAt !== undefined) updateData.endedAt = endedAt ? new Date(endedAt) : null;
+    const body = await request.json();
+    const event = await updateHealthEvent(id, body);
 
-    // Update health event
-    const event = await prisma.healthEvent.update({
-      where: { id: params.id },
-      data: updateData,
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        symptoms: {
-          orderBy: {
-            recordedAt: 'desc',
-          },
-        },
-        medications: {
-          orderBy: {
-            givenAt: 'desc',
-          },
-        },
-      },
+    return NextResponse.json({
+      success: true,
+      event,
+      message: 'Health event updated successfully',
     });
-
-    // Determine audit action
-    const auditAction = endedAt ? 'HEALTH_EVENT_ENDED' : 'HEALTH_EVENT_UPDATED';
-
-    // Log audit event
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: auditAction,
-        entityType: 'HealthEvent',
-        entityId: event.id,
-        result: 'SUCCESS',
-      },
-    });
-
-    return NextResponse.json({ event }, { status: 200 });
   } catch (error) {
     logger.error('Error updating health event:', error);
-    return NextResponse.json(
-      { error: 'Failed to update health event' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to update health event' }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  try {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Verify event exists and belongs to family
+    const existing = await getHealthEvent(id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
+    }
+
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('id', existing.member_id)
+      .single();
+
+    if (!member || member.family_id !== familyId) {
+      return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
+    }
+
+    await deleteHealthEvent(id);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Health event deleted successfully',
+    });
+  } catch (error) {
+    logger.error('Error deleting health event:', error);
+    return NextResponse.json({ error: 'Failed to delete health event' }, { status: 500 });
   }
 }

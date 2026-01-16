@@ -12,8 +12,6 @@ import { GET } from '@/app/api/screentime/grace/history/route';
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
 import { RepaymentStatus } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/screentime/grace/history', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,7 +19,6 @@ describe('GET /api/screentime/grace/history', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/screentime/grace/history');
     const response = await GET(request as NextRequest);
@@ -33,12 +30,10 @@ describe('GET /api/screentime/grace/history', () => {
 
   it('should return history for current user', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const logs = [
       {
         id: 'log-1',
-        memberId: session.user.id,
         minutesGranted: 15,
         requestedAt: new Date('2025-01-01'),
         reason: 'Middle of game',
@@ -53,7 +48,6 @@ describe('GET /api/screentime/grace/history', () => {
       },
       {
         id: 'log-2',
-        memberId: session.user.id,
         minutesGranted: 10,
         requestedAt: new Date('2025-01-02'),
         reason: null,
@@ -79,7 +73,6 @@ describe('GET /api/screentime/grace/history', () => {
 
   it('should allow parents to view child history', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const childId = 'child-1';
 
@@ -92,8 +85,13 @@ describe('GET /api/screentime/grace/history', () => {
       familyId: session.user.familyId,
       createdAt: new Date(),
       updatedAt: new Date(),
-      userId: 'user-1',
-    });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
     const logs = [
       {
@@ -128,12 +126,10 @@ describe('GET /api/screentime/grace/history', () => {
 
   it('should support pagination', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const logs = [
       {
         id: 'log-3',
-        memberId: session.user.id,
         minutesGranted: 15,
         requestedAt: new Date('2025-01-03'),
         reason: null,
@@ -170,12 +166,10 @@ describe('GET /api/screentime/grace/history', () => {
 
   it('should include approver information', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const logs = [
       {
         id: 'log-1',
-        memberId: session.user.id,
         minutesGranted: 15,
         requestedAt: new Date('2025-01-01'),
         reason: 'Test',
@@ -220,7 +214,6 @@ describe('GET /api/screentime/grace/history', () => {
 
   it('should verify family ownership', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const otherFamilyChildId = 'other-family-child';
 
@@ -233,8 +226,13 @@ describe('GET /api/screentime/grace/history', () => {
       familyId: 'different-family',
       createdAt: new Date(),
       updatedAt: new Date(),
-      userId: 'user-3',
-    });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
     const request = new Request(
       `http://localhost/api/screentime/grace/history?memberId=${otherFamilyChildId}`

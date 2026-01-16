@@ -18,8 +18,6 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/rules/executions/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/rules/executions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -58,7 +56,6 @@ describe('GET /api/rules/executions', () => {
   ];
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/executions');
     const response = await GET(request);
@@ -69,7 +66,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should return 403 if user is not a parent', async () => {
-    auth.mockResolvedValue(mockChildSession() as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/executions');
     const response = await GET(request);
@@ -80,7 +76,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should return all executions for family', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue(mockExecutions as any);
     prismaMock.ruleExecution.count.mockResolvedValue(2);
 
@@ -101,7 +96,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should support pagination', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue([mockExecutions[0]] as any);
     prismaMock.ruleExecution.count.mockResolvedValue(2);
 
@@ -121,7 +115,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should filter by ruleId', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue([mockExecutions[0]] as any);
     prismaMock.ruleExecution.count.mockResolvedValue(1);
 
@@ -140,7 +133,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should filter by success status', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue([mockExecutions[0]] as any);
     prismaMock.ruleExecution.count.mockResolvedValue(1);
 
@@ -159,7 +151,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should filter by date range', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue(mockExecutions as any);
     prismaMock.ruleExecution.count.mockResolvedValue(2);
 
@@ -183,7 +174,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should order by executedAt descending by default', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue(mockExecutions as any);
     prismaMock.ruleExecution.count.mockResolvedValue(2);
 
@@ -199,7 +189,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should include rule information in executions', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue(mockExecutions as any);
     prismaMock.ruleExecution.count.mockResolvedValue(2);
 
@@ -222,7 +211,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should enforce maximum limit of 100', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue([] as any);
     prismaMock.ruleExecution.count.mockResolvedValue(0);
 
@@ -240,7 +228,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should enforce minimum limit of 1', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue([] as any);
     prismaMock.ruleExecution.count.mockResolvedValue(0);
 
@@ -258,7 +245,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should combine multiple filters', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue([mockExecutions[0]] as any);
     prismaMock.ruleExecution.count.mockResolvedValue(1);
 
@@ -281,7 +267,6 @@ describe('GET /api/rules/executions', () => {
   });
 
   it('should return 500 on database error', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.ruleExecution.findMany.mockRejectedValue(new Error('Database error'));
 
     const request = new NextRequest('http://localhost:3000/api/rules/executions');

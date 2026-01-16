@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getCarpoolGroups, createCarpoolGroup } from '@/lib/data/transport';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const carpools = await prisma.carpoolGroup.findMany({
-      where: { familyId: session.user.familyId },
-      include: {
-        members: true,
-      },
-      orderBy: { name: 'asc' },
-    });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const carpools = await getCarpoolGroups(familyId);
 
     return NextResponse.json({ carpools });
   } catch (error) {
@@ -31,79 +31,28 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can create carpools
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can create carpool groups' },
-        { status: 403 }
-      );
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const body = await request.json();
-    const { name, members } = body;
-
-    // Validate required fields
-    if (!name) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate members if provided
-    const membersList = members || [];
-    for (const member of membersList) {
-      if (!member.name) {
-        return NextResponse.json(
-          { error: 'All carpool members must have a name' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Create carpool with members
-    const carpool = await prisma.carpoolGroup.create({
-      data: {
-        familyId: session.user.familyId,
-        name: name.trim(),
-        members: {
-          create: membersList.map((member: any) => ({
-            name: member.name.trim(),
-            phone: member.phone?.trim() || null,
-            email: member.email?.trim() || null,
-          })),
-        },
-      },
-      include: {
-        members: true,
-      },
+    const carpool = await createCarpoolGroup({
+      family_id: familyId,
+      name: body.name || 'Carpool Group',
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'CARPOOL_GROUP_CREATED',
-        result: 'SUCCESS',
-        metadata: {
-          carpoolId: carpool.id,
-          name: carpool.name,
-          memberCount: membersList.length,
-        },
-      },
+    return NextResponse.json({
+      success: true,
+      carpool,
+      message: 'Carpool group created successfully',
     });
-
-    return NextResponse.json(
-      { carpool, message: 'Carpool group created successfully' },
-      { status: 201 }
-    );
   } catch (error) {
     logger.error('Error creating carpool group:', error);
     return NextResponse.json(

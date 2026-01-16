@@ -1,17 +1,10 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // NOW import after mocks
 import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/financial/transactions/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/financial/transactions', () => {
   beforeEach(() => {
@@ -43,7 +36,6 @@ describe('/api/financial/transactions', () => {
   ]
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null)
 
     const request = new NextRequest('http://localhost/api/financial/transactions')
     const response = await GET(request)
@@ -55,7 +47,6 @@ describe('/api/financial/transactions', () => {
 
   it('should return transactions for authenticated user', async () => {
     const session = mockChildSession()
-    auth.mockResolvedValue(session)
 
     prismaMock.creditTransaction.findMany.mockResolvedValue(mockTransactions as any)
 
@@ -69,7 +60,6 @@ describe('/api/financial/transactions', () => {
 
   it('should filter by memberId', async () => {
     const session = mockParentSession()
-    auth.mockResolvedValue(session)
 
     prismaMock.familyMember.findUnique.mockResolvedValue({
       id: 'child-1',
@@ -97,7 +87,6 @@ describe('/api/financial/transactions', () => {
   })
 
   it('should filter by type', async () => {
-    auth.mockResolvedValue(mockChildSession())
     prismaMock.creditTransaction.findMany.mockResolvedValue([mockTransactions[0]] as any)
 
     const request = new NextRequest(
@@ -115,7 +104,6 @@ describe('/api/financial/transactions', () => {
   })
 
   it('should filter by category', async () => {
-    auth.mockResolvedValue(mockChildSession())
     prismaMock.creditTransaction.findMany.mockResolvedValue([mockTransactions[1]] as any)
 
     const request = new NextRequest(
@@ -133,7 +121,6 @@ describe('/api/financial/transactions', () => {
   })
 
   it('should filter by date range', async () => {
-    auth.mockResolvedValue(mockChildSession())
     prismaMock.creditTransaction.findMany.mockResolvedValue(mockTransactions as any)
 
     const request = new NextRequest(
@@ -154,7 +141,6 @@ describe('/api/financial/transactions', () => {
   })
 
   it('should support pagination', async () => {
-    auth.mockResolvedValue(mockChildSession())
     prismaMock.creditTransaction.findMany.mockResolvedValue(mockTransactions as any)
     prismaMock.creditTransaction.count.mockResolvedValue(50)
 
@@ -176,7 +162,6 @@ describe('/api/financial/transactions', () => {
 
   it('should only show own transactions for child users', async () => {
     const session = mockChildSession()
-    auth.mockResolvedValue(session)
 
     prismaMock.creditTransaction.findMany.mockResolvedValue(mockTransactions as any)
 
@@ -194,7 +179,6 @@ describe('/api/financial/transactions', () => {
 
   it('should allow parents to view any family member transactions', async () => {
     const session = mockParentSession()
-    auth.mockResolvedValue(session)
 
     prismaMock.familyMember.findUnique.mockResolvedValue({
       id: 'child-1',

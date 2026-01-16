@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/chores/[id]/reject/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { ChoreStatus } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/chores/[id]/reject', () => {
   beforeEach(() => {
@@ -46,14 +39,13 @@ describe('/api/chores/[id]/reject', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/chores/123/reject', {
         method: 'POST',
         body: JSON.stringify({ reason: 'Not done well' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -62,14 +54,13 @@ describe('/api/chores/[id]/reject', () => {
 
     it('should return 403 if not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores/123/reject', {
         method: 'POST',
         body: JSON.stringify({ reason: 'Not done well' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -78,7 +69,6 @@ describe('/api/chores/[id]/reject', () => {
 
     it('should return 404 if chore instance not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(null)
 
@@ -87,7 +77,7 @@ describe('/api/chores/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Not done well' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -96,7 +86,6 @@ describe('/api/chores/[id]/reject', () => {
 
     it('should return 400 if chore is not completed', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue({
         ...mockChoreInstance,
@@ -108,7 +97,7 @@ describe('/api/chores/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Not done well' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -117,7 +106,6 @@ describe('/api/chores/[id]/reject', () => {
 
     it('should reject chore with reason', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -136,7 +124,7 @@ describe('/api/chores/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Not done well' }),
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -155,7 +143,6 @@ describe('/api/chores/[id]/reject', () => {
 
     it('should use existing notes if reason not provided', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -171,7 +158,7 @@ describe('/api/chores/[id]/reject', () => {
         body: JSON.stringify({}),
       })
 
-      await POST(request, { params: { id: choreInstanceId } })
+      await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
 
       expect(prismaMock.choreInstance.update).toHaveBeenCalledWith({
         where: { id: choreInstanceId },
@@ -183,7 +170,6 @@ describe('/api/chores/[id]/reject', () => {
 
     it('should create notification for child with reason', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -199,7 +185,7 @@ describe('/api/chores/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Needs more effort' }),
       })
 
-      await POST(request, { params: { id: choreInstanceId } })
+      await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
 
       expect(prismaMock.notification.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -213,7 +199,6 @@ describe('/api/chores/[id]/reject', () => {
 
     it('should create audit log', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -229,7 +214,7 @@ describe('/api/chores/[id]/reject', () => {
         body: JSON.stringify({ reason: 'Not good enough' }),
       })
 
-      await POST(request, { params: { id: choreInstanceId } })
+      await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
 
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -249,7 +234,6 @@ describe('/api/chores/[id]/reject', () => {
 
     it('should handle invalid JSON gracefully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
 
@@ -258,7 +242,7 @@ describe('/api/chores/[id]/reject', () => {
         body: 'invalid json{',
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)

@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
-import { auth } from '@/lib/auth';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getEnabledModules } from '@/lib/data/settings';
 import { redirect } from 'next/navigation';
 import KioskLayout from '@/components/kiosk/KioskLayout';
 import KioskDashboard from '@/components/kiosk/KioskDashboard';
@@ -11,22 +12,26 @@ export const metadata: Metadata = {
 
 export default async function KioskPage() {
   // Verify user is authenticated
-  const session = await auth();
+  const authContext = await getAuthContext();
 
-  if (!session || !session.user) {
-    redirect('/auth/login');
+  if (!authContext?.user) {
+    redirect('/auth/signin');
   }
 
+  // Get the member record to check role
   // Only parents can access the kiosk setup page initially
   // Children can use kiosk mode once it's started by a parent
-  if (session.user.role !== 'PARENT') {
+  const firstMembership = authContext.memberships[0];
+  if (!firstMembership || firstMembership.role !== 'PARENT') {
     redirect('/dashboard');
   }
 
+  const enabledModules = await getEnabledModules(firstMembership.family_id);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <KioskLayout familyId={session.user.familyId}>
-        <KioskDashboard />
+      <KioskLayout familyId={firstMembership.family_id}>
+        <KioskDashboard enabledModules={enabledModules} />
       </KioskLayout>
     </div>
   );

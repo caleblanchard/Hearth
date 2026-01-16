@@ -1,32 +1,46 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { updateChoreSchedule } from '@/lib/data/chores';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { scheduleId: string } }
+  { params }: { params: Promise<{ scheduleId: string }> }
 ) {
   try {
-    const session = await auth();
+    const { scheduleId } = await params
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId || session.user.role !== 'PARENT') {
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
     // Verify schedule exists and belongs to family
-    const existingSchedule = await prisma.choreSchedule.findUnique({
-      where: { id: params.scheduleId },
-      include: {
-        choreDefinition: true,
-      },
-    });
+    const { data: existingSchedule } = await supabase
+      .from('chore_schedules')
+      .select('*, chore_definition:chore_definitions!inner(family_id)')
+      .eq('id', scheduleId)
+      .single();
 
     if (!existingSchedule) {
       return NextResponse.json({ error: 'Schedule not found' }, { status: 404 });
     }
 
-    if (existingSchedule.choreDefinition.familyId !== session.user.familyId) {
+    if (existingSchedule.chore_definition.family_id !== familyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -60,43 +74,23 @@ export async function PATCH(
     }
 
     if (dayOfWeek !== undefined) {
-      updates.dayOfWeek = dayOfWeek;
+      updates.day_of_week = dayOfWeek;
     }
 
     if (customCron !== undefined) {
-      updates.customCron = customCron || null;
+      updates.custom_cron = customCron || null;
     }
 
     if (requiresApproval !== undefined) {
-      updates.requiresApproval = requiresApproval;
+      updates.requires_approval = requiresApproval;
     }
 
     if (requiresPhoto !== undefined) {
-      updates.requiresPhoto = requiresPhoto;
+      updates.requires_photo = requiresPhoto;
     }
 
     // Update schedule
-    const updatedSchedule = await prisma.choreSchedule.update({
-      where: { id: params.scheduleId },
-      data: updates,
-      include: {
-        assignments: {
-          include: {
-            member: {
-              select: {
-                id: true,
-                name: true,
-                avatarUrl: true,
-              },
-            },
-          },
-          where: {
-            isActive: true,
-          },
-        },
-        choreDefinition: true,
-      },
-    });
+    const updatedSchedule = await updateChoreSchedule(scheduleId, updates);
 
     return NextResponse.json({
       success: true,

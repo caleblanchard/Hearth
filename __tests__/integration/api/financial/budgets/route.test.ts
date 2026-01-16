@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -22,8 +17,6 @@ import { GET, POST } from '@/app/api/financial/budgets/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { SpendingCategory } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
-
 describe('/api/financial/budgets', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -32,10 +25,9 @@ describe('/api/financial/budgets', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/financial/budgets')
-      const response = await GET(request)
+      const response = await GET()
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -44,7 +36,6 @@ describe('/api/financial/budgets', () => {
 
     it('should return budgets for authenticated user', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const mockBudgets = [
         {
@@ -65,7 +56,7 @@ describe('/api/financial/budgets', () => {
       prismaMock.budget.findMany.mockResolvedValue(mockBudgets as any)
 
       const request = new NextRequest('http://localhost/api/financial/budgets')
-      const response = await GET(request)
+      const response = await GET()
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -100,7 +91,6 @@ describe('/api/financial/budgets', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/financial/budgets', {
         method: 'POST',
@@ -120,7 +110,6 @@ describe('/api/financial/budgets', () => {
 
     it('should return 400 if category is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/financial/budgets', {
         method: 'POST',
@@ -140,7 +129,6 @@ describe('/api/financial/budgets', () => {
 
     it('should return 400 if limitAmount is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/financial/budgets', {
         method: 'POST',
@@ -160,7 +148,6 @@ describe('/api/financial/budgets', () => {
 
     it('should return 400 if limitAmount is negative', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/financial/budgets', {
         method: 'POST',
@@ -181,7 +168,6 @@ describe('/api/financial/budgets', () => {
 
     it('should return 400 if period is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/financial/budgets', {
         method: 'POST',
@@ -201,7 +187,6 @@ describe('/api/financial/budgets', () => {
 
     it('should return 400 if budget already exists for category and period', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -233,7 +218,6 @@ describe('/api/financial/budgets', () => {
 
     it('should create budget successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -293,7 +277,6 @@ describe('/api/financial/budgets', () => {
 
     it('should handle invalid JSON gracefully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/financial/budgets', {
         method: 'POST',

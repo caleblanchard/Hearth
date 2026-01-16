@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { PATCH, DELETE } from '@/app/api/rewards/[id]/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { RewardStatus } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/rewards/[id]', () => {
   beforeEach(() => {
@@ -52,14 +45,13 @@ describe('/api/rewards/[id]', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/rewards/123', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Reward' }),
       })
 
-      const response = await PATCH(request, { params: { id: rewardId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -68,14 +60,13 @@ describe('/api/rewards/[id]', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/rewards/123', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Reward' }),
       })
 
-      const response = await PATCH(request, { params: { id: rewardId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -84,7 +75,6 @@ describe('/api/rewards/[id]', () => {
 
     it('should return 404 if reward not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardItem.findUnique.mockResolvedValue(null)
 
@@ -93,7 +83,7 @@ describe('/api/rewards/[id]', () => {
         body: JSON.stringify({ name: 'Updated Reward' }),
       })
 
-      const response = await PATCH(request, { params: { id: rewardId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -102,7 +92,6 @@ describe('/api/rewards/[id]', () => {
 
     it('should return 403 if reward belongs to different family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -114,7 +103,7 @@ describe('/api/rewards/[id]', () => {
         body: JSON.stringify({ name: 'Updated Reward' }),
       })
 
-      const response = await PATCH(request, { params: { id: rewardId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -123,7 +112,6 @@ describe('/api/rewards/[id]', () => {
 
     it('should update reward successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -139,7 +127,7 @@ describe('/api/rewards/[id]', () => {
         }),
       })
 
-      const response = await PATCH(request, { params: { id: rewardId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -170,7 +158,6 @@ describe('/api/rewards/[id]', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -183,7 +170,7 @@ describe('/api/rewards/[id]', () => {
         body: JSON.stringify({ name: 'Updated Reward' }),
       })
 
-      const response = await PATCH(request, { params: { id: rewardId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)
@@ -200,13 +187,12 @@ describe('/api/rewards/[id]', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/rewards/123', {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: rewardId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -215,13 +201,12 @@ describe('/api/rewards/[id]', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/rewards/123', {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: rewardId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -230,7 +215,6 @@ describe('/api/rewards/[id]', () => {
 
     it('should return 404 if reward not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardItem.findUnique.mockResolvedValue(null)
 
@@ -238,7 +222,7 @@ describe('/api/rewards/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: rewardId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -247,7 +231,6 @@ describe('/api/rewards/[id]', () => {
 
     it('should return 403 if reward belongs to different family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -258,7 +241,7 @@ describe('/api/rewards/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: rewardId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -267,7 +250,6 @@ describe('/api/rewards/[id]', () => {
 
     it('should delete reward successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -279,7 +261,7 @@ describe('/api/rewards/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: rewardId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -297,7 +279,6 @@ describe('/api/rewards/[id]', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
@@ -309,7 +290,7 @@ describe('/api/rewards/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: rewardId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: rewardId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)

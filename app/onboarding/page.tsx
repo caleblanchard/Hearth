@@ -1,236 +1,256 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { createClient } from '@/lib/supabase/client';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 
-type OnboardingStep = 'welcome' | 'account' | 'modules' | 'complete';
+type OnboardingStep = 'family' | 'modules' | 'complete';
 
-interface OnboardingData {
-  familyName: string;
-  timezone: string;
-  location?: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  adminName: string;
-  adminEmail: string;
-  adminPassword: string;
-  confirmPassword: string;
-  selectedModules: string[];
-  generateSampleData: boolean;
-}
+const TIMEZONES = [
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Phoenix',
+  'America/Anchorage',
+  'Pacific/Honolulu',
+  'Europe/London',
+  'Europe/Paris',
+  'Asia/Tokyo',
+  'Australia/Sydney',
+];
 
-// Module definitions with descriptions
+const COUNTRIES = [
+  { code: 'US', name: 'United States' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'NZ', name: 'New Zealand' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'JP', name: 'Japan' },
+];
+
 const AVAILABLE_MODULES = [
-  { id: 'CHORES', name: 'Chores', description: 'Assign and track household tasks', icon: '🧹', category: 'Core' },
-  { id: 'SCREEN_TIME', name: 'Screen Time', description: 'Manage device usage limits', icon: '📱', category: 'Core' },
-  { id: 'CREDITS', name: 'Credits & Rewards', description: 'Earn and spend family credits', icon: '💰', category: 'Core' },
-  { id: 'SHOPPING', name: 'Shopping List', description: 'Collaborative shopping lists', icon: '🛒', category: 'Core' },
-  { id: 'CALENDAR', name: 'Calendar', description: 'Family events and schedules', icon: '📅', category: 'Core' },
-  { id: 'TODOS', name: 'To-Do List', description: 'Track tasks and reminders', icon: '✅', category: 'Core' },
-  { id: 'ROUTINES', name: 'Routines', description: 'Morning, bedtime checklists', icon: '🔄', category: 'Lifestyle' },
-  { id: 'MEAL_PLANNING', name: 'Meal Planning', description: 'Weekly meal schedules', icon: '🍽️', category: 'Lifestyle' },
-  { id: 'RECIPES', name: 'Recipes', description: 'Family recipe collection', icon: '📖', category: 'Lifestyle' },
-  { id: 'HEALTH', name: 'Health & Medications', description: 'Track health and meds', icon: '💊', category: 'Lifestyle' },
-  { id: 'INVENTORY', name: 'Inventory', description: 'Track household items', icon: '📦', category: 'Organization' },
-  { id: 'DOCUMENTS', name: 'Documents', description: 'Secure document vault', icon: '📄', category: 'Organization' },
-  { id: 'MAINTENANCE', name: 'Home Maintenance', description: 'Track repairs and upkeep', icon: '🔧', category: 'Organization' },
-  { id: 'PROJECTS', name: 'Projects', description: 'Manage family projects', icon: '📊', category: 'Organization' },
-  { id: 'COMMUNICATION', name: 'Family Board', description: 'Share updates and photos', icon: '💬', category: 'Social' },
-  { id: 'TRANSPORT', name: 'Transportation', description: 'Carpool and schedules', icon: '🚗', category: 'Social' },
-  { id: 'PETS', name: 'Pet Care', description: 'Track pet needs and vet visits', icon: '🐾', category: 'Social' },
-  { id: 'RULES_ENGINE', name: 'Automation Rules', description: 'Create smart automations', icon: '⚡', category: 'Advanced' },
-  { id: 'LEADERBOARD', name: 'Leaderboards', description: 'Gamify achievements', icon: '🏆', category: 'Advanced' },
-  { id: 'FINANCIAL', name: 'Financial', description: 'Track allowances and expenses', icon: '💵', category: 'Advanced' },
+  { id: 'CHORES', name: 'Chores', description: 'Assign and track household tasks', icon: '🧹' },
+  { id: 'SCREEN_TIME', name: 'Screen Time', description: 'Manage device usage limits', icon: '📱' },
+  { id: 'CREDITS', name: 'Credits & Rewards', description: 'Earn and spend family credits', icon: '💰' },
+  { id: 'SHOPPING', name: 'Shopping List', description: 'Collaborative shopping lists', icon: '🛒' },
+  { id: 'CALENDAR', name: 'Calendar', description: 'Family events and schedules', icon: '📅' },
+  { id: 'TODOS', name: 'To-Do List', description: 'Track tasks and reminders', icon: '✅' },
+  { id: 'ROUTINES', name: 'Routines', description: 'Morning, bedtime checklists', icon: '🔄' },
+  { id: 'MEAL_PLANNING', name: 'Meal Planning', description: 'Weekly meal schedules', icon: '🍽️' },
+  { id: 'RECIPES', name: 'Recipes', description: 'Family recipe collection', icon: '📖' },
+  { id: 'HEALTH', name: 'Health', description: 'Track health and medications', icon: '💊' },
+  { id: 'INVENTORY', name: 'Inventory', description: 'Track household items', icon: '📦' },
+  { id: 'DOCUMENTS', name: 'Documents', description: 'Secure document vault', icon: '📄' },
+  { id: 'MAINTENANCE', name: 'Maintenance', description: 'Home repairs and upkeep', icon: '🔧' },
+  { id: 'PROJECTS', name: 'Projects', description: 'Manage family projects', icon: '📊' },
+  { id: 'COMMUNICATION', name: 'Family Board', description: 'Share updates and photos', icon: '💬' },
+  { id: 'TRANSPORT', name: 'Transportation', description: 'Carpool and schedules', icon: '🚗' },
+  { id: 'PETS', name: 'Pet Care', description: 'Track pet needs and vet visits', icon: '🐾' },
+  { id: 'RULES_ENGINE', name: 'Automation', description: 'Create smart automations', icon: '⚡' },
+  { id: 'LEADERBOARD', name: 'Leaderboards', description: 'Gamify achievements', icon: '🏆' },
+  { id: 'FINANCIAL', name: 'Financial', description: 'Track budgets and expenses', icon: '💵' },
 ];
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [step, setStep] = useState<OnboardingStep>('welcome');
-  const [loading, setLoading] = useState(false);
+  const { user, loading: sessionLoading } = useSupabaseSession();
+  const [step, setStep] = useState<OnboardingStep>('family');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const [data, setData] = useState<OnboardingData>({
-    familyName: '',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
-    location: '',
-    latitude: null,
-    longitude: null,
-    adminName: '',
-    adminEmail: '',
-    adminPassword: '',
-    confirmPassword: '',
-    selectedModules: ['CHORES', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS'], // Default core modules
-    generateSampleData: false,
-  });
+  // Form data
+  const [familyName, setFamilyName] = useState('');
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York');
+  const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('SUNDAY');
+  const [location, setLocation] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [selectedModules, setSelectedModules] = useState<string[]>([
+    'CHORES', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS'
+  ]);
 
-  const updateData = (field: keyof OnboardingData, value: any) => {
-    setData((prev) => ({ ...prev, [field]: value }));
-    setError(''); // Clear error on input change
-  };
+  // Location lookup states
+  const [geocodingMethod, setGeocodingMethod] = useState<'zip' | 'city'>('zip');
+  const [zipCode, setZipCode] = useState('');
+  const [cityName, setCityName] = useState('');
+  const [country, setCountry] = useState('US');
+  const [lookingUp, setLookingUp] = useState(false);
+  const [geocodeResults, setGeocodeResults] = useState<any[]>([]);
+
+  // Check auth status
+  useEffect(() => {
+    async function checkAuthStatus() {
+      if (sessionLoading) return;
+      
+      if (!user) {
+        router.push('/auth/signup');
+        return;
+      }
+
+      // Allow users to create additional families
+      // Don't redirect even if they already have one
+      setLoading(false);
+    }
+
+    checkAuthStatus();
+  }, [user, sessionLoading, router]);
 
   const toggleModule = (moduleId: string) => {
-    setData((prev) => ({
-      ...prev,
-      selectedModules: prev.selectedModules.includes(moduleId)
-        ? prev.selectedModules.filter((id) => id !== moduleId)
-        : [...prev.selectedModules, moduleId],
-    }));
+    setSelectedModules(prev =>
+      prev.includes(moduleId)
+        ? prev.filter(id => id !== moduleId)
+        : [...prev, moduleId]
+    );
   };
 
-  const selectAllModules = () => {
-    setData((prev) => ({
-      ...prev,
-      selectedModules: AVAILABLE_MODULES.map((m) => m.id),
-    }));
+  const handleGeocodeLookup = async () => {
+    setLookingUp(true);
+    setError('');
+    setGeocodeResults([]);
+
+    try {
+      const params = new URLSearchParams();
+      
+      if (geocodingMethod === 'zip') {
+        params.set('zip', zipCode.trim());
+        params.set('country', country);
+      } else {
+        params.set('city', cityName.trim());
+        params.set('country', country);
+      }
+
+      const response = await fetch(`/api/geocoding?${params.toString()}`);
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        setError(responseData.error || 'Failed to look up location');
+        setLookingUp(false);
+        return;
+      }
+
+      // Handle zip code result (single location)
+      if (geocodingMethod === 'zip') {
+        setLocation(`${responseData.name}, ${responseData.state || responseData.country}`);
+        setLatitude(responseData.lat);
+        setLongitude(responseData.lon);
+        setError('');
+      } else {
+        // Handle city name results (array of matches)
+        if (responseData.results.length === 1) {
+          const result = responseData.results[0];
+          setLocation(`${result.name}, ${result.state || result.country}`);
+          setLatitude(result.lat);
+          setLongitude(result.lon);
+          setError('');
+        } else {
+          // Multiple matches - show user choice
+          setGeocodeResults(responseData.results);
+        }
+      }
+    } catch (err) {
+      console.error('Geocoding error:', err);
+      setError('Failed to look up location');
+    } finally {
+      setLookingUp(false);
+    }
   };
 
-  const selectCoreModules = () => {
-    setData((prev) => ({
-      ...prev,
-      selectedModules: AVAILABLE_MODULES.filter((m) => m.category === 'Core').map((m) => m.id),
-    }));
+  const handleSelectGeocodeResult = (result: any) => {
+    setLocation(`${result.name}, ${result.state || result.country}`);
+    setLatitude(result.lat);
+    setLongitude(result.lon);
+    setGeocodeResults([]);
+    setError('');
   };
 
-  const handleWelcomeNext = () => {
-    if (!data.familyName.trim()) {
+  const handleFamilySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!familyName.trim()) {
       setError('Please enter your family name');
-      return;
-    }
-    setStep('account');
-  };
-
-  const handleAccountBack = () => {
-    setStep('welcome');
-  };
-
-  const handleAccountNext = () => {
-    // Validation
-    if (!data.adminName.trim()) {
-      setError('Please enter your name');
-      return;
-    }
-
-    if (!data.adminEmail.trim()) {
-      setError('Please enter your email address');
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.adminEmail)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    if (!data.adminPassword) {
-      setError('Please enter a password');
-      return;
-    }
-
-    if (data.adminPassword.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return;
-    }
-
-    if (data.adminPassword !== data.confirmPassword) {
-      setError('Passwords do not match');
       return;
     }
 
     setStep('modules');
   };
 
-  const handleModulesBack = () => {
-    setStep('account');
-  };
+  const handleFinish = async () => {
+    if (!user) return;
 
-  const handleModulesSubmit = async () => {
-    if (data.selectedModules.length === 0) {
-      setError('Please select at least one module to continue');
-      return;
-    }
-
-    setLoading(true);
+    setSaving(true);
     setError('');
 
     try {
-      // Call onboarding API
-      const response = await fetch('/api/onboarding/setup', {
+      const response = await fetch('/api/setup/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          familyName: data.familyName.trim(),
-          timezone: data.timezone,
-          location: data.location?.trim() || undefined,
-          latitude: data.latitude || undefined,
-          longitude: data.longitude || undefined,
-          adminName: data.adminName.trim(),
-          adminEmail: data.adminEmail.trim().toLowerCase(),
-          adminPassword: data.adminPassword,
-          selectedModules: data.selectedModules,
-          generateSampleData: data.generateSampleData,
+          familyName: familyName.trim(),
+          timezone,
+          weekStartDay,
+          location: location.trim() || undefined,
+          latitude,
+          longitude,
+          selectedModules,
         }),
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Setup failed');
+        setError(data.error || 'Failed to complete setup');
+        setSaving(false);
+        return;
       }
 
-      // Auto-login the user
-      const signInResult = await signIn('parent-login', {
-        email: data.adminEmail.trim().toLowerCase(),
-        password: data.adminPassword,
-        redirect: false,
-      });
-
-      if (signInResult?.error) {
-        // Setup succeeded but login failed - not critical
-        console.error('Auto-login failed:', signInResult.error);
-        setStep('complete');
-      } else {
-        // Both setup and login succeeded
-        setStep('complete');
+      // Store the new family ID as the active family in localStorage
+      if (data.familyId && user?.id) {
+        localStorage.setItem(`hearth_active_family_id_${user.id}`, data.familyId);
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during setup');
-      setLoading(false);
+
+      // Refresh router to update auth context with new family
+      router.refresh();
+      setStep('complete');
+    } catch (err) {
+      console.error('Setup error:', err);
+      setError('An error occurred during setup');
+      setSaving(false);
     }
   };
 
-  const handleComplete = () => {
-    router.push('/dashboard');
+  const handleComplete = async () => {
+    // Hard redirect to dashboard to force middleware re-check
+    // Active family ID is already set in localStorage from handleFinish
+    window.location.href = '/dashboard';
   };
 
-  // Group modules by category
-  const modulesByCategory = AVAILABLE_MODULES.reduce((acc, module) => {
-    if (!acc[module.category]) {
-      acc[module.category] = [];
-    }
-    acc[module.category].push(module);
-    return acc;
-  }, {} as Record<string, typeof AVAILABLE_MODULES>);
+  if (loading || sessionLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Welcome to Hearth 🏠
-          </h1>
-          <p className="text-lg text-gray-600">
-            Your family-first household management system
-          </p>
-        </div>
-
-        {/* Progress Indicator */}
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center space-x-4">
-            <div className={`flex items-center ${step === 'welcome' ? 'text-indigo-600' : ['account', 'modules', 'complete'].includes(step) ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${step === 'welcome' ? 'border-indigo-600 bg-indigo-50' : ['account', 'modules', 'complete'].includes(step) ? 'border-green-600 bg-green-50' : 'border-gray-300 bg-white'}`}>
-                {['account', 'modules', 'complete'].includes(step) ? (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto">
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center space-x-4">
+            <div className={`flex items-center ${step === 'family' ? 'text-orange-600 dark:text-orange-500' : 'text-green-600 dark:text-green-500'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                step === 'family' ? 'border-orange-600 bg-orange-50 dark:border-orange-500 dark:bg-orange-900/20' : 'border-green-600 bg-green-50 dark:border-green-500 dark:bg-green-900/20'
+              }`}>
+                {step !== 'family' ? (
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -238,14 +258,19 @@ export default function OnboardingPage() {
                   <span className="text-sm font-semibold">1</span>
                 )}
               </div>
-              <span className="ml-2 text-sm font-medium hidden sm:inline">Family</span>
+              <span className="ml-2 text-sm font-medium">Family</span>
             </div>
 
-            <div className="w-12 h-0.5 bg-gray-300"></div>
+            <div className="w-16 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
 
-            <div className={`flex items-center ${step === 'account' ? 'text-indigo-600' : ['modules', 'complete'].includes(step) ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${step === 'account' ? 'border-indigo-600 bg-indigo-50' : ['modules', 'complete'].includes(step) ? 'border-green-600 bg-green-50' : 'border-gray-300 bg-white'}`}>
-                {['modules', 'complete'].includes(step) ? (
+            <div className={`flex items-center ${
+              step === 'modules' ? 'text-orange-600 dark:text-orange-500' : step === 'complete' ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-500'
+            }`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                step === 'modules' ? 'border-orange-600 bg-orange-50 dark:border-orange-500 dark:bg-orange-900/20' : 
+                step === 'complete' ? 'border-green-600 bg-green-50 dark:border-green-500 dark:bg-green-900/20' : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800'
+              }`}>
+                {step === 'complete' ? (
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -253,385 +278,248 @@ export default function OnboardingPage() {
                   <span className="text-sm font-semibold">2</span>
                 )}
               </div>
-              <span className="ml-2 text-sm font-medium hidden sm:inline">Account</span>
-            </div>
-
-            <div className="w-12 h-0.5 bg-gray-300"></div>
-
-            <div className={`flex items-center ${step === 'modules' ? 'text-indigo-600' : step === 'complete' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${step === 'modules' ? 'border-indigo-600 bg-indigo-50' : step === 'complete' ? 'border-green-600 bg-green-50' : 'border-gray-300 bg-white'}`}>
-                {step === 'complete' ? (
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <span className="text-sm font-semibold">3</span>
-                )}
-              </div>
-              <span className="ml-2 text-sm font-medium hidden sm:inline">Features</span>
-            </div>
-
-            <div className="w-12 h-0.5 bg-gray-300"></div>
-
-            <div className={`flex items-center ${step === 'complete' ? 'text-indigo-600' : 'text-gray-400'}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${step === 'complete' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300 bg-white'}`}>
-                <span className="text-sm font-semibold">✓</span>
-              </div>
-              <span className="ml-2 text-sm font-medium hidden sm:inline">Done</span>
+              <span className="ml-2 text-sm font-medium">Features</span>
             </div>
           </div>
         </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-lg shadow-xl p-8 max-h-[70vh] overflow-y-auto">
-          {/* Welcome Step */}
-          {step === 'welcome' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                  Let's set up your family account
-                </h2>
-                <p className="text-gray-600">
-                  Hearth helps you manage your household like a pro. Let's start with some basic information.
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="familyName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Family Name *
-                </label>
-                <input
-                  type="text"
-                  id="familyName"
-                  value={data.familyName}
-                  onChange={(e) => updateData('familyName', e.target.value)}
-                  placeholder='e.g., "The Smith Family"'
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Timezone *
-                </label>
-                <select
-                  id="timezone"
-                  value={data.timezone}
-                  onChange={(e) => updateData('timezone', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
-                >
-                  <option value="America/New_York">Eastern Time (ET)</option>
-                  <option value="America/Chicago">Central Time (CT)</option>
-                  <option value="America/Denver">Mountain Time (MT)</option>
-                  <option value="America/Phoenix">Arizona Time (MST)</option>
-                  <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                  <option value="America/Anchorage">Alaska Time (AKT)</option>
-                  <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
-                </select>
-                <p className="mt-1 text-sm text-gray-500">
-                  Auto-detected: {Intl.DateTimeFormat().resolvedOptions().timeZone}
-                </p>
-              </div>
-
-              <div className="border-t border-gray-200 pt-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                  Location (for Weather Widget) <span className="text-gray-500 font-normal">(Optional)</span>
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
-                      Location Name
-                    </label>
-                    <input
-                      type="text"
-                      id="location"
-                      value={data.location || ''}
-                      onChange={(e) => updateData('location', e.target.value)}
-                      placeholder="e.g., New York, NY"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-2">
-                        Latitude
-                      </label>
-                      <input
-                        type="number"
-                        id="latitude"
-                        step="any"
-                        value={data.latitude ?? ''}
-                        onChange={(e) => updateData('latitude', e.target.value ? parseFloat(e.target.value) : null)}
-                        placeholder="e.g., 40.7128"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-2">
-                        Longitude
-                      </label>
-                      <input
-                        type="number"
-                        id="longitude"
-                        step="any"
-                        value={data.longitude ?? ''}
-                        onChange={(e) => updateData('longitude', e.target.value ? parseFloat(e.target.value) : null)}
-                        placeholder="e.g., -74.0060"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Enter your location coordinates for accurate weather data. You can find coordinates using{' '}
-                    <a 
-                      href="https://www.latlong.net/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-indigo-600 hover:text-indigo-700 underline"
-                    >
-                      latlong.net
-                    </a>
-                    {' '}or search for your city.
-                  </p>
-                </div>
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-sm text-red-800">{error}</p>
-                </div>
-              )}
-
-              <button
-                onClick={handleWelcomeNext}
-                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 transition-colors"
-              >
-                Next →
-              </button>
+        {/* Step Content */}
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-8">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
             </div>
           )}
 
-          {/* Account Step */}
-          {step === 'account' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                  Create your parent account
-                </h2>
-                <p className="text-gray-600">
-                  This will be the primary administrator account for <strong>{data.familyName}</strong>.
-                </p>
-              </div>
+          {/* Family Step */}
+          {step === 'family' && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Welcome to Hearth!</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Let's set up your family</p>
 
-              <div>
-                <label htmlFor="adminName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Name *
-                </label>
-                <input
-                  type="text"
-                  id="adminName"
-                  value={data.adminName}
-                  onChange={(e) => updateData('adminName', e.target.value)}
-                  placeholder="e.g., John Smith"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label htmlFor="adminEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  id="adminEmail"
-                  value={data.adminEmail}
-                  onChange={(e) => updateData('adminEmail', e.target.value)}
-                  placeholder="your@email.com"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="adminPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                  Password *
-                </label>
-                <input
-                  type="password"
-                  id="adminPassword"
-                  value={data.adminPassword}
-                  onChange={(e) => updateData('adminPassword', e.target.value)}
-                  placeholder="At least 8 characters"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  Must be at least 8 characters long
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm Password *
-                </label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  value={data.confirmPassword}
-                  onChange={(e) => updateData('confirmPassword', e.target.value)}
-                  placeholder="Re-enter your password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
-                />
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-sm text-red-800">{error}</p>
+              <form onSubmit={handleFamilySubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="familyName" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    Family Name
+                  </label>
+                  <input
+                    id="familyName"
+                    type="text"
+                    required
+                    value={familyName}
+                    onChange={(e) => setFamilyName(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="The Smith Family"
+                  />
                 </div>
-              )}
 
-              <div className="flex space-x-4">
+                <div>
+                  <label htmlFor="timezone" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    Timezone
+                  </label>
+                  <select
+                    id="timezone"
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  >
+                    {TIMEZONES.map(tz => (
+                      <option key={tz} value={tz}>{tz}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="weekStart" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    Week Starts On
+                  </label>
+                  <select
+                    id="weekStart"
+                    value={weekStartDay}
+                    onChange={(e) => setWeekStartDay(e.target.value as 'SUNDAY' | 'MONDAY')}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  >
+                    <option value="SUNDAY">Sunday</option>
+                    <option value="MONDAY">Monday</option>
+                  </select>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                    Location <span className="text-gray-500 dark:text-gray-400 font-normal">(Optional - for Weather Widget)</span>
+                  </h3>
+
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setGeocodingMethod('zip')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                          geocodingMethod === 'zip'
+                            ? 'bg-orange-600 text-white'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        Zip/Postal Code
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGeocodingMethod('city')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                          geocodingMethod === 'city'
+                            ? 'bg-orange-600 text-white'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        City Name
+                      </button>
+                    </div>
+
+                    {geocodingMethod === 'zip' ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-2">
+                          <input
+                            type="text"
+                            value={zipCode}
+                            onChange={(e) => setZipCode(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleGeocodeLookup())}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                            placeholder="e.g., 90210"
+                          />
+                        </div>
+                        <div>
+                          <select
+                            value={country}
+                            onChange={(e) => setCountry(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                          >
+                            {COUNTRIES.map((c) => (
+                              <option key={c.code} value={c.code}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          value={cityName}
+                          onChange={(e) => setCityName(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleGeocodeLookup())}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                          placeholder="e.g., Los Angeles"
+                        />
+                        <select
+                          value={country}
+                          onChange={(e) => setCountry(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                        >
+                          {COUNTRIES.map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleGeocodeLookup}
+                      disabled={lookingUp || (geocodingMethod === 'zip' ? !zipCode.trim() : !cityName.trim())}
+                      className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {lookingUp ? 'Looking up...' : 'Look Up Location'}
+                    </button>
+
+                    {geocodeResults.length > 0 && (
+                      <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          Multiple locations found - please choose one:
+                        </p>
+                        <div className="space-y-2">
+                          {geocodeResults.map((result, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleSelectGeocodeResult(result)}
+                              className="w-full text-left px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-gray-900 dark:text-gray-100"
+                            >
+                              {result.name}, {result.state || result.country}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {location && (
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                        <p className="text-sm text-green-800 dark:text-green-200">
+                          ✓ Location set: {location}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <button
-                  onClick={handleAccountBack}
-                  disabled={loading}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 focus:ring-4 focus:ring-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="submit"
+                  className="w-full bg-orange-600 text-white py-3 px-4 rounded-md font-medium hover:bg-orange-700 transition-colors"
                 >
-                  ← Back
+                  Continue
                 </button>
-                <button
-                  onClick={handleAccountNext}
-                  disabled={loading}
-                  className="flex-1 bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next →
-                </button>
-              </div>
+              </form>
             </div>
           )}
 
           {/* Modules Step */}
           {step === 'modules' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                  Choose your features
-                </h2>
-                <p className="text-gray-600">
-                  Select the modules you'd like to use. You can always enable or disable features later in settings.
-                </p>
-              </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Choose Your Features</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Select the features you want to enable (you can change this later)</p>
 
-              {/* Quick Select Buttons */}
-              <div className="flex space-x-3">
-                <button
-                  onClick={selectAllModules}
-                  className="px-4 py-2 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors"
-                >
-                  Select All
-                </button>
-                <button
-                  onClick={selectCoreModules}
-                  className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Core Only
-                </button>
-                <button
-                  onClick={() => updateData('selectedModules', [])}
-                  className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Clear All
-                </button>
-              </div>
-
-              {/* Module Categories */}
-              <div className="space-y-6">
-                {Object.entries(modulesByCategory).map(([category, modules]) => (
-                  <div key={category}>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">{category}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {modules.map((module) => (
-                        <button
-                          key={module.id}
-                          onClick={() => toggleModule(module.id)}
-                          className={`p-4 rounded-lg border-2 text-left transition-all ${
-                            data.selectedModules.includes(module.id)
-                              ? 'border-indigo-500 bg-indigo-50'
-                              : 'border-gray-200 bg-white hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-start">
-                            <span className="text-2xl mr-3">{module.icon}</span>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-medium text-gray-900">{module.name}</h4>
-                                {data.selectedModules.includes(module.id) && (
-                                  <svg className="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                  </svg>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600 mt-1">{module.description}</p>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                {AVAILABLE_MODULES.map(module => (
+                  <div
+                    key={module.id}
+                    onClick={() => toggleModule(module.id)}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedModules.includes(module.id)
+                        ? 'border-orange-600 bg-orange-50 dark:border-orange-500 dark:bg-orange-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="text-2xl">{module.icon}</div>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900 dark:text-white">{module.name}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{module.description}</p>
+                      </div>
+                      {selectedModules.includes(module.id) && (
+                        <svg className="w-5 h-5 text-orange-600 dark:text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Sample Data Option */}
-              <div className="border-t pt-6">
-                <label className="flex items-start cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={data.generateSampleData}
-                    onChange={(e) => updateData('generateSampleData', e.target.checked)}
-                    className="mt-1 h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                  />
-                  <div className="ml-3">
-                    <span className="font-medium text-gray-900">Generate sample data (optional)</span>
-                    <p className="text-sm text-gray-600">
-                      Populate with example chores, recipes, and other data to help you explore features. You can delete this data later.
-                    </p>
-                  </div>
-                </label>
-              </div>
-
-              <p className="text-sm text-gray-500">
-                Selected: {data.selectedModules.length} of {AVAILABLE_MODULES.length} modules
-              </p>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-sm text-red-800">{error}</p>
-                </div>
-              )}
-
               <div className="flex space-x-4">
                 <button
-                  onClick={handleModulesBack}
-                  disabled={loading}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 focus:ring-4 focus:ring-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setStep('family')}
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-md font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                 >
-                  ← Back
+                  Back
                 </button>
                 <button
-                  onClick={handleModulesSubmit}
-                  disabled={loading}
-                  className="flex-1 bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  onClick={handleFinish}
+                  disabled={saving || selectedModules.length === 0}
+                  className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-md font-medium hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Setting up...
-                    </>
-                  ) : (
-                    'Complete Setup →'
-                  )}
+                  {saving ? 'Setting up...' : 'Finish Setup'}
                 </button>
               </div>
             </div>
@@ -639,64 +527,28 @@ export default function OnboardingPage() {
 
           {/* Complete Step */}
           {step === 'complete' && (
-            <div className="space-y-6 text-center">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
+            <div className="text-center py-8">
+              <div className="mb-6">
+                <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                  <svg className="w-10 h-10 text-green-600 dark:text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
               </div>
 
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                  All set! 🎉
-                </h2>
-                <p className="text-gray-600">
-                  Your family account for <strong>{data.familyName}</strong> has been created successfully.
-                </p>
-                {data.generateSampleData && (
-                  <p className="text-sm text-indigo-600 mt-2">
-                    Sample data has been generated to help you explore the features!
-                  </p>
-                )}
-              </div>
-
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6 text-left">
-                <h3 className="font-semibold text-indigo-900 mb-3">What's next?</h3>
-                <ul className="space-y-2 text-sm text-indigo-800">
-                  <li className="flex items-start">
-                    <svg className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    Add other family members (parents, children, guests)
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    {data.generateSampleData ? 'Explore the sample data or create your own' : 'Set up your first chore, task, or event'}
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    Check your email for a welcome message with tips
-                  </li>
-                </ul>
-              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">You're All Set!</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-8">
+                Your family has been created. Let's get started!
+              </p>
 
               <button
                 onClick={handleComplete}
-                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 transition-colors"
+                className="bg-orange-600 text-white py-3 px-8 rounded-md font-medium hover:bg-orange-700 transition-colors"
               >
                 Go to Dashboard →
               </button>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <p>Need help? Check out the <a href="#" className="text-indigo-600 hover:text-indigo-700 underline">documentation</a></p>
         </div>
       </div>
     </div>

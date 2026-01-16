@@ -14,8 +14,6 @@ import { NextRequest } from 'next/server';
 import { GET as GetWeather } from '@/app/api/weather/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/weather', () => {
   const mockFamily = {
     id: 'family-test-123',
@@ -92,7 +90,6 @@ describe('/api/weather', () => {
 
   describe('GET /api/weather', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/weather');
       const response = await GetWeather(request);
@@ -104,7 +101,6 @@ describe('/api/weather', () => {
 
     it('should fetch weather data for authenticated user', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.family.findUnique.mockResolvedValue(mockFamily as any);
       (global.fetch as jest.Mock)
@@ -136,7 +132,6 @@ describe('/api/weather', () => {
 
     it('should return weather data for child users', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.family.findUnique.mockResolvedValue(mockFamily as any);
       (global.fetch as jest.Mock)
@@ -157,7 +152,6 @@ describe('/api/weather', () => {
 
     it('should return 404 if family has no location set', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.family.findUnique.mockResolvedValue({
         ...mockFamily,
@@ -175,7 +169,6 @@ describe('/api/weather', () => {
 
     it('should handle weather API errors gracefully', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.family.findUnique.mockResolvedValue(mockFamily as any);
       (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -193,7 +186,6 @@ describe('/api/weather', () => {
 
     it('should handle network errors gracefully', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.family.findUnique.mockResolvedValue(mockFamily as any);
       (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
@@ -208,7 +200,6 @@ describe('/api/weather', () => {
 
     it('should call OpenWeatherMap API with correct parameters', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.family.findUnique.mockResolvedValue(mockFamily as any);
       (global.fetch as jest.Mock)

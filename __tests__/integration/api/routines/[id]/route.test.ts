@@ -8,11 +8,9 @@ jest.mock('@/lib/auth', () => ({
 
 // NOW import after mocks are set up
 import { NextRequest } from 'next/server';
-import { GET, PUT, DELETE } from '@/app/api/routines/[id]/route';
+import { GET, PATCH, DELETE } from '@/app/api/routines/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { RoutineType } from '@/app/generated/prisma';
-
-const { auth } = require('@/lib/auth');
 
 describe('GET /api/routines/[id]', () => {
   beforeEach(() => {
@@ -21,20 +19,18 @@ describe('GET /api/routines/[id]', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/routines/routine-123', {
       method: 'GET',
     }) as NextRequest;
 
-    const response = await GET(request, { params: { id: 'routine-123' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return routine with steps', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRoutine = {
       id: 'routine-123',
@@ -73,7 +69,7 @@ describe('GET /api/routines/[id]', () => {
       method: 'GET',
     }) as NextRequest;
 
-    const response = await GET(request, { params: { id: 'routine-123' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -84,7 +80,6 @@ describe('GET /api/routines/[id]', () => {
 
   it('should return 404 if routine not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routine.findUnique.mockResolvedValue(null);
 
@@ -92,14 +87,13 @@ describe('GET /api/routines/[id]', () => {
       method: 'GET',
     }) as NextRequest;
 
-    const response = await GET(request, { params: { id: 'non-existent-id' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'non-existent-id' }) });
 
     expect(response.status).toBe(404);
   });
 
   it('should return 403 if routine belongs to different family', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRoutine = {
       id: 'routine-123',
@@ -121,7 +115,7 @@ describe('GET /api/routines/[id]', () => {
       method: 'GET',
     }) as NextRequest;
 
-    const response = await GET(request, { params: { id: 'routine-123' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(403);
   });
@@ -134,7 +128,6 @@ describe('PUT /api/routines/[id]', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/routines/routine-123', {
       method: 'PUT',
@@ -142,14 +135,13 @@ describe('PUT /api/routines/[id]', () => {
       body: JSON.stringify({ name: 'Updated Name' }),
     }) as NextRequest;
 
-    const response = await PUT(request, { params: { id: 'routine-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return 403 if child attempts to update routine', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/routines/routine-123', {
       method: 'PUT',
@@ -157,14 +149,13 @@ describe('PUT /api/routines/[id]', () => {
       body: JSON.stringify({ name: 'Updated Name' }),
     }) as NextRequest;
 
-    const response = await PUT(request, { params: { id: 'routine-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(403);
   });
 
   it('should update routine name', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingRoutine = {
       id: 'routine-123',
@@ -195,7 +186,7 @@ describe('PUT /api/routines/[id]', () => {
       body: JSON.stringify({ name: 'Updated Name' }),
     }) as NextRequest;
 
-    const response = await PUT(request, { params: { id: 'routine-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -204,7 +195,6 @@ describe('PUT /api/routines/[id]', () => {
 
   it('should update routine steps', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingRoutine = {
       id: 'routine-123',
@@ -257,7 +247,7 @@ describe('PUT /api/routines/[id]', () => {
       }),
     }) as NextRequest;
 
-    const response = await PUT(request, { params: { id: 'routine-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -269,7 +259,6 @@ describe('PUT /api/routines/[id]', () => {
 
   it('should update assignedTo field', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingRoutine = {
       id: 'routine-123',
@@ -311,7 +300,7 @@ describe('PUT /api/routines/[id]', () => {
       body: JSON.stringify({ assignedTo: 'child-123' }),
     }) as NextRequest;
 
-    const response = await PUT(request, { params: { id: 'routine-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -320,7 +309,6 @@ describe('PUT /api/routines/[id]', () => {
 
   it('should update weekday/weekend flags', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingRoutine = {
       id: 'routine-123',
@@ -355,7 +343,7 @@ describe('PUT /api/routines/[id]', () => {
       }),
     }) as NextRequest;
 
-    const response = await PUT(request, { params: { id: 'routine-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -365,7 +353,6 @@ describe('PUT /api/routines/[id]', () => {
 
   it('should return 404 if routine not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routine.findUnique.mockResolvedValue(null);
 
@@ -375,14 +362,13 @@ describe('PUT /api/routines/[id]', () => {
       body: JSON.stringify({ name: 'Updated' }),
     }) as NextRequest;
 
-    const response = await PUT(request, { params: { id: 'non-existent-id' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'non-existent-id' }) });
 
     expect(response.status).toBe(404);
   });
 
   it('should create audit log on update', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingRoutine = {
       id: 'routine-123',
@@ -413,7 +399,7 @@ describe('PUT /api/routines/[id]', () => {
       body: JSON.stringify({ name: 'Updated Name' }),
     }) as NextRequest;
 
-    await PUT(request, { params: { id: 'routine-123' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -434,33 +420,30 @@ describe('DELETE /api/routines/[id]', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/routines/routine-123', {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'routine-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return 403 if child attempts to delete routine', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/routines/routine-123', {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'routine-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(403);
   });
 
   it('should delete routine and related steps', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingRoutine = {
       id: 'routine-123',
@@ -482,7 +465,7 @@ describe('DELETE /api/routines/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'routine-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -495,7 +478,6 @@ describe('DELETE /api/routines/[id]', () => {
 
   it('should return 404 if routine not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routine.findUnique.mockResolvedValue(null);
 
@@ -503,14 +485,13 @@ describe('DELETE /api/routines/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'non-existent-id' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'non-existent-id' }) });
 
     expect(response.status).toBe(404);
   });
 
   it('should create audit log on deletion', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingRoutine = {
       id: 'routine-123',
@@ -532,7 +513,7 @@ describe('DELETE /api/routines/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    await DELETE(request, { params: { id: 'routine-123' } });
+    await DELETE(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({

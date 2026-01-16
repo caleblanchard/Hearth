@@ -15,8 +15,6 @@ jest.mock('@/lib/auth', () => ({
 // Mock Prisma
 jest.mock('@/lib/prisma', () => ({ default: prismaMock }));
 
-const { auth } = require('@/lib/auth');
-
 const mockSession = mockParentSession({
   user: {
     id: 'parent-1',
@@ -28,7 +26,6 @@ describe('Notification Muting - Sick Mode Integration', () => {
   beforeEach(() => {
     resetPrismaMock();
     jest.clearAllMocks();
-    auth.mockResolvedValue(mockSession);
   });
 
   describe('Non-Essential Notifications', () => {
@@ -81,6 +78,7 @@ describe('Notification Muting - Sick Mode Integration', () => {
 
         const result = await createNotification({
           userId: 'child-1',
+          familyId: 'family-1',
           type: type as any,
           title: 'Test',
           message: 'Test message',
@@ -139,6 +137,7 @@ describe('Notification Muting - Sick Mode Integration', () => {
 
         const result = await createNotification({
           userId: 'child-1',
+          familyId: 'family-1',
           type: type as any,
           title: 'Test',
           message: 'Test message',
@@ -211,6 +210,7 @@ describe('Notification Muting - Sick Mode Integration', () => {
 
         const result = await createNotification({
           userId: 'child-1',
+          familyId: 'family-1',
           type: type as any,
           title: 'Test',
           message: 'Test message',
@@ -241,6 +241,7 @@ describe('Notification Muting - Sick Mode Integration', () => {
 
     const result = await createNotification({
       userId: 'child-1',
+      familyId: 'family-1',
       type: 'CHORE_COMPLETED',
       title: 'Test',
       message: 'Test message',
@@ -268,6 +269,7 @@ describe('Notification Muting - Sick Mode Integration', () => {
 
     const result = await createNotification({
       userId: 'child-1',
+      familyId: 'family-1',
       type: 'CHORE_COMPLETED',
       title: 'Test',
       message: 'Test message',

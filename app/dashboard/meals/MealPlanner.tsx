@@ -52,6 +52,7 @@ export default function MealPlanner() {
   });
   const [hoveredEntry, setHoveredEntry] = useState<string | null>(null);
   const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('MONDAY');
+  const [familyTimezone, setFamilyTimezone] = useState<string>('America/New_York');
   
   // New dish state
   const [addingDishToEntry, setAddingDishToEntry] = useState<string | null>(null);
@@ -71,17 +72,17 @@ export default function MealPlanner() {
   // Get start of week based on family setting
   const getWeekStart = (date: Date, startDay: 'SUNDAY' | 'MONDAY'): Date => {
     const d = new Date(date);
-    d.setUTCHours(0, 0, 0, 0);
-    const day = d.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+    d.setHours(0, 0, 0, 0);
+    const day = d.getDay(); // 0 = Sunday, 1 = Monday, etc.
     
     if (startDay === 'SUNDAY') {
-      // Get Sunday of the week
-      const diff = d.getUTCDate() - day;
-      d.setUTCDate(diff);
+      // Get Sunday of the week - already Sunday if day === 0
+      const diff = day; // How many days since Sunday
+      d.setDate(d.getDate() - diff);
     } else {
       // Get Monday of the week
-      const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-      d.setUTCDate(diff);
+      const diff = day === 0 ? 6 : day - 1; // Days since Monday
+      d.setDate(d.getDate() - diff);
     }
     
     return d;
@@ -89,13 +90,18 @@ export default function MealPlanner() {
 
   // Format date as YYYY-MM-DD
   const formatDate = (date: Date): string => {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   // Load meal plan for current week
   const loadMealPlan = async (week: string) => {
     setLoading(true);
     setError(null);
+
+    console.log('[MealPlanner] Loading meal plan for week:', week);
 
     try {
       const response = await fetch(`/api/meals/plan?week=${week}`, {
@@ -110,6 +116,7 @@ export default function MealPlanner() {
       }
 
       const data: MealPlanResponse = await response.json();
+      console.log('[MealPlanner] Received meal plan:', data);
       setMealPlan(data.mealPlan);
       setWeekStart(data.weekStart);
     } catch (err) {
@@ -119,24 +126,38 @@ export default function MealPlanner() {
     }
   };
 
-  // Fetch family settings to get week start day
+  // Fetch family settings to get week start day and timezone
   useEffect(() => {
     async function fetchFamilySettings() {
       try {
-        const response = await fetch('/api/family');
+        // Use /api/family-data instead of /api/family due to Next.js routing bug
+        const response = await fetch('/api/family-data');
         if (response.ok) {
           const data = await response.json();
           const weekStartDaySetting = data.family?.settings?.weekStartDay || 'MONDAY';
-          setWeekStartDay(weekStartDaySetting);
+          const timezone = data.family?.timezone || 'America/New_York';
           
-          // Initialize with current week using the correct start day
-          const weekStartDate = getWeekStart(new Date(), weekStartDaySetting);
+          console.log('[MealPlanner] Week start day setting:', weekStartDaySetting);
+          console.log('[MealPlanner] Family timezone:', timezone);
+          
+          setWeekStartDay(weekStartDaySetting);
+          setFamilyTimezone(timezone);
+          
+          // Get current date in family's timezone
+          const now = new Date();
+          const timeString = now.toLocaleString('en-US', { timeZone: timezone });
+          const today = new Date(timeString);
+          
+          console.log('[MealPlanner] Today in timezone:', formatDate(today), today.getDay());
+          const weekStartDate = getWeekStart(today, weekStartDaySetting);
           const weekStr = formatDate(weekStartDate);
+          console.log('[MealPlanner] Calculated week start:', weekStr);
           loadMealPlan(weekStr);
         } else {
           // Fallback to default
           const weekStartDate = getWeekStart(new Date(), 'MONDAY');
           const weekStr = formatDate(weekStartDate);
+          console.log('[MealPlanner] Fallback week start:', weekStr);
           loadMealPlan(weekStr);
         }
       } catch (err) {
@@ -153,16 +174,16 @@ export default function MealPlanner() {
 
   // Navigate to previous week
   const goToPreviousWeek = () => {
-    const currentWeek = new Date(weekStart);
-    currentWeek.setUTCDate(currentWeek.getUTCDate() - 7);
+    const currentWeek = new Date(weekStart + 'T00:00:00');
+    currentWeek.setDate(currentWeek.getDate() - 7);
     const newWeek = formatDate(currentWeek);
     loadMealPlan(newWeek);
   };
 
   // Navigate to next week
   const goToNextWeek = () => {
-    const currentWeek = new Date(weekStart);
-    currentWeek.setUTCDate(currentWeek.getUTCDate() + 7);
+    const currentWeek = new Date(weekStart + 'T00:00:00');
+    currentWeek.setDate(currentWeek.getDate() + 7);
     const newWeek = formatDate(currentWeek);
     loadMealPlan(newWeek);
   };
@@ -184,14 +205,14 @@ export default function MealPlanner() {
   // Get date for specific day of week
   const getDateForDay = (dayIndex: number): string => {
     if (!weekStart) return '';
-    const date = new Date(weekStart);
-    date.setUTCDate(date.getUTCDate() + dayIndex);
+    const date = new Date(weekStart + 'T00:00:00'); // Parse as local date
+    date.setDate(date.getDate() + dayIndex);
     return formatDate(date);
   };
 
   // Get meal entry for specific day and meal type
   const getMealEntry = (dayIndex: number, mealType: string): MealPlanEntry | null => {
-    if (!mealPlan) return null;
+    if (!mealPlan || !mealPlan.meals) return null;
     const targetDate = getDateForDay(dayIndex);
     return (
       mealPlan.meals.find(
@@ -462,7 +483,7 @@ export default function MealPlanner() {
                   <div>{day}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {getDateForDay(index) &&
-                      new Date(getDateForDay(index) + 'T00:00:00.000Z').getUTCDate()}
+                      new Date(getDateForDay(index) + 'T00:00:00').getDate()}
                   </div>
                 </th>
               ))}

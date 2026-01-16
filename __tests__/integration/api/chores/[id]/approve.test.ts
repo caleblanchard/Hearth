@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock achievements
 jest.mock('@/lib/achievements', () => ({
   checkAndAwardAchievement: jest.fn(),
@@ -28,7 +23,6 @@ import { POST } from '@/app/api/chores/[id]/approve/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { ChoreStatus } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
 const { checkAndAwardAchievement, updateStreak } = require('@/lib/achievements')
 
 describe('/api/chores/[id]/approve', () => {
@@ -53,13 +47,12 @@ describe('/api/chores/[id]/approve', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/chores/123/approve', {
         method: 'POST',
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -68,13 +61,12 @@ describe('/api/chores/[id]/approve', () => {
 
     it('should return 403 if not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores/123/approve', {
         method: 'POST',
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -83,7 +75,6 @@ describe('/api/chores/[id]/approve', () => {
 
     it('should return 404 if chore instance not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(null)
 
@@ -91,7 +82,7 @@ describe('/api/chores/[id]/approve', () => {
         method: 'POST',
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -100,7 +91,6 @@ describe('/api/chores/[id]/approve', () => {
 
     it('should return 400 if chore is not completed', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue({
         ...mockChoreInstance,
@@ -111,7 +101,7 @@ describe('/api/chores/[id]/approve', () => {
         method: 'POST',
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -120,7 +110,6 @@ describe('/api/chores/[id]/approve', () => {
 
     it('should approve chore and award credits', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -163,7 +152,7 @@ describe('/api/chores/[id]/approve', () => {
         method: 'POST',
       })
 
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -189,7 +178,6 @@ describe('/api/chores/[id]/approve', () => {
 
     it('should create credit balance if it does not exist', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -216,7 +204,7 @@ describe('/api/chores/[id]/approve', () => {
         method: 'POST',
       })
 
-      await POST(request, { params: { id: choreInstanceId } })
+      await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
 
       expect(prismaMock.creditBalance.create).toHaveBeenCalledWith({
         data: {
@@ -230,7 +218,6 @@ describe('/api/chores/[id]/approve', () => {
 
     it('should not award credits if creditValue is 0', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const choreWithNoCredits = {
         ...mockChoreInstance,
@@ -259,7 +246,7 @@ describe('/api/chores/[id]/approve', () => {
         method: 'POST',
       })
 
-      await POST(request, { params: { id: choreInstanceId } })
+      await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
 
       // creditBalance.findUnique is called for achievements even when creditValue is 0
       // So we only check that creditTransaction.create is not called
@@ -268,7 +255,6 @@ describe('/api/chores/[id]/approve', () => {
 
     it('should create notification for child', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -301,7 +287,7 @@ describe('/api/chores/[id]/approve', () => {
         method: 'POST',
       })
 
-      await POST(request, { params: { id: choreInstanceId } })
+      await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
 
       expect(prismaMock.notification.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -315,7 +301,6 @@ describe('/api/chores/[id]/approve', () => {
 
     it('should check achievements and update streaks', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -349,7 +334,7 @@ describe('/api/chores/[id]/approve', () => {
         method: 'POST',
       })
 
-      await POST(request, { params: { id: choreInstanceId } })
+      await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
 
       expect(checkAndAwardAchievement).toHaveBeenCalledTimes(9) // 5 chore achievements + 4 credit achievements
       expect(updateStreak).toHaveBeenCalledWith('child-1', 'DAILY_CHORES', session.user.familyId)
@@ -357,7 +342,6 @@ describe('/api/chores/[id]/approve', () => {
 
     it('should handle achievement check failures gracefully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
       prismaMock.choreInstance.update.mockResolvedValue({
@@ -387,7 +371,7 @@ describe('/api/chores/[id]/approve', () => {
       })
 
       // Should still succeed even if achievement check fails
-      const response = await POST(request, { params: { id: choreInstanceId } })
+      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)

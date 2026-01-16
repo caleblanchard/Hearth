@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { useRouter } from 'next/navigation';
 
 interface FamilyMember {
@@ -31,7 +31,7 @@ interface HealthEventsResponse {
 }
 
 export default function HealthEventsList() {
-  const { data: session } = useSession();
+  const { member, isParent, isChild } = useCurrentMember();
   const router = useRouter();
   const [events, setEvents] = useState<HealthEvent[]>([]);
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -63,18 +63,27 @@ export default function HealthEventsList() {
   useEffect(() => {
     const loadMembers = async () => {
       try {
-        const response = await fetch('/api/family');
+        // Use /api/family-data instead of /api/family due to Next.js routing bug
+        const response = await fetch('/api/family-data');
         if (response.ok) {
           const data = await response.json();
-          setMembers(data.family.members.filter((m: FamilyMember) => m.role === 'CHILD' || session?.user?.role === 'PARENT'));
-          if (data.family.members.length > 0) {
-            const defaultMember = session?.user?.role === 'CHILD' 
-              ? data.family.members.find((m: FamilyMember) => m.id === session.user.id)
-              : data.family.members.find((m: FamilyMember) => m.role === 'CHILD');
+          if (isParent) {
+            setMembers(data.family.members || []);
+          } else if (member) {
+            setMembers(data.family.members.filter((m: FamilyMember) => m.id === member.id));
+          }
+
+          if (data.family.members.length > 0 && member) {
+            const childMembers = data.family.members.filter(
+              (m: FamilyMember) => m.role === 'CHILD'
+            );
+            const defaultMember = isParent
+              ? childMembers[0] || data.family.members[0]
+              : data.family.members.find((m: FamilyMember) => m.id === member.id);
             if (defaultMember) {
               setSelectedMemberId(defaultMember.id);
-              setEventForm({ ...eventForm, memberId: defaultMember.id });
-              setTempForm({ ...tempForm, memberId: defaultMember.id });
+              setEventForm((prev) => ({ ...prev, memberId: defaultMember.id }));
+              setTempForm((prev) => ({ ...prev, memberId: defaultMember.id }));
             }
           }
         }
@@ -83,7 +92,7 @@ export default function HealthEventsList() {
       }
     };
     loadMembers();
-  }, [session]);
+  }, [member, isParent]);
 
   // Load health events
   const loadEvents = async () => {
@@ -240,7 +249,7 @@ export default function HealthEventsList() {
           >
             🌡️ Log Temperature
           </button>
-          {(session?.user?.role === 'PARENT' || session?.user?.role === 'CHILD') && (
+          {(isParent || isChild) && (
             <button
               onClick={() => setShowAddDialog(true)}
               className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"

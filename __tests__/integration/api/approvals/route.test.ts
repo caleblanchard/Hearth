@@ -10,8 +10,6 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/approvals/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/approvals', () => {
   beforeEach(() => {
     resetPrismaMock();
@@ -20,7 +18,6 @@ describe('/api/approvals', () => {
 
   describe('GET /api/approvals - Unified Queue', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValueOnce(null);
 
       const request = new NextRequest('http://localhost:3000/api/approvals');
       const response = await GET(request);
@@ -31,7 +28,6 @@ describe('/api/approvals', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValueOnce(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/approvals');
       const response = await GET(request);
@@ -42,7 +38,6 @@ describe('/api/approvals', () => {
     });
 
     it('should return empty array if no pending approvals', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       // Mock empty results for all approval types
       prismaMock.choreInstance.findMany.mockResolvedValueOnce([]);
@@ -59,7 +54,6 @@ describe('/api/approvals', () => {
     });
 
     it('should return pending chore completions', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       const mockChore = {
         id: 'abc-123-uuid',
@@ -109,7 +103,6 @@ describe('/api/approvals', () => {
     });
 
     it('should return pending reward redemptions', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       const mockRedemption = {
         id: 'xyz-456-uuid',
@@ -154,7 +147,6 @@ describe('/api/approvals', () => {
     });
 
     it('should return mixed approval types sorted by date', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       const mockChore = {
         id: 'chore-uuid-2',
@@ -192,7 +184,6 @@ describe('/api/approvals', () => {
     });
 
     it('should filter approvals from other families', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       const mockChoreOwnFamily = {
         id: 'own-chore-uuid',

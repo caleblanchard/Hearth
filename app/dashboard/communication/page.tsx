@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import CommunicationFeed from '@/app/components/communication/CommunicationFeed';
 import PostComposer from '@/app/components/communication/PostComposer';
 import { Modal } from '@/components/ui/Modal';
 import { PlusIcon } from '@heroicons/react/24/outline';
 
 export default function CommunicationPage() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -22,7 +22,7 @@ export default function CommunicationPage() {
     setIsModalOpen(false);
   };
 
-  const userRole = session?.user?.role === 'PARENT' ? 'PARENT' : 'CHILD';
+  const userRole = user?.user_metadata?.role === 'PARENT' ? 'PARENT' : 'CHILD';
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">

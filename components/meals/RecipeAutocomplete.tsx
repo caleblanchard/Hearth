@@ -36,7 +36,7 @@ export default function RecipeAutocomplete({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const debounceTimer = useRef<NodeJS.Timeout>();
+  const debounceTimer = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Sync with parent value
   useEffect(() => {
@@ -65,11 +65,15 @@ export default function RecipeAutocomplete({
         );
         if (response.ok) {
           const data = await response.json();
-          setRecipes(data.recipes);
+          console.log('Search results:', data.results);
+          setRecipes(data.results || []);
           setShowDropdown(true);
+        } else {
+          setRecipes([]);
         }
       } catch (error) {
         console.error('Error searching recipes:', error);
+        setRecipes([]);
       } finally {
         setIsLoading(false);
       }
@@ -190,13 +194,14 @@ export default function RecipeAutocomplete({
             </div>
           )}
 
-          {!isLoading && recipes.length === 0 && (
+          {!isLoading && recipes && recipes.length === 0 && (
             <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
               No recipes found. Press Enter to use &quot;{searchQuery}&quot; as custom dish.
             </div>
           )}
 
           {!isLoading &&
+            recipes &&
             recipes.map((recipe, index) => (
               <button
                 key={recipe.id}
@@ -229,7 +234,7 @@ export default function RecipeAutocomplete({
                         {recipe.category}
                       </span>
                     )}
-                    {recipe.dietaryTags.slice(0, 2).map((tag) => (
+                    {recipe.dietaryTags && recipe.dietaryTags.slice(0, 2).map((tag) => (
                       <span
                         key={tag}
                         className="text-xs px-2 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"

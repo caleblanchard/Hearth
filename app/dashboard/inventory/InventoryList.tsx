@@ -15,6 +15,9 @@ interface InventoryItem {
   barcode: string | null;
   notes: string | null;
   lastRestockedAt: string | null;
+  familyId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface InventoryResponse {

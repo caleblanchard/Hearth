@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { getKioskSession, endKioskSession, checkAutoLock, lockKioskSession } from '@/lib/kiosk-session';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getKioskSession, endKioskSession, checkAutoLock, lockKioskSession } from '@/lib/data/kiosk';
 import { logger } from '@/lib/logger';
 
 /**
@@ -12,6 +11,8 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
+
     // Get kiosk token from header
     const kioskToken = request.headers.get('X-Kiosk-Token');
     if (!kioskToken) {
@@ -25,41 +26,39 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if session should auto-lock
-    const shouldLock = session.currentMemberId && checkAutoLock(session);
+    const shouldLock = session.current_member_id && checkAutoLock(session);
     if (shouldLock) {
       // Auto-lock the session
       const lockedSession = await lockKioskSession(kioskToken);
 
       // Create audit log
-      await prisma.auditLog.create({
-        data: {
-          familyId: session.familyId,
-          action: 'KIOSK_AUTO_LOCKED',
-          entityType: 'KIOSK',
-          entityId: session.id,
-          result: 'SUCCESS',
-          metadata: {
-            reason: 'Inactivity timeout',
-            autoLockMinutes: session.autoLockMinutes,
-          },
+      await supabase.from('audit_logs').insert({
+        family_id: session.family_id,
+        action: 'KIOSK_AUTO_LOCKED',
+        entity_type: 'KIOSK',
+        entity_id: session.id,
+        result: 'SUCCESS',
+        metadata: {
+          reason: 'Inactivity timeout',
+          autoLockMinutes: session.auto_lock_minutes,
         },
       });
 
       return NextResponse.json({
-        isActive: lockedSession.isActive,
+        isActive: lockedSession.is_active,
         isLocked: true,
         currentMember: null,
-        autoLockMinutes: lockedSession.autoLockMinutes,
-        lastActivityAt: lockedSession.lastActivityAt,
+        autoLockMinutes: lockedSession.auto_lock_minutes,
+        lastActivityAt: lockedSession.last_activity_at,
       });
     }
 
     return NextResponse.json({
-      isActive: session.isActive,
-      isLocked: !session.currentMemberId,
-      currentMemberId: session.currentMemberId,
-      autoLockMinutes: session.autoLockMinutes,
-      lastActivityAt: session.lastActivityAt,
+      isActive: session.is_active,
+      isLocked: !session.current_member_id,
+      currentMemberId: session.current_member_id,
+      autoLockMinutes: session.auto_lock_minutes,
+      lastActivityAt: session.last_activity_at,
     });
   } catch (error) {
     logger.error('Error getting kiosk session', error);
@@ -78,6 +77,8 @@ export async function GET(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    const supabase = await createClient();
+
     // Get kiosk token from header
     const kioskToken = request.headers.get('X-Kiosk-Token');
     if (!kioskToken) {
@@ -91,11 +92,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     // If there's a current member, verify they are a parent
-    if (kioskSession.currentMemberId) {
-      const member = await prisma.familyMember.findUnique({
-        where: { id: kioskSession.currentMemberId },
-        select: { role: true },
-      });
+    if (kioskSession.current_member_id) {
+      const { data: member } = await supabase
+        .from('family_members')
+        .select('role')
+        .eq('id', kioskSession.current_member_id)
+        .single();
 
       if (!member || member.role !== 'PARENT') {
         return NextResponse.json(
@@ -112,19 +114,17 @@ export async function DELETE(request: NextRequest) {
     await endKioskSession(kioskToken);
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: kioskSession.familyId,
-        memberId: kioskSession.currentMemberId || undefined,
-        action: 'KIOSK_SESSION_ENDED',
-        entityType: 'KIOSK',
-        entityId: kioskSession.id,
-        result: 'SUCCESS',
-      },
+    await supabase.from('audit_logs').insert({
+      family_id: kioskSession.family_id,
+      member_id: kioskSession.current_member_id,
+      action: 'KIOSK_SESSION_ENDED',
+      entity_type: 'KIOSK',
+      entity_id: kioskSession.id,
+      result: 'SUCCESS',
     });
 
     logger.info('Kiosk session ended', {
-      familyId: kioskSession.familyId,
+      familyId: kioskSession.family_id,
       sessionId: kioskSession.id,
     });
 

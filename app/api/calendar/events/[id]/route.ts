@@ -1,119 +1,93 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { updateCalendarEvent, deleteCalendarEvent } from '@/lib/data/calendar';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const { id } = await params;
     const body = await request.json();
-    const {
-      title,
-      description,
-      startTime,
-      endTime,
-      location,
-      isAllDay,
-      color,
-      assignedMemberIds,
-    } = body;
 
     // Verify the event belongs to the user's family
-    const event = await prisma.calendarEvent.findUnique({
-      where: { id },
-    });
+    const { data: event } = await supabase
+      .from('calendar_events')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
-    if (!event || event.familyId !== session.user.familyId) {
+    if (!event || event.family_id !== familyId) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    // Update event and assignments in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      const updatedEvent = await tx.calendarEvent.update({
-        where: { id },
-        data: {
-          title: title !== undefined ? title : event.title,
-          description: description !== undefined ? description : event.description,
-          startTime: startTime ? new Date(startTime) : event.startTime,
-          endTime: endTime ? new Date(endTime) : event.endTime,
-          location: location !== undefined ? location : event.location,
-          isAllDay: isAllDay !== undefined ? isAllDay : event.isAllDay,
-          color: color !== undefined ? color : event.color,
-        },
-      });
-
-      // Update assignments if provided
-      if (assignedMemberIds !== undefined) {
-        // Delete existing assignments
-        await tx.calendarEventAssignment.deleteMany({
-          where: { eventId: id },
-        });
-
-        // Create new assignments
-        if (assignedMemberIds.length > 0) {
-          await tx.calendarEventAssignment.createMany({
-            data: assignedMemberIds.map((memberId: string) => ({
-              eventId: id,
-              memberId,
-            })),
-          });
-        }
-      }
-
-      return updatedEvent;
-    });
+    // Update event
+    const updatedEvent = await updateCalendarEvent(id, body);
 
     return NextResponse.json({
+      success: true,
+      event: updatedEvent,
       message: 'Event updated successfully',
-      event: result,
     });
   } catch (error) {
-    logger.error('Error updating event:', error);
+    logger.error('Update calendar event error:', error);
     return NextResponse.json({ error: 'Failed to update event' }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const { id } = await params;
 
     // Verify the event belongs to the user's family
-    const event = await prisma.calendarEvent.findUnique({
-      where: { id },
-    });
+    const { data: event } = await supabase
+      .from('calendar_events')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
-    if (!event || event.familyId !== session.user.familyId) {
+    if (!event || event.family_id !== familyId) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    // Delete event (assignments will cascade)
-    await prisma.calendarEvent.delete({
-      where: { id },
-    });
+    // Delete event
+    await deleteCalendarEvent(id);
 
     return NextResponse.json({
+      success: true,
       message: 'Event deleted successfully',
     });
   } catch (error) {
-    logger.error('Error deleting event:', error);
+    logger.error('Delete calendar event error:', error);
     return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });
   }
 }

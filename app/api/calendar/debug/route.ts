@@ -1,79 +1,27 @@
-/**
- * Debug endpoint to check calendar events
- * GET /api/calendar/debug
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getCalendarDebugInfo } from '@/lib/data/calendar';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session || !session.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all events for the family
-    const allEvents = await prisma.calendarEvent.findMany({
-      where: {
-        familyId: session.user.familyId,
-      },
-      select: {
-        id: true,
-        title: true,
-        startTime: true,
-        endTime: true,
-        externalSubscriptionId: true,
-        externalId: true,
-        calendarConnectionId: true,
-        eventType: true,
-        createdAt: true,
-      },
-      orderBy: {
-        startTime: 'asc',
-      },
-      take: 50, // Limit to first 50
-    });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    // Count by type
-    const counts = await prisma.calendarEvent.groupBy({
-      by: ['eventType', 'externalSubscriptionId'],
-      where: {
-        familyId: session.user.familyId,
-      },
-      _count: true,
-    });
+    const debugInfo = await getCalendarDebugInfo(familyId);
 
-    // Get external subscriptions
-    const subscriptions = await prisma.externalCalendarSubscription.findMany({
-      where: {
-        familyId: session.user.familyId,
-      },
-      select: {
-        id: true,
-        name: true,
-        url: true,
-        lastSyncAt: true,
-        lastSuccessfulSyncAt: true,
-        syncStatus: true,
-      },
-    });
-
-    return NextResponse.json({
-      totalEvents: allEvents.length,
-      events: allEvents,
-      counts,
-      subscriptions,
-      familyId: session.user.familyId,
-    });
+    return NextResponse.json({ debugInfo });
   } catch (error) {
-    logger.error('Debug endpoint error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch debug info', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    logger.error('Calendar debug error:', error);
+    return NextResponse.json({ error: 'Failed to get debug info' }, { status: 500 });
   }
 }

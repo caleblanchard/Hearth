@@ -21,8 +21,6 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/screentime/types/route';
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/screentime/types', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -31,7 +29,6 @@ describe('/api/screentime/types', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/screentime/types');
       const response = await GET(request);
@@ -43,7 +40,6 @@ describe('/api/screentime/types', () => {
 
     it('should return all active types for family', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const mockTypes = [
         {
@@ -91,7 +87,6 @@ describe('/api/screentime/types', () => {
 
     it('should exclude archived types', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findMany.mockResolvedValue([]);
 
@@ -110,7 +105,6 @@ describe('/api/screentime/types', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/screentime/types', {
         method: 'POST',
@@ -126,7 +120,6 @@ describe('/api/screentime/types', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       const request = new NextRequest('http://localhost/api/screentime/types', {
         method: 'POST',
@@ -142,7 +135,6 @@ describe('/api/screentime/types', () => {
 
     it('should return 400 if name is missing', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = new NextRequest('http://localhost/api/screentime/types', {
         method: 'POST',
@@ -158,7 +150,6 @@ describe('/api/screentime/types', () => {
 
     it('should return 400 if name is empty', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = new NextRequest('http://localhost/api/screentime/types', {
         method: 'POST',
@@ -174,7 +165,6 @@ describe('/api/screentime/types', () => {
 
     it('should return 400 if type with same name already exists', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'existing-type',
@@ -195,7 +185,6 @@ describe('/api/screentime/types', () => {
 
     it('should create a new screen time type', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue(null);
       const mockType = {
@@ -240,7 +229,6 @@ describe('/api/screentime/types', () => {
 
     it('should trim name and description', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue(null);
       prismaMock.screenTimeType.create.mockResolvedValue({} as any);
@@ -266,7 +254,6 @@ describe('/api/screentime/types', () => {
 
     it('should set description to null if not provided', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue(null);
       prismaMock.screenTimeType.create.mockResolvedValue({} as any);

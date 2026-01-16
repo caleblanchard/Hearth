@@ -12,8 +12,6 @@ import { GET } from '@/app/api/screentime/grace/status/route';
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
 import { GraceRepaymentMode } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/screentime/grace/status', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,7 +19,6 @@ describe('GET /api/screentime/grace/status', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/screentime/grace/status');
     const response = await GET(request as NextRequest);
@@ -33,12 +30,11 @@ describe('GET /api/screentime/grace/status', () => {
 
   it('should return eligibility status for current user', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const settings = {
       id: 'settings-1',
-      memberId: session.user.id,
-      gracePeriodMinutes: 15,
+    memberId: session.user.id,
+    gracePeriodMinutes: 15,
       maxGracePerDay: 1,
       maxGracePerWeek: 3,
       graceRepaymentMode: GraceRepaymentMode.DEDUCT_NEXT_WEEK,
@@ -50,8 +46,9 @@ describe('GET /api/screentime/grace/status', () => {
 
     const balance = {
       id: 'balance-1',
-      memberId: session.user.id,
-      currentBalanceMinutes: 5, // Low balance
+    memberId: session.user.id,
+    currentBalanceMinutes: 5, // Low balance
+      weekStartDate: new Date(),
       weeklyAllocationMinutes: 120,
       lastResetAt: new Date(),
       createdAt: new Date(),
@@ -78,12 +75,11 @@ describe('GET /api/screentime/grace/status', () => {
 
   it('should count remaining daily and weekly uses', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const settings = {
       id: 'settings-1',
-      memberId: session.user.id,
-      gracePeriodMinutes: 15,
+    memberId: session.user.id,
+    gracePeriodMinutes: 15,
       maxGracePerDay: 2,
       maxGracePerWeek: 5,
       graceRepaymentMode: GraceRepaymentMode.DEDUCT_NEXT_WEEK,
@@ -95,8 +91,9 @@ describe('GET /api/screentime/grace/status', () => {
 
     const balance = {
       id: 'balance-1',
-      memberId: session.user.id,
-      currentBalanceMinutes: 5,
+    memberId: session.user.id,
+    currentBalanceMinutes: 5,
+      weekStartDate: new Date(),
       weeklyAllocationMinutes: 120,
       lastResetAt: new Date(),
       createdAt: new Date(),
@@ -122,12 +119,11 @@ describe('GET /api/screentime/grace/status', () => {
 
   it('should show low balance warning when balance is low', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const settings = {
       id: 'settings-1',
-      memberId: session.user.id,
-      gracePeriodMinutes: 15,
+    memberId: session.user.id,
+    gracePeriodMinutes: 15,
       maxGracePerDay: 1,
       maxGracePerWeek: 3,
       graceRepaymentMode: GraceRepaymentMode.DEDUCT_NEXT_WEEK,
@@ -139,8 +135,9 @@ describe('GET /api/screentime/grace/status', () => {
 
     const balance = {
       id: 'balance-1',
-      memberId: session.user.id,
-      currentBalanceMinutes: 15, // Below threshold
+    memberId: session.user.id,
+    currentBalanceMinutes: 15, // Below threshold
+      weekStartDate: new Date(),
       weeklyAllocationMinutes: 120,
       lastResetAt: new Date(),
       createdAt: new Date(),
@@ -163,7 +160,6 @@ describe('GET /api/screentime/grace/status', () => {
 
   it('should allow parents to check child status', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const childId = 'child-1';
 
@@ -176,13 +172,18 @@ describe('GET /api/screentime/grace/status', () => {
       familyId: session.user.familyId,
       createdAt: new Date(),
       updatedAt: new Date(),
-      userId: 'user-1',
-    });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
     const settings = {
       id: 'settings-1',
-      memberId: childId,
-      gracePeriodMinutes: 15,
+      memberId: session.user.id,
+    gracePeriodMinutes: 15,
       maxGracePerDay: 1,
       maxGracePerWeek: 3,
       graceRepaymentMode: GraceRepaymentMode.DEDUCT_NEXT_WEEK,
@@ -194,8 +195,9 @@ describe('GET /api/screentime/grace/status', () => {
 
     const balance = {
       id: 'balance-1',
-      memberId: childId,
-      currentBalanceMinutes: 5,
+      memberId: session.user.id,
+    currentBalanceMinutes: 5,
+      weekStartDate: new Date(),
       weeklyAllocationMinutes: 120,
       lastResetAt: new Date(),
       createdAt: new Date(),
@@ -220,7 +222,6 @@ describe('GET /api/screentime/grace/status', () => {
 
   it('should verify family ownership', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const otherFamilyChildId = 'other-family-child';
 
@@ -233,8 +234,13 @@ describe('GET /api/screentime/grace/status', () => {
       familyId: 'different-family',
       createdAt: new Date(),
       updatedAt: new Date(),
-      userId: 'user-3',
-    });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
     const request = new Request(
       `http://localhost/api/screentime/grace/status?memberId=${otherFamilyChildId}`

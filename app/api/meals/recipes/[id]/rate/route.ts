@@ -1,29 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { rateRecipe } from '@/lib/data/recipes';
 import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Verify recipe exists and belongs to family
-    const recipe = await prisma.recipe.findUnique({
-      where: { id: params.id },
-    });
+    const { data: recipe } = await supabase
+      .from('recipes')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
     if (!recipe) {
       return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
     }
 
-    if (recipe.familyId !== session.user.familyId) {
+    if (recipe.family_id !== familyId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -42,95 +54,20 @@ export async function POST(
       );
     }
 
-    // Upsert rating (create or update)
-    const savedRating = await prisma.recipeRating.upsert({
-      where: {
-        recipeId_memberId: {
-          recipeId: params.id,
-          memberId: session.user.id,
-        },
-      },
-      update: {
-        rating,
-        notes: notes?.trim() || null,
-      },
-      create: {
-        recipeId: params.id,
-        memberId: session.user.id,
-        rating,
-        notes: notes?.trim() || null,
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'RECIPE_RATED',
-        result: 'SUCCESS',
-        metadata: {
-          recipeId: params.id,
-          rating,
-        },
-      },
+    const ratingRecord = await rateRecipe({
+      recipe_id: id,
+      member_id: memberId,
+      rating,
+      notes: notes || null,
     });
 
     return NextResponse.json({
-      rating: savedRating,
-      message: 'Rating saved successfully',
+      success: true,
+      rating: ratingRecord,
+      message: 'Recipe rated successfully',
     });
   } catch (error) {
-    logger.error('Error saving rating:', error);
-    return NextResponse.json({ error: 'Failed to save rating' }, { status: 500 });
-  }
-}
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Verify recipe exists and belongs to family
-    const recipe = await prisma.recipe.findUnique({
-      where: { id: params.id },
-    });
-
-    if (!recipe) {
-      return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
-    }
-
-    if (recipe.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Delete rating
-    try {
-      await prisma.recipeRating.delete({
-        where: {
-          recipeId_memberId: {
-            recipeId: params.id,
-            memberId: session.user.id,
-          },
-        },
-      });
-
-      return NextResponse.json({ message: 'Rating removed successfully' });
-    } catch (error: any) {
-      // Check if rating doesn't exist
-      if (error.code === 'P2025') {
-        return NextResponse.json({ error: 'Rating not found' }, { status: 404 });
-      }
-      throw error;
-    }
-  } catch (error) {
-    logger.error('Error removing rating:', error);
-    return NextResponse.json({ error: 'Failed to remove rating' }, { status: 500 });
+    logger.error('Rate recipe error:', error);
+    return NextResponse.json({ error: 'Failed to rate recipe' }, { status: 500 });
   }
 }

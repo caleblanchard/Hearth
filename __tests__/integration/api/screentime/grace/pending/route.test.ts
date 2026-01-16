@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { GET } from '@/app/api/screentime/grace/pending/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { RepaymentStatus } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/screentime/grace/pending', () => {
   beforeEach(() => {
@@ -62,15 +55,16 @@ describe('/api/screentime/grace/pending', () => {
     const mockBalance1 = {
       memberId: 'child-1',
       currentBalanceMinutes: 60,
+      weekStartDate: new Date(),
     }
 
     const mockBalance2 = {
       memberId: 'child-2',
       currentBalanceMinutes: 45,
+      weekStartDate: new Date(),
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const response = await GET()
       const data = await response.json()
@@ -81,7 +75,6 @@ describe('/api/screentime/grace/pending', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const response = await GET()
       const data = await response.json()
@@ -92,7 +85,6 @@ describe('/api/screentime/grace/pending', () => {
 
     it('should return pending grace requests for parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.gracePeriodLog.findMany.mockResolvedValue(mockPendingRequests as any)
       prismaMock.screenTimeBalance.findUnique
@@ -147,7 +139,6 @@ describe('/api/screentime/grace/pending', () => {
 
     it('should handle members without balance', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.gracePeriodLog.findMany.mockResolvedValue(mockPendingRequests as any)
       prismaMock.screenTimeBalance.findUnique
@@ -164,7 +155,6 @@ describe('/api/screentime/grace/pending', () => {
 
     it('should return empty array if no pending requests', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.gracePeriodLog.findMany.mockResolvedValue([])
 
@@ -177,7 +167,6 @@ describe('/api/screentime/grace/pending', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.gracePeriodLog.findMany.mockRejectedValue(new Error('Database error'))
 

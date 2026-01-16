@@ -23,7 +23,6 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/rules/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
 const { validateRuleConfiguration } = require('@/lib/rules-engine/validation');
 
 describe('GET /api/rules', () => {
@@ -37,7 +36,6 @@ describe('GET /api/rules', () => {
   // ============================================
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'GET',
@@ -52,7 +50,6 @@ describe('GET /api/rules', () => {
 
   it('should return 403 if user is not a parent', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'GET',
@@ -71,7 +68,6 @@ describe('GET /api/rules', () => {
 
   it('should return empty array if no rules exist', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.automationRule.findMany.mockResolvedValue([]);
     prismaMock.automationRule.count.mockResolvedValue(0);
@@ -90,7 +86,6 @@ describe('GET /api/rules', () => {
 
   it('should return all family rules for parent', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRules = [
       {
@@ -128,7 +123,6 @@ describe('GET /api/rules', () => {
 
   it('should not return rules from other families', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.automationRule.findMany.mockResolvedValue([]);
     prismaMock.automationRule.count.mockResolvedValue(0);
@@ -154,7 +148,6 @@ describe('GET /api/rules', () => {
 
   it('should filter by isEnabled=true', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.automationRule.findMany.mockResolvedValue([]);
     prismaMock.automationRule.count.mockResolvedValue(0);
@@ -176,7 +169,6 @@ describe('GET /api/rules', () => {
 
   it('should filter by isEnabled=false', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.automationRule.findMany.mockResolvedValue([]);
     prismaMock.automationRule.count.mockResolvedValue(0);
@@ -202,7 +194,6 @@ describe('GET /api/rules', () => {
 
   it('should support pagination with limit', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.automationRule.findMany.mockResolvedValue([]);
     prismaMock.automationRule.count.mockResolvedValue(0);
@@ -222,7 +213,6 @@ describe('GET /api/rules', () => {
 
   it('should support pagination with offset', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.automationRule.findMany.mockResolvedValue([]);
     prismaMock.automationRule.count.mockResolvedValue(0);
@@ -242,7 +232,6 @@ describe('GET /api/rules', () => {
 
   it('should cap limit at maximum value', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.automationRule.findMany.mockResolvedValue([]);
     prismaMock.automationRule.count.mockResolvedValue(0);
@@ -259,8 +248,8 @@ describe('GET /api/rules', () => {
       })
     );
 
-    const call = prismaMock.automationRule.findMany.mock.calls[0][0];
-    expect(call.take).toBeLessThanOrEqual(100); // Max limit should be capped
+    const call = prismaMock.automationRule.findMany.mock.calls[0]?.[0];
+    expect(call?.take).toBeLessThanOrEqual(100); // Max limit should be capped
   });
 
   // ============================================
@@ -269,7 +258,6 @@ describe('GET /api/rules', () => {
 
   it('should order by createdAt desc by default', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.automationRule.findMany.mockResolvedValue([]);
     prismaMock.automationRule.count.mockResolvedValue(0);
@@ -289,7 +277,6 @@ describe('GET /api/rules', () => {
 
   it('should include execution count in response', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.automationRule.findMany.mockResolvedValue([]);
     prismaMock.automationRule.count.mockResolvedValue(0);
@@ -324,7 +311,6 @@ describe('POST /api/rules', () => {
   // ============================================
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'POST',
@@ -342,7 +328,6 @@ describe('POST /api/rules', () => {
 
   it('should return 403 if user is not a parent', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'POST',
@@ -364,7 +349,6 @@ describe('POST /api/rules', () => {
 
   it('should return 400 if name is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'POST',
@@ -384,7 +368,6 @@ describe('POST /api/rules', () => {
 
   it('should return 400 if name is empty string', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'POST',
@@ -402,7 +385,6 @@ describe('POST /api/rules', () => {
 
   it('should trim whitespace from name', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRule = {
       id: 'rule-1',
@@ -445,7 +427,6 @@ describe('POST /api/rules', () => {
 
   it('should return 400 if trigger is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'POST',
@@ -465,7 +446,6 @@ describe('POST /api/rules', () => {
 
   it('should return 400 if trigger is not an object', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'POST',
@@ -487,7 +467,6 @@ describe('POST /api/rules', () => {
 
   it('should return 400 if actions is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'POST',
@@ -507,7 +486,6 @@ describe('POST /api/rules', () => {
 
   it('should return 400 if actions is not an array', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'POST',
@@ -525,7 +503,6 @@ describe('POST /api/rules', () => {
 
   it('should return 400 if actions array is empty', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/rules', {
       method: 'POST',
@@ -547,7 +524,6 @@ describe('POST /api/rules', () => {
 
   it('should return 400 if rule configuration is invalid', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     validateRuleConfiguration.mockReturnValue({
       valid: false,
@@ -577,7 +553,6 @@ describe('POST /api/rules', () => {
 
   it('should create rule with valid data', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRule = {
       id: 'rule-1',
@@ -617,7 +592,6 @@ describe('POST /api/rules', () => {
 
   it('should create rule with description', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRule = {
       id: 'rule-1',
@@ -658,7 +632,6 @@ describe('POST /api/rules', () => {
 
   it('should create rule with conditions', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRule = {
       id: 'rule-1',
@@ -693,7 +666,6 @@ describe('POST /api/rules', () => {
 
   it('should default isEnabled to true', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRule = {
       id: 'rule-1',
@@ -732,7 +704,6 @@ describe('POST /api/rules', () => {
 
   it('should set createdById to current user', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRule = {
       id: 'rule-1',
@@ -771,7 +742,6 @@ describe('POST /api/rules', () => {
 
   it('should create audit log for RULE_CREATED', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRule = {
       id: 'rule-1',
@@ -813,7 +783,6 @@ describe('POST /api/rules', () => {
 
   it('should return created rule with id', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRule = {
       id: 'rule-1',
@@ -853,7 +822,6 @@ describe('POST /api/rules', () => {
 
   it('should allow multiple actions', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const mockRule = {
       id: 'rule-1',

@@ -8,8 +8,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getAutomationRules, createAutomationRule } from '@/lib/data/automation';
 import { validateRuleConfiguration } from '@/lib/rules-engine/validation';
 import { logger } from '@/lib/logger';
 
@@ -21,13 +22,22 @@ import { logger } from '@/lib/logger';
 export async function GET(request: NextRequest) {
   try {
     // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Check if user is a parent
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Forbidden - Parent access required' },
         { status: 403 }
@@ -37,58 +47,39 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const enabledParam = searchParams.get('enabled');
-    const limit = Math.min(
-      Math.max(1, parseInt(searchParams.get('limit') || '50', 10)),
-      100 // Maximum limit
-    );
-    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
 
-    // Build where clause
-    const where: any = {
-      familyId: session.user.familyId,
-    };
+    // If enabled param is not provided, show ALL rules (both enabled and disabled)
+    // If enabled=true, show only enabled rules
+    // If enabled=false, show only disabled rules (though this is unusual)
+    const activeOnly = enabledParam === null ? false : enabledParam === 'true';
 
-    // Filter by enabled status if specified
-    if (enabledParam !== null) {
-      where.isEnabled = enabledParam === 'true';
-    }
+    // Fetch rules
+    const rules = await getAutomationRules(familyId, activeOnly);
 
-    // Fetch rules and count in parallel
-    const [rules, total] = await Promise.all([
-      prisma.automationRule.findMany({
-        where,
-        include: {
-          creator: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          _count: {
-            select: {
-              executions: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.automationRule.count({ where }),
-    ]);
+    // Map to camelCase for frontend
+    const mappedRules = rules.map(rule => ({
+      id: rule.id,
+      familyId: rule.family_id,
+      name: rule.name,
+      description: rule.description,
+      trigger: rule.trigger,
+      conditions: rule.conditions,
+      actions: rule.actions,
+      isEnabled: rule.is_enabled,
+      createdById: rule.created_by_id,
+      createdAt: rule.created_at,
+      updatedAt: rule.updated_at,
+      created_by_member: rule.created_by_member,
+    }));
 
     return NextResponse.json({
-      rules,
-      total,
-      limit,
-      offset,
+      rules: mappedRules,
+      total: mappedRules.length,
     });
   } catch (error) {
-    logger.error('Error fetching rules:', error);
+    logger.error('[API] Error fetching automation rules', error);
     return NextResponse.json(
-      { error: 'Failed to fetch rules' },
+      { error: 'Failed to fetch automation rules' },
       { status: 500 }
     );
   }
@@ -101,14 +92,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Check if user is a parent
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Forbidden - Parent access required' },
         { status: 403 }
@@ -116,106 +116,75 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    let body;
-    try {
-      body = await request.json();
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      );
-    }
-
-    const { name, description, trigger, conditions, actions } = body;
+    const body = await request.json();
+    const { name, description, isEnabled, trigger, actions, conditions } = body;
 
     // Validate required fields
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    if (!name || name.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Rule name is required and must be a non-empty string' },
+        { error: 'Rule name is required' },
         { status: 400 }
       );
     }
 
-    if (!trigger || typeof trigger !== 'object') {
+    if (!trigger) {
       return NextResponse.json(
-        { error: 'Trigger configuration is required and must be an object' },
+        { error: 'Trigger configuration is required' },
         { status: 400 }
       );
     }
 
-    if (!Array.isArray(actions)) {
-      return NextResponse.json(
-        { error: 'Actions must be an array' },
-        { status: 400 }
-      );
-    }
-
-    if (actions.length === 0) {
+    if (!actions || !Array.isArray(actions) || actions.length === 0) {
       return NextResponse.json(
         { error: 'At least one action is required' },
         { status: 400 }
       );
     }
 
-    // Validate rule configuration using rules engine validator
+    // Validate rule configuration
     const validation = validateRuleConfiguration(trigger, conditions || null, actions);
     if (!validation.valid) {
       return NextResponse.json(
-        { error: validation.error },
+        { error: 'Invalid rule configuration', details: validation.errors },
         { status: 400 }
       );
     }
 
-    // Create the rule
-    const rule = await prisma.automationRule.create({
-      data: {
-        familyId: session.user.familyId,
-        name: name.trim(),
-        description: description?.trim() || null,
-        trigger,
-        conditions: conditions || null,
-        actions,
-        isEnabled: true,
-        createdById: session.user.id,
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+    // Create rule
+    const rule = await createAutomationRule({
+      family_id: familyId,
+      name: name.trim(),
+      description: description?.trim() || null,
+      is_enabled: isEnabled ?? true,
+      trigger: trigger as any,
+      actions: actions as any,
+      conditions: conditions || null,
+      created_by_id: memberId,
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'RULE_CREATED',
-        entityType: 'AutomationRule',
-        entityId: rule.id,
-        result: 'SUCCESS',
-        metadata: {
-          ruleName: rule.name,
-          triggerType: (rule.trigger as any)?.type || 'unknown',
-          actionCount: (rule.actions as any[]).length,
-        },
-      },
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'RULE_CREATED',
+      entity_type: 'AUTOMATION_RULE',
+      entity_id: rule.id,
+      result: 'SUCCESS',
+      metadata: { name: name.trim(), triggerType: trigger.type },
     });
 
     return NextResponse.json(
       {
         success: true,
         rule,
+        message: 'Automation rule created successfully',
       },
       { status: 201 }
     );
   } catch (error) {
-    logger.error('Error creating rule:', error);
+    logger.error('[API] Error creating automation rule', error);
     return NextResponse.json(
-      { error: 'Failed to create rule' },
+      { error: 'Failed to create automation rule' },
       { status: 500 }
     );
   }

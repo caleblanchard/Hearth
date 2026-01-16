@@ -57,13 +57,13 @@ describe('Sidebar', () => {
 
     // Wait for modules to load by checking for a module-dependent item
     await waitFor(() => {
-      const choresElements = screen.queryAllByText('Chores', { hidden: true })
+      const choresElements = screen.queryAllByText('Chores')
       expect(choresElements.length).toBeGreaterThan(0)
     })
 
     // Check that other navigation items exist (even if hidden in test environment)
-    expect(screen.queryAllByText('To-Do', { hidden: true }).length).toBeGreaterThan(0)
-    expect(screen.queryAllByText('Dashboard', { hidden: true }).length).toBeGreaterThan(0)
+    expect(screen.queryAllByText('To-Do').length).toBeGreaterThan(0)
+    expect(screen.queryAllByText('Dashboard').length).toBeGreaterThan(0)
   })
 
   it('should show parent-only settings group for parents', async () => {

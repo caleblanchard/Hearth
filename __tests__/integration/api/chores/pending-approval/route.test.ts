@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { GET } from '@/app/api/chores/pending-approval/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { ChoreStatus } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/chores/pending-approval', () => {
   beforeEach(() => {
@@ -59,7 +52,6 @@ describe('/api/chores/pending-approval', () => {
     ]
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const response = await GET()
       const data = await response.json()
@@ -70,7 +62,6 @@ describe('/api/chores/pending-approval', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const response = await GET()
       const data = await response.json()
@@ -81,7 +72,6 @@ describe('/api/chores/pending-approval', () => {
 
     it('should return pending chores for parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findMany.mockResolvedValue(mockPendingChores as any)
 
@@ -147,7 +137,6 @@ describe('/api/chores/pending-approval', () => {
 
     it('should return empty array if no pending chores', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findMany.mockResolvedValue([])
 
@@ -160,7 +149,6 @@ describe('/api/chores/pending-approval', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreInstance.findMany.mockRejectedValue(new Error('Database error'))
 

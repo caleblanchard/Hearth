@@ -1,72 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getChoreDefinitions } from '@/lib/data/chores';
 import { logger } from '@/lib/logger';
 import { sanitizeString } from '@/lib/input-sanitization';
-import { parsePaginationParams, createPaginationResponse } from '@/lib/pagination';
+import { getNextDueDates, getNextAssignee, startOfDay, endOfDay } from '@/lib/chore-scheduler';
+import { isMemberInSickMode } from '@/lib/sick-mode';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId || session.user.role !== 'PARENT') {
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Check if parent
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
-    // Parse pagination parameters
-    const { page, limit } = parsePaginationParams(request.nextUrl.searchParams);
-    const skip = (page - 1) * limit;
+    // Fetch chores with schedules and assignments (separate queries to avoid potential RLS stack depth issues)
+    const supabase = await createClient();
+    
+    // 1. Get chore definitions
+    const { data: chores, error: choresError } = await supabase
+      .from('chore_definitions')
+      .select('*')
+      .eq('family_id', familyId)
+      .eq('is_active', true)
+      .order('name');
 
-    // Get total count for pagination
-    const total = await prisma.choreDefinition.count({
-      where: {
-        familyId: session.user.familyId,
-      },
-    });
+    if (choresError) {
+      logger.error('Error fetching chores:', choresError);
+      return NextResponse.json({ error: 'Failed to fetch chores' }, { status: 500 });
+    }
 
-    const chores = await prisma.choreDefinition.findMany({
-      where: {
-        familyId: session.user.familyId,
-      },
-      include: {
-        schedules: {
-          include: {
-            assignments: {
-              include: {
-                member: {
-                  select: {
-                    id: true,
-                    name: true,
-                    avatarUrl: true,
-                  },
-                },
-              },
-              where: {
-                isActive: true,
-              },
-              orderBy: {
-                rotationOrder: 'asc',
-              },
-            },
-            _count: {
-              select: {
-                instances: true,
-              },
-            },
-          },
-          where: {
-            isActive: true,
-          },
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-      skip,
-      take: limit,
-    });
+    if (!chores || chores.length === 0) {
+      return NextResponse.json({ data: [], total: 0 });
+    }
 
-    return NextResponse.json(createPaginationResponse(chores, page, limit, total));
+    // 2. Get all schedules for these chores
+    const choreIds = chores.map(c => c.id);
+    const { data: schedules } = await supabase
+      .from('chore_schedules')
+      .select('*')
+      .in('chore_definition_id', choreIds);
+
+    // 3. Get all assignments for these schedules
+    const scheduleIds = schedules?.map(s => s.id) || [];
+    const { data: assignments } = scheduleIds.length > 0 ? await supabase
+      .from('chore_assignments')
+      .select(`
+        *,
+        member:family_members(id, name, avatar_url)
+      `)
+      .in('chore_schedule_id', scheduleIds) : { data: [] };
+
+    // 4. Get instance counts for schedules
+    const { data: instanceCounts } = scheduleIds.length > 0 ? await supabase
+      .from('chore_instances')
+      .select('chore_schedule_id')
+      .in('chore_schedule_id', scheduleIds) : { data: [] };
+
+    // Count instances per schedule
+    const countsBySchedule = (instanceCounts || []).reduce((acc, instance) => {
+      acc[instance.chore_schedule_id] = (acc[instance.chore_schedule_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // 5. Reconstruct nested structure with camelCase mapping
+    const choresWithRelations = chores.map(chore => ({
+      id: chore.id,
+      name: chore.name,
+      description: chore.description,
+      creditValue: chore.credit_value,
+      difficulty: chore.difficulty,
+      estimatedMinutes: chore.estimated_minutes,
+      minimumAge: chore.minimum_age,
+      iconName: chore.icon_name,
+      isActive: chore.is_active,
+      createdAt: chore.created_at,
+      updatedAt: chore.updated_at,
+      schedules: (schedules || [])
+        .filter(s => s.chore_definition_id === chore.id)
+        .map(schedule => ({
+          id: schedule.id,
+          choreDefinitionId: schedule.chore_definition_id,
+          assignmentType: schedule.assignment_type,
+          frequency: schedule.frequency,
+          dayOfWeek: schedule.day_of_week,
+          customCron: schedule.custom_cron,
+          requiresApproval: schedule.requires_approval,
+          requiresPhoto: schedule.requires_photo,
+          isActive: schedule.is_active,
+          createdAt: schedule.created_at,
+          updatedAt: schedule.updated_at,
+          assignments: (assignments || [])
+            .filter(a => a.chore_schedule_id === schedule.id)
+            .map(assignment => ({
+              id: assignment.id,
+              choreScheduleId: assignment.chore_schedule_id,
+              memberId: assignment.member_id,
+              rotationOrder: assignment.rotation_order,
+              isActive: assignment.is_active,
+              member: assignment.member
+            })),
+          _count: {
+            instances: countsBySchedule[schedule.id] || 0
+          }
+        }))
+    }));
+
+    return NextResponse.json({ data: choresWithRelations, total: choresWithRelations.length });
   } catch (error) {
     logger.error('Error fetching chores', error);
     return NextResponse.json({ error: 'Failed to fetch chores' }, { status: 500 });
@@ -75,9 +129,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId || session.user.role !== 'PARENT') {
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Check if parent
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
@@ -125,8 +193,6 @@ export async function POST(request: Request) {
     if (!difficulty || !['EASY', 'MEDIUM', 'HARD'].includes(difficulty)) {
       return NextResponse.json({ error: 'Difficulty must be EASY, MEDIUM, or HARD' }, { status: 400 });
     }
-    // Type assertion: we've validated it's one of the enum values
-    const difficultyEnum = difficulty as 'EASY' | 'MEDIUM' | 'HARD';
 
     // Schedule validation
     if (!schedule) {
@@ -168,72 +234,219 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create chore, schedule, and assignments atomically
-    const result = await prisma.$transaction(async (tx) => {
-      const definition = await tx.choreDefinition.create({
-        data: {
-          familyId: session.user.familyId,
-          name,
-          description,
-          creditValue,
-          difficulty: difficultyEnum,
-          estimatedMinutes,
-          minimumAge: minimumAge || undefined,
-          iconName: iconName || undefined,
-          isActive: true,
-        },
-      });
+    // Use RPC function for atomic creation (if available) or manual transaction
+    // For now, create manually with proper error handling
+    
+    // 1. Create chore definition
+    const choreData: any = {
+      family_id: familyId,
+      name,
+      description,
+      credit_value: creditValue,
+      difficulty,
+      estimated_minutes: estimatedMinutes,
+      minimum_age: minimumAge,
+      is_active: true,
+    };
+    
+    // Only include icon_name if provided, otherwise let default apply
+    if (iconName) {
+      choreData.icon_name = iconName;
+    }
+    
+    const { data: definition, error: defError } = await (supabase as any)
+      .from('chore_definitions')
+      .insert(choreData)
+      .select()
+      .single();
 
-      const choreSchedule = await tx.choreSchedule.create({
-        data: {
-          choreDefinitionId: definition.id,
-          assignmentType: schedule.assignmentType,
-          frequency: schedule.frequency,
-          dayOfWeek: schedule.dayOfWeek ?? null,
-          customCron: schedule.customCron || null,
-          requiresApproval: schedule.requiresApproval ?? false,
-          requiresPhoto: schedule.requiresPhoto ?? false,
-          isActive: true,
-        },
-      });
+    if (defError) {
+      logger.error('Error creating chore definition:', defError);
+      return NextResponse.json({ error: 'Failed to create chore definition' }, { status: 500 });
+    }
 
-      await tx.choreAssignment.createMany({
-        data: schedule.assignments.map((assignment: any) => ({
-          choreScheduleId: choreSchedule.id,
-          memberId: assignment.memberId,
-          rotationOrder: assignment.rotationOrder ?? null,
-          isActive: true,
-        })),
-      });
+    // 2. Create schedule
+    const { data: choreSchedule, error: schedError } = await supabase
+      .from('chore_schedules')
+      .insert({
+        chore_definition_id: definition.id,
+        assignment_type: schedule.assignmentType,
+        frequency: schedule.frequency,
+        day_of_week: schedule.dayOfWeek ?? null,
+        custom_cron: schedule.customCron || null,
+        requires_approval: schedule.requiresApproval ?? false,
+        requires_photo: schedule.requiresPhoto ?? false,
+        is_active: true,
+      })
+      .select()
+      .single();
 
-      // Fetch the complete chore with relationships
-      const completeChore = await tx.choreDefinition.findUnique({
-        where: { id: definition.id },
-        include: {
-          schedules: {
-            include: {
-              assignments: {
-                include: {
-                  member: {
-                    select: {
-                      id: true,
-                      name: true,
-                      avatarUrl: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
+    if (schedError) {
+      // Rollback: delete definition
+      await supabase.from('chore_definitions').delete().eq('id', definition.id);
+      logger.error('Error creating chore schedule:', schedError);
+      return NextResponse.json({ error: 'Failed to create chore schedule' }, { status: 500 });
+    }
 
-      return completeChore;
+    // 3. Create assignments
+    const assignments = schedule.assignments.map((assignment: any) => ({
+      chore_schedule_id: choreSchedule.id,
+      member_id: assignment.memberId,
+      rotation_order: assignment.rotationOrder ?? null,
+      is_active: true,
+    }));
+
+    const { error: assignError } = await supabase
+      .from('chore_assignments')
+      .insert(assignments);
+
+    if (assignError) {
+      // Rollback: delete schedule and definition
+      await supabase.from('chore_schedules').delete().eq('id', choreSchedule.id);
+      await supabase.from('chore_definitions').delete().eq('id', definition.id);
+      logger.error('Error creating chore assignments:', assignError);
+      return NextResponse.json({ error: 'Failed to create chore assignments' }, { status: 500 });
+    }
+
+    // Fetch complete chore with relationships (separate queries to avoid RLS stack depth issues)
+    const { data: completeChore } = await supabase
+      .from('chore_definitions')
+      .select('*')
+      .eq('id', definition.id)
+      .single();
+
+    const { data: schedules } = await supabase
+      .from('chore_schedules')
+      .select('*')
+      .eq('chore_definition_id', definition.id);
+
+    const { data: assignmentsWithMembers } = await supabase
+      .from('chore_assignments')
+      .select(`
+        *,
+        member:family_members(id, name, avatar_url)
+      `)
+      .eq('chore_schedule_id', choreSchedule.id);
+
+    // Reconstruct nested structure with camelCase mapping
+    const completeChoreWithRelations = completeChore ? {
+      id: completeChore.id,
+      name: completeChore.name,
+      description: completeChore.description,
+      creditValue: completeChore.credit_value,
+      difficulty: completeChore.difficulty,
+      estimatedMinutes: completeChore.estimated_minutes,
+      minimumAge: completeChore.minimum_age,
+      iconName: completeChore.icon_name,
+      isActive: completeChore.is_active,
+      createdAt: completeChore.created_at,
+      updatedAt: completeChore.updated_at,
+      schedules: schedules?.map(sched => ({
+        id: sched.id,
+        choreDefinitionId: sched.chore_definition_id,
+        assignmentType: sched.assignment_type,
+        frequency: sched.frequency,
+        dayOfWeek: sched.day_of_week,
+        customCron: sched.custom_cron,
+        requiresApproval: sched.requires_approval,
+        requiresPhoto: sched.requires_photo,
+        isActive: sched.is_active,
+        createdAt: sched.created_at,
+        updatedAt: sched.updated_at,
+        assignments: sched.id === choreSchedule.id ? (assignmentsWithMembers || []).map(assignment => ({
+          id: assignment.id,
+          choreScheduleId: assignment.chore_schedule_id,
+          memberId: assignment.member_id,
+          rotationOrder: assignment.rotation_order,
+          isActive: assignment.is_active,
+          member: assignment.member
+        })) : []
+      })) || []
+    } : null;
+
+    // Audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'CHORE_CREATED',
+      entity_type: 'CHORE',
+      entity_id: definition.id,
+      result: 'SUCCESS',
+      metadata: { name },
     });
+
+    // Generate initial chore instances for the next 7 days
+    try {
+      const lookAheadDays = 7;
+      const startDate = new Date();
+      
+      const dueDates = getNextDueDates(
+        choreSchedule.frequency,
+        startDate,
+        lookAheadDays,
+        choreSchedule.day_of_week
+      );
+
+      let lastAssigneeId: string | null = null;
+
+      for (const dueDate of dueDates) {
+        let assigneeId: string | null = null;
+
+        if (choreSchedule.assignment_type === 'FIXED') {
+          assigneeId = assignments[0].member_id;
+          if (assigneeId) {
+            const inSickMode = await isMemberInSickMode(assigneeId);
+            if (!inSickMode) {
+              await supabase.from('chore_instances').insert({
+                chore_schedule_id: choreSchedule.id,
+                assigned_to_id: assigneeId,
+                due_date: dueDate.toISOString(),
+                status: 'PENDING',
+              });
+            }
+          }
+        } else if (choreSchedule.assignment_type === 'ROTATING') {
+          assigneeId = getNextAssignee(
+            assignments.map((a: any) => ({
+              memberId: a.member_id,
+              rotationOrder: a.rotation_order,
+            })),
+            lastAssigneeId
+          );
+          if (assigneeId) {
+            const inSickMode = await isMemberInSickMode(assigneeId);
+            if (!inSickMode) {
+              await supabase.from('chore_instances').insert({
+                chore_schedule_id: choreSchedule.id,
+                assigned_to_id: assigneeId,
+                due_date: dueDate.toISOString(),
+                status: 'PENDING',
+              });
+              lastAssigneeId = assigneeId; // Track for rotation
+            }
+          }
+        } else if (choreSchedule.assignment_type === 'OPT_IN') {
+          for (const assignment of assignments) {
+            const inSickMode = await isMemberInSickMode(assignment.member_id);
+            if (!inSickMode) {
+              await supabase.from('chore_instances').insert({
+                chore_schedule_id: choreSchedule.id,
+                assigned_to_id: assignment.member_id,
+                due_date: dueDate.toISOString(),
+                status: 'PENDING',
+              });
+            }
+          }
+        }
+      }
+    } catch (instanceError) {
+      logger.error('Error generating initial chore instances:', instanceError);
+      // Don't fail the chore creation if instance generation fails
+    }
 
     return NextResponse.json({
       success: true,
-      chore: result,
+      chore: completeChoreWithRelations,
       message: 'Chore created successfully',
     });
   } catch (error) {

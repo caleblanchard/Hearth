@@ -3,9 +3,11 @@
  *
  * Functions to evaluate whether triggers should fire based on context.
  * Each trigger type has its own evaluator function.
+ * 
+ * MIGRATED TO SUPABASE - January 10, 2026
  */
 
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import {
   RuleContext,
   ChoreCompletedConfig,
@@ -130,11 +132,15 @@ export async function evaluateInventoryLowTrigger(
   }
 
   // Get inventory item
+  const supabase = await createClient();
   let item;
   if (context.inventoryItemId) {
-    item = await prisma.inventoryItem.findUnique({
-      where: { id: context.inventoryItemId },
-    });
+    const { data } = await supabase
+      .from('inventory_items')
+      .select('*')
+      .eq('id', context.inventoryItemId)
+      .single();
+    item = data;
   }
 
   if (!item) {
@@ -154,13 +160,13 @@ export async function evaluateInventoryLowTrigger(
   const thresholdPercentage = config.thresholdPercentage || 20;
 
   // If item has low stock threshold set, use that
-  if (item.lowStockThreshold !== null && item.lowStockThreshold !== undefined) {
-    return item.currentQuantity <= item.lowStockThreshold;
+  if (item.low_stock_threshold !== null && item.low_stock_threshold !== undefined) {
+    return item.current_quantity <= item.low_stock_threshold;
   }
 
   // Otherwise, check if quantity is low (close to 0)
   // For items without explicit threshold, trigger if quantity < 2
-  return item.currentQuantity < 2;
+  return item.current_quantity < 2;
 }
 
 // ============================================
@@ -198,18 +204,16 @@ export async function evaluateCalendarBusyTrigger(
   endOfDay.setHours(23, 59, 59, 999);
 
   // Count events for the day
-  const eventCount = await prisma.calendarEvent.count({
-    where: {
-      familyId: context.familyId,
-      startTime: {
-        gte: startOfDay,
-        lte: endOfDay,
-      },
-    },
-  });
+  const supabase = await createClient();
+  const { count: eventCount } = await supabase
+    .from('calendar_events')
+    .select('*', { count: 'exact', head: true })
+    .eq('family_id', context.familyId)
+    .gte('start_time', startOfDay.toISOString())
+    .lte('start_time', endOfDay.toISOString());
 
   // Trigger fires if event count meets or exceeds threshold
-  return eventCount >= config.eventCount;
+  return (eventCount || 0) >= config.eventCount;
 }
 
 // ============================================
@@ -280,10 +284,12 @@ export async function evaluateRoutineCompletedTrigger(
 
     // Otherwise look up the routine from database (need routineId for this)
     if (context.routineId) {
-      const routine = await prisma.routine.findUnique({
-        where: { id: context.routineId },
-        select: { type: true },
-      });
+      const supabase = await createClient();
+      const { data: routine } = await supabase
+        .from('routines')
+        .select('type')
+        .eq('id', context.routineId)
+        .single();
 
       if (routine && routine.type === config.routineType) {
         return true;
@@ -326,18 +332,20 @@ export async function evaluateTimeBasedTrigger(
       return true;
     }
 
-    const member = await prisma.familyMember.findUnique({
-      where: { id: context.memberId },
-      select: { birthDate: true },
-    });
+    const supabase = await createClient();
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('birth_date')
+      .eq('id', context.memberId)
+      .single();
 
-    if (!member?.birthDate) {
+    if (!member?.birth_date) {
       // No birthdate configured, can't evaluate
       return true;
     }
 
     const today = new Date(now);
-    const birthDate = new Date(member.birthDate);
+    const birthDate = new Date(member.birth_date);
 
     return (
       today.getMonth() === birthDate.getMonth() &&

@@ -11,8 +11,6 @@ import { NextRequest } from 'next/server';
 import { POST, DELETE } from '@/app/api/projects/tasks/[taskId]/dependencies/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -20,13 +18,12 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1/dependencies', {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(401);
       const data = await response.json();
@@ -34,13 +31,12 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1/dependencies', {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -50,13 +46,12 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
 
   describe('Validation', () => {
     it('should return 400 if blockingTaskId is missing', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1/dependencies', {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -64,13 +59,12 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should return 400 if task tries to depend on itself', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1/dependencies', {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-1' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -78,14 +72,13 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should return 404 if dependent task does not exist', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.projectTask.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1/dependencies', {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -93,7 +86,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should return 403 if dependent task belongs to different family', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -107,7 +99,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -115,7 +107,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should return 404 if blocking task does not exist', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependentTask = {
         id: 'task-1',
@@ -131,7 +122,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -139,7 +130,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should return 400 if tasks belong to different projects', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependentTask = {
         id: 'task-1',
@@ -161,7 +151,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -169,7 +159,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should return 400 if dependency already exists', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependentTask = {
         id: 'task-1',
@@ -198,7 +187,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -206,7 +195,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should return 400 if circular dependency is detected (direct)', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependentTask = {
         id: 'task-1',
@@ -238,7 +226,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -246,7 +234,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should return 400 if circular dependency is detected (indirect)', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependentTask = {
         id: 'task-1',
@@ -288,7 +275,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-3' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -298,7 +285,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
 
   describe('Dependency Creation', () => {
     it('should create a task dependency successfully', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependentTask = {
         id: 'task-1',
@@ -334,7 +320,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(201);
       const data = await response.json();
@@ -344,7 +330,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should create dependency with custom type', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependentTask = {
         id: 'task-1',
@@ -373,7 +358,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
           dependencyType: 'START_TO_START',
         }),
       });
-      await POST(request, { params: { taskId: 'task-1' } });
+      await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(prismaMock.taskDependency.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -385,7 +370,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
     });
 
     it('should default to FINISH_TO_START if type not specified', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependentTask = {
         id: 'task-1',
@@ -411,7 +395,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      await POST(request, { params: { taskId: 'task-1' } });
+      await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(prismaMock.taskDependency.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -425,7 +409,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
 
   describe('Audit Logging', () => {
     it('should create an audit log entry on successful dependency creation', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependentTask = {
         id: 'task-1',
@@ -457,7 +440,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      await POST(request, { params: { taskId: 'task-1' } });
+      await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
         data: {
@@ -478,7 +461,6 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
 
   describe('Error Handling', () => {
     it('should return 500 if database operation fails', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependentTask = {
         id: 'task-1',
@@ -503,7 +485,7 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         method: 'POST',
         body: JSON.stringify({ blockingTaskId: 'task-2' }),
       });
-      const response = await POST(request, { params: { taskId: 'task-1' } });
+      const response = await POST(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();
@@ -519,14 +501,13 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest(
         'http://localhost:3000/api/projects/tasks/task-1/dependencies/dep-1',
         { method: 'DELETE' }
       );
       const response = await DELETE(request, {
-        params: { taskId: 'task-1', dependencyId: 'dep-1' },
+        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
       });
 
       expect(response.status).toBe(401);
@@ -535,14 +516,13 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest(
         'http://localhost:3000/api/projects/tasks/task-1/dependencies/dep-1',
         { method: 'DELETE' }
       );
       const response = await DELETE(request, {
-        params: { taskId: 'task-1', dependencyId: 'dep-1' },
+        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
       });
 
       expect(response.status).toBe(403);
@@ -553,7 +533,6 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
 
   describe('Dependency Deletion', () => {
     it('should return 404 if dependency does not exist', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.taskDependency.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest(
@@ -561,7 +540,7 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
         { method: 'DELETE' }
       );
       const response = await DELETE(request, {
-        params: { taskId: 'task-1', dependencyId: 'dep-1' },
+        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
       });
 
       expect(response.status).toBe(404);
@@ -570,7 +549,6 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
     });
 
     it('should return 403 if dependency belongs to different family', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependency = {
         id: 'dep-1',
@@ -588,7 +566,7 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
         { method: 'DELETE' }
       );
       const response = await DELETE(request, {
-        params: { taskId: 'task-1', dependencyId: 'dep-1' },
+        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
       });
 
       expect(response.status).toBe(403);
@@ -597,7 +575,6 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
     });
 
     it('should delete dependency successfully', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependency = {
         id: 'dep-1',
@@ -618,7 +595,7 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
         { method: 'DELETE' }
       );
       const response = await DELETE(request, {
-        params: { taskId: 'task-1', dependencyId: 'dep-1' },
+        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
       });
 
       expect(response.status).toBe(200);
@@ -632,7 +609,6 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
 
   describe('Audit Logging', () => {
     it('should create an audit log entry on successful deletion', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependency = {
         id: 'dep-1',
@@ -653,7 +629,7 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
         { method: 'DELETE' }
       );
       await DELETE(request, {
-        params: { taskId: 'task-1', dependencyId: 'dep-1' },
+        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
       });
 
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
@@ -675,7 +651,6 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
 
   describe('Error Handling', () => {
     it('should return 500 if database operation fails', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockDependency = {
         id: 'dep-1',
@@ -694,7 +669,7 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
         { method: 'DELETE' }
       );
       const response = await DELETE(request, {
-        params: { taskId: 'task-1', dependencyId: 'dep-1' },
+        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
       });
 
       expect(response.status).toBe(500);

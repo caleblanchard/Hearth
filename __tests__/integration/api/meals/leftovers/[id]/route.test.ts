@@ -11,8 +11,6 @@ import { NextRequest } from 'next/server';
 import { PATCH } from '@/app/api/meals/leftovers/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('PATCH /api/meals/leftovers/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -20,7 +18,6 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/meals/leftovers/leftover-123', {
       method: 'PATCH',
@@ -28,14 +25,13 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({ action: 'used' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'leftover-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return 404 if leftover not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.leftover.findUnique.mockResolvedValue(null);
 
@@ -45,14 +41,13 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({ action: 'used' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'leftover-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(response.status).toBe(404);
   });
 
   it('should return 403 if leftover belongs to different family', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingLeftover = {
       id: 'leftover-123',
@@ -72,14 +67,13 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({ action: 'used' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'leftover-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(response.status).toBe(403);
   });
 
   it('should return 400 if action is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingLeftover = {
       id: 'leftover-123',
@@ -95,7 +89,7 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({}),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'leftover-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -104,7 +98,6 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
 
   it('should return 400 if action is invalid', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingLeftover = {
       id: 'leftover-123',
@@ -120,7 +113,7 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({ action: 'invalid' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'leftover-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -129,7 +122,6 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
 
   it('should mark leftover as used', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const now = new Date('2026-01-01T12:00:00Z');
     jest.useFakeTimers();
@@ -164,7 +156,7 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({ action: 'used' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'leftover-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -180,7 +172,6 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
 
   it('should mark leftover as tossed', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const now = new Date('2026-01-01T12:00:00Z');
     jest.useFakeTimers();
@@ -209,7 +200,7 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({ action: 'tossed' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'leftover-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -225,7 +216,6 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
 
   it('should create audit log for marking as used', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingLeftover = {
       id: 'leftover-123',
@@ -243,7 +233,7 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({ action: 'used' }),
     }) as NextRequest;
 
-    await PATCH(request, { params: { id: 'leftover-123' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -258,7 +248,6 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
 
   it('should create audit log for marking as tossed', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingLeftover = {
       id: 'leftover-123',
@@ -276,7 +265,7 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({ action: 'tossed' }),
     }) as NextRequest;
 
-    await PATCH(request, { params: { id: 'leftover-123' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -289,7 +278,6 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
 
   it('should allow parents to mark leftovers as used', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingLeftover = {
       id: 'leftover-123',
@@ -307,14 +295,13 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({ action: 'used' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'leftover-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(response.status).toBe(200);
   });
 
   it('should allow children to mark leftovers as used', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const existingLeftover = {
       id: 'leftover-123',
@@ -332,7 +319,7 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
       body: JSON.stringify({ action: 'used' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'leftover-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'leftover-123' }) });
 
     expect(response.status).toBe(200);
   });

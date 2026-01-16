@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/leaderboard/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { Role } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/leaderboard', () => {
   beforeEach(() => {
@@ -45,7 +38,6 @@ describe('/api/leaderboard', () => {
     ]
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/leaderboard')
       const response = await GET(request)
@@ -57,7 +49,6 @@ describe('/api/leaderboard', () => {
 
     it('should return leaderboard for weekly period', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
       prismaMock.choreInstance.count
@@ -86,7 +77,6 @@ describe('/api/leaderboard', () => {
 
     it('should return leaderboard for all-time period', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
       prismaMock.creditBalance.findUnique
@@ -109,7 +99,6 @@ describe('/api/leaderboard', () => {
 
     it('should handle members without streaks', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
       prismaMock.choreInstance.count.mockResolvedValue(0)
@@ -127,7 +116,6 @@ describe('/api/leaderboard', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findMany.mockRejectedValue(new Error('Database error'))
 

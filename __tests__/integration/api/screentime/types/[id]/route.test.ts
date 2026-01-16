@@ -21,8 +21,6 @@ import { NextRequest } from 'next/server';
 import { GET, PATCH, DELETE } from '@/app/api/screentime/types/[id]/route';
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/screentime/types/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -42,10 +40,9 @@ describe('/api/screentime/types/[id]', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/screentime/types/type-1');
-      const response = await GET(request, { params: { id: 'type-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -54,12 +51,11 @@ describe('/api/screentime/types/[id]', () => {
 
     it('should return 404 if type not found', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/screentime/types/type-1');
-      const response = await GET(request, { params: { id: 'type-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(404);
@@ -68,7 +64,6 @@ describe('/api/screentime/types/[id]', () => {
 
     it('should return type with counts', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         ...mockType,
@@ -79,7 +74,7 @@ describe('/api/screentime/types/[id]', () => {
       } as any);
 
       const request = new NextRequest('http://localhost/api/screentime/types/type-1');
-      const response = await GET(request, { params: { id: 'type-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -91,14 +86,13 @@ describe('/api/screentime/types/[id]', () => {
 
   describe('PATCH', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/screentime/types/type-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated' }),
       });
 
-      const response = await PATCH(request, { params: { id: 'type-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -107,14 +101,13 @@ describe('/api/screentime/types/[id]', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       const request = new NextRequest('http://localhost/api/screentime/types/type-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated' }),
       });
 
-      const response = await PATCH(request, { params: { id: 'type-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(403);
@@ -123,7 +116,6 @@ describe('/api/screentime/types/[id]', () => {
 
     it('should return 404 if type not found', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue(null);
 
@@ -132,7 +124,7 @@ describe('/api/screentime/types/[id]', () => {
         body: JSON.stringify({ name: 'Updated' }),
       });
 
-      const response = await PATCH(request, { params: { id: 'type-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(404);
@@ -141,7 +133,6 @@ describe('/api/screentime/types/[id]', () => {
 
     it('should update type name', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue(mockType as any);
       prismaMock.screenTimeType.update.mockResolvedValue({
@@ -155,7 +146,7 @@ describe('/api/screentime/types/[id]', () => {
         body: JSON.stringify({ name: 'Updated Name' }),
       });
 
-      const response = await PATCH(request, { params: { id: 'type-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -168,7 +159,6 @@ describe('/api/screentime/types/[id]', () => {
 
     it('should check for duplicate names when updating', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst
         .mockResolvedValueOnce(mockType as any) // First call: find the type to update
@@ -179,7 +169,7 @@ describe('/api/screentime/types/[id]', () => {
         body: JSON.stringify({ name: 'Existing' }),
       });
 
-      const response = await PATCH(request, { params: { id: 'type-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -188,7 +178,6 @@ describe('/api/screentime/types/[id]', () => {
 
     it('should update isActive status', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue(mockType as any);
       prismaMock.screenTimeType.update.mockResolvedValue({
@@ -202,7 +191,7 @@ describe('/api/screentime/types/[id]', () => {
         body: JSON.stringify({ isActive: false }),
       });
 
-      const response = await PATCH(request, { params: { id: 'type-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -212,13 +201,12 @@ describe('/api/screentime/types/[id]', () => {
 
   describe('DELETE', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/screentime/types/type-1', {
         method: 'DELETE',
       });
 
-      const response = await DELETE(request, { params: { id: 'type-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -227,13 +215,12 @@ describe('/api/screentime/types/[id]', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       const request = new NextRequest('http://localhost/api/screentime/types/type-1', {
         method: 'DELETE',
       });
 
-      const response = await DELETE(request, { params: { id: 'type-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(403);
@@ -242,7 +229,6 @@ describe('/api/screentime/types/[id]', () => {
 
     it('should archive type if it has transactions', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         ...mockType,
@@ -263,7 +249,7 @@ describe('/api/screentime/types/[id]', () => {
         method: 'DELETE',
       });
 
-      const response = await DELETE(request, { params: { id: 'type-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -281,7 +267,6 @@ describe('/api/screentime/types/[id]', () => {
 
     it('should delete type if it has no transactions', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         ...mockType,
@@ -298,7 +283,7 @@ describe('/api/screentime/types/[id]', () => {
         method: 'DELETE',
       });
 
-      const response = await DELETE(request, { params: { id: 'type-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'type-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);

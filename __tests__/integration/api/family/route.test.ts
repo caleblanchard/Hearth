@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { GET, PATCH } from '@/app/api/family/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { Role } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/family', () => {
   beforeEach(() => {
@@ -61,7 +54,6 @@ describe('/api/family', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const response = await GET()
       const data = await response.json()
@@ -72,7 +64,6 @@ describe('/api/family', () => {
 
     it('should return family details for authenticated user', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.family.findUnique.mockResolvedValue(mockFamily as any)
 
@@ -107,7 +98,6 @@ describe('/api/family', () => {
 
     it('should return 404 if family not found', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.family.findUnique.mockResolvedValue(null)
 
@@ -120,7 +110,6 @@ describe('/api/family', () => {
 
     it('should return 500 on error', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.family.findUnique.mockRejectedValue(new Error('Database error'))
 
@@ -134,7 +123,6 @@ describe('/api/family', () => {
 
   describe('PATCH', () => {
     it('should return 403 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/family', {
         method: 'PATCH',
@@ -150,7 +138,6 @@ describe('/api/family', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/family', {
         method: 'PATCH',
@@ -166,7 +153,6 @@ describe('/api/family', () => {
 
     it('should update family settings successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const mockUpdatedFamily = {
         id: session.user.familyId,
@@ -205,7 +191,6 @@ describe('/api/family', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.family.update.mockRejectedValue(new Error('Database error'))
 

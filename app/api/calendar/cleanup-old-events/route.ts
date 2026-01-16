@@ -1,63 +1,41 @@
-/**
- * Cleanup Old External Calendar Events
- * 
- * POST /api/calendar/cleanup-old-events
- * Removes external calendar subscription events older than 12 months
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { cleanupOldCalendarEvents } from '@/lib/data/calendar';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session || !session.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get family member info
-    const familyMember = await prisma.familyMember.findUnique({
-      where: {
-        id: session.user.id,
-      },
-    });
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
-    if (!familyMember) {
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    // Calculate 12 months ago
-    const twelveMonthsAgo = new Date();
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+    // Only parents can cleanup events
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Parent access required' }, { status: 403 });
+    }
 
-    // Delete events from external subscriptions that are older than 12 months
-    const result = await prisma.calendarEvent.deleteMany({
-      where: {
-        familyId: familyMember.familyId,
-        externalSubscriptionId: { not: null },
-        startTime: { lt: twelveMonthsAgo },
-      },
-    });
-
-    logger.info('Cleaned up old external calendar events', {
-      userId: session.user.id,
-      deletedCount: result.count,
-    });
+    const result = await cleanupOldCalendarEvents(familyId);
 
     return NextResponse.json({
-      message: 'Cleanup completed',
-      deletedCount: result.count,
+      success: true,
+      result,
+      message: 'Old calendar events cleaned up successfully',
     });
   } catch (error) {
-    logger.error('Failed to cleanup old events', { error });
-    return NextResponse.json(
-      { error: 'Failed to cleanup old events' },
-      { status: 500 }
-    );
+    logger.error('Cleanup old events error:', error);
+    return NextResponse.json({ error: 'Failed to cleanup old events' }, { status: 500 });
   }
 }

@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { GET, PATCH, DELETE } from '@/app/api/meals/recipes/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/meals/recipes/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   const mockRecipe = {
@@ -59,10 +56,9 @@ describe('/api/meals/recipes/[id]', () => {
 
   describe('GET /api/meals/recipes/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1');
-      const response = await GET(request, { params: { id: 'recipe-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(401);
     });
@@ -71,7 +67,7 @@ describe('/api/meals/recipes/[id]', () => {
       prismaMock.recipe.findUnique.mockResolvedValue(mockRecipe as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1');
-      const response = await GET(request, { params: { id: 'recipe-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -110,7 +106,7 @@ describe('/api/meals/recipes/[id]', () => {
       prismaMock.recipe.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/nonexistent');
-      const response = await GET(request, { params: { id: 'nonexistent' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'nonexistent' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -125,7 +121,7 @@ describe('/api/meals/recipes/[id]', () => {
       prismaMock.recipe.findUnique.mockResolvedValue(otherFamilyRecipe as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1');
-      const response = await GET(request, { params: { id: 'recipe-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -135,13 +131,12 @@ describe('/api/meals/recipes/[id]', () => {
 
   describe('PATCH /api/meals/recipes/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Recipe' }),
       });
-      const response = await PATCH(request, { params: { id: 'recipe-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(401);
     });
@@ -153,7 +148,7 @@ describe('/api/meals/recipes/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Recipe' }),
       });
-      const response = await PATCH(request, { params: { id: 'nonexistent' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'nonexistent' }) });
 
       expect(response.status).toBe(404);
     });
@@ -169,7 +164,7 @@ describe('/api/meals/recipes/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Recipe' }),
       });
-      const response = await PATCH(request, { params: { id: 'recipe-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(403);
     });
@@ -194,7 +189,7 @@ describe('/api/meals/recipes/[id]', () => {
           isFavorite: false,
         }),
       });
-      const response = await PATCH(request, { params: { id: 'recipe-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -274,7 +269,7 @@ describe('/api/meals/recipes/[id]', () => {
           ],
         }),
       });
-      const response = await PATCH(request, { params: { id: 'recipe-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -321,7 +316,7 @@ describe('/api/meals/recipes/[id]', () => {
           instructions: ['New Step 1', 'New Step 2', 'New Step 3'],
         }),
       });
-      const response = await PATCH(request, { params: { id: 'recipe-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(200);
 
@@ -343,7 +338,7 @@ describe('/api/meals/recipes/[id]', () => {
           difficulty: 'INVALID',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'recipe-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -358,7 +353,7 @@ describe('/api/meals/recipes/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Recipe' }),
       });
-      const response = await PATCH(request, { params: { id: 'recipe-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();
@@ -368,12 +363,11 @@ describe('/api/meals/recipes/[id]', () => {
 
   describe('DELETE /api/meals/recipes/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'recipe-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(401);
     });
@@ -384,7 +378,7 @@ describe('/api/meals/recipes/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/nonexistent', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'nonexistent' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'nonexistent' }) });
 
       expect(response.status).toBe(404);
     });
@@ -399,7 +393,7 @@ describe('/api/meals/recipes/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'recipe-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(403);
     });
@@ -412,7 +406,7 @@ describe('/api/meals/recipes/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'recipe-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -443,7 +437,7 @@ describe('/api/meals/recipes/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'recipe-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();

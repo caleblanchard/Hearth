@@ -1,26 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { updateTodoItem, deleteTodoItem } from '@/lib/data/todos';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const { id } = await params;
     const updates = await request.json();
 
     // Verify todo belongs to user's family
-    const todo = await prisma.todoItem.findUnique({
-      where: { id },
-    });
+    const { data: todo } = await supabase
+      .from('todo_items')
+      .select('family_id, status')
+      .eq('id', id)
+      .single();
 
     if (!todo) {
       return NextResponse.json(
@@ -29,35 +40,20 @@ export async function PATCH(
       );
     }
 
-    if (todo.familyId !== session.user.familyId) {
+    if (todo.family_id !== familyId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
       );
     }
 
+    // Add completed timestamp if status changed to COMPLETED
+    if (updates.status === 'COMPLETED' && todo.status !== 'COMPLETED') {
+      updates.completed_at = new Date().toISOString();
+    }
+
     // Update todo
-    const updatedTodo = await prisma.todoItem.update({
-      where: { id },
-      data: {
-        ...updates,
-        completedAt: updates.status === 'COMPLETED' ? new Date() : todo.completedAt,
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+    const updatedTodo = await updateTodoItem(id, updates);
 
     return NextResponse.json({
       success: true,
@@ -75,21 +71,29 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const { id } = await params;
 
     // Verify todo belongs to user's family
-    const todo = await prisma.todoItem.findUnique({
-      where: { id },
-    });
+    const { data: todo } = await supabase
+      .from('todo_items')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
     if (!todo) {
       return NextResponse.json(
@@ -98,7 +102,7 @@ export async function DELETE(
       );
     }
 
-    if (todo.familyId !== session.user.familyId) {
+    if (todo.family_id !== familyId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -106,9 +110,7 @@ export async function DELETE(
     }
 
     // Delete todo
-    await prisma.todoItem.delete({
-      where: { id },
-    });
+    await deleteTodoItem(id);
 
     return NextResponse.json({
       success: true,

@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getTransportDrivers, createTransportDriver } from '@/lib/data/transport';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const drivers = await prisma.transportDriver.findMany({
-      where: { familyId: session.user.familyId },
-      orderBy: { name: 'asc' },
-    });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const drivers = await getTransportDrivers(familyId);
 
     return NextResponse.json({ drivers });
   } catch (error) {
@@ -28,59 +31,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can create drivers
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can create transport drivers' },
-        { status: 403 }
-      );
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const body = await request.json();
-    const { name, phone, relationship } = body;
+    const driver = await createTransportDriver(familyId, body);
 
-    // Validate required fields
-    if (!name) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      );
-    }
-
-    // Create driver
-    const driver = await prisma.transportDriver.create({
-      data: {
-        familyId: session.user.familyId,
-        name: name.trim(),
-        phone: phone?.trim() || null,
-        relationship: relationship?.trim() || null,
-      },
+    return NextResponse.json({
+      success: true,
+      driver,
+      message: 'Driver created successfully',
     });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'TRANSPORT_DRIVER_ADDED',
-        result: 'SUCCESS',
-        metadata: {
-          driverId: driver.id,
-          name: driver.name,
-        },
-      },
-    });
-
-    return NextResponse.json(
-      { driver, message: 'Transport driver created successfully' },
-      { status: 201 }
-    );
   } catch (error) {
     logger.error('Error creating transport driver:', error);
     return NextResponse.json(

@@ -11,17 +11,13 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/inventory/low-stock/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/inventory/low-stock', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/inventory/low-stock');
     const response = await GET(request);
@@ -102,7 +98,6 @@ describe('/api/inventory/low-stock', () => {
   });
 
   it('should allow children to view low-stock items', async () => {
-    auth.mockResolvedValue(mockChildSession());
 
     const lowStockItems = [
       {

@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/notifications/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 
-const { auth } = require('@/lib/auth')
-
 describe('/api/notifications', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -31,7 +24,6 @@ describe('/api/notifications', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/notifications')
       const response = await GET(request)
@@ -42,8 +34,7 @@ describe('/api/notifications', () => {
     })
 
     it('should return notifications for authenticated user', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockNotifications = [
         {
@@ -80,8 +71,7 @@ describe('/api/notifications', () => {
     })
 
     it('should filter unread notifications when unreadOnly=true', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findMany.mockResolvedValue([])
       prismaMock.notification.count
@@ -105,8 +95,7 @@ describe('/api/notifications', () => {
     })
 
     it('should support pagination', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findMany.mockResolvedValue([])
       prismaMock.notification.count
@@ -131,8 +120,7 @@ describe('/api/notifications', () => {
     })
 
     it('should use default pagination values', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findMany.mockResolvedValue([])
       prismaMock.notification.count
@@ -154,8 +142,7 @@ describe('/api/notifications', () => {
     })
 
     it('should return unread count separately', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notification.findMany.mockResolvedValue([])
       prismaMock.notification.count

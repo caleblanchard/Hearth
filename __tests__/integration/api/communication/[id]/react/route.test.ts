@@ -12,8 +12,6 @@ import { POST, DELETE } from '@/app/api/communication/[id]/react/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { PostType } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('POST /api/communication/[id]/react', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,7 +19,6 @@ describe('POST /api/communication/[id]/react', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/communication/post-123/react', {
       method: 'POST',
@@ -29,14 +26,13 @@ describe('POST /api/communication/[id]/react', () => {
       body: JSON.stringify({ emoji: '👍' }),
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'post-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return 404 if post not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.communicationPost.findUnique.mockResolvedValue(null);
 
@@ -46,14 +42,13 @@ describe('POST /api/communication/[id]/react', () => {
       body: JSON.stringify({ emoji: '👍' }),
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'post-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(404);
   });
 
   it('should return 403 if post belongs to different family', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -77,14 +72,13 @@ describe('POST /api/communication/[id]/react', () => {
       body: JSON.stringify({ emoji: '👍' }),
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'post-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(403);
   });
 
   it('should return 400 if emoji is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -108,7 +102,7 @@ describe('POST /api/communication/[id]/react', () => {
       body: JSON.stringify({}),
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'post-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -117,7 +111,6 @@ describe('POST /api/communication/[id]/react', () => {
 
   it('should add reaction successfully', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -161,7 +154,7 @@ describe('POST /api/communication/[id]/react', () => {
       body: JSON.stringify({ emoji: '👍' }),
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'post-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -171,7 +164,6 @@ describe('POST /api/communication/[id]/react', () => {
 
   it('should handle duplicate reaction (idempotent)', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -215,7 +207,7 @@ describe('POST /api/communication/[id]/react', () => {
       body: JSON.stringify({ emoji: '👍' }),
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'post-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -224,7 +216,6 @@ describe('POST /api/communication/[id]/react', () => {
 
   it('should allow multiple different emojis from same member', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -280,7 +271,7 @@ describe('POST /api/communication/[id]/react', () => {
       body: JSON.stringify({ emoji: '❤️' }),
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'post-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -289,7 +280,6 @@ describe('POST /api/communication/[id]/react', () => {
 
   it('should allow child to react to posts', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -333,7 +323,7 @@ describe('POST /api/communication/[id]/react', () => {
       body: JSON.stringify({ emoji: '🎉' }),
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'post-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
   });
@@ -346,20 +336,18 @@ describe('DELETE /api/communication/[id]/react', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/communication/post-123/react?emoji=👍', {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return 404 if post not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.communicationPost.findUnique.mockResolvedValue(null);
 
@@ -367,14 +355,13 @@ describe('DELETE /api/communication/[id]/react', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(404);
   });
 
   it('should return 403 if post belongs to different family', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -396,14 +383,13 @@ describe('DELETE /api/communication/[id]/react', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(403);
   });
 
   it('should return 400 if emoji is missing', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -425,7 +411,7 @@ describe('DELETE /api/communication/[id]/react', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -434,7 +420,6 @@ describe('DELETE /api/communication/[id]/react', () => {
 
   it('should remove own reaction successfully', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -472,7 +457,7 @@ describe('DELETE /api/communication/[id]/react', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -488,7 +473,6 @@ describe('DELETE /api/communication/[id]/react', () => {
 
   it('should return success even if reaction does not exist (idempotent)', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -518,14 +502,13 @@ describe('DELETE /api/communication/[id]/react', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
   });
 
   it('should only remove own reactions, not others', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -567,7 +550,7 @@ describe('DELETE /api/communication/[id]/react', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -585,7 +568,6 @@ describe('DELETE /api/communication/[id]/react', () => {
 
   it('should allow child to remove own reactions', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -615,7 +597,7 @@ describe('DELETE /api/communication/[id]/react', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
   });

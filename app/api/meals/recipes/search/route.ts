@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { searchRecipes } from '@/lib/data/recipes';
 import { logger } from '@/lib/logger';
 
 /**
@@ -11,10 +12,15 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -23,95 +29,31 @@ export async function GET(request: NextRequest) {
     // Validate query parameter
     if (!query) {
       return NextResponse.json(
-        { error: 'Search query is required' },
+        { error: 'Search query (q) is required' },
         { status: 400 }
       );
     }
 
-    if (query.length < 2) {
-      return NextResponse.json(
-        { error: 'Search query must be at least 2 characters' },
-        { status: 400 }
-      );
-    }
+    const results = await searchRecipes(familyId, query);
 
-    const searchTerm = query.toLowerCase().trim();
+    // Map to camelCase for frontend
+    const mappedResults = results.map((recipe: any) => ({
+      id: recipe.id,
+      name: recipe.name,
+      description: recipe.description,
+      imageUrl: recipe.image_url,
+      category: recipe.category,
+      dietaryTags: recipe.dietary_tags || [],
+      prepTimeMinutes: recipe.prep_time_minutes,
+      cookTimeMinutes: recipe.cook_time_minutes,
+      difficulty: recipe.difficulty,
+      averageRating: recipe.averageRating,
+      matchScore: recipe.matchScore,
+    }));
 
-    // Search recipes by name or ingredients (tags handled in scoring)
-    const recipes = await prisma.recipe.findMany({
-      where: {
-        familyId: session.user.familyId,
-        OR: [
-          { name: { contains: searchTerm, mode: 'insensitive' } },
-          {
-            ingredients: {
-              some: {
-                name: { contains: searchTerm, mode: 'insensitive' },
-              },
-            },
-          },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        imageUrl: true,
-        category: true,
-        dietaryTags: true,
-        ingredients: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
-
-    // Calculate weighted scores for each recipe
-    const scoredRecipes = recipes.map((recipe) => {
-      let score = 0;
-
-      // Title match: 100 points
-      if (recipe.name.toLowerCase().includes(searchTerm)) {
-        score += 100;
-      }
-
-      // Tag match: 50 points per tag
-      const tagsMatch = recipe.dietaryTags.some((tag) =>
-        tag.toLowerCase().includes(searchTerm)
-      );
-      if (tagsMatch) {
-        score += 50;
-      }
-
-      // Ingredient match: 25 points
-      const ingredientsMatch = recipe.ingredients.some((ing) =>
-        ing.name.toLowerCase().includes(searchTerm)
-      );
-      if (ingredientsMatch) {
-        score += 25;
-      }
-
-      return {
-        id: recipe.id,
-        name: recipe.name,
-        imageUrl: recipe.imageUrl,
-        category: recipe.category,
-        dietaryTags: recipe.dietaryTags,
-        score,
-      };
-    });
-
-    // Sort by score descending and limit to 5
-    const topRecipes = scoredRecipes
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
-
-    return NextResponse.json({ recipes: topRecipes });
+    return NextResponse.json({ results: mappedResults });
   } catch (error) {
-    logger.error('Error searching recipes:', error);
-    return NextResponse.json(
-      { error: 'Failed to search recipes' },
-      { status: 500 }
-    );
+    logger.error('Recipe search error:', error);
+    return NextResponse.json({ error: 'Failed to search recipes' }, { status: 500 });
   }
 }

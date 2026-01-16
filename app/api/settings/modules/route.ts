@@ -1,276 +1,140 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { ModuleId } from '@/app/generated/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getModuleConfigurations, updateModuleConfiguration } from '@/lib/data/settings';
 import { logger } from '@/lib/logger';
-
-// All configurable modules (excludes RULES_ENGINE per requirements)
-const CONFIGURABLE_MODULES: ModuleId[] = [
-  'CHORES',
-  'SCREEN_TIME',
-  'CREDITS',
-  'SHOPPING',
-  'CALENDAR',
-  'TODOS',
-  'ROUTINES',
-  'MEAL_PLANNING',
-  'RECIPES',
-  'INVENTORY',
-  'HEALTH',
-  'PROJECTS',
-  'COMMUNICATION',
-  'TRANSPORT',
-  'PETS',
-  'MAINTENANCE',
-  'DOCUMENTS',
-  'FINANCIAL',
-  'LEADERBOARD',
-];
-
-// Module metadata for display
-const MODULE_INFO: Record<ModuleId, { name: string; description: string; category: string }> = {
-  CHORES: {
-    name: 'Chores',
-    description: 'Assign and track household chores',
-    category: 'Tasks',
-  },
-  SCREEN_TIME: {
-    name: 'Screen Time',
-    description: 'Manage screen time limits and usage',
-    category: 'Management',
-  },
-  CREDITS: {
-    name: 'Rewards & Credits',
-    description: 'Earn and spend family credits',
-    category: 'Rewards',
-  },
-  SHOPPING: {
-    name: 'Shopping Lists',
-    description: 'Create and manage shopping lists',
-    category: 'Tasks',
-  },
-  CALENDAR: {
-    name: 'Calendar',
-    description: 'Family calendar and events',
-    category: 'Planning',
-  },
-  TODOS: {
-    name: 'To-Do Lists',
-    description: 'Personal to-do lists',
-    category: 'Tasks',
-  },
-  ROUTINES: {
-    name: 'Routines',
-    description: 'Morning and bedtime routines',
-    category: 'Planning',
-  },
-  MEAL_PLANNING: {
-    name: 'Meal Planning',
-    description: 'Plan meals and manage recipes',
-    category: 'Planning',
-  },
-  RECIPES: {
-    name: 'Recipes',
-    description: 'Recipe collection and management',
-    category: 'Planning',
-  },
-  INVENTORY: {
-    name: 'Inventory',
-    description: 'Track household inventory',
-    category: 'Management',
-  },
-  HEALTH: {
-    name: 'Health & Wellness',
-    description: 'Track health events and medical information',
-    category: 'Health',
-  },
-  PROJECTS: {
-    name: 'Projects',
-    description: 'Family projects and goals',
-    category: 'Planning',
-  },
-  COMMUNICATION: {
-    name: 'Communication Board',
-    description: 'Family messages and announcements',
-    category: 'Communication',
-  },
-  TRANSPORT: {
-    name: 'Transportation',
-    description: 'Manage rides and transportation',
-    category: 'Management',
-  },
-  PETS: {
-    name: 'Pet Care',
-    description: 'Track pet care tasks and information',
-    category: 'Management',
-  },
-  MAINTENANCE: {
-    name: 'Home Maintenance',
-    description: 'Track home maintenance tasks',
-    category: 'Tasks',
-  },
-  DOCUMENTS: {
-    name: 'Documents',
-    description: 'Store and share family documents',
-    category: 'Management',
-  },
-  FINANCIAL: {
-    name: 'Financial Management',
-    description: 'Budgets, transactions, and savings goals',
-    category: 'Financial',
-  },
-  LEADERBOARD: {
-    name: 'Leaderboard',
-    description: 'Family achievement leaderboard',
-    category: 'Rewards',
-  },
-  RULES_ENGINE: {
-    name: 'Automation Rules',
-    description: 'Automate household tasks',
-    category: 'Advanced',
-  },
-};
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can view module settings
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can view module settings' },
-        { status: 403 }
-      );
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    // Get existing module configurations
-    const existingConfigs = await prisma.moduleConfiguration.findMany({
-      where: { familyId: session.user.familyId },
-      select: {
-        moduleId: true,
-        isEnabled: true,
-        enabledAt: true,
-        disabledAt: true,
-        updatedAt: true,
-      },
-    });
+    // Only parents can view module configurations
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Parent access required' }, { status: 403 });
+    }
 
-    // Build complete module list with configurations
-    const modules = CONFIGURABLE_MODULES.map((moduleId) => {
-      const config = existingConfigs.find((c) => c.moduleId === moduleId);
-      const info = MODULE_INFO[moduleId];
+    const configurations = await getModuleConfigurations(familyId);
 
+    // Define all available modules with metadata
+    const allModules = [
+      // Tasks
+      { moduleId: 'CHORES', name: 'Chores', description: 'Assign and track household chores', category: 'Tasks' },
+      { moduleId: 'TODOS', name: 'To-Dos', description: 'Personal and family task lists', category: 'Tasks' },
+      { moduleId: 'ROUTINES', name: 'Routines', description: 'Morning routines and checklists', category: 'Tasks' },
+      { moduleId: 'PROJECTS', name: 'Projects', description: 'Family projects and collaborative tasks', category: 'Tasks' },
+      
+      // Planning
+      { moduleId: 'CALENDAR', name: 'Calendar', description: 'Family calendar and events', category: 'Planning' },
+      { moduleId: 'MEAL_PLANNING', name: 'Meal Planning', description: 'Weekly meal plans and menus', category: 'Planning' },
+      { moduleId: 'RECIPES', name: 'Recipes', description: 'Recipe collection and management', category: 'Planning' },
+      { moduleId: 'SHOPPING', name: 'Shopping List', description: 'Shared shopping lists', category: 'Planning' },
+      { moduleId: 'TRANSPORT', name: 'Transport', description: 'Carpool and transportation scheduling', category: 'Planning' },
+      
+      // Management
+      { moduleId: 'INVENTORY', name: 'Inventory', description: 'Household inventory tracking', category: 'Management' },
+      { moduleId: 'MAINTENANCE', name: 'Maintenance', description: 'Home maintenance tracking', category: 'Management' },
+      { moduleId: 'DOCUMENTS', name: 'Documents', description: 'Family document storage', category: 'Management' },
+      { moduleId: 'PETS', name: 'Pets', description: 'Pet care and tracking', category: 'Management' },
+      
+      // Rewards
+      { moduleId: 'CREDITS', name: 'Credits', description: 'Family currency and rewards', category: 'Rewards' },
+      { moduleId: 'LEADERBOARD', name: 'Leaderboard', description: 'Family achievements leaderboard', category: 'Rewards' },
+      { moduleId: 'SCREEN_TIME', name: 'Screen Time', description: 'Screen time management', category: 'Rewards' },
+      
+      // Health
+      { moduleId: 'HEALTH', name: 'Health', description: 'Health tracking and records', category: 'Health' },
+      
+      // Communication
+      { moduleId: 'COMMUNICATION', name: 'Communication Board', description: 'Family message board', category: 'Communication' },
+      
+      // Financial
+      { moduleId: 'FINANCIAL', name: 'Financial', description: 'Budget and expense tracking', category: 'Financial' },
+      
+      // Automation
+      { moduleId: 'RULES_ENGINE', name: 'Rules & Automation', description: 'Automated family rules', category: 'Automation' },
+    ];
+
+    // Merge with configurations from database
+    const modules = allModules.map(module => {
+      const config = configurations.find(c => c.module_id === module.moduleId);
       return {
-        moduleId,
-        name: info.name,
-        description: info.description,
-        category: info.category,
-        isEnabled: config?.isEnabled ?? true, // Default to enabled
-        enabledAt: config?.enabledAt,
-        disabledAt: config?.disabledAt,
-        updatedAt: config?.updatedAt,
+        moduleId: module.moduleId,
+        name: module.name,
+        description: module.description,
+        category: module.category,
+        isEnabled: config?.is_enabled ?? true, // Default to enabled if no config
+        enabledAt: config?.enabled_at || null,
+        disabledAt: config?.disabled_at || null,
+        updatedAt: config?.updated_at || null,
       };
     });
 
     // Group by category
-    const categories = modules.reduce((acc, module) => {
-      if (!acc[module.category]) {
-        acc[module.category] = [];
+    const categories: Record<string, typeof modules> = {};
+    modules.forEach(module => {
+      if (!categories[module.category]) {
+        categories[module.category] = [];
       }
-      acc[module.category].push(module);
-      return acc;
-    }, {} as Record<string, typeof modules>);
+      categories[module.category].push(module);
+    });
 
-    return NextResponse.json({ modules, categories }, { status: 200 });
+    return NextResponse.json({ modules, categories });
   } catch (error) {
-    logger.error('Error fetching module configurations:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch module configurations' },
-      { status: 500 }
-    );
+    logger.error('Get module configurations error:', error);
+    return NextResponse.json({ error: 'Failed to get module configurations' }, { status: 500 });
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can update module settings
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can update module settings' },
-        { status: 403 }
-      );
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Only parents can update module configurations
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Parent access required' }, { status: 403 });
     }
 
     const body = await request.json();
     const { moduleId, isEnabled } = body;
 
-    // Validate module ID
-    if (!moduleId || !CONFIGURABLE_MODULES.includes(moduleId)) {
-      return NextResponse.json(
-        { error: 'Invalid or non-configurable module ID' },
-        { status: 400 }
-      );
+    if (!moduleId) {
+      return NextResponse.json({ error: 'Module ID is required' }, { status: 400 });
     }
 
-    // Validate isEnabled
-    if (typeof isEnabled !== 'boolean') {
-      return NextResponse.json(
-        { error: 'isEnabled must be a boolean' },
-        { status: 400 }
-      );
-    }
+    const result = await updateModuleConfiguration(familyId, moduleId, { is_enabled: isEnabled });
 
-    const now = new Date();
-
-    // Upsert module configuration
-    const config = await prisma.moduleConfiguration.upsert({
-      where: {
-        familyId_moduleId: {
-          familyId: session.user.familyId,
-          moduleId,
-        },
-      },
-      create: {
-        familyId: session.user.familyId,
-        moduleId,
-        isEnabled,
-        enabledAt: isEnabled ? now : null,
-        disabledAt: isEnabled ? null : now,
-      },
-      update: {
-        isEnabled,
-        enabledAt: isEnabled ? now : undefined,
-        disabledAt: isEnabled ? undefined : now,
-      },
+    return NextResponse.json({
+      success: true,
+      module: result,
+      message: 'Module configuration updated successfully',
     });
-
-    // Log audit event
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: isEnabled ? 'MODULE_ENABLED' : 'MODULE_DISABLED',
-        entityType: 'ModuleConfiguration',
-        entityId: config.id,
-        metadata: { moduleId },
-        result: 'SUCCESS',
-      },
-    });
-
-    return NextResponse.json({ config }, { status: 200 });
   } catch (error) {
-    logger.error('Error updating module configuration:', error);
-    return NextResponse.json(
-      { error: 'Failed to update module configuration' },
-      { status: 500 }
-    );
+    logger.error('Update module configuration error:', error);
+    return NextResponse.json({ error: 'Failed to update module configuration' }, { status: 500 });
   }
 }

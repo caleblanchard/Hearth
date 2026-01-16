@@ -12,8 +12,6 @@ import { POST } from '@/app/api/routines/[id]/complete/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { RoutineType } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('POST /api/routines/[id]/complete', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,20 +19,18 @@ describe('POST /api/routines/[id]/complete', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/routines/routine-123/complete', {
       method: 'POST',
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'routine-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return 404 if routine not found', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.routine.findUnique.mockResolvedValue(null);
 
@@ -42,7 +38,7 @@ describe('POST /api/routines/[id]/complete', () => {
       method: 'POST',
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'routine-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(404);
     const data = await response.json();
@@ -51,7 +47,6 @@ describe('POST /api/routines/[id]/complete', () => {
 
   it('should return 403 if routine belongs to different family', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const routine = {
       id: 'routine-123',
@@ -71,14 +66,13 @@ describe('POST /api/routines/[id]/complete', () => {
       method: 'POST',
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'routine-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(403);
   });
 
   it('should return 403 if routine is assigned to different child', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const routine = {
       id: 'routine-123',
@@ -98,7 +92,7 @@ describe('POST /api/routines/[id]/complete', () => {
       method: 'POST',
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'routine-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(403);
     const data = await response.json();
@@ -107,7 +101,6 @@ describe('POST /api/routines/[id]/complete', () => {
 
   it('should complete routine for child when assigned to them', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -140,7 +133,7 @@ describe('POST /api/routines/[id]/complete', () => {
       method: 'POST',
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'routine-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(201);
     const data = await response.json();
@@ -151,7 +144,6 @@ describe('POST /api/routines/[id]/complete', () => {
 
   it('should complete unassigned routine for any child', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -184,14 +176,13 @@ describe('POST /api/routines/[id]/complete', () => {
       method: 'POST',
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'routine-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(201);
   });
 
   it('should allow parent to complete routine on behalf of child', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -234,7 +225,7 @@ describe('POST /api/routines/[id]/complete', () => {
       body: JSON.stringify({ memberId: 'child-123' }),
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'routine-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(201);
     const data = await response.json();
@@ -243,7 +234,6 @@ describe('POST /api/routines/[id]/complete', () => {
 
   it('should return 400 if parent specifies non-existent member', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const routine = {
       id: 'routine-123',
@@ -266,7 +256,7 @@ describe('POST /api/routines/[id]/complete', () => {
       body: JSON.stringify({ memberId: 'non-existent' }),
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'routine-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -275,7 +265,6 @@ describe('POST /api/routines/[id]/complete', () => {
 
   it('should handle duplicate completion gracefully', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const routine = {
       id: 'routine-123',
@@ -300,7 +289,7 @@ describe('POST /api/routines/[id]/complete', () => {
       method: 'POST',
     }) as NextRequest;
 
-    const response = await POST(request, { params: { id: 'routine-123' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -309,7 +298,6 @@ describe('POST /api/routines/[id]/complete', () => {
 
   it('should create audit log on completion', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -342,7 +330,7 @@ describe('POST /api/routines/[id]/complete', () => {
       method: 'POST',
     }) as NextRequest;
 
-    await POST(request, { params: { id: 'routine-123' } });
+    await POST(request, { params: Promise.resolve({ id: 'routine-123' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -1,81 +1,55 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
-import { onCalendarEventAdded } from '@/lib/rules-engine/hooks';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getCalendarEvents, createCalendarEvent } from '@/lib/data/calendar';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: Request) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    // Build query filter
-    const where: any = {
-      familyId: session.user.familyId,
-    };
-
-    // Filter by date range if provided
-    // Include events that overlap the date range (start before endDate and end after startDate)
-    if (startDate && endDate) {
-      where.OR = [
-        // Events that start within the range
-        {
-          startTime: {
-            gte: new Date(startDate),
-            lte: new Date(endDate),
-          },
-        },
-        // Events that end within the range
-        {
-          endTime: {
-            gte: new Date(startDate),
-            lte: new Date(endDate),
-          },
-        },
-        // Events that span the entire range
-        {
-          AND: [
-            { startTime: { lte: new Date(startDate) } },
-            { endTime: { gte: new Date(endDate) } },
-          ],
-        },
-      ];
+    if (!startDate || !endDate) {
+      return NextResponse.json({ error: 'Start and end dates required' }, { status: 400 });
     }
 
-    const events = await prisma.calendarEvent.findMany({
-      where,
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        assignments: {
-          include: {
-            member: {
-              select: {
-                id: true,
-                name: true,
-                avatarUrl: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        startTime: 'asc',
-      },
-    });
+    // Use data module
+    const events = await getCalendarEvents(familyId, startDate, endDate);
 
-    return NextResponse.json({ events });
+    // Map to camelCase for frontend
+    const mappedEvents = events.map(event => ({
+      id: event.id,
+      familyId: event.family_id,
+      title: event.title,
+      description: event.description,
+      startTime: event.start_time,
+      endTime: event.end_time,
+      isAllDay: event.is_all_day,
+      location: event.location,
+      eventType: event.event_type,
+      color: event.color,
+      externalId: event.external_id,
+      externalSubscriptionId: event.external_subscription_id,
+      createdById: event.created_by_id,
+      createdAt: event.created_at,
+      updatedAt: event.updated_at,
+      createdBy: event.creator || { id: event.created_by_id || '', name: 'System' },
+      assignments: event.assignments || [],
+    }));
+
+    return NextResponse.json({ events: mappedEvents });
   } catch (error) {
     logger.error('Error fetching events:', error);
     return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
@@ -84,109 +58,73 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify family exists
-    const family = await prisma.family.findUnique({
-      where: { id: session.user.familyId },
-    });
-
-    if (!family) {
-      return NextResponse.json({ error: 'Family not found' }, { status: 404 });
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+    
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const body = await request.json();
+
     const {
       title,
       description,
       startTime,
       endTime,
-      location,
       isAllDay,
+      location,
+      eventType,
       color,
-      assignedMemberIds,
     } = body;
 
     // Validation
-    if (!title || !startTime) {
+    if (!title || !startTime || !endTime) {
       return NextResponse.json(
-        { error: 'Title and start time are required' },
+        { error: 'Title, start time, and end time are required' },
         { status: 400 }
       );
     }
 
-    // Create event with assignments in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      const event = await tx.calendarEvent.create({
-        data: {
-          familyId: family.id,
-          title,
-          description: description || null,
-          startTime: new Date(startTime),
-          endTime: endTime ? new Date(endTime) : new Date(startTime),
-          location: location || null,
-          eventType: 'INTERNAL',
-          color: color || '#3b82f6',
-          isAllDay: isAllDay || false,
-          createdById: session.user.id,
-        },
-      });
-
-      // Create assignments if provided
-      if (assignedMemberIds && assignedMemberIds.length > 0) {
-        await tx.calendarEventAssignment.createMany({
-          data: assignedMemberIds.map((memberId: string) => ({
-            eventId: event.id,
-            memberId,
-          })),
-        });
-      }
-
-      return event;
+    // Use data module
+    const event = await createCalendarEvent({
+      family_id: familyId,
+      created_by_id: memberId,
+      title: title.trim(),
+      description: description?.trim() || null,
+      start_time: startTime,
+      end_time: endTime,
+      is_all_day: isAllDay || false,
+      location: location?.trim() || null,
+      event_type: eventType || 'GENERAL',
+      color: color || null,
     });
 
-    // Count events for the same day to check if calendar is busy
-    const eventDate = new Date(result.startTime);
-    const dayStart = new Date(eventDate);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(eventDate);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    const dayEventCount = await prisma.calendarEvent.count({
-      where: {
-        familyId: session.user.familyId,
-        startTime: {
-          gte: dayStart,
-          lte: dayEnd,
-        },
+    // Create audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'CALENDAR_EVENT_CREATED',
+      entity_type: 'CALENDAR',
+      entity_id: event.id,
+      result: 'SUCCESS',
+      metadata: {
+        title: event.title,
+        startTime: event.start_time,
       },
     });
 
-    // Trigger rules engine evaluation (async, fire-and-forget)
-    try {
-      await onCalendarEventAdded(
-        {
-          id: result.id,
-          title: result.title,
-          startTime: result.startTime,
-          endTime: result.endTime,
-        },
-        session.user.familyId,
-        dayEventCount
-      );
-    } catch (error) {
-      logger.error('Rules engine hook error:', error);
-      // Don't fail the event creation if rules engine fails
-    }
-
-    return NextResponse.json({
-      message: 'Event created successfully',
-      event: result,
-    });
+    return NextResponse.json(
+      { event, message: 'Event created successfully' },
+      { status: 201 }
+    );
   } catch (error) {
     logger.error('Error creating event:', error);
     return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });

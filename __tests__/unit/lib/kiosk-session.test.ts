@@ -73,7 +73,7 @@ describe('Kiosk Session Business Logic', () => {
 
       const result = await createKioskSession('device-123', 'family-1');
 
-      expect(result.currentMemberId).toBeNull();
+      expect(result.current_member_id).toBeNull();
       expect(prismaMock.kioskSession.update).toHaveBeenCalled();
       expect(prismaMock.kioskSession.create).not.toHaveBeenCalled();
     });
@@ -97,7 +97,7 @@ describe('Kiosk Session Business Logic', () => {
 
       const result = await createKioskSession('device-123', 'family-1');
 
-      expect(result.currentMemberId).toBeNull();
+      expect(result.current_member_id).toBeNull();
     });
   });
 
@@ -173,7 +173,7 @@ describe('Kiosk Session Business Logic', () => {
 
       const result = await updateKioskActivity('token-123');
 
-      expect(result.lastActivityAt.getTime()).toBeGreaterThan(oldTime.getTime());
+      expect(new Date(result.last_activity_at).getTime()).toBeGreaterThan(oldTime.getTime());
       expect(prismaMock.kioskSession.update).toHaveBeenCalledWith({
         where: { sessionToken: 'token-123' },
         data: {
@@ -202,7 +202,7 @@ describe('Kiosk Session Business Logic', () => {
 
       const result = await lockKioskSession('token-123');
 
-      expect(result.currentMemberId).toBeNull();
+      expect(result.current_member_id).toBeNull();
       expect(prismaMock.kioskSession.update).toHaveBeenCalledWith({
         where: { sessionToken: 'token-123' },
         data: {
@@ -431,8 +431,8 @@ describe('Kiosk Session Business Logic', () => {
 
       const result = await endKioskSession('token-123');
 
-      expect(result.isActive).toBe(false);
-      expect(result.currentMemberId).toBeNull();
+      expect(result.is_active).toBe(false);
+      expect(result.current_member_id).toBeNull();
       expect(prismaMock.kioskSession.update).toHaveBeenCalledWith({
         where: { sessionToken: 'token-123' },
         data: {
@@ -543,10 +543,10 @@ describe('Kiosk Session Business Logic', () => {
 
       const result = await getOrCreateKioskSettings('family-1');
 
-      expect(result.isEnabled).toBe(true);
-      expect(result.autoLockMinutes).toBe(15);
-      expect(result.enabledWidgets).toEqual(['transport', 'medication', 'maintenance', 'inventory', 'weather']);
-      expect(result.allowGuestView).toBe(true);
+      expect(result.is_enabled).toBe(true);
+      expect(result.auto_lock_minutes).toBe(15);
+      expect(result.enabled_widgets).toEqual(['transport', 'medication', 'maintenance', 'inventory', 'weather']);
+      expect(result.allow_guest_view).toBe(true);
       expect(prismaMock.kioskSettings.create).toHaveBeenCalledWith({
         data: {
           familyId: 'family-1',

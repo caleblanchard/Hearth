@@ -1,45 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getLowStockItems } from '@/lib/data/inventory';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get items where lowStockThreshold is set (not null)
-    // The filtering for currentQuantity <= lowStockThreshold will be done in app logic
-    const allItems = await prisma.inventoryItem.findMany({
-      where: {
-        familyId: session.user.familyId,
-        lowStockThreshold: {
-          not: null,
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    // Filter in-memory for low stock items (quantity <= threshold)
-    const lowStockItems = allItems.filter(
-      (item) =>
-        item.lowStockThreshold !== null &&
-        item.currentQuantity <= item.lowStockThreshold
-    );
+    const items = await getLowStockItems(familyId);
 
-    return NextResponse.json({ items: lowStockItems });
+    // Map to camelCase for frontend
+    const mappedItems = items.map(item => ({
+      id: item.id,
+      familyId: item.family_id,
+      name: item.name,
+      category: item.category,
+      location: item.location,
+      currentQuantity: item.current_quantity,
+      unit: item.unit,
+      lowStockThreshold: item.low_stock_threshold,
+      expiresAt: item.expires_at,
+      barcode: item.barcode,
+      notes: item.notes,
+      lastRestockedAt: item.last_restocked_at,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+
+    return NextResponse.json({ items: mappedItems });
   } catch (error) {
     logger.error('Error fetching low-stock items:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch low-stock items' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch low-stock items' }, { status: 500 });
   }
 }

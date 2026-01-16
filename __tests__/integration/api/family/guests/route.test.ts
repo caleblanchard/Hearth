@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/family/guests/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/family/guests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   const mockGuestInvite = {
@@ -40,7 +37,6 @@ describe('/api/family/guests', () => {
 
   describe('GET /api/family/guests', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/family/guests');
       const response = await GET(request);
@@ -49,7 +45,6 @@ describe('/api/family/guests', () => {
     });
 
     it('should return 403 if user is not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/family/guests');
       const response = await GET(request);

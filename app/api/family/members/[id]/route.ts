@@ -1,153 +1,64 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
-import { hash } from 'bcrypt';
-import { BCRYPT_ROUNDS } from '@/lib/constants';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { updateFamilyMember, deleteFamilyMember } from '@/lib/data/family';
 import { logger } from '@/lib/logger';
-import { ModuleId } from '@/app/generated/prisma';
-
-// All modules that should be enabled by default (if no config exists)
-const DEFAULT_ENABLED_MODULES: ModuleId[] = [
-  'CHORES',
-  'SCREEN_TIME',
-  'CREDITS',
-  'SHOPPING',
-  'CALENDAR',
-  'TODOS',
-  'ROUTINES',
-  'MEAL_PLANNING',
-  'RECIPES',
-  'INVENTORY',
-  'HEALTH',
-  'PROJECTS',
-  'COMMUNICATION',
-  'TRANSPORT',
-  'PETS',
-  'MAINTENANCE',
-  'DOCUMENTS',
-  'FINANCIAL',
-  'LEADERBOARD',
-];
 
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId || session.user.role !== 'PARENT') {
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Only parents can update members
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
-    const { id } = params;
+    // Verify member exists and belongs to family
+    const { data: targetMember } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('id', id)
+      .single();
+
+    if (!targetMember || targetMember.family_id !== familyId) {
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+    }
+
     const body = await request.json();
-    const { name, email, birthDate, avatarUrl, password, pin, isActive, allowedModules } = body;
+    const member = await updateFamilyMember(id, body);
 
-    // Verify the member belongs to the same family
-    const member = await prisma.familyMember.findUnique({
-      where: { id },
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'MEMBER_UPDATED',
+      entity_type: 'MEMBER',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: body,
     });
-
-    if (!member || member.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
-    }
-
-    // Prevent deactivating yourself
-    if (isActive === false && member.id === session.user.id) {
-      return NextResponse.json({ error: 'Cannot deactivate your own account' }, { status: 400 });
-    }
-
-    // Check if trying to change email to one that's already in use
-    if (email && email !== member.email) {
-      const existingMember = await prisma.familyMember.findUnique({
-        where: { email },
-      });
-
-      if (existingMember && existingMember.id !== id) {
-        return NextResponse.json({ error: 'Email already in use' }, { status: 400 });
-      }
-    }
-
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (email !== undefined) updateData.email = email || null;
-    if (birthDate !== undefined) {
-      updateData.birthDate = birthDate ? new Date(birthDate) : undefined;
-    }
-    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl || null;
-    if (isActive !== undefined) updateData.isActive = isActive;
-
-    // Hash new password or PIN if provided
-    if (password && member.role === 'PARENT') {
-      updateData.passwordHash = await hash(password, BCRYPT_ROUNDS);
-    }
-    if (pin && member.role === 'CHILD') {
-      updateData.pin = await hash(pin, BCRYPT_ROUNDS);
-    }
-
-    const updatedMember = await prisma.familyMember.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        birthDate: true,
-        avatarUrl: true,
-        isActive: true,
-        createdAt: true,
-      },
-    });
-
-    // Update module access for children if provided
-    if (member.role === 'CHILD' && allowedModules !== undefined && Array.isArray(allowedModules)) {
-      // Get all configured modules (both enabled and disabled)
-      const allConfigs = await prisma.moduleConfiguration.findMany({
-        where: { familyId: session.user.familyId },
-        select: { moduleId: true, isEnabled: true },
-      });
-
-      // Build enabled modules list (similar to /api/settings/modules/enabled)
-      const configuredModuleIds = new Set(allConfigs.map((c) => c.moduleId));
-      const enabledConfiguredIds = allConfigs
-        .filter((c) => c.isEnabled)
-        .map((c) => c.moduleId);
-
-      // Add default-enabled modules that haven't been configured yet
-      const familyEnabledModules = [
-        ...enabledConfiguredIds,
-        ...DEFAULT_ENABLED_MODULES.filter((m) => !configuredModuleIds.has(m)),
-      ];
-
-      const enabledModuleIds = new Set(familyEnabledModules);
-
-      // Delete all existing module access for this member
-      await prisma.memberModuleAccess.deleteMany({
-        where: { memberId: id },
-      });
-
-      // Create new module access entries for each allowed module
-      // Only allow modules that are enabled at the family level
-      const moduleAccessData = allowedModules
-        .filter((moduleId: string) => enabledModuleIds.has(moduleId as ModuleId))
-        .map((moduleId: string) => ({
-          memberId: id,
-          moduleId: moduleId as ModuleId,
-          hasAccess: true,
-        }));
-
-      if (moduleAccessData.length > 0) {
-        await prisma.memberModuleAccess.createMany({
-          data: moduleAccessData,
-        });
-      }
-    }
 
     return NextResponse.json({
+      success: true,
+      member,
       message: 'Family member updated successfully',
-      member: updatedMember,
     });
   } catch (error) {
     logger.error('Error updating family member:', error);
@@ -156,58 +67,58 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId || session.user.role !== 'PARENT') {
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Only parents can delete members
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
-    const { id } = params;
+    // Verify member exists and belongs to family
+    const { data: targetMember } = await supabase
+      .from('family_members')
+      .select('family_id, name')
+      .eq('id', id)
+      .single();
 
-    // Verify the member belongs to the same family
-    const member = await prisma.familyMember.findUnique({
-      where: { id },
-    });
-
-    if (!member || member.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    if (!targetMember || targetMember.family_id !== familyId) {
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
-    // Prevent deleting yourself
-    if (member.id === session.user.id) {
-      return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
-    }
+    await deleteFamilyMember(id);
 
-    // Check if this is the last parent
-    if (member.role === 'PARENT') {
-      const parentCount = await prisma.familyMember.count({
-        where: {
-          familyId: session.user.familyId,
-          role: 'PARENT',
-          isActive: true,
-        },
-      });
-
-      if (parentCount <= 1) {
-        return NextResponse.json(
-          { error: 'Cannot delete the last parent account' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Soft delete - deactivate instead of removing
-    await prisma.familyMember.update({
-      where: { id },
-      data: { isActive: false },
+    // Audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'MEMBER_DELETED',
+      entity_type: 'MEMBER',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: { name: targetMember.name },
     });
 
     return NextResponse.json({
-      message: 'Family member deactivated successfully',
+      success: true,
+      message: 'Family member deleted successfully',
     });
   } catch (error) {
     logger.error('Error deleting family member:', error);

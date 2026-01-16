@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { PATCH, DELETE } from '@/app/api/shopping/items/[id]/route'
 import { mockChildSession } from '@/lib/test-utils/auth-mock'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/shopping/items/[id]', () => {
   beforeEach(() => {
@@ -42,14 +35,13 @@ describe('/api/shopping/items/[id]', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/shopping/items/123', {
         method: 'PATCH',
         body: JSON.stringify({ status: 'IN_CART' }),
       })
 
-      const response = await PATCH(request, { params: { id: itemId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: itemId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -58,7 +50,6 @@ describe('/api/shopping/items/[id]', () => {
 
     it('should return 404 if item not found', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingItem.findUnique.mockResolvedValue(null)
 
@@ -67,7 +58,7 @@ describe('/api/shopping/items/[id]', () => {
         body: JSON.stringify({ status: 'IN_CART' }),
       })
 
-      const response = await PATCH(request, { params: { id: itemId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: itemId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -75,8 +66,7 @@ describe('/api/shopping/items/[id]', () => {
     })
 
     it('should return 403 if item belongs to different family', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.shoppingItem.findUnique.mockResolvedValue({
         ...mockItem,
@@ -90,7 +80,7 @@ describe('/api/shopping/items/[id]', () => {
         body: JSON.stringify({ status: 'IN_CART' }),
       })
 
-      const response = await PATCH(request, { params: { id: itemId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: itemId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -99,7 +89,6 @@ describe('/api/shopping/items/[id]', () => {
 
     it('should update item successfully', async () => {
       const session = mockChildSession({ user: { familyId: 'family-1', id: 'user-1' } })
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingItem.findUnique.mockResolvedValue(mockItem as any)
       prismaMock.shoppingItem.update.mockResolvedValue({
@@ -112,7 +101,7 @@ describe('/api/shopping/items/[id]', () => {
         body: JSON.stringify({ status: 'IN_CART' }),
       })
 
-      const response = await PATCH(request, { params: { id: itemId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: itemId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -122,15 +111,14 @@ describe('/api/shopping/items/[id]', () => {
         where: { id: itemId },
         data: {
           status: 'IN_CART',
-          purchasedAt: mockItem.purchasedAt,
-          purchasedById: mockItem.purchasedById,
+          purchasedAt: null,
+          purchasedById: null,
         },
       })
     })
 
     it('should set purchasedAt and purchasedById when status is PURCHASED', async () => {
       const session = mockChildSession({ user: { familyId: 'family-1', id: 'user-1' } })
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingItem.findUnique.mockResolvedValue(mockItem as any)
       prismaMock.shoppingItem.update.mockResolvedValue({
@@ -145,7 +133,7 @@ describe('/api/shopping/items/[id]', () => {
         body: JSON.stringify({ status: 'PURCHASED' }),
       })
 
-      await PATCH(request, { params: { id: itemId } })
+      await PATCH(request, { params: Promise.resolve({ id: itemId }) })
 
       expect(prismaMock.shoppingItem.update).toHaveBeenCalledWith({
         where: { id: itemId },
@@ -159,7 +147,6 @@ describe('/api/shopping/items/[id]', () => {
 
     it('should create audit log when status changes', async () => {
       const session = mockChildSession({ user: { familyId: 'family-1', id: 'user-1' } })
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingItem.findUnique.mockResolvedValue(mockItem as any)
       prismaMock.shoppingItem.update.mockResolvedValue({
@@ -174,7 +161,7 @@ describe('/api/shopping/items/[id]', () => {
         body: JSON.stringify({ status: 'IN_CART' }),
       })
 
-      await PATCH(request, { params: { id: itemId } })
+      await PATCH(request, { params: Promise.resolve({ id: itemId }) })
 
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -194,8 +181,7 @@ describe('/api/shopping/items/[id]', () => {
     })
 
     it('should not create audit log if status does not change', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.shoppingItem.findUnique.mockResolvedValue(mockItem as any)
       prismaMock.shoppingItem.update.mockResolvedValue(mockItem as any)
@@ -205,7 +191,7 @@ describe('/api/shopping/items/[id]', () => {
         body: JSON.stringify({ name: 'Updated Name' }),
       })
 
-      await PATCH(request, { params: { id: itemId } })
+      await PATCH(request, { params: Promise.resolve({ id: itemId }) })
 
       expect(prismaMock.auditLog.create).not.toHaveBeenCalled()
     })
@@ -223,13 +209,12 @@ describe('/api/shopping/items/[id]', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/shopping/items/123', {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: itemId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: itemId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -238,7 +223,6 @@ describe('/api/shopping/items/[id]', () => {
 
     it('should return 404 if item not found', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingItem.findUnique.mockResolvedValue(null)
 
@@ -246,7 +230,7 @@ describe('/api/shopping/items/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: itemId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: itemId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -254,8 +238,7 @@ describe('/api/shopping/items/[id]', () => {
     })
 
     it('should return 403 if item belongs to different family', async () => {
-      const session = mockChildSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.shoppingItem.findUnique.mockResolvedValue({
         ...mockItem,
@@ -268,7 +251,7 @@ describe('/api/shopping/items/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: itemId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: itemId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -277,7 +260,6 @@ describe('/api/shopping/items/[id]', () => {
 
     it('should delete item successfully', async () => {
       const session = mockChildSession({ user: { familyId: 'family-1', id: 'user-1' } })
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingItem.findUnique.mockResolvedValue(mockItem as any)
       prismaMock.shoppingItem.delete.mockResolvedValue(mockItem as any)
@@ -287,7 +269,7 @@ describe('/api/shopping/items/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: itemId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: itemId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -300,7 +282,6 @@ describe('/api/shopping/items/[id]', () => {
 
     it('should create audit log on delete', async () => {
       const session = mockChildSession({ user: { familyId: 'family-1', id: 'user-1' } })
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingItem.findUnique.mockResolvedValue(mockItem as any)
       prismaMock.shoppingItem.delete.mockResolvedValue(mockItem as any)
@@ -310,7 +291,7 @@ describe('/api/shopping/items/[id]', () => {
         method: 'DELETE',
       })
 
-      await DELETE(request, { params: { id: itemId } })
+      await DELETE(request, { params: Promise.resolve({ id: itemId }) })
 
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
         data: expect.objectContaining({

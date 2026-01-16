@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { shouldProcessAllowance } from '@/lib/allowance-scheduler'
 import { logger } from '@/lib/logger'
 
@@ -22,33 +23,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createAdminClient()
+      : await createClient()
     const currentDate = new Date()
     let processed = 0
     let skipped = 0
     let errors = 0
 
     // Fetch all active schedules with member info
-    const schedules = await prisma.allowanceSchedule.findMany({
-      where: {
-        isActive: true,
-      },
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-            familyId: true,
-          },
-        },
-      },
-    })
+    const { data: schedules, error: schedulesError } = await supabase
+      .from('allowance_schedules')
+      .select(`
+        *,
+        member:family_members!inner(
+          id,
+          name,
+          family_id
+        )
+      `)
+      .eq('is_active', true)
+
+    if (schedulesError) {
+      throw schedulesError
+    }
 
     // Process schedules in parallel batches for better performance
-    const BATCH_SIZE = 20 // TODO: Move to constants
-    const batches: typeof schedules[] = []
+    const BATCH_SIZE = 20
+    const batches: Array<NonNullable<typeof schedules>> = []
     
-    for (let i = 0; i < schedules.length; i += BATCH_SIZE) {
-      batches.push(schedules.slice(i, i + BATCH_SIZE))
+    for (let i = 0; i < (schedules || []).length; i += BATCH_SIZE) {
+      const batch = (schedules || []).slice(i, i + BATCH_SIZE)
+      if (batch.length > 0) {
+        batches.push(batch)
+      }
     }
 
     // Process each batch in parallel
@@ -56,68 +64,81 @@ export async function GET(request: NextRequest) {
       const results = await Promise.allSettled(
         batch.map(async (schedule) => {
           // Check if this schedule should be processed today
-          if (!shouldProcessAllowance(schedule, currentDate)) {
+          if (!shouldProcessAllowance(schedule as any, currentDate)) {
             skipped++
             return { status: 'skipped' }
           }
 
           // Get current balance
-          const balance = await prisma.creditBalance.findUnique({
-            where: { memberId: schedule.memberId },
-          })
+          const { data: balance } = await supabase
+            .from('credit_balances')
+            .select('*')
+            .eq('member_id', schedule.member_id)
+            .single()
 
           if (!balance) {
-            logger.warn('No balance found for member', { memberId: schedule.memberId, scheduleId: schedule.id })
+            logger.warn('No balance found for member', { memberId: schedule.member_id, scheduleId: schedule.id })
             errors++
-            throw new Error(`No balance found for member ${schedule.memberId}`)
+            throw new Error(`No balance found for member ${schedule.member_id}`)
           }
 
-          // Process allowance in a transaction
-          await prisma.$transaction(async (tx) => {
-            const newBalance = balance.currentBalance + schedule.amount
-            const newLifetimeEarned = balance.lifetimeEarned + schedule.amount
+          try {
+            const newBalance = balance.current_balance + schedule.amount
+            const newLifetimeEarned = balance.lifetime_earned + schedule.amount
 
             // Update balance
-            await tx.creditBalance.update({
-              where: { memberId: schedule.memberId },
-              data: {
-                currentBalance: newBalance,
-                lifetimeEarned: newLifetimeEarned,
-              },
-            })
+            await supabase
+              .from('credit_balances')
+              .update({
+                current_balance: newBalance,
+                lifetime_earned: newLifetimeEarned,
+              })
+              .eq('member_id', schedule.member_id)
 
             // Create transaction record
-            await tx.creditTransaction.create({
-              data: {
-                memberId: schedule.memberId,
+            await supabase
+              .from('credit_transactions')
+              .insert({
+                member_id: schedule.member_id,
                 type: 'BONUS',
                 amount: schedule.amount,
-                balanceAfter: newBalance,
+                balance_after: newBalance,
                 reason: `Allowance (${schedule.frequency})`,
                 category: 'OTHER',
-              },
-            })
+              })
 
             // Update schedule's lastProcessedAt
-            await tx.allowanceSchedule.update({
-              where: { id: schedule.id },
-              data: { lastProcessedAt: currentDate },
-            })
+            await supabase
+              .from('allowance_schedules')
+              .update({ last_processed_at: currentDate.toISOString() })
+              .eq('id', schedule.id)
 
             // Create notification
-            await tx.notification.create({
-              data: {
-                userId: schedule.memberId,
-                type: 'CREDITS_EARNED',
-                title: 'Allowance Received',
-                message: `You received ${schedule.amount} credits from your ${schedule.frequency.toLowerCase()} allowance!`,
-                isRead: false,
-              },
-            })
-          })
+            const { data: member } = await supabase
+              .from('family_members')
+              .select('family_id')
+              .eq('id', schedule.member_id)
+              .single()
 
-          processed++
-          return { status: 'processed' }
+            if (member) {
+              await (supabase as any)
+                .from('notifications')
+                .insert({
+                  user_id: schedule.member_id,
+                  type: 'CREDITS_EARNED',
+                  title: 'Allowance Received',
+                  message: `You received ${schedule.amount} credits from your ${schedule.frequency.toLowerCase()} allowance!`,
+                  is_read: false,
+                })
+            }
+
+            processed++
+            return { status: 'processed' }
+          } catch (error) {
+            logger.error('Error processing allowance', { scheduleId: schedule.id, error })
+            errors++
+            throw error
+          }
         })
       )
 
@@ -134,12 +155,11 @@ export async function GET(request: NextRequest) {
       processed,
       skipped,
       errors,
-      totalSchedules: schedules.length,
+      totalSchedules: schedules?.length || 0,
       timestamp: currentDate.toISOString(),
     })
   } catch (error) {
     logger.error('Distribute allowances cron error', error)
-    // Don't expose internal error details to client
     return NextResponse.json(
       {
         error: 'Failed to distribute allowances',
@@ -147,4 +167,8 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+export async function POST(request: NextRequest) {
+  return GET(request)
 }

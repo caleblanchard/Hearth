@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { TrophyIcon, FireIcon, StarIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 
 interface Achievement {
@@ -27,7 +27,7 @@ interface Streak {
 }
 
 export default function ProfilePage() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [streaks, setStreaks] = useState<Streak[]>([]);
   const [stats, setStats] = useState({ total: 0, completed: 0, percentage: 0 });
@@ -80,7 +80,7 @@ export default function ProfilePage() {
         {/* Header with Stats */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-            {session?.user?.name}'s Profile
+            {user?.user_metadata?.name || user?.email}'s Profile
           </h1>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

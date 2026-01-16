@@ -21,11 +21,11 @@ interface Todo {
   dueDate?: string;
   category?: string;
   notes?: string;
-  createdBy: {
+  created_by: {
     id: string;
     name: string;
   };
-  assignedTo?: {
+  assigned_to?: {
     id: string;
     name: string;
   };
@@ -97,10 +97,11 @@ export default function TodosPage() {
 
   const fetchFamilyMembers = async () => {
     try {
-      const response = await fetch('/api/family');
+      // Use /api/family-data instead of /api/family due to Next.js routing bug
+      const response = await fetch('/api/family-data');
       if (response.ok) {
         const data = await response.json();
-        setFamilyMembers(data.family.members.filter((m: any) => m.isActive));
+        setFamilyMembers(data.family.members.filter((m: any) => m.is_active));
       }
     } catch (error) {
       console.error('Failed to fetch family members:', error);
@@ -134,7 +135,15 @@ export default function TodosPage() {
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTodo),
+        body: JSON.stringify({
+          title: newTodo.title,
+          description: newTodo.description || null,
+          priority: newTodo.priority,
+          due_date: newTodo.dueDate || null,
+          category: newTodo.category || null,
+          notes: newTodo.notes || null,
+          assigned_to_id: newTodo.assignedToId || null,
+        }),
       });
 
       const data = await response.json();
@@ -308,7 +317,7 @@ export default function TodosPage() {
       dueDate: todo.dueDate ? new Date(todo.dueDate).toISOString().split('T')[0] : '',
       category: todo.category || '',
       notes: todo.notes || '',
-      assignedToId: todo.assignedTo?.id || '',
+      assignedToId: todo.assigned_to?.id || '',
     });
     setShowAddForm(true);
   };
@@ -335,10 +344,10 @@ export default function TodosPage() {
           title: newTodo.title,
           description: newTodo.description || null,
           priority: newTodo.priority,
-          dueDate: newTodo.dueDate || null,
+          due_date: newTodo.dueDate || null,
           category: newTodo.category || null,
           notes: newTodo.notes || null,
-          assignedToId: newTodo.assignedToId || null,
+          assigned_to_id: newTodo.assignedToId || null,
         }),
       });
 
@@ -400,7 +409,7 @@ export default function TodosPage() {
 
   // Apply client-side filtering for "My Todos"
   const filteredTodos = filter === 'MY_TODOS'
-    ? todos.filter(t => t.assignedTo?.id === currentUserId || t.createdBy.id === currentUserId)
+    ? todos.filter(t => t.assigned_to?.id === currentUserId || t.created_by.id === currentUserId)
     : todos;
 
   const urgentTodos = filteredTodos.filter(t => t.priority === 'URGENT');
@@ -725,9 +734,9 @@ function TodoCard({
                 }`}>
                   {priority?.label}
                 </span>
-                {todo.assignedTo && (
+                {todo.assigned_to && (
                   <span className="text-xs px-2 py-1 rounded bg-ember-300 text-ember-700 dark:bg-slate-900 dark:text-ember-300 font-medium">
-                    Assigned to {todo.assignedTo.name}
+                    Assigned to {todo.assigned_to.name}
                   </span>
                 )}
                 {todo.dueDate && (
@@ -741,7 +750,7 @@ function TodoCard({
                   </span>
                 )}
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Created by {todo.createdBy.name}
+                  Created by {todo.created_by.name}
                 </span>
               </div>
             </div>

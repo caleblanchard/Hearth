@@ -1,39 +1,43 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+
+/**
+ * NOTE: This endpoint has a Next.js routing bug in development mode
+ * where it returns 404 despite the file existing. This appears to be
+ * caused by conflicts with nested routes (/api/family/members, etc).
+ * 
+ * Workaround: Use /api/family-data instead
+ * See: app/api/family-data/route.ts
+ */
 
 export async function GET() {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const family = await prisma.family.findUnique({
-      where: { id: session.user.familyId },
-      include: {
-        members: {
-          orderBy: [
-            { role: 'asc' }, // Parents first
-            { name: 'asc' },
-          ],
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            birthDate: true,
-            avatarUrl: true,
-            isActive: true,
-            createdAt: true,
-          },
-        },
-      },
-    });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    if (!family) {
+    const { data: family, error } = await supabase
+      .from('families')
+      .select(`
+        *,
+        members:family_members(id, user_id, name, email, role, birth_date, avatar_url, is_active, created_at)
+      `)
+      .eq('id', familyId)
+      .order('role', { foreignTable: 'members', ascending: true })
+      .order('name', { foreignTable: 'members', ascending: true })
+      .single();
+
+    if (error || !family) {
       return NextResponse.json({ error: 'Family not found' }, { status: 404 });
     }
 
@@ -46,31 +50,36 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId || session.user.role !== 'PARENT') {
-      return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const body = await request.json();
-    const { name, timezone, settings, location, latitude, longitude } = body;
 
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (timezone !== undefined) updateData.timezone = timezone;
-    if (settings !== undefined) updateData.settings = settings;
-    if (location !== undefined) updateData.location = location;
-    if (latitude !== undefined) updateData.latitude = latitude;
-    if (longitude !== undefined) updateData.longitude = longitude;
+    const { data: family, error } = await supabase
+      .from('families')
+      .update(body)
+      .eq('id', familyId)
+      .select()
+      .single();
 
-    const updatedFamily = await prisma.family.update({
-      where: { id: session.user.familyId },
-      data: updateData,
-    });
+    if (error) {
+      logger.error('Error updating family:', error);
+      return NextResponse.json({ error: 'Failed to update family' }, { status: 500 });
+    }
 
     return NextResponse.json({
-      message: 'Family settings updated successfully',
-      family: updatedFamily,
+      success: true,
+      family,
+      message: 'Family updated successfully',
     });
   } catch (error) {
     logger.error('Error updating family:', error);

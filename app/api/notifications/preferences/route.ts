@@ -1,38 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getNotificationPreferences, updateNotificationPreferences } from '@/lib/data/notifications';
 import { logger } from '@/lib/logger';
 
 // Default preferences
 const DEFAULT_PREFERENCES = {
-  enabledTypes: [],
-  quietHoursEnabled: false,
-  quietHoursStart: null,
-  quietHoursEnd: null,
-  pushEnabled: true,
-  inAppEnabled: true,
-  leftoverExpiringHours: 24,
-  documentExpiringDays: 90,
-  carpoolReminderMinutes: 30,
+  enabled_types: [],
+  quiet_hours_enabled: false,
+  quiet_hours_start: null,
+  quiet_hours_end: null,
+  push_enabled: true,
+  in_app_enabled: true,
+  leftover_expiring_hours: 24,
+  document_expiring_days: 90,
+  carpool_reminder_minutes: 30,
 };
-
-// Validate time format (HH:MM)
-function isValidTimeFormat(time: string): boolean {
-  const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
-  return timeRegex.test(time);
-}
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const preferences = await prisma.notificationPreference.findUnique({
-      where: { userId: session.user.id },
-    });
+    const userId = authContext.user.id;
+    if (!userId) {
+      return NextResponse.json({ error: 'No user found' }, { status: 400 });
+    }
+
+    const preferences = await getNotificationPreferences(userId);
 
     // Return preferences or defaults if none exist
     return NextResponse.json({
@@ -49,61 +47,34 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const updates = await request.json();
+    const userId = authContext.user.id;
+    if (!userId) {
+      return NextResponse.json({ error: 'No user found' }, { status: 400 });
+    }
+
+    const body = await request.json();
 
     // Validate quiet hours format if provided
-    if (updates.quietHoursStart && !isValidTimeFormat(updates.quietHoursStart)) {
-      return NextResponse.json(
-        { error: 'Invalid quiet hours format. Use HH:MM format (e.g., "22:00")' },
-        { status: 400 }
-      );
+    if (body.quiet_hours_start && !/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/.test(body.quiet_hours_start)) {
+      return NextResponse.json({ error: 'Invalid quiet hours start format (use HH:MM)' }, { status: 400 });
+    }
+    if (body.quiet_hours_end && !/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/.test(body.quiet_hours_end)) {
+      return NextResponse.json({ error: 'Invalid quiet hours end format (use HH:MM)' }, { status: 400 });
     }
 
-    if (updates.quietHoursEnd && !isValidTimeFormat(updates.quietHoursEnd)) {
-      return NextResponse.json(
-        { error: 'Invalid quiet hours format. Use HH:MM format (e.g., "07:00")' },
-        { status: 400 }
-      );
-    }
+    const preferences = await updateNotificationPreferences(userId, body);
 
-    // Validate numeric values
-    const numericFields = [
-      'leftoverExpiringHours',
-      'documentExpiringDays',
-      'carpoolReminderMinutes',
-    ];
-
-    for (const field of numericFields) {
-      if (updates[field] !== undefined && updates[field] < 0) {
-        return NextResponse.json(
-          { error: `${field} must be positive` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Upsert preferences
-    const preferences = await prisma.notificationPreference.upsert({
-      where: { userId: session.user.id },
-      update: updates,
-      create: {
-        userId: session.user.id,
-        ...updates,
-      },
+    return NextResponse.json({
+      success: true,
+      preferences,
+      message: 'Preferences updated successfully',
     });
-
-    logger.info('Notification preferences updated', {
-      userId: session.user.id,
-      updates: Object.keys(updates),
-    });
-
-    return NextResponse.json({ preferences });
   } catch (error) {
     logger.error('Update notification preferences error:', error);
     return NextResponse.json(

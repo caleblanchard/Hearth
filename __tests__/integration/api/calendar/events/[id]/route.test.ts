@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { PATCH, DELETE } from '@/app/api/calendar/events/[id]/route'
 import { mockParentSession } from '@/lib/test-utils/auth-mock'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/calendar/events/[id]', () => {
   beforeEach(() => {
@@ -44,14 +37,13 @@ describe('/api/calendar/events/[id]', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/calendar/events/123', {
         method: 'PATCH',
         body: JSON.stringify({ title: 'Updated Event' }),
       })
 
-      const response = await PATCH(request, { params: { id: eventId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: eventId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -59,8 +51,7 @@ describe('/api/calendar/events/[id]', () => {
     })
 
     it('should return 404 if event not found', async () => {
-      const session = mockParentSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       prismaMock.calendarEvent.findUnique.mockResolvedValue(null)
 
@@ -69,7 +60,7 @@ describe('/api/calendar/events/[id]', () => {
         body: JSON.stringify({ title: 'Updated Event' }),
       })
 
-      const response = await PATCH(request, { params: { id: eventId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: eventId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -77,8 +68,7 @@ describe('/api/calendar/events/[id]', () => {
     })
 
     it('should return 404 if event belongs to different family', async () => {
-      const session = mockParentSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       prismaMock.calendarEvent.findUnique.mockResolvedValue({
         ...mockEvent,
@@ -90,7 +80,7 @@ describe('/api/calendar/events/[id]', () => {
         body: JSON.stringify({ title: 'Updated Event' }),
       })
 
-      const response = await PATCH(request, { params: { id: eventId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: eventId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -98,8 +88,7 @@ describe('/api/calendar/events/[id]', () => {
     })
 
     it('should update event successfully', async () => {
-      const session = mockParentSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       prismaMock.calendarEvent.findUnique.mockResolvedValue(mockEvent as any)
 
@@ -126,7 +115,7 @@ describe('/api/calendar/events/[id]', () => {
         body: JSON.stringify({ title: 'Updated Event' }),
       })
 
-      const response = await PATCH(request, { params: { id: eventId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: eventId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -135,8 +124,7 @@ describe('/api/calendar/events/[id]', () => {
     })
 
     it('should update assignments if provided', async () => {
-      const session = mockParentSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       prismaMock.calendarEvent.findUnique.mockResolvedValue(mockEvent as any)
 
@@ -160,7 +148,7 @@ describe('/api/calendar/events/[id]', () => {
         }),
       })
 
-      await PATCH(request, { params: { id: eventId } })
+      await PATCH(request, { params: Promise.resolve({ id: eventId }) })
 
       const txCallback = (prismaMock.$transaction as jest.Mock).mock.calls[0][0]
       const mockTx = {
@@ -194,13 +182,12 @@ describe('/api/calendar/events/[id]', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/calendar/events/123', {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: eventId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: eventId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -208,8 +195,7 @@ describe('/api/calendar/events/[id]', () => {
     })
 
     it('should return 404 if event not found', async () => {
-      const session = mockParentSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       prismaMock.calendarEvent.findUnique.mockResolvedValue(null)
 
@@ -217,7 +203,7 @@ describe('/api/calendar/events/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: eventId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: eventId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -225,8 +211,7 @@ describe('/api/calendar/events/[id]', () => {
     })
 
     it('should delete event successfully', async () => {
-      const session = mockParentSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       prismaMock.calendarEvent.findUnique.mockResolvedValue(mockEvent as any)
       prismaMock.calendarEvent.delete.mockResolvedValue(mockEvent as any)
@@ -235,7 +220,7 @@ describe('/api/calendar/events/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: eventId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: eventId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)

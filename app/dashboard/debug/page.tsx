@@ -1,17 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 
 export default function DebugPage() {
-  const { data: session, status } = useSession();
+  const session = useSupabaseSession();
+  const { user, loading } = session;
   const [familyData, setFamilyData] = useState<any>(null);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
     const fetchFamily = async () => {
       try {
-        const response = await fetch('/api/family');
+        // Use /api/family-data instead of /api/family due to Next.js routing bug
+        const response = await fetch('/api/family-data');
         const data = await response.json();
 
         if (response.ok) {
@@ -24,10 +26,10 @@ export default function DebugPage() {
       }
     };
 
-    if (status === 'authenticated') {
+    if (!loading && user) {
       fetchFamily();
     }
-  }, [status]);
+  }, [loading, user]);
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -38,7 +40,7 @@ export default function DebugPage() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h2 className="text-lg font-semibold mb-4">Session Status</h2>
           <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto text-sm">
-            {JSON.stringify({ status, session }, null, 2)}
+            {JSON.stringify({ loading, session }, null, 2)}
           </pre>
         </div>
 

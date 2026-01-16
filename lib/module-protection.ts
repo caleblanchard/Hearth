@@ -1,7 +1,34 @@
+/**
+ * Module Protection Utilities
+ * Handles module enablement checks and page protection
+ * 
+ * MIGRATED TO SUPABASE - January 10, 2026
+ */
+
 import { redirect, notFound } from 'next/navigation';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { ModuleId } from '@/app/generated/prisma';
+import { getAuthContext } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
+
+type ModuleId = 
+  | 'CHORES'
+  | 'SCREEN_TIME'
+  | 'CREDITS'
+  | 'SHOPPING'
+  | 'CALENDAR'
+  | 'TODOS'
+  | 'ROUTINES'
+  | 'MEAL_PLANNING'
+  | 'RECIPES'
+  | 'INVENTORY'
+  | 'HEALTH'
+  | 'PROJECTS'
+  | 'COMMUNICATION'
+  | 'TRANSPORT'
+  | 'PETS'
+  | 'MAINTENANCE'
+  | 'DOCUMENTS'
+  | 'FINANCIAL'
+  | 'LEADERBOARD';
 
 // All modules that should be enabled by default
 const DEFAULT_ENABLED_MODULES: ModuleId[] = [
@@ -31,30 +58,53 @@ const DEFAULT_ENABLED_MODULES: ModuleId[] = [
  * Returns true if enabled, false if disabled.
  */
 export async function isModuleEnabled(moduleId: ModuleId): Promise<boolean> {
-  const session = await auth();
-  if (!session?.user?.familyId) {
+  const authContext = await getAuthContext();
+  if (!authContext?.defaultFamilyId) {
     return false;
   }
 
+  const supabase = await createClient();
+  
   // Check if there's a configuration for this module
-  const config = await prisma.moduleConfiguration.findUnique({
-    where: {
-      familyId_moduleId: {
-        familyId: session.user.familyId,
-        moduleId,
-      },
-    },
-    select: {
-      isEnabled: true,
-    },
-  });
+  const { data: config } = await supabase
+    .from('module_configurations')
+    .select('is_enabled')
+    .eq('family_id', authContext.defaultFamilyId)
+    .eq('module_id', moduleId)
+    .maybeSingle();
 
   // If no config exists, check if it's in default enabled list
-  if (!config) {
-    return DEFAULT_ENABLED_MODULES.includes(moduleId);
+  const familyEnabled = config ? config.is_enabled : DEFAULT_ENABLED_MODULES.includes(moduleId);
+  if (!familyEnabled) {
+    return false;
   }
 
-  return config.isEnabled;
+  const memberId = authContext.activeMemberId || authContext.defaultMemberId;
+  if (!memberId) {
+    return familyEnabled;
+  }
+
+  const { data: member } = await supabase
+    .from('family_members')
+    .select('role')
+    .eq('id', memberId)
+    .single();
+
+  if (member?.role !== 'CHILD') {
+    return familyEnabled;
+  }
+
+  const { data: accessRows } = await supabase
+    .from('member_module_access')
+    .select('module_id, has_access')
+    .eq('member_id', memberId);
+
+  if (!accessRows || accessRows.length === 0) {
+    return familyEnabled;
+  }
+
+  const accessRow = accessRows.find((row) => row.module_id === moduleId);
+  return accessRow?.has_access ?? false;
 }
 
 /**
@@ -80,40 +130,80 @@ export async function requireModule(moduleId: ModuleId): Promise<void> {
  * Get all enabled modules for the current user's family
  */
 export async function getEnabledModules(): Promise<ModuleId[]> {
-  const session = await auth();
-  if (!session?.user?.familyId) {
+  const authContext = await getAuthContext();
+  if (!authContext?.defaultFamilyId) {
     return [];
   }
 
-  const configs = await prisma.moduleConfiguration.findMany({
-    where: {
-      familyId: session.user.familyId,
-      isEnabled: true,
-    },
-    select: {
-      moduleId: true,
-    },
-  });
+  const supabase = await createClient();
+  
+  const { data: configs } = await supabase
+    .from('module_configurations')
+    .select('module_id, is_enabled')
+    .eq('family_id', authContext.defaultFamilyId)
+    .eq('is_enabled', true);
 
   // If no configurations exist, return all defaults
-  if (configs.length === 0) {
-    return DEFAULT_ENABLED_MODULES;
+  if (!configs || configs.length === 0) {
+    const defaults = DEFAULT_ENABLED_MODULES;
+    return filterMemberAccess(supabase, authContext, defaults);
   }
 
   // Get all configured modules
-  const allConfigs = await prisma.moduleConfiguration.findMany({
-    where: { familyId: session.user.familyId },
-    select: { moduleId: true, isEnabled: true },
-  });
+  const { data: allConfigs } = await supabase
+    .from('module_configurations')
+    .select('module_id, is_enabled')
+    .eq('family_id', authContext.defaultFamilyId);
 
-  const configuredModuleIds = new Set(allConfigs.map((c) => c.moduleId));
+  if (!allConfigs) {
+    return filterMemberAccess(supabase, authContext, DEFAULT_ENABLED_MODULES);
+  }
+
+  const configuredModuleIds = new Set(allConfigs.map((c) => c.module_id));
   const enabledConfiguredIds = allConfigs
-    .filter((c) => c.isEnabled)
-    .map((c) => c.moduleId);
+    .filter((c) => c.is_enabled)
+    .map((c) => c.module_id as ModuleId);
 
   // Combine enabled configured + default unconfigured
-  return [
+  const enabled = [
     ...enabledConfiguredIds,
     ...DEFAULT_ENABLED_MODULES.filter((m) => !configuredModuleIds.has(m)),
   ];
+
+  return filterMemberAccess(supabase, authContext, enabled);
+}
+
+async function filterMemberAccess(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  authContext: Awaited<ReturnType<typeof getAuthContext>>,
+  enabled: ModuleId[]
+): Promise<ModuleId[]> {
+  const memberId = authContext?.activeMemberId || authContext?.defaultMemberId;
+  if (!memberId) {
+    return enabled;
+  }
+
+  const { data: member } = await supabase
+    .from('family_members')
+    .select('role')
+    .eq('id', memberId)
+    .single();
+
+  if (member?.role !== 'CHILD') {
+    return enabled;
+  }
+
+  const { data: accessRows } = await supabase
+    .from('member_module_access')
+    .select('module_id, has_access')
+    .eq('member_id', memberId);
+
+  if (!accessRows || accessRows.length === 0) {
+    return enabled;
+  }
+
+  const allowed = new Set(
+    accessRows.filter((row) => row.has_access).map((row) => row.module_id)
+  );
+  return enabled.filter((moduleId) => allowed.has(moduleId));
 }

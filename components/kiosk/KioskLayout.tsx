@@ -16,6 +16,7 @@ export default function KioskLayout({ children, familyId }: KioskLayoutProps) {
   const [showPinModal, setShowPinModal] = useState(false);
 
   const {
+    sessionToken,
     isLocked,
     currentMember,
     autoLockMinutes,
@@ -94,6 +95,7 @@ export default function KioskLayout({ children, familyId }: KioskLayoutProps) {
         onClose={() => setShowPinModal(false)}
         onUnlock={handleUnlock}
         familyId={familyId}
+        sessionToken={sessionToken}
       />
     </div>
   );

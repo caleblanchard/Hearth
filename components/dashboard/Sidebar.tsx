@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useMemberContext } from '@/hooks/useMemberContext';
 import { useDashboardCustomize } from '@/contexts/DashboardCustomizeContext';
+import { FamilySwitcher } from '@/components/FamilySwitcher';
 import {
   HomeIcon,
   CheckCircleIcon,
@@ -52,7 +53,7 @@ interface NavGroup {
 }
 
 export default function Sidebar() {
-  const { data: session } = useSession();
+  const { user, member, loading: memberLoading } = useMemberContext();
   const router = useRouter();
   const pathname = usePathname();
   const customizeContext = useDashboardCustomize();
@@ -82,10 +83,10 @@ export default function Sidebar() {
         ]));
       }
     }
-    if (session?.user) {
+    if (user && member) {
       fetchEnabledModules();
     }
-  }, [session]);
+  }, [user, member]);
 
   const toggleGroup = (groupName: string) => {
     const newExpanded = new Set(expandedGroups);
@@ -116,7 +117,7 @@ export default function Sidebar() {
       items: [
         { name: 'Rewards', path: '/dashboard/rewards', icon: GiftIcon, moduleId: 'CREDITS' },
         { name: 'Screen Time', path: '/dashboard/screentime', icon: ClockIcon, moduleId: 'SCREEN_TIME' },
-        ...(session?.user?.role === 'PARENT' 
+        ...(member?.role === 'PARENT' 
           ? [{ name: 'Family Screen Time', path: '/dashboard/screentime/manage-family', icon: UsersIcon, moduleId: 'SCREEN_TIME' }]
           : []
         ),
@@ -141,7 +142,7 @@ export default function Sidebar() {
   ];
 
   // Add parent-only settings group
-  if (session?.user?.role === 'PARENT') {
+  if (member?.role === 'PARENT') {
     navGroups.push({
       name: 'Kiosk',
       items: [
@@ -199,7 +200,7 @@ export default function Sidebar() {
       // If no moduleId, always show (like Dashboard, Profile, Family)
       if (!item.moduleId) return true;
       // RULES_ENGINE is always available to parents (non-configurable)
-      if (item.moduleId === 'RULES_ENGINE' && session?.user?.role === 'PARENT') {
+      if (item.moduleId === 'RULES_ENGINE' && member?.role === 'PARENT') {
         return true;
       }
       // Check if module is enabled
@@ -298,18 +299,23 @@ export default function Sidebar() {
       </nav>
 
       {/* Sidebar Footer */}
-      {isOpen && session?.user && (
+      {isOpen && user && (
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          {/* Family Switcher */}
+          <div className="mb-3">
+            <FamilySwitcher />
+          </div>
+          
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-ember-700 dark:bg-ember-500 rounded-full flex items-center justify-center text-white font-bold">
-              {session.user.name?.charAt(0) || 'U'}
+              {user.name?.charAt(0) || 'U'}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {session.user.name}
+                {member?.name || user?.email}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {session.user.role}
+                {member?.role}
               </p>
             </div>
           </div>

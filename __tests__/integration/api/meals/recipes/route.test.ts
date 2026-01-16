@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/meals/recipes/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/meals/recipes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   describe('GET /api/meals/recipes', () => {
@@ -63,7 +60,6 @@ describe('/api/meals/recipes', () => {
     ];
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes');
       const response = await GET(request);
@@ -203,7 +199,6 @@ describe('/api/meals/recipes', () => {
 
   describe('POST /api/meals/recipes', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes', {
         method: 'POST',

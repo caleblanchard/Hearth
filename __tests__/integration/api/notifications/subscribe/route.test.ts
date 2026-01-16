@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { POST, DELETE } from '@/app/api/notifications/subscribe/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/notifications/subscribe', () => {
   beforeEach(() => {
@@ -39,7 +32,6 @@ describe('/api/notifications/subscribe', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/notifications/subscribe', {
         method: 'POST',
@@ -53,8 +45,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should create push subscription for authenticated user', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockCreatedSubscription = {
         id: 'sub-1',
@@ -102,8 +93,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should update existing subscription if endpoint already exists', async () => {
-      const session = mockParentSession({ user: { id: 'parent-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       const mockUpdatedSubscription = {
         id: 'sub-1',
@@ -133,8 +123,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should return 400 if subscription is missing endpoint', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const invalidSubscription = {
         keys: {
@@ -155,8 +144,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should return 400 if subscription is missing keys', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const invalidSubscription = {
         endpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
@@ -174,8 +162,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should return 400 if p256dh key is missing', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const invalidSubscription = {
         endpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
@@ -196,8 +183,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should return 400 if auth key is missing', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const invalidSubscription = {
         endpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
@@ -218,8 +204,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should handle database errors gracefully', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.pushSubscription.upsert.mockRejectedValue(new Error('Database error'))
 
@@ -239,7 +224,6 @@ describe('/api/notifications/subscribe', () => {
     const endpointToDelete = 'https://fcm.googleapis.com/fcm/send/abc123'
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/notifications/subscribe', {
         method: 'DELETE',
@@ -253,8 +237,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should delete push subscription for authenticated user', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.pushSubscription.deleteMany.mockResolvedValue({ count: 1 })
 
@@ -276,8 +259,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should only delete subscriptions owned by the authenticated user', async () => {
-      const session = mockParentSession({ user: { id: 'parent-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       prismaMock.pushSubscription.deleteMany.mockResolvedValue({ count: 0 })
 
@@ -299,8 +281,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should return 400 if endpoint is missing', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const request = new NextRequest('http://localhost/api/notifications/subscribe', {
         method: 'DELETE',
@@ -314,8 +295,7 @@ describe('/api/notifications/subscribe', () => {
     })
 
     it('should handle database errors gracefully', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.pushSubscription.deleteMany.mockRejectedValue(new Error('Database error'))
 

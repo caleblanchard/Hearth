@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/shopping/items/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/shopping/items', () => {
   beforeEach(() => {
@@ -40,7 +33,6 @@ describe('/api/shopping/items', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/shopping/items', {
         method: 'POST',
@@ -56,7 +48,6 @@ describe('/api/shopping/items', () => {
 
     it('should return 400 if name is missing', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/shopping/items', {
         method: 'POST',
@@ -75,7 +66,6 @@ describe('/api/shopping/items', () => {
 
     it('should return 400 if name is only whitespace', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/shopping/items', {
         method: 'POST',
@@ -94,7 +84,6 @@ describe('/api/shopping/items', () => {
 
     it('should create item on existing shopping list', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingList.findFirst.mockResolvedValue({
         id: 'list-1',
@@ -149,7 +138,6 @@ describe('/api/shopping/items', () => {
 
     it('should create shopping list if none exists', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingList.findFirst.mockResolvedValue(null)
       prismaMock.shoppingList.create.mockResolvedValue({
@@ -184,7 +172,6 @@ describe('/api/shopping/items', () => {
 
     it('should use default values for optional fields', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingList.findFirst.mockResolvedValue({
         id: 'list-1',
@@ -225,7 +212,6 @@ describe('/api/shopping/items', () => {
 
     it('should trim item name', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingList.findFirst.mockResolvedValue({
         id: 'list-1',
@@ -257,7 +243,6 @@ describe('/api/shopping/items', () => {
 
     it('should create audit log', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.shoppingList.findFirst.mockResolvedValue({
         id: 'list-1',

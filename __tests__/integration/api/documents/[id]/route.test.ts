@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { GET, PATCH, DELETE } from '@/app/api/documents/[id]/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/documents/[id]', () => {
   beforeEach(() => {
@@ -52,30 +49,26 @@ describe('/api/documents/[id]', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'doc-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 404 if document not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/documents/doc-999', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'doc-999' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'doc-999' }) });
 
       expect(response.status).toBe(404);
     });
 
     it('should return 403 if document belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue({
         ...mockDocument,
         familyId: 'different-family-123',
@@ -84,13 +77,12 @@ describe('/api/documents/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'doc-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should return document and log access', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(mockDocument as any);
       prismaMock.documentAccessLog.create.mockResolvedValue({} as any);
       prismaMock.auditLog.create.mockResolvedValue({} as any);
@@ -98,7 +90,7 @@ describe('/api/documents/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'doc-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -130,50 +122,38 @@ describe('/api/documents/[id]', () => {
 
   describe('PATCH', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated.pdf' }),
       });
-      const response = await PATCH(request, { params: { id: 'doc-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue({
-        user: {
-          id: 'child-test-123',
-          familyId: 'family-test-123',
-          role: 'CHILD',
-        },
-      } as any);
-
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated.pdf' }),
       });
-      const response = await PATCH(request, { params: { id: 'doc-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should return 404 if document not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/documents/doc-999', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated.pdf' }),
       });
-      const response = await PATCH(request, { params: { id: 'doc-999' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'doc-999' }) });
 
       expect(response.status).toBe(404);
     });
 
     it('should return 403 if document belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue({
         ...mockDocument,
         familyId: 'different-family-123',
@@ -183,26 +163,24 @@ describe('/api/documents/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated.pdf' }),
       });
-      const response = await PATCH(request, { params: { id: 'doc-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should return 400 for invalid category', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(mockDocument as any);
 
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1', {
         method: 'PATCH',
         body: JSON.stringify({ category: 'INVALID' }),
       });
-      const response = await PATCH(request, { params: { id: 'doc-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(400);
     });
 
     it('should update document successfully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(mockDocument as any);
       prismaMock.document.update.mockResolvedValue({
         ...mockDocument,
@@ -218,7 +196,7 @@ describe('/api/documents/[id]', () => {
           notes: 'Updated notes',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'doc-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -240,7 +218,6 @@ describe('/api/documents/[id]', () => {
     });
 
     it('should handle partial updates', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(mockDocument as any);
       prismaMock.document.update.mockResolvedValue(mockDocument as any);
       prismaMock.auditLog.create.mockResolvedValue({} as any);
@@ -249,7 +226,7 @@ describe('/api/documents/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ tags: ['passport', 'international', 'travel'] }),
       });
-      const response = await PATCH(request, { params: { id: 'doc-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(200);
       expect(prismaMock.document.update).toHaveBeenCalledWith({
@@ -266,47 +243,35 @@ describe('/api/documents/[id]', () => {
 
   describe('DELETE', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'doc-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue({
-        user: {
-          id: 'child-test-123',
-          familyId: 'family-test-123',
-          role: 'CHILD',
-        },
-      } as any);
-
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'doc-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should return 404 if document not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/documents/doc-999', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'doc-999' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'doc-999' }) });
 
       expect(response.status).toBe(404);
     });
 
     it('should return 403 if document belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue({
         ...mockDocument,
         familyId: 'different-family-123',
@@ -315,13 +280,12 @@ describe('/api/documents/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'doc-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should delete document successfully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(mockDocument as any);
       prismaMock.document.delete.mockResolvedValue(mockDocument as any);
       prismaMock.auditLog.create.mockResolvedValue({} as any);
@@ -329,7 +293,7 @@ describe('/api/documents/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'doc-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();

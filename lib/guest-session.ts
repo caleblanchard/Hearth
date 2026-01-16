@@ -2,9 +2,11 @@
  * Guest Session Management
  * 
  * Handles validation and management of guest sessions stored in localStorage
+ * 
+ * MIGRATED TO SUPABASE - January 10, 2026
  */
 
-import prisma from './prisma';
+import { createClient } from './supabase/server';
 import { logger } from './logger';
 
 export interface GuestSessionInfo {
@@ -27,53 +29,56 @@ export async function validateGuestSession(
   }
 
   try {
-    const session = await prisma.guestSession.findUnique({
-      where: { sessionToken },
-      include: {
-        guestInvite: {
-          include: {
-            family: true,
-          },
-        },
-      },
-    });
+    const supabase = await createClient();
+    
+    const { data: session } = await supabase
+      .from('guest_sessions')
+      .select(`
+        *,
+        guest_invite:guest_invites(
+          *,
+          family:families(*)
+        )
+      `)
+      .eq('session_token', sessionToken)
+      .single();
 
     if (!session) {
       return null;
     }
 
     // Check if session has ended
-    if (session.endedAt) {
+    if (session.ended_at) {
       return null;
     }
 
     // Check if session is expired
-    if (new Date() > session.expiresAt) {
+    if (new Date() > new Date(session.expires_at)) {
       // Mark session as ended
-      await prisma.guestSession.update({
-        where: { id: session.id },
-        data: { endedAt: new Date() },
-      });
+      await supabase
+        .from('guest_sessions')
+        .update({ ended_at: new Date().toISOString() })
+        .eq('id', session.id);
       return null;
     }
 
     // Check if invite is still valid
-    const invite = session.guestInvite;
+    const invite = session.guest_invite;
     if (invite.status === 'REVOKED' || invite.status === 'EXPIRED') {
       return null;
     }
 
-    if (new Date() > invite.expiresAt) {
+    if (new Date() > new Date(invite.expires_at)) {
       return null;
     }
 
     return {
-      sessionToken: session.sessionToken,
+      sessionToken: session.session_token,
       inviteId: invite.id,
-      guestName: invite.guestName,
-      accessLevel: invite.accessLevel,
-      familyId: invite.familyId,
-      expiresAt: session.expiresAt,
+      guestName: invite.guest_name,
+      accessLevel: invite.access_level,
+      familyId: invite.family_id,
+      expiresAt: new Date(session.expires_at),
     };
   } catch (error) {
     logger.error('Error validating guest session:', error);
@@ -96,35 +101,39 @@ export async function getGuestSessionFromRequest(
  */
 export async function endGuestSession(sessionToken: string): Promise<boolean> {
   try {
-    const session = await prisma.guestSession.findUnique({
-      where: { sessionToken },
-      include: {
-        guestInvite: true,
-      },
-    });
+    const supabase = await createClient();
+    
+    const { data: session } = await supabase
+      .from('guest_sessions')
+      .select(`
+        *,
+        guest_invite:guest_invites(*)
+      `)
+      .eq('session_token', sessionToken)
+      .single();
 
-    if (!session || session.endedAt) {
+    if (!session || session.ended_at) {
       return false;
     }
 
-    await prisma.guestSession.update({
-      where: { id: session.id },
-      data: { endedAt: new Date() },
-    });
+    await supabase
+      .from('guest_sessions')
+      .update({ ended_at: new Date().toISOString() })
+      .eq('id', session.id);
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.guestInvite.familyId,
-        memberId: null,
+    await supabase
+      .from('audit_logs')
+      .insert({
+        family_id: session.guest_invite.family_id,
+        member_id: null,
         action: 'GUEST_SESSION_ENDED',
         result: 'SUCCESS',
-        metadata: {
+        details: {
           sessionId: session.id,
-          guestName: session.guestInvite.guestName,
+          guestName: session.guest_invite.guest_name,
         },
-      },
-    });
+      });
 
     return true;
   } catch (error) {

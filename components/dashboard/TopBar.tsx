@@ -1,7 +1,8 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
+import { useMemberContext } from '@/hooks/useMemberContext';
+import { signOut } from '@/hooks/useSupabaseSession';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useGuestSession } from '@/hooks/useGuestSession';
@@ -44,7 +45,7 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 export default function TopBar() {
-  const { data: session } = useSession();
+  const { user, member } = useMemberContext();
   const { guestSession, endSession } = useGuestSession();
   const pathname = usePathname();
 
@@ -52,7 +53,7 @@ export default function TopBar() {
     if (guestSession) {
       await endSession();
     } else {
-      await signOut({ callbackUrl: '/auth/signin' });
+      await signOut();
     }
   };
 
@@ -94,16 +95,16 @@ export default function TopBar() {
           <NotificationBell />
 
           {/* User badge */}
-          {(session?.user || guestSession) && (
+          {(user || guestSession) && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-canvas-100 dark:bg-slate-700 rounded-lg">
               <div className="w-8 h-8 bg-ember-700 dark:bg-ember-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
                 {guestSession 
                   ? guestSession.guestName.charAt(0)
-                  : session?.user?.name?.charAt(0) || 'U'}
+                  : member?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {guestSession ? guestSession.guestName : session?.user?.name}
+                  {guestSession ? guestSession.guestName : (member?.name || user?.email)}
                 </p>
                 {guestSession && (
                   <p className="text-xs text-gray-500 dark:text-gray-400">

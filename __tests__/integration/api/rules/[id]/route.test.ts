@@ -25,7 +25,6 @@ import { NextRequest } from 'next/server';
 import { GET, PATCH, DELETE } from '@/app/api/rules/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
 const { validateRuleConfiguration } = require('@/lib/rules-engine/validation');
 
 describe('GET /api/rules/[id]', () => {
@@ -64,10 +63,9 @@ describe('GET /api/rules/[id]', () => {
   };
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1');
-    const response = await GET(request, { params: { id: 'rule-1' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(401);
@@ -75,10 +73,9 @@ describe('GET /api/rules/[id]', () => {
   });
 
   it('should return 403 if user is not a parent', async () => {
-    auth.mockResolvedValue(mockChildSession() as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1');
-    const response = await GET(request, { params: { id: 'rule-1' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(403);
@@ -86,11 +83,10 @@ describe('GET /api/rules/[id]', () => {
   });
 
   it('should return 404 if rule not found', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1');
-    const response = await GET(request, { params: { id: 'rule-1' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(404);
@@ -98,14 +94,13 @@ describe('GET /api/rules/[id]', () => {
   });
 
   it('should return 403 if rule belongs to different family', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue({
       ...mockRule,
       familyId: 'other-family',
     } as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1');
-    const response = await GET(request, { params: { id: 'rule-1' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(403);
@@ -113,7 +108,6 @@ describe('GET /api/rules/[id]', () => {
   });
 
   it('should return rule details with execution history', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue([
       {
@@ -129,7 +123,7 @@ describe('GET /api/rules/[id]', () => {
     prismaMock.ruleExecution.count.mockResolvedValue(5);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1');
-    const response = await GET(request, { params: { id: 'rule-1' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -142,13 +136,12 @@ describe('GET /api/rules/[id]', () => {
   });
 
   it('should support pagination for execution history', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue([]);
     prismaMock.ruleExecution.count.mockResolvedValue(5);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1?limit=10&offset=5');
-    const response = await GET(request, { params: { id: 'rule-1' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -163,13 +156,12 @@ describe('GET /api/rules/[id]', () => {
   });
 
   it('should filter execution history by success status', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue([]);
     prismaMock.ruleExecution.count.mockResolvedValue(3);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1?success=true');
-    const response = await GET(request, { params: { id: 'rule-1' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -183,7 +175,6 @@ describe('GET /api/rules/[id]', () => {
   });
 
   it('should include execution statistics', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     prismaMock.automationRule.findUnique.mockResolvedValue(mockRule as any);
     prismaMock.ruleExecution.findMany.mockResolvedValue([]);
 
@@ -200,7 +191,7 @@ describe('GET /api/rules/[id]', () => {
     } as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1?includeStats=true');
-    const response = await GET(request, { params: { id: 'rule-1' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -246,13 +237,12 @@ describe('PATCH /api/rules/[id]', () => {
   };
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Updated Rule' }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(401);
@@ -260,13 +250,12 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should return 403 if user is not a parent', async () => {
-    auth.mockResolvedValue(mockChildSession() as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Updated Rule' }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(403);
@@ -274,13 +263,12 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should return 400 if request body is invalid JSON', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'PATCH',
       body: 'invalid json',
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -288,14 +276,13 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should return 404 if rule not found', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Updated Rule' }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(404);
@@ -303,7 +290,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should return 403 if rule belongs to different family', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue({
       ...mockRule,
       familyId: 'other-family',
@@ -313,7 +299,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Updated Rule' }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(403);
@@ -321,7 +307,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should update rule name', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.update as jest.Mock).mockResolvedValue({
       ...mockRule,
@@ -332,7 +317,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Updated Rule Name' }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -349,7 +334,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should update rule description', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.update as jest.Mock).mockResolvedValue({
       ...mockRule,
@@ -360,7 +344,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ description: 'Updated description' }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -368,7 +352,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should update rule trigger', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.update as jest.Mock).mockResolvedValue({
       ...mockRule,
@@ -380,7 +363,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ trigger: newTrigger }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -388,7 +371,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should update rule actions', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.update as jest.Mock).mockResolvedValue({
       ...mockRule,
@@ -404,7 +386,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ actions: newActions }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -412,7 +394,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should update rule conditions', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.update as jest.Mock).mockResolvedValue({
       ...mockRule,
@@ -430,7 +411,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ conditions: newConditions }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -438,14 +419,13 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should return 400 if name is empty string', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'PATCH',
       body: JSON.stringify({ name: '   ' }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -453,14 +433,13 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should return 400 if trigger is invalid object', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'PATCH',
       body: JSON.stringify({ trigger: 'invalid' }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -468,14 +447,13 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should return 400 if actions is not an array', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'PATCH',
       body: JSON.stringify({ actions: 'invalid' }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -483,14 +461,13 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should return 400 if actions array is empty', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'PATCH',
       body: JSON.stringify({ actions: [] }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -498,7 +475,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should validate trigger configuration when updating', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule as any);
     validateRuleConfiguration.mockReturnValue({
       valid: false,
@@ -510,7 +486,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ trigger: invalidTrigger }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -518,7 +494,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should validate action configuration when updating', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule as any);
     validateRuleConfiguration.mockReturnValue({
       valid: false,
@@ -530,7 +505,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ actions: invalidActions }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -538,7 +513,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should support partial updates', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.update as jest.Mock).mockResolvedValue({
       ...mockRule,
@@ -549,7 +523,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Partial Update' }),
     });
-    const response = await PATCH(request, { params: { id: 'rule-1' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -562,7 +536,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should create audit log when updating rule', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.update as jest.Mock).mockResolvedValue({
       ...mockRule,
@@ -574,7 +547,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Updated' }),
     });
-    await PATCH(request, { params: { id: 'rule-1' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -588,7 +561,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should trim whitespace from name when updating', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.update as jest.Mock).mockResolvedValue({
       ...mockRule,
@@ -599,7 +571,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ name: '  Trimmed Name  ' }),
     });
-    await PATCH(request, { params: { id: 'rule-1' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
 
     expect(prismaMock.automationRule.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -611,7 +583,6 @@ describe('PATCH /api/rules/[id]', () => {
   });
 
   it('should trim whitespace from description when updating', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.update as jest.Mock).mockResolvedValue({
       ...mockRule,
@@ -622,7 +593,7 @@ describe('PATCH /api/rules/[id]', () => {
       method: 'PATCH',
       body: JSON.stringify({ description: '  Trimmed Description  ' }),
     });
-    await PATCH(request, { params: { id: 'rule-1' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'rule-1' }) });
 
     expect(prismaMock.automationRule.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -663,12 +634,11 @@ describe('DELETE /api/rules/[id]', () => {
   };
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'DELETE',
     });
-    const response = await DELETE(request, { params: { id: 'rule-1' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(401);
@@ -676,12 +646,11 @@ describe('DELETE /api/rules/[id]', () => {
   });
 
   it('should return 403 if user is not a parent', async () => {
-    auth.mockResolvedValue(mockChildSession() as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'DELETE',
     });
-    const response = await DELETE(request, { params: { id: 'rule-1' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(403);
@@ -689,13 +658,12 @@ describe('DELETE /api/rules/[id]', () => {
   });
 
   it('should return 404 if rule not found', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'DELETE',
     });
-    const response = await DELETE(request, { params: { id: 'rule-1' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(404);
@@ -703,7 +671,6 @@ describe('DELETE /api/rules/[id]', () => {
   });
 
   it('should return 403 if rule belongs to different family', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue({
       ...mockRule,
       familyId: 'other-family',
@@ -712,7 +679,7 @@ describe('DELETE /api/rules/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'DELETE',
     });
-    const response = await DELETE(request, { params: { id: 'rule-1' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(403);
@@ -720,14 +687,13 @@ describe('DELETE /api/rules/[id]', () => {
   });
 
   it('should delete rule successfully', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.delete as jest.Mock).mockResolvedValue(mockRule);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'DELETE',
     });
-    const response = await DELETE(request, { params: { id: 'rule-1' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -738,7 +704,6 @@ describe('DELETE /api/rules/[id]', () => {
   });
 
   it('should create audit log when deleting rule', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.delete as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.auditLog.create as jest.Mock).mockResolvedValue({});
@@ -746,7 +711,7 @@ describe('DELETE /api/rules/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'DELETE',
     });
-    await DELETE(request, { params: { id: 'rule-1' } });
+    await DELETE(request, { params: Promise.resolve({ id: 'rule-1' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -761,7 +726,6 @@ describe('DELETE /api/rules/[id]', () => {
   });
 
   it('should return 500 on database error', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.delete as jest.Mock).mockRejectedValue(
       new Error('Database error')
@@ -770,7 +734,7 @@ describe('DELETE /api/rules/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'DELETE',
     });
-    const response = await DELETE(request, { params: { id: 'rule-1' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'rule-1' }) });
     const data = await response.json();
 
     expect(response.status).toBe(500);
@@ -778,14 +742,13 @@ describe('DELETE /api/rules/[id]', () => {
   });
 
   it('should cascade delete rule executions', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.delete as jest.Mock).mockResolvedValue(mockRule);
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'DELETE',
     });
-    await DELETE(request, { params: { id: 'rule-1' } });
+    await DELETE(request, { params: Promise.resolve({ id: 'rule-1' }) });
 
     // Cascade delete is handled by Prisma schema, just verify delete was called
     expect(prismaMock.automationRule.delete).toHaveBeenCalledWith({
@@ -794,7 +757,6 @@ describe('DELETE /api/rules/[id]', () => {
   });
 
   it('should include rule metadata in audit log', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     (prismaMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.automationRule.delete as jest.Mock).mockResolvedValue(mockRule);
     (prismaMock.auditLog.create as jest.Mock).mockResolvedValue({});
@@ -802,7 +764,7 @@ describe('DELETE /api/rules/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'DELETE',
     });
-    await DELETE(request, { params: { id: 'rule-1' } });
+    await DELETE(request, { params: Promise.resolve({ id: 'rule-1' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/documents/share/[linkId]/revoke/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/documents/share/[linkId]/revoke', () => {
   beforeEach(() => {
@@ -58,50 +55,38 @@ describe('/api/documents/share/[linkId]/revoke', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/documents/share/share-1/revoke', {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { linkId: 'share-1' } });
+      const response = await POST(request, { params: Promise.resolve({ linkId: 'share-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue({
-        user: {
-          id: 'child-test-123',
-          familyId: 'family-test-123',
-          role: 'CHILD',
-        },
-      } as any);
-
       const request = new NextRequest('http://localhost:3000/api/documents/share/share-1/revoke', {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { linkId: 'share-1' } });
+      const response = await POST(request, { params: Promise.resolve({ linkId: 'share-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should return 404 if share link not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.documentShareLink.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/documents/share/share-999/revoke', {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { linkId: 'share-999' } });
+      const response = await POST(request, { params: Promise.resolve({ linkId: 'share-999' }) });
 
       expect(response.status).toBe(404);
     });
 
     it('should return 403 if document belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.documentShareLink.findUnique.mockResolvedValue({
         ...mockShareLink,
         document: {
@@ -114,13 +99,12 @@ describe('/api/documents/share/[linkId]/revoke', () => {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { linkId: 'share-1' } });
+      const response = await POST(request, { params: Promise.resolve({ linkId: 'share-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should return 400 if share link is already revoked', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.documentShareLink.findUnique.mockResolvedValue({
         ...mockShareLink,
         revokedAt: new Date(),
@@ -131,7 +115,7 @@ describe('/api/documents/share/[linkId]/revoke', () => {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { linkId: 'share-1' } });
+      const response = await POST(request, { params: Promise.resolve({ linkId: 'share-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -139,7 +123,6 @@ describe('/api/documents/share/[linkId]/revoke', () => {
     });
 
     it('should revoke share link successfully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.documentShareLink.findUnique.mockResolvedValue(mockShareLink as any);
 
       const updatedShareLink = {
@@ -155,7 +138,7 @@ describe('/api/documents/share/[linkId]/revoke', () => {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { linkId: 'share-1' } });
+      const response = await POST(request, { params: Promise.resolve({ linkId: 'share-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -188,14 +171,13 @@ describe('/api/documents/share/[linkId]/revoke', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.documentShareLink.findUnique.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest('http://localhost:3000/api/documents/share/share-1/revoke', {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { linkId: 'share-1' } });
+      const response = await POST(request, { params: Promise.resolve({ linkId: 'share-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();

@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { GET, PATCH, DELETE } from '@/app/api/inventory/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/inventory/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   const mockInventoryItem = {
@@ -39,10 +36,9 @@ describe('/api/inventory/[id]', () => {
 
   describe('GET /api/inventory/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1');
-      const response = await GET(request, { params: { id: 'item-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(401);
     });
@@ -51,7 +47,7 @@ describe('/api/inventory/[id]', () => {
       prismaMock.inventoryItem.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1');
-      const response = await GET(request, { params: { id: 'item-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -66,7 +62,7 @@ describe('/api/inventory/[id]', () => {
       prismaMock.inventoryItem.findUnique.mockResolvedValue(otherFamilyItem as any);
 
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1');
-      const response = await GET(request, { params: { id: 'item-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -77,7 +73,7 @@ describe('/api/inventory/[id]', () => {
       prismaMock.inventoryItem.findUnique.mockResolvedValue(mockInventoryItem as any);
 
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1');
-      const response = await GET(request, { params: { id: 'item-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -91,11 +87,10 @@ describe('/api/inventory/[id]', () => {
     });
 
     it('should allow children to view inventory items', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.inventoryItem.findUnique.mockResolvedValue(mockInventoryItem as any);
 
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1');
-      const response = await GET(request, { params: { id: 'item-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -105,26 +100,24 @@ describe('/api/inventory/[id]', () => {
 
   describe('PATCH /api/inventory/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1', {
         method: 'PATCH',
         body: JSON.stringify({ currentQuantity: 3 }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if user is not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.inventoryItem.findUnique.mockResolvedValue(mockInventoryItem as any);
 
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1', {
         method: 'PATCH',
         body: JSON.stringify({ currentQuantity: 3 }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -138,7 +131,7 @@ describe('/api/inventory/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ currentQuantity: 3 }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(404);
     });
@@ -154,7 +147,7 @@ describe('/api/inventory/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ currentQuantity: 3 }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(403);
     });
@@ -183,7 +176,7 @@ describe('/api/inventory/[id]', () => {
           notes: 'Updated notes',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -224,7 +217,7 @@ describe('/api/inventory/[id]', () => {
           category: 'INVALID_CATEGORY',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -240,7 +233,7 @@ describe('/api/inventory/[id]', () => {
           location: 'INVALID_LOCATION',
         }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -255,7 +248,7 @@ describe('/api/inventory/[id]', () => {
         method: 'PATCH',
         body: JSON.stringify({ currentQuantity: 3 }),
       });
-      const response = await PATCH(request, { params: { id: 'item-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();
@@ -265,24 +258,22 @@ describe('/api/inventory/[id]', () => {
 
   describe('DELETE /api/inventory/[id]', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if user is not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
       prismaMock.inventoryItem.findUnique.mockResolvedValue(mockInventoryItem as any);
 
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -295,7 +286,7 @@ describe('/api/inventory/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(404);
     });
@@ -310,7 +301,7 @@ describe('/api/inventory/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(403);
     });
@@ -323,7 +314,7 @@ describe('/api/inventory/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -354,7 +345,7 @@ describe('/api/inventory/[id]', () => {
       const request = new NextRequest('http://localhost:3000/api/inventory/item-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { id: 'item-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'item-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();

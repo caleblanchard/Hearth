@@ -1,23 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { completeMaintenanceItem } from '@/lib/data/maintenance';
 import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Verify maintenance item exists and belongs to family
-    const item = await prisma.maintenanceItem.findUnique({
-      where: { id: params.id },
-    });
+    const { data: item } = await supabase
+      .from('maintenance_items')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
     if (!item) {
       return NextResponse.json(
@@ -26,60 +38,23 @@ export async function POST(
       );
     }
 
-    if (item.familyId !== session.user.familyId) {
+    if (item.family_id !== familyId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const body = await request.json();
-    const { cost, serviceProvider, notes, photoUrls } = body;
-
-    const now = new Date();
+    const { notes } = body;
 
     // Log completion - all family members can log completions
-    const completion = await prisma.maintenanceCompletion.create({
-      data: {
-        maintenanceItemId: params.id,
-        completedBy: session.user.id,
-        completedAt: now,
-        cost: cost !== undefined ? cost : null,
-        serviceProvider: serviceProvider?.trim() || null,
-        notes: notes?.trim() || null,
-        photoUrls: photoUrls || [],
-      },
-    });
+    const completion = await completeMaintenanceItem(id, memberId, notes);
 
-    // Update item's lastCompletedAt
-    await prisma.maintenanceItem.update({
-      where: { id: params.id },
-      data: {
-        lastCompletedAt: now,
-      },
+    return NextResponse.json({
+      success: true,
+      completion,
+      message: 'Maintenance completed successfully',
     });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'MAINTENANCE_TASK_COMPLETED',
-        result: 'SUCCESS',
-        metadata: {
-          itemId: item.id,
-          itemName: item.name,
-          completedBy: session.user.id,
-        },
-      },
-    });
-
-    return NextResponse.json(
-      { completion, message: 'Maintenance task completed successfully' },
-      { status: 201 }
-    );
   } catch (error) {
-    logger.error('Error logging maintenance completion:', error);
-    return NextResponse.json(
-      { error: 'Failed to log maintenance completion' },
-      { status: 500 }
-    );
+    logger.error('Complete maintenance error:', error);
+    return NextResponse.json({ error: 'Failed to complete maintenance' }, { status: 500 });
   }
 }

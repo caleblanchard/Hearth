@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import {
   UserCircleIcon,
   PlusIcon,
@@ -28,6 +28,7 @@ interface MedicalProfile {
 
 interface FamilyMember {
   id: string;
+  userId: string;
   name: string;
   role: string;
   avatarUrl: string | null;
@@ -36,8 +37,9 @@ interface FamilyMember {
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 export default function MedicalProfilePage() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const [members, setMembers] = useState<FamilyMember[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('');
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [profile, setProfile] = useState<MedicalProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,33 +69,41 @@ export default function MedicalProfilePage() {
   const [newCondition, setNewCondition] = useState('');
   const [newMedication, setNewMedication] = useState('');
 
-  // Fetch family members
+  // Fetch user role and family members
   useEffect(() => {
-    async function fetchMembers() {
+    async function fetchData() {
       try {
-        const res = await fetch('/api/family');
-        if (res.ok) {
-          const data = await res.json();
-          setMembers(data.family.members || []);
-          // Auto-select current user if they're a child, or first member if parent
-          if (data.family.members.length > 0) {
-            if (session?.user?.role === 'CHILD') {
-              setSelectedMemberId(session.user.id);
-            } else {
-              setSelectedMemberId(data.family.members[0].id);
+        // Fetch role
+        const roleRes = await fetch('/api/user/role');
+        if (roleRes.ok) {
+          const roleData = await roleRes.json();
+          setCurrentUserRole(roleData.role);
+        }
+
+        // Fetch members
+        const membersRes = await fetch('/api/family/members');
+        if (membersRes.ok) {
+          const membersData = await membersRes.json();
+          setMembers(membersData.members || []);
+          
+          // Auto-select current user if no member selected
+          if (!selectedMemberId && membersData.members.length > 0) {
+            const currentMember = membersData.members.find((m: any) => m.userId === user?.id);
+            if (currentMember) {
+              setSelectedMemberId(currentMember.id);
             }
           }
         }
       } catch (error) {
-        console.error('Error fetching family members:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     }
-    if (session?.user) {
-      fetchMembers();
+    if (user) {
+      fetchData();
     }
-  }, [session]);
+  }, [user]);
 
   // Fetch medical profile when member is selected
   useEffect(() => {
@@ -135,7 +145,7 @@ export default function MedicalProfilePage() {
   }, [selectedMemberId]);
 
   const handleSave = async () => {
-    if (!selectedMemberId || session?.user?.role !== 'PARENT') return;
+    if (!selectedMemberId || user?.user_metadata?.role !== 'PARENT') return;
 
     setSaving(true);
     try {
@@ -216,8 +226,11 @@ export default function MedicalProfilePage() {
     setMedications(medications.filter((_, i) => i !== index));
   };
 
-  const isParent = session?.user?.role === 'PARENT';
-  const canEdit = isParent;
+  // Determine edit permissions
+  const isParent = currentUserRole === 'PARENT';
+  const canEdit = isParent || selectedMemberId === members.find((m: any) => m.userId === user?.id)?.id;
+  
+  console.log('[Health Profile] isParent:', isParent, 'currentUserRole:', currentUserRole);
 
   if (loading && !selectedMemberId) {
     return (
@@ -247,7 +260,7 @@ export default function MedicalProfilePage() {
           <select
             value={selectedMemberId}
             onChange={(e) => setSelectedMemberId(e.target.value)}
-            disabled={!isParent}
+            disabled={!isParent || members.length === 0}
             className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ember-500 disabled:opacity-50"
           >
             <option value="">Select a member...</option>
@@ -258,9 +271,14 @@ export default function MedicalProfilePage() {
             ))}
           </select>
         </div>
-        {!isParent && (
+        {!isParent && members.length > 0 && (
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Children can only view their own medical profile
+          </p>
+        )}
+        {members.length === 0 && (
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Loading family members...
           </p>
         )}
       </div>

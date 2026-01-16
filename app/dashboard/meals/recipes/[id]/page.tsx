@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import {
   ArrowLeftIcon,
   HeartIcon,
@@ -82,9 +82,10 @@ const DIETARY_TAG_LABELS: Record<string, string> = {
   PALEO: 'Paleo',
 };
 
-export default function RecipeDetailPage({ params }: { params: { id: string } }) {
+export default function RecipeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
+  const [recipeId, setRecipeId] = useState<string | null>(null);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -93,14 +94,44 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false });
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title?: string; message?: string; type?: 'error' | 'success' }>({ isOpen: false });
   const [showAddToMealModal, setShowAddToMealModal] = useState(false);
+  const [isParent, setIsParent] = useState(false);
 
   useEffect(() => {
-    fetchRecipe();
-  }, [params.id]);
+    params.then(p => setRecipeId(p.id));
+  }, [params]);
+
+  useEffect(() => {
+    if (recipeId) {
+      fetchRecipe();
+    }
+  }, [recipeId]);
+
+  useEffect(() => {
+    // Fetch user role to check if parent
+    const fetchUserRole = async () => {
+      if (!user) return;
+      
+      try {
+        const res = await fetch('/api/user/role');
+        if (res.ok) {
+          const data = await res.json();
+          setIsParent(data.role === 'PARENT');
+        }
+      } catch (err) {
+        console.error('Error fetching user role:', err);
+        // Default to false on error
+        setIsParent(false);
+      }
+    };
+
+    fetchUserRole();
+  }, [user]);
 
   const fetchRecipe = async () => {
+    if (!recipeId) return;
+    
     try {
-      const res = await fetch(`/api/meals/recipes/${params.id}`);
+      const res = await fetch(`/api/meals/recipes/${recipeId}`);
       if (!res.ok) {
         throw new Error('Recipe not found');
       }
@@ -273,13 +304,23 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
                   <HeartIcon className="h-6 w-6 text-gray-400" />
                 )}
               </button>
-              {session?.user?.id === recipe.creator.id && (
-                <button
-                  onClick={deleteRecipe}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <TrashIcon className="h-6 w-6 text-gray-400 hover:text-red-500" />
-                </button>
+              {isParent && (
+                <>
+                  <button
+                    onClick={() => router.push(`/dashboard/meals/recipes/${recipe.id}/edit`)}
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    title="Edit Recipe"
+                  >
+                    <PencilIcon className="h-6 w-6 text-gray-400 hover:text-ember-700" />
+                  </button>
+                  <button
+                    onClick={deleteRecipe}
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    title="Delete Recipe"
+                  >
+                    <TrashIcon className="h-6 w-6 text-gray-400 hover:text-red-500" />
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -399,7 +440,7 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Ingredients</h2>
               <ul className="space-y-2">
-                {recipe.ingredients.map((ingredient) => (
+                {recipe.ingredients?.map((ingredient) => (
                   <li key={ingredient.id} className="flex items-start gap-3">
                     <span className="text-ember-700 mt-1">•</span>
                     <span className="text-gray-700 dark:text-gray-300">

@@ -13,11 +13,8 @@ jest.mock('crypto', () => ({
   })),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { POST, GET } from '@/app/api/documents/[id]/share/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/documents/[id]/share', () => {
   beforeEach(() => {
@@ -54,50 +51,38 @@ describe('/api/documents/[id]/share', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { id: 'doc-1' } });
+      const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 403 if not a parent', async () => {
-      mockAuth.mockResolvedValue({
-        user: {
-          id: 'child-test-123',
-          familyId: 'family-test-123',
-          role: 'CHILD',
-        },
-      } as any);
-
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { id: 'doc-1' } });
+      const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should return 404 if document not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/documents/doc-999/share', {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { id: 'doc-999' } });
+      const response = await POST(request, { params: Promise.resolve({ id: 'doc-999' }) });
 
       expect(response.status).toBe(404);
     });
 
     it('should return 403 if document belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue({
         ...mockDocument,
         familyId: 'different-family-123',
@@ -107,13 +92,12 @@ describe('/api/documents/[id]/share', () => {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { id: 'doc-1' } });
+      const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should create share link with expiration', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(mockDocument as any);
 
       const mockShareLink = {
@@ -146,7 +130,7 @@ describe('/api/documents/[id]/share', () => {
           notes: 'Share with friend',
         }),
       });
-      const response = await POST(request, { params: { id: 'doc-1' } });
+      const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(201);
       const data = await response.json();
@@ -171,7 +155,6 @@ describe('/api/documents/[id]/share', () => {
     });
 
     it('should create share link without expiration', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(mockDocument as any);
 
       const mockShareLink = {
@@ -200,7 +183,7 @@ describe('/api/documents/[id]/share', () => {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const response = await POST(request, { params: { id: 'doc-1' } });
+      const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(201);
       const data = await response.json();
@@ -210,30 +193,26 @@ describe('/api/documents/[id]/share', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'doc-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 404 if document not found', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/documents/doc-999/share', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'doc-999' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'doc-999' }) });
 
       expect(response.status).toBe(404);
     });
 
     it('should return 403 if document belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue({
         ...mockDocument,
         familyId: 'different-family-123',
@@ -242,13 +221,12 @@ describe('/api/documents/[id]/share', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'doc-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(403);
     });
 
     it('should return all share links for document', async () => {
-      mockAuth.mockResolvedValue(mockSession as any);
       prismaMock.document.findUnique.mockResolvedValue(mockDocument as any);
 
       const mockShareLinks = [
@@ -289,7 +267,7 @@ describe('/api/documents/[id]/share', () => {
       const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
         method: 'GET',
       });
-      const response = await GET(request, { params: { id: 'doc-1' } });
+      const response = await GET(request, { params: Promise.resolve({ id: 'doc-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();

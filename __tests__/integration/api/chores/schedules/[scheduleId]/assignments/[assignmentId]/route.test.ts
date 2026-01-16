@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { DELETE } from '@/app/api/chores/schedules/[scheduleId]/assignments/[assignmentId]/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => {
   beforeEach(() => {
@@ -48,13 +41,12 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
     })
 
     it('should return 403 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/chores/schedules/123/assignments/456', {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { scheduleId, assignmentId } })
+      const response = await DELETE(request, { params: Promise.resolve({ scheduleId, assignmentId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -63,7 +55,6 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
 
     it('should return 404 if assignment not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreAssignment.findUnique.mockResolvedValue(null)
 
@@ -71,7 +62,7 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { scheduleId, assignmentId } })
+      const response = await DELETE(request, { params: Promise.resolve({ scheduleId, assignmentId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -80,7 +71,6 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
 
     it('should return 400 if trying to delete last assignment', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreAssignment.findUnique.mockResolvedValue({
         ...getMockAssignment(session),
@@ -94,7 +84,7 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { scheduleId, assignmentId } })
+      const response = await DELETE(request, { params: Promise.resolve({ scheduleId, assignmentId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -103,7 +93,6 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
 
     it('should soft delete assignment successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreAssignment.findUnique.mockResolvedValue(getMockAssignment(session) as any)
       prismaMock.choreAssignment.update.mockResolvedValue({
@@ -115,7 +104,7 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { scheduleId, assignmentId } })
+      const response = await DELETE(request, { params: Promise.resolve({ scheduleId, assignmentId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -130,7 +119,6 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreAssignment.findUnique.mockResolvedValue(getMockAssignment(session) as any)
       prismaMock.choreAssignment.update.mockRejectedValue(new Error('Database error'))
@@ -139,7 +127,7 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { scheduleId, assignmentId } })
+      const response = await DELETE(request, { params: Promise.resolve({ scheduleId, assignmentId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)

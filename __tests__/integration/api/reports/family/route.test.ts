@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/reports/family/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { ChoreStatus, TodoStatus, CreditTransactionType, ScreenTimeTransactionType } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/reports/family', () => {
   beforeEach(() => {
@@ -96,7 +89,6 @@ describe('/api/reports/family', () => {
     ]
 
     it('should return 403 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/reports/family')
       const response = await GET(request)
@@ -108,7 +100,6 @@ describe('/api/reports/family', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/reports/family')
       const response = await GET(request)
@@ -120,7 +111,6 @@ describe('/api/reports/family', () => {
 
     it('should generate report for week period', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
       prismaMock.choreInstance.findMany.mockResolvedValue(mockChores as any)
@@ -145,7 +135,6 @@ describe('/api/reports/family', () => {
 
     it('should generate report for custom date range', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
       prismaMock.choreInstance.findMany.mockResolvedValue([])
@@ -167,7 +156,6 @@ describe('/api/reports/family', () => {
 
     it('should calculate per-child breakdown', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
       prismaMock.choreInstance.findMany.mockResolvedValue(mockChores as any)
@@ -208,7 +196,6 @@ describe('/api/reports/family', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findMany.mockRejectedValue(new Error('Database error'))
 

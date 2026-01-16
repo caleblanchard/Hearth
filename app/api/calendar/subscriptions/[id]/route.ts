@@ -1,302 +1,157 @@
-/**
- * External Calendar Subscription Management
- *
- * GET /api/calendar/subscriptions/[id] - Get subscription details
- * PATCH /api/calendar/subscriptions/[id] - Update subscription
- * DELETE /api/calendar/subscriptions/[id] - Delete subscription
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getCalendarSubscription, updateCalendarSubscription, deleteCalendarSubscription } from '@/lib/data/calendar';
 import { logger } from '@/lib/logger';
-import { validateCalendarUrl } from '@/lib/integrations/external-calendar';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Check authentication
-    const session = await auth();
+    const { id } = await params
+    const authContext = await getAuthContext();
 
-    if (!session || !session.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get family member info
-    // session.user.id is the FamilyMember ID from the auth system
-    const familyMember = await prisma.familyMember.findUnique({
-      where: {
-        id: session.user.id,
-      },
-    });
-
-    if (!familyMember) {
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    // Get subscription
-    const subscription = await prisma.externalCalendarSubscription.findFirst({
-      where: {
-        id: params.id,
-        familyId: familyMember.familyId,
-      },
-      select: {
-        id: true,
-        name: true,
-        url: true,
-        description: true,
-        color: true,
-        lastSyncAt: true,
-        lastSuccessfulSyncAt: true,
-        nextSyncAt: true,
-        syncStatus: true,
-        syncError: true,
-        isActive: true,
-        refreshInterval: true,
-        createdAt: true,
-        updatedAt: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+    const sub = await getCalendarSubscription(id);
 
-    if (!subscription) {
+    if (!sub || sub.family_id !== familyId) {
       return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ subscription }, { status: 200 });
+    // Map to camelCase for frontend
+    const mappedSubscription = {
+      id: sub.id,
+      familyId: sub.family_id,
+      name: sub.name,
+      url: sub.url,
+      description: sub.description,
+      color: sub.color,
+      lastSyncAt: sub.last_sync_at,
+      lastSuccessfulSyncAt: sub.last_successful_sync_at,
+      nextSyncAt: sub.next_sync_at,
+      syncStatus: sub.sync_status,
+      syncError: sub.sync_error,
+      etag: sub.etag,
+      isActive: sub.is_active,
+      refreshInterval: sub.refresh_interval,
+      createdById: sub.created_by_id,
+      createdAt: sub.created_at,
+      updatedAt: sub.updated_at,
+    };
+
+    return NextResponse.json({ subscription: mappedSubscription });
   } catch (error) {
-    logger.error('Failed to retrieve subscription', { error });
-    return NextResponse.json(
-      { error: 'Failed to retrieve subscription' },
-      { status: 500 }
-    );
+    logger.error('Get calendar subscription error:', error);
+    return NextResponse.json({ error: 'Failed to get subscription' }, { status: 500 });
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Check authentication
-    const session = await auth();
+    const { id } = await params
+    const authContext = await getAuthContext();
 
-    if (!session || !session.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get family member info
-    // session.user.id is the FamilyMember ID from the auth system
-    const familyMember = await prisma.familyMember.findUnique({
-      where: {
-        id: session.user.id,
-      },
-    });
-
-    if (!familyMember) {
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    // Verify subscription belongs to user's family
-    const existing = await prisma.externalCalendarSubscription.findFirst({
-      where: {
-        id: params.id,
-        familyId: familyMember.familyId,
-      },
-    });
-
-    if (!existing) {
+    const existing = await getCalendarSubscription(id);
+    if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
     }
 
-    // Parse request body
     const body = await request.json();
-    const { name, url, description, color, isActive, refreshInterval } = body;
+    
+    // Map camelCase to snake_case for database
+    const updates: any = {};
+    if (body.name !== undefined) updates.name = body.name;
+    if (body.url !== undefined) updates.url = body.url;
+    if (body.description !== undefined) updates.description = body.description;
+    if (body.color !== undefined) updates.color = body.color;
+    if (body.refreshInterval !== undefined) updates.refresh_interval = body.refreshInterval;
+    if (body.isActive !== undefined) updates.is_active = body.isActive;
+    
+    const sub = await updateCalendarSubscription(id, updates);
 
-    // Build update data
-    const updateData: any = {};
+    // Map response back to camelCase
+    const mappedSubscription = {
+      id: sub.id,
+      familyId: sub.family_id,
+      name: sub.name,
+      url: sub.url,
+      description: sub.description,
+      color: sub.color,
+      lastSyncAt: sub.last_sync_at,
+      lastSuccessfulSyncAt: sub.last_successful_sync_at,
+      nextSyncAt: sub.next_sync_at,
+      syncStatus: sub.sync_status,
+      syncError: sub.sync_error,
+      etag: sub.etag,
+      isActive: sub.is_active,
+      refreshInterval: sub.refresh_interval,
+      createdById: sub.created_by_id,
+      createdAt: sub.created_at,
+      updatedAt: sub.updated_at,
+    };
 
-    if (name !== undefined) {
-      updateData.name = name.trim();
-    }
-
-    if (url !== undefined) {
-      // Validate URL format
-      const urlPattern = /^(https?|webcal):\/\/.+/i;
-      if (!urlPattern.test(url)) {
-        return NextResponse.json(
-          { error: 'Invalid URL format. Must be http://, https://, or webcal://' },
-          { status: 400 }
-        );
-      }
-
-      // If URL changed, validate it
-      if (url !== existing.url) {
-        const validation = await validateCalendarUrl(url);
-        if (!validation.valid) {
-          return NextResponse.json(
-            { error: `Invalid calendar URL: ${validation.error}` },
-            { status: 400 }
-          );
-        }
-
-        // Check for duplicate URL
-        const duplicate = await prisma.externalCalendarSubscription.findFirst({
-          where: {
-            familyId: familyMember.familyId,
-            url: url,
-            id: { not: params.id },
-          },
-        });
-
-        if (duplicate) {
-          return NextResponse.json(
-            { error: 'This calendar URL is already subscribed' },
-            { status: 409 }
-          );
-        }
-
-        updateData.url = url.trim();
-        updateData.etag = null; // Reset ETag when URL changes
-      }
-    }
-
-    if (description !== undefined) {
-      updateData.description = description?.trim() || null;
-    }
-
-    if (color !== undefined) {
-      updateData.color = color;
-    }
-
-    if (isActive !== undefined) {
-      updateData.isActive = isActive;
-    }
-
-    if (refreshInterval !== undefined) {
-      if (refreshInterval < 60) {
-        return NextResponse.json(
-          { error: 'Refresh interval must be at least 60 minutes' },
-          { status: 400 }
-        );
-      }
-      updateData.refreshInterval = refreshInterval;
-    }
-
-    // Update subscription
-    const subscription = await prisma.externalCalendarSubscription.update({
-      where: { id: params.id },
-      data: updateData,
-      select: {
-        id: true,
-        name: true,
-        url: true,
-        description: true,
-        color: true,
-        lastSyncAt: true,
-        lastSuccessfulSyncAt: true,
-        nextSyncAt: true,
-        syncStatus: true,
-        syncError: true,
-        isActive: true,
-        refreshInterval: true,
-        createdAt: true,
-        updatedAt: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+    return NextResponse.json({
+      success: true,
+      subscription: mappedSubscription,
+      message: 'Subscription updated successfully',
     });
-
-    logger.info('External calendar subscription updated', {
-      userId: session.user.id,
-      subscriptionId: subscription.id,
-    });
-
-    return NextResponse.json({ subscription }, { status: 200 });
   } catch (error) {
-    logger.error('Failed to update subscription', { error });
-    return NextResponse.json(
-      { error: 'Failed to update subscription' },
-      { status: 500 }
-    );
+    logger.error('Update calendar subscription error:', error);
+    return NextResponse.json({ error: 'Failed to update subscription' }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Check authentication
-    const session = await auth();
+    const { id } = await params
+    const authContext = await getAuthContext();
 
-    if (!session || !session.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get family member info
-    // session.user.id is the FamilyMember ID from the auth system
-    const familyMember = await prisma.familyMember.findUnique({
-      where: {
-        id: session.user.id,
-      },
-    });
-
-    if (!familyMember) {
-      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    // Verify subscription belongs to user's family
-    const existing = await prisma.externalCalendarSubscription.findFirst({
-      where: {
-        id: params.id,
-        familyId: familyMember.familyId,
-      },
-    });
-
-    if (!existing) {
+    const existing = await getCalendarSubscription(id);
+    if (!existing || existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
     }
 
-    // Delete all associated calendar events first
-    const deleteResult = await prisma.calendarEvent.deleteMany({
-      where: {
-        externalSubscriptionId: params.id,
-      },
-    });
+    await deleteCalendarSubscription(id);
 
-    logger.info('Deleted calendar events for subscription', {
-      subscriptionId: params.id,
-      eventsDeleted: deleteResult.count,
+    return NextResponse.json({
+      success: true,
+      message: 'Subscription deleted successfully',
     });
-
-    // Delete subscription
-    await prisma.externalCalendarSubscription.delete({
-      where: { id: params.id },
-    });
-
-    logger.info('External calendar subscription deleted', {
-      userId: session.user.id,
-      subscriptionId: params.id,
-    });
-
-    return NextResponse.json({ message: 'Subscription deleted' }, { status: 200 });
   } catch (error) {
-    logger.error('Failed to delete subscription', { error });
-    return NextResponse.json(
-      { error: 'Failed to delete subscription' },
-      { status: 500 }
-    );
+    logger.error('Delete calendar subscription error:', error);
+    return NextResponse.json({ error: 'Failed to delete subscription' }, { status: 500 });
   }
 }

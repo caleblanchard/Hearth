@@ -20,8 +20,6 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/geocoding/route';
 import { mockParentSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/geocoding', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -34,7 +32,6 @@ describe('/api/geocoding', () => {
 
   describe('Authentication', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValueOnce(null);
 
       const request = new NextRequest('http://localhost:3000/api/geocoding?zip=90210');
       const response = await GET(request);
@@ -47,7 +44,6 @@ describe('/api/geocoding', () => {
 
   describe('Validation', () => {
     it('should return 400 if neither zip nor city is provided', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/geocoding');
       const response = await GET(request);
@@ -58,7 +54,6 @@ describe('/api/geocoding', () => {
     });
 
     it('should return 500 if WEATHER_API_KEY is not configured', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
       delete process.env.WEATHER_API_KEY;
 
       const request = new NextRequest('http://localhost:3000/api/geocoding?zip=90210');
@@ -72,7 +67,6 @@ describe('/api/geocoding', () => {
 
   describe('Zip Code Geocoding', () => {
     it('should geocode a valid US zip code', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
@@ -104,7 +98,6 @@ describe('/api/geocoding', () => {
     });
 
     it('should geocode a valid UK postal code', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
@@ -126,7 +119,6 @@ describe('/api/geocoding', () => {
     });
 
     it('should return 404 for invalid zip code', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
@@ -144,7 +136,6 @@ describe('/api/geocoding', () => {
     });
 
     it('should default to US country if not specified', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
@@ -169,7 +160,6 @@ describe('/api/geocoding', () => {
 
   describe('City Name Geocoding', () => {
     it('should geocode a city name and return multiple results', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
@@ -206,7 +196,6 @@ describe('/api/geocoding', () => {
     });
 
     it('should return 404 for city not found', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
@@ -222,7 +211,6 @@ describe('/api/geocoding', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
@@ -242,7 +230,6 @@ describe('/api/geocoding', () => {
 
   describe('Error Handling', () => {
     it('should handle network errors', async () => {
-      auth.mockResolvedValueOnce(mockParentSession());
 
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 

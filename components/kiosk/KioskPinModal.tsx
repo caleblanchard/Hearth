@@ -15,6 +15,7 @@ interface KioskPinModalProps {
   onClose: () => void;
   onUnlock: (memberId: string, pin: string) => Promise<void>;
   familyId: string;
+  sessionToken: string | null;
 }
 
 export default function KioskPinModal({
@@ -22,6 +23,7 @@ export default function KioskPinModal({
   onClose,
   onUnlock,
   familyId,
+  sessionToken,
 }: KioskPinModalProps) {
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
@@ -33,19 +35,31 @@ export default function KioskPinModal({
     if (isOpen) {
       const fetchMembers = async () => {
         try {
-          const response = await fetch(`/api/family`);
-          if (response.ok) {
-            const data = await response.json();
-            setMembers(data.family?.members || []);
+          setError('');
+          setMembers([]);
+          if (!sessionToken) {
+            setError('Kiosk session not found');
+            return;
           }
+          const response = await fetch('/api/kiosk/members', {
+            headers: {
+              'X-Kiosk-Token': sessionToken,
+            },
+          });
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to load family members');
+          }
+          const data = await response.json();
+          setMembers(data.members || []);
         } catch (error) {
           console.error('Failed to fetch family members:', error);
-          setError('Failed to load family members');
+          setError(error instanceof Error ? error.message : 'Failed to load family members');
         }
       };
       fetchMembers();
     }
-  }, [isOpen, familyId]);
+  }, [isOpen, familyId, sessionToken]);
 
   const handlePinInput = (digit: string) => {
     if (pin.length < 6) {
@@ -104,6 +118,16 @@ export default function KioskPinModal({
             <h2 className="text-xl font-semibold mb-4 text-center text-gray-800 dark:text-white">
               Who are you?
             </h2>
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm mb-4 text-center">
+                {error}
+              </div>
+            )}
+            {!error && members.length === 0 && (
+              <p className="text-center text-sm text-gray-600 dark:text-gray-400 mb-4">
+                No family members available.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-4">
               {members.map((member) => (
                 <button

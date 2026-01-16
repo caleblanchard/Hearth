@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
   LineChart,
   Line,
@@ -47,7 +47,7 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 export default function TemperatureHistoryPage() {
-  const { data: session } = useSession();
+  const { member, isParent, isChild } = useCurrentMember();
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [logs, setLogs] = useState<TemperatureLog[]>([]);
@@ -61,23 +61,28 @@ export default function TemperatureHistoryPage() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const res = await fetch('/api/family');
+        const res = await fetch('/api/family-data');
         if (res.ok) {
           const data = await res.json();
-          setMembers(data.family.members || []);
-          // Auto-select current user if they're a child
-          if (session?.user?.role === 'CHILD') {
-            setSelectedMemberId(session.user.id);
+          if (isParent) {
+            setMembers(data.family.members || []);
+          } else if (member) {
+            setMembers(data.family.members.filter((m: FamilyMember) => m.id === member.id));
+          }
+
+          // Auto-select current member if they're a child
+          if (isChild && member?.id) {
+            setSelectedMemberId(member.id);
           }
         }
       } catch (error) {
         console.error('Error fetching family members:', error);
       }
     }
-    if (session?.user) {
+    if (member) {
       fetchMembers();
     }
-  }, [session]);
+  }, [member, isParent, isChild]);
 
   // Fetch temperature logs
   useEffect(() => {
@@ -147,8 +152,6 @@ export default function TemperatureHistoryPage() {
       return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
     return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
   };
-
-  const isParent = session?.user?.role === 'PARENT';
 
   return (
     <div className="max-w-7xl mx-auto p-6">

@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -22,8 +17,6 @@ import { GET, POST } from '@/app/api/chores/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { Frequency, AssignmentType, Difficulty } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
-
 describe('/api/chores', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -33,9 +26,9 @@ describe('/api/chores', () => {
   describe('GET', () => {
     it('should return 403 if not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
-      const response = await GET()
+      const request = new NextRequest('http://localhost/api/chores')
+      const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -44,7 +37,6 @@ describe('/api/chores', () => {
 
     it('should return chores for authenticated parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const mockChores = [
         {
@@ -70,7 +62,8 @@ describe('/api/chores', () => {
 
       prismaMock.choreDefinition.findMany.mockResolvedValue(mockChores as any)
 
-      const response = await GET()
+      const request = new NextRequest('http://localhost/api/chores')
+      const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -109,7 +102,6 @@ describe('/api/chores', () => {
 
     it('should return 403 if not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -125,7 +117,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if name is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -144,7 +135,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if name is too long', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -163,7 +153,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if creditValue is negative', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -182,7 +171,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if estimatedMinutes is invalid', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -201,7 +189,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if difficulty is invalid', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -220,7 +207,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if schedule is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -241,7 +227,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if assignmentType is invalid', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -263,7 +248,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if frequency is invalid', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -285,7 +269,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if dayOfWeek is missing for weekly frequency', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -308,7 +291,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if no assignments provided', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -330,7 +312,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if rotating assignment has less than 2 members', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -353,7 +334,6 @@ describe('/api/chores', () => {
 
     it('should return 400 if rotation order is not sequential', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -378,7 +358,6 @@ describe('/api/chores', () => {
 
     it('should create chore successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const mockCreatedChore = {
         id: 'chore-1',
@@ -426,7 +405,6 @@ describe('/api/chores', () => {
 
     it('should trim name and description', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.$transaction.mockImplementation(async (callback: any) => {
         const mockTx = {

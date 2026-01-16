@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 export default function EditProjectPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -89,7 +89,7 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
     }
   };
 
-  if (session?.user?.role !== 'PARENT') {
+  if (user?.user_metadata?.role !== 'PARENT') {
     return (
       <div className="p-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">

@@ -129,7 +129,7 @@ describe('CommunicationFeed', () => {
 
     await waitFor(() => {
       const pinnedPost = screen.getByText('Important Family Meeting').closest('[data-testid="post-item"]');
-      expect(within(pinnedPost!).getByText(/pinned/i)).toBeInTheDocument();
+      expect(within(pinnedPost as HTMLElement).getByText(/pinned/i)).toBeInTheDocument();
     });
   });
 
@@ -202,7 +202,7 @@ describe('CommunicationFeed', () => {
     });
 
     const kudosPost = screen.getByText('Great job on your homework!').closest('[data-testid="post-item"]');
-    const addReactionButton = within(kudosPost!).getByRole('button', { name: /add reaction/i });
+    const addReactionButton = within(kudosPost as HTMLElement).getByRole('button', { name: /add reaction/i });
 
     await user.click(addReactionButton);
 
@@ -253,7 +253,7 @@ describe('CommunicationFeed', () => {
     });
 
     const announcementPost = screen.getByText('Important Family Meeting').closest('[data-testid="post-item"]');
-    const thumbsUpReaction = within(announcementPost!).getByText('👍');
+    const thumbsUpReaction = within(announcementPost as HTMLElement).getByText('👍');
 
     await user.click(thumbsUpReaction);
 

@@ -43,7 +43,7 @@ describe('GoogleCalendarClient', () => {
 
     it('should initialize OAuth2 client with correct configuration', () => {
       const mockOAuth2 = jest.fn();
-      (google.auth.OAuth2 as jest.Mock) = mockOAuth2;
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = mockOAuth2;
 
       new GoogleCalendarClient();
 
@@ -62,7 +62,7 @@ describe('GoogleCalendarClient', () => {
         generateAuthUrl: mockGenerateAuthUrl,
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
 
       const client = new GoogleCalendarClient();
       const authUrl = client.getAuthUrl('test-state-token');
@@ -96,7 +96,7 @@ describe('GoogleCalendarClient', () => {
         getToken: mockGetToken,
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
 
       const client = new GoogleCalendarClient();
       const tokens = await client.getTokensFromCode('auth-code-xyz');
@@ -122,7 +122,7 @@ describe('GoogleCalendarClient', () => {
         getToken: mockGetToken,
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
 
       const client = new GoogleCalendarClient();
 
@@ -138,7 +138,7 @@ describe('GoogleCalendarClient', () => {
         getToken: mockGetToken,
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
 
       const client = new GoogleCalendarClient();
 
@@ -181,7 +181,7 @@ describe('GoogleCalendarClient', () => {
         refreshAccessToken: mockRefreshAccessToken,
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
 
       prismaMock.calendarConnection.update.mockResolvedValue({} as any);
 
@@ -240,7 +240,7 @@ describe('GoogleCalendarClient', () => {
         refreshAccessToken: mockRefreshAccessToken,
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
 
       prismaMock.calendarConnection.update.mockResolvedValue({} as any);
 
@@ -281,7 +281,7 @@ describe('GoogleCalendarClient', () => {
         setCredentials: mockSetCredentials,
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       const client = new GoogleCalendarClient();
@@ -333,7 +333,7 @@ describe('GoogleCalendarClient', () => {
         refreshAccessToken: mockRefreshAccessToken,
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       prismaMock.calendarConnection.update.mockResolvedValue({
@@ -394,7 +394,7 @@ describe('GoogleCalendarClient', () => {
         setCredentials: jest.fn(),
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       const client = new GoogleCalendarClient();
@@ -459,7 +459,7 @@ describe('GoogleCalendarClient', () => {
         setCredentials: jest.fn(),
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       const client = new GoogleCalendarClient();
@@ -509,7 +509,7 @@ describe('GoogleCalendarClient', () => {
         setCredentials: jest.fn(),
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       const client = new GoogleCalendarClient();
@@ -574,7 +574,7 @@ describe('GoogleCalendarClient', () => {
         setCredentials: jest.fn(),
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       prismaMock.calendarConnection.update.mockResolvedValue({} as any);
@@ -631,7 +631,7 @@ describe('GoogleCalendarClient', () => {
         setCredentials: jest.fn(),
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       const client = new GoogleCalendarClient();
@@ -693,7 +693,7 @@ describe('GoogleCalendarClient', () => {
         setCredentials: jest.fn(),
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       const client = new GoogleCalendarClient();
@@ -751,7 +751,7 @@ describe('GoogleCalendarClient', () => {
         setCredentials: jest.fn(),
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       const client = new GoogleCalendarClient();
@@ -802,7 +802,7 @@ describe('GoogleCalendarClient', () => {
         setCredentials: jest.fn(),
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       const client = new GoogleCalendarClient();
@@ -842,7 +842,7 @@ describe('GoogleCalendarClient', () => {
         setCredentials: jest.fn(),
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
       (google.calendar as jest.Mock) = jest.fn(() => mockCalendar);
 
       const client = new GoogleCalendarClient();
@@ -871,7 +871,7 @@ describe('GoogleCalendarClient', () => {
         }),
       };
 
-      (google.auth.OAuth2 as jest.Mock) = jest.fn(() => mockOAuth2Client);
+      ((google.auth.OAuth2 as unknown) as jest.Mock) = jest.fn(() => mockOAuth2Client);
 
       const client = new GoogleCalendarClient();
       const email = await client.getUserEmail(connectionId);

@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { GET, PATCH, DELETE } from '@/app/api/chores/[id]/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/chores/[id]', () => {
   beforeEach(() => {
@@ -42,10 +35,9 @@ describe('/api/chores/[id]', () => {
     }
 
     it('should return 403 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/chores/123')
-      const response = await GET(request, { params: { id: choreId } })
+      const response = await GET(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -54,10 +46,9 @@ describe('/api/chores/[id]', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores/123')
-      const response = await GET(request, { params: { id: choreId } })
+      const response = await GET(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -66,12 +57,11 @@ describe('/api/chores/[id]', () => {
 
     it('should return 404 if chore not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/chores/123')
-      const response = await GET(request, { params: { id: choreId } })
+      const response = await GET(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -80,7 +70,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 403 if chore belongs to different family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -88,7 +77,7 @@ describe('/api/chores/[id]', () => {
       } as any)
 
       const request = new NextRequest('http://localhost/api/chores/123')
-      const response = await GET(request, { params: { id: choreId } })
+      const response = await GET(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -97,7 +86,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return chore details for parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -112,7 +100,7 @@ describe('/api/chores/[id]', () => {
       prismaMock.choreDefinition.findUnique.mockResolvedValue(mockChoreWithFamily as any)
 
       const request = new NextRequest('http://localhost/api/chores/123')
-      const response = await GET(request, { params: { id: choreId } })
+      const response = await GET(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -156,12 +144,11 @@ describe('/api/chores/[id]', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockRejectedValue(new Error('Database error'))
 
       const request = new NextRequest('http://localhost/api/chores/123')
-      const response = await GET(request, { params: { id: choreId } })
+      const response = await GET(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)
@@ -187,14 +174,13 @@ describe('/api/chores/[id]', () => {
     }
 
     it('should return 403 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/chores/123', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Chore' }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -203,14 +189,13 @@ describe('/api/chores/[id]', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores/123', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Chore' }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -219,7 +204,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 404 if chore not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue(null)
 
@@ -228,7 +212,7 @@ describe('/api/chores/[id]', () => {
         body: JSON.stringify({ name: 'Updated Chore' }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -237,7 +221,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 400 if name is invalid', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -249,7 +232,7 @@ describe('/api/chores/[id]', () => {
         body: JSON.stringify({ name: '   ' }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -258,7 +241,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 400 if name is too long', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -270,7 +252,7 @@ describe('/api/chores/[id]', () => {
         body: JSON.stringify({ name: 'a'.repeat(101) }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -279,7 +261,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 400 if description is too long', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -291,7 +272,7 @@ describe('/api/chores/[id]', () => {
         body: JSON.stringify({ description: 'a'.repeat(1001) }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -300,7 +281,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 400 if creditValue is negative', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -312,7 +292,7 @@ describe('/api/chores/[id]', () => {
         body: JSON.stringify({ creditValue: -10 }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -321,7 +301,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 400 if difficulty is invalid', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -333,7 +312,7 @@ describe('/api/chores/[id]', () => {
         body: JSON.stringify({ difficulty: 'INVALID' }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -342,7 +321,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 400 if estimatedMinutes is invalid', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -354,7 +332,7 @@ describe('/api/chores/[id]', () => {
         body: JSON.stringify({ estimatedMinutes: 0 }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -363,7 +341,6 @@ describe('/api/chores/[id]', () => {
 
     it('should update chore successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -386,7 +363,7 @@ describe('/api/chores/[id]', () => {
         }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -402,7 +379,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -415,7 +391,7 @@ describe('/api/chores/[id]', () => {
         body: JSON.stringify({ name: 'Updated Chore' }),
       })
 
-      const response = await PATCH(request, { params: { id: choreId } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)
@@ -433,13 +409,12 @@ describe('/api/chores/[id]', () => {
     }
 
     it('should return 403 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/chores/123', {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: choreId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -448,13 +423,12 @@ describe('/api/chores/[id]', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/chores/123', {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: choreId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -463,7 +437,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 404 if chore not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue(null)
 
@@ -471,7 +444,7 @@ describe('/api/chores/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: choreId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -480,7 +453,6 @@ describe('/api/chores/[id]', () => {
 
     it('should soft delete chore and schedules', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -496,7 +468,7 @@ describe('/api/chores/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: choreId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -508,7 +480,6 @@ describe('/api/chores/[id]', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.choreDefinition.findUnique.mockResolvedValue({
         ...mockChore,
@@ -521,7 +492,7 @@ describe('/api/chores/[id]', () => {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: { id: choreId } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: choreId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)

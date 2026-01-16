@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useRouter } from 'next/navigation';
 import {
   PlusIcon,
@@ -49,7 +49,7 @@ interface ScreenTimeAllowance {
 }
 
 export default function ScreenTimeManagePage() {
-  const { data: session, status } = useSession();
+  const { user, loading: authLoading } = useSupabaseSession();
   const router = useRouter();
   const [types, setTypes] = useState<ScreenTimeType[]>([]);
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -89,19 +89,18 @@ export default function ScreenTimeManagePage() {
   });
 
   useEffect(() => {
-    // Wait for session to load before checking role
-    if (status === 'loading') {
-      // Session is still loading
+    // Wait for auth to load before fetching data
+    if (authLoading) {
       return;
     }
     
-    if (!session || session.user?.role !== 'PARENT') {
+    if (!user) {
       router.push('/dashboard/screentime');
       return;
     }
     
     loadData();
-  }, [session, status, router]);
+  }, [user, authLoading, router]);
 
   const loadData = async () => {
     try {
@@ -110,7 +109,7 @@ export default function ScreenTimeManagePage() {
 
       const [typesRes, familyRes, allowancesRes] = await Promise.all([
         fetch('/api/screentime/types'),
-        fetch('/api/family'),
+        fetch('/api/family-data'),
         fetch('/api/screentime/allowances'),
       ]);
 

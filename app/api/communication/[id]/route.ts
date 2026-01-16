@@ -1,195 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { updateCommunicationPost, deleteCommunicationPost } from '@/lib/data/communication';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Get existing post
-    const post = await prisma.communicationPost.findUnique({
-      where: { id: params.id },
-    });
+    const { data: post } = await supabase
+      .from('communication_posts')
+      .select('family_id, author_id')
+      .eq('id', id)
+      .single();
 
     if (!post) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
     // Verify post belongs to user's family
-    if (post.familyId !== session.user.familyId) {
+    if (post.family_id !== familyId) {
       return NextResponse.json(
         { error: 'You do not have permission to update this post' },
         { status: 403 }
       );
     }
 
-    // Validate JSON input
-    let body;
-    try {
-      body = await request.json();
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      );
-    }
+    const body = await request.json();
     const { content, title, imageUrl, isPinned } = body;
-
-    // Build update data
-    const updateData: any = {};
-    let auditAction = 'POST_UPDATED';
 
     // Content/title updates - only author can do this
     if (content !== undefined || title !== undefined || imageUrl !== undefined) {
-      if (post.authorId !== session.user.id) {
+      if (post.author_id !== memberId) {
         return NextResponse.json(
           { error: 'Only the author can edit post content' },
           { status: 403 }
         );
       }
-
-      if (content !== undefined) updateData.content = content;
-      if (title !== undefined) updateData.title = title;
-      if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
     }
 
-    // Pin/unpin - only parents can do this
-    if (isPinned !== undefined) {
-      if (session.user.role !== 'PARENT') {
-        return NextResponse.json(
-          { error: 'Only parents can pin/unpin posts' },
-          { status: 403 }
-        );
-      }
-
-      updateData.isPinned = isPinned;
-      auditAction = isPinned ? 'POST_PINNED' : 'POST_UNPINNED';
-    }
-
-    // Update post
-    const updatedPost = await prisma.communicationPost.update({
-      where: { id: params.id },
-      data: updateData,
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-          },
-        },
-        reactions: {
-          include: {
-            member: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: auditAction as any,
-        result: 'SUCCESS',
-        metadata: {
-          postId: updatedPost.id,
-          changes: Object.keys(updateData),
-        },
-      },
-    });
+    const updatedPost = await updateCommunicationPost(id, body);
 
     return NextResponse.json({
+      success: true,
       post: updatedPost,
       message: 'Post updated successfully',
     });
   } catch (error) {
-    logger.error('Error updating post:', error);
-    return NextResponse.json(
-      { error: 'Failed to update post' },
-      { status: 500 }
-    );
+    logger.error('Update post error:', error);
+    return NextResponse.json({ error: 'Failed to update post' }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Get existing post
-    const post = await prisma.communicationPost.findUnique({
-      where: { id: params.id },
-    });
+    const { data: post } = await supabase
+      .from('communication_posts')
+      .select('family_id, author_id')
+      .eq('id', id)
+      .single();
 
     if (!post) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
     // Verify post belongs to user's family
-    if (post.familyId !== session.user.familyId) {
+    if (post.family_id !== familyId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Only author can delete
+    if (post.author_id !== memberId) {
       return NextResponse.json(
-        { error: 'You do not have permission to delete this post' },
+        { error: 'Only the author can delete this post' },
         { status: 403 }
       );
     }
 
-    // Check permissions: author can delete own post, parents can delete any post
-    if (post.authorId !== session.user.id && session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'You do not have permission to delete this post' },
-        { status: 403 }
-      );
-    }
-
-    // Delete post (cascade will delete reactions)
-    await prisma.communicationPost.delete({
-      where: { id: params.id },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'POST_DELETED',
-        result: 'SUCCESS',
-        metadata: {
-          postId: post.id,
-          postType: post.type,
-          authorId: post.authorId,
-        },
-      },
-    });
+    await deleteCommunicationPost(id);
 
     return NextResponse.json({
+      success: true,
       message: 'Post deleted successfully',
     });
   } catch (error) {
-    logger.error('Error deleting post:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete post' },
-      { status: 500 }
-    );
+    logger.error('Delete post error:', error);
+    return NextResponse.json({ error: 'Failed to delete post' }, { status: 500 });
   }
 }

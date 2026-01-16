@@ -66,7 +66,7 @@ export default function CreateTransportPage() {
   const loadData = async () => {
     try {
       // Load family members
-      const membersRes = await fetch('/api/family');
+      const membersRes = await fetch('/api/family-data');
       if (membersRes.ok) {
         const data = await membersRes.json();
         setMembers(data.family.members || []);

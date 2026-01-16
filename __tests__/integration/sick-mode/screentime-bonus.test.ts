@@ -19,8 +19,6 @@ jest.mock('@/lib/screentime-utils', () => ({
   calculateRemainingTime: mockCalculateRemainingTime,
 }));
 
-const { auth } = require('@/lib/auth');
-
 const mockSession = mockChildSession({
   user: {
     id: 'child-1',
@@ -36,7 +34,6 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
 
   describe('GET /api/screentime/stats', () => {
     it('should include sick mode bonus in balance when active', async () => {
-      auth.mockResolvedValue(mockSession);
       const { GET } = await import('@/app/api/screentime/stats/route');
 
       // Mock screen time allowances
@@ -102,7 +99,7 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
       } as any);
 
       const request = new Request('http://localhost/api/screentime/stats');
-      const response = await GET(request);
+      const response = await GET(request as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -111,7 +108,6 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
     });
 
     it('should not include bonus when sick mode is inactive', async () => {
-      auth.mockResolvedValue(mockSession);
       const { GET } = await import('@/app/api/screentime/stats/route');
 
       prismaMock.screenTimeTransaction.findMany.mockResolvedValue([] as any);
@@ -145,7 +141,7 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
       prismaMock.sickModeInstance.findFirst.mockResolvedValue(null);
 
       const request = new Request('http://localhost/api/screentime/stats');
-      const response = await GET(request);
+      const response = await GET(request as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -154,7 +150,6 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
     });
 
     it('should not include bonus when bonus is 0', async () => {
-      auth.mockResolvedValue(mockSession);
       const { GET } = await import('@/app/api/screentime/stats/route');
 
       prismaMock.screenTimeTransaction.findMany.mockResolvedValue([] as any);
@@ -218,7 +213,7 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
       } as any);
 
       const request = new Request('http://localhost/api/screentime/stats');
-      const response = await GET(request);
+      const response = await GET(request as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);

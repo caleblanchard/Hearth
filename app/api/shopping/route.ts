@@ -1,62 +1,44 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getActiveShoppingList, getOrCreateShoppingList } from '@/lib/data/shopping';
 import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { familyId } = session.user;
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    // Get active shopping list for the family
-    let shoppingList = await prisma.shoppingList.findFirst({
-      where: {
-        familyId,
-        isActive: true,
-      },
-      include: {
-        items: {
-          where: {
-            status: {
-              in: ['PENDING', 'IN_CART'],
-            },
-          },
-          orderBy: [
-            { priority: 'desc' },
-            { category: 'asc' },
-            { createdAt: 'desc' },
-          ],
-        },
-      },
-    });
+    // Get or create active shopping list
+    let shoppingList = await getActiveShoppingList(familyId);
 
     // Create list if it doesn't exist
     if (!shoppingList) {
-      shoppingList = await prisma.shoppingList.create({
-        data: {
-          familyId,
-          name: 'Family Shopping List',
-          isActive: true,
-        },
-        include: {
-          items: true,
-        },
-      });
+      await getOrCreateShoppingList(familyId);
+      // Fetch again to get items relation
+      shoppingList = await getActiveShoppingList(familyId);
+    }
+
+    if (!shoppingList) {
+      return NextResponse.json({ error: 'Failed to create shopping list' }, { status: 500 });
     }
 
     return NextResponse.json({
       list: {
         id: shoppingList.id,
         name: shoppingList.name,
-        itemCount: shoppingList.items.length,
-        urgentCount: shoppingList.items.filter(i => i.priority === 'URGENT').length,
+        itemCount: (shoppingList as any).items?.length || 0,
+        urgentCount: (shoppingList as any).items?.filter((i: any) => i.priority === 'URGENT').length || 0,
       },
-      items: shoppingList.items,
+      items: (shoppingList as any).items || [],
     });
   } catch (error) {
     logger.error('Shopping list API error:', error);

@@ -12,8 +12,6 @@ import { PATCH, DELETE } from '@/app/api/communication/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { PostType } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('PATCH /api/communication/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,7 +19,6 @@ describe('PATCH /api/communication/[id]', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/communication/post-123', {
       method: 'PATCH',
@@ -29,14 +26,13 @@ describe('PATCH /api/communication/[id]', () => {
       body: JSON.stringify({ content: 'Updated content' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'post-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return 404 if post not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.communicationPost.findUnique.mockResolvedValue(null);
 
@@ -46,14 +42,13 @@ describe('PATCH /api/communication/[id]', () => {
       body: JSON.stringify({ content: 'Updated content' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'post-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(404);
   });
 
   it('should return 403 if post belongs to different family', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -77,14 +72,13 @@ describe('PATCH /api/communication/[id]', () => {
       body: JSON.stringify({ content: 'Updated content' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'post-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(403);
   });
 
   it('should return 403 if non-author tries to edit content', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -108,7 +102,7 @@ describe('PATCH /api/communication/[id]', () => {
       body: JSON.stringify({ content: 'Updated content' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'post-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(403);
     const data = await response.json();
@@ -117,7 +111,6 @@ describe('PATCH /api/communication/[id]', () => {
 
   it('should allow author to update content', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -148,7 +141,7 @@ describe('PATCH /api/communication/[id]', () => {
       body: JSON.stringify({ content: 'Updated content' }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'post-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -157,7 +150,6 @@ describe('PATCH /api/communication/[id]', () => {
 
   it('should allow parent to pin any post', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -188,7 +180,7 @@ describe('PATCH /api/communication/[id]', () => {
       body: JSON.stringify({ isPinned: true }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'post-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -197,7 +189,6 @@ describe('PATCH /api/communication/[id]', () => {
 
   it('should return 403 if child tries to pin post', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -221,7 +212,7 @@ describe('PATCH /api/communication/[id]', () => {
       body: JSON.stringify({ isPinned: true }),
     }) as NextRequest;
 
-    const response = await PATCH(request, { params: { id: 'post-123' } });
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(403);
     const data = await response.json();
@@ -230,7 +221,6 @@ describe('PATCH /api/communication/[id]', () => {
 
   it('should create audit log on update', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -256,7 +246,7 @@ describe('PATCH /api/communication/[id]', () => {
       body: JSON.stringify({ content: 'Updated' }),
     }) as NextRequest;
 
-    await PATCH(request, { params: { id: 'post-123' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -269,7 +259,6 @@ describe('PATCH /api/communication/[id]', () => {
 
   it('should create pin audit log when pinning', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -295,7 +284,7 @@ describe('PATCH /api/communication/[id]', () => {
       body: JSON.stringify({ isPinned: true }),
     }) as NextRequest;
 
-    await PATCH(request, { params: { id: 'post-123' } });
+    await PATCH(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -314,20 +303,18 @@ describe('DELETE /api/communication/[id]', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/communication/post-123', {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(401);
   });
 
   it('should return 404 if post not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.communicationPost.findUnique.mockResolvedValue(null);
 
@@ -335,14 +322,13 @@ describe('DELETE /api/communication/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(404);
   });
 
   it('should return 403 if post belongs to different family', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -364,14 +350,13 @@ describe('DELETE /api/communication/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(403);
   });
 
   it('should allow author to delete own post', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -395,7 +380,7 @@ describe('DELETE /api/communication/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
     expect(prismaMock.communicationPost.delete).toHaveBeenCalledWith({
@@ -405,7 +390,6 @@ describe('DELETE /api/communication/[id]', () => {
 
   it('should allow parent to delete any post', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -429,14 +413,13 @@ describe('DELETE /api/communication/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(200);
   });
 
   it('should return 403 if child tries to delete others post', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -458,7 +441,7 @@ describe('DELETE /api/communication/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    const response = await DELETE(request, { params: { id: 'post-123' } });
+    const response = await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(response.status).toBe(403);
     const data = await response.json();
@@ -467,7 +450,6 @@ describe('DELETE /api/communication/[id]', () => {
 
   it('should create audit log on deletion', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const existingPost = {
       id: 'post-123',
@@ -491,7 +473,7 @@ describe('DELETE /api/communication/[id]', () => {
       method: 'DELETE',
     }) as NextRequest;
 
-    await DELETE(request, { params: { id: 'post-123' } });
+    await DELETE(request, { params: Promise.resolve({ id: 'post-123' }) });
 
     expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({

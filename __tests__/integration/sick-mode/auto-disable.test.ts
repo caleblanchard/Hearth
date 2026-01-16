@@ -73,7 +73,7 @@ describe('POST /api/cron/sick-mode-auto-disable', () => {
       },
     });
 
-    const response = await POST(request);
+    const response = await POST(request as any);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -144,7 +144,7 @@ describe('POST /api/cron/sick-mode-auto-disable', () => {
       method: 'POST',
     });
 
-    const response = await POST(request);
+    const response = await POST(request as any);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -190,7 +190,7 @@ describe('POST /api/cron/sick-mode-auto-disable', () => {
       method: 'POST',
     });
 
-    const response = await POST(request);
+    const response = await POST(request as any);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -264,7 +264,7 @@ describe('POST /api/cron/sick-mode-auto-disable', () => {
       method: 'POST',
     });
 
-    const response = await POST(request);
+    const response = await POST(request as any);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -292,7 +292,7 @@ describe('POST /api/cron/sick-mode-auto-disable', () => {
       method: 'POST',
     });
 
-    const response = await POST(request);
+    const response = await POST(request as any);
     const data = await response.json();
 
     expect(response.status).toBe(200);

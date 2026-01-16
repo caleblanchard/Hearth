@@ -1,49 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getMedications, createMedication } from '@/lib/data/medications';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
     const memberId = searchParams.get('memberId');
 
-    const where: any = {
-      member: {
-        familyId: session.user.familyId,
-      },
-    };
-
-    if (memberId) {
-      where.memberId = memberId;
-    }
-
-    const medications = await prisma.medicationSafety.findMany({
-      where,
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        doses: {
-          take: 5,
-          orderBy: {
-            givenAt: 'desc',
-          },
-        },
-      },
-      orderBy: {
-        medicationName: 'asc',
-      },
-    });
+    const medications = await getMedications(familyId, memberId || undefined);
 
     return NextResponse.json({ medications });
   } catch (error) {
@@ -57,14 +34,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can create medication safety configs
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can create medication safety configurations' },
         { status: 403 }
@@ -73,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      memberId,
+      memberId: targetMemberId,
       medicationName,
       activeIngredient,
       minIntervalHours,
@@ -81,7 +67,7 @@ export async function POST(request: NextRequest) {
       notifyWhenReady,
     } = body;
 
-    if (!memberId || !medicationName || !minIntervalHours) {
+    if (!targetMemberId || !medicationName || !minIntervalHours) {
       return NextResponse.json(
         { error: 'Member ID, medication name, and minimum interval are required' },
         { status: 400 }
@@ -89,60 +75,55 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify member belongs to family
-    const member = await prisma.familyMember.findUnique({
-      where: { id: memberId },
-      select: { id: true, familyId: true },
-    });
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('id, family_id')
+      .eq('id', targetMemberId)
+      .eq('family_id', familyId)
+      .single();
 
-    if (!member || member.familyId !== session.user.familyId) {
+    if (!member) {
       return NextResponse.json(
         { error: 'Member not found or does not belong to your family' },
         { status: 400 }
       );
     }
 
-    const medication = await prisma.medicationSafety.create({
-      data: {
-        memberId,
-        medicationName: medicationName.trim(),
-        activeIngredient: activeIngredient?.trim() || null,
-        minIntervalHours,
-        maxDosesPerDay: maxDosesPerDay || null,
-        notifyWhenReady: notifyWhenReady !== undefined ? notifyWhenReady : true,
-      },
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+    const { data: medication, error: medError } = await (supabase as any)
+      .from('medication_safety')
+      .insert({
+        member_id: targetMemberId,
+        medication_name: medicationName,
+        active_ingredient: activeIngredient || null,
+        min_interval_hours: minIntervalHours,
+        max_doses_per_day: maxDosesPerDay || null,
+        notify_when_ready: notifyWhenReady ?? false,
+      })
+      .select()
+      .single();
+
+    if (medError) throw medError;
+
+    // Audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'MEDICATION_CREATED',
+      entity_type: 'MEDICATION',
+      entity_id: medication.id,
+      result: 'SUCCESS',
+      metadata: { medicationName, targetMemberId },
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'MEDICATION_SAFETY_CREATED',
-        result: 'SUCCESS',
-        metadata: {
-          medicationId: medication.id,
-          medicationName: medication.medicationName,
-          memberName: medication.member.name,
-        },
-      },
+    return NextResponse.json({
+      success: true,
+      medication,
+      message: 'Medication safety configuration created successfully',
     });
-
-    return NextResponse.json(
-      { medication, message: 'Medication safety configuration created successfully' },
-      { status: 201 }
-    );
   } catch (error) {
-    logger.error('Error creating medication safety:', error);
+    logger.error('Error creating medication:', error);
     return NextResponse.json(
-      { error: 'Failed to create medication safety configuration' },
+      { error: 'Failed to create medication' },
       { status: 500 }
     );
   }

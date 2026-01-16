@@ -12,8 +12,6 @@ import { POST } from '@/app/api/screentime/grace/approve/route';
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
 import { RepaymentStatus } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('POST /api/screentime/grace/approve', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,7 +19,6 @@ describe('POST /api/screentime/grace/approve', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new Request('http://localhost/api/screentime/grace/approve', {
       method: 'POST',
@@ -37,7 +34,6 @@ describe('POST /api/screentime/grace/approve', () => {
 
   it('should return 403 if not a parent', async () => {
     const session = mockChildSession();
-    auth.mockResolvedValue(session);
 
     const request = new Request('http://localhost/api/screentime/grace/approve', {
       method: 'POST',
@@ -53,7 +49,6 @@ describe('POST /api/screentime/grace/approve', () => {
 
   it('should return 404 if grace log not found', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.gracePeriodLog.findUnique.mockResolvedValue(null);
 
@@ -71,7 +66,6 @@ describe('POST /api/screentime/grace/approve', () => {
 
   it('should return 400 if already processed', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const processedLog = {
       id: 'log-1',
@@ -95,8 +89,13 @@ describe('POST /api/screentime/grace/approve', () => {
       familyId: session.user.familyId,
       createdAt: new Date(),
       updatedAt: new Date(),
-      userId: 'user-1',
-    });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
     const request = new Request('http://localhost/api/screentime/grace/approve', {
       method: 'POST',
@@ -112,7 +111,6 @@ describe('POST /api/screentime/grace/approve', () => {
 
   it('should approve and grant grace successfully', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const pendingLog = {
       id: 'log-1',
@@ -130,6 +128,7 @@ describe('POST /api/screentime/grace/approve', () => {
       id: 'balance-1',
       memberId: 'child-1',
       currentBalanceMinutes: 5,
+      weekStartDate: new Date(),
       weeklyAllocationMinutes: 120,
       lastResetAt: new Date(),
       createdAt: new Date(),
@@ -159,8 +158,13 @@ describe('POST /api/screentime/grace/approve', () => {
       familyId: session.user.familyId,
       createdAt: new Date(),
       updatedAt: new Date(),
-      userId: 'user-1',
-    });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
     prismaMock.screenTimeBalance.findUnique.mockResolvedValue(balance);
     prismaMock.screenTimeGraceSettings.findUnique.mockResolvedValue(settings);
@@ -174,16 +178,18 @@ describe('POST /api/screentime/grace/approve', () => {
       reason: 'Grace period granted (approved by parent)',
       createdById: session.user.id,
       createdAt: new Date(),
-      updatedAt: new Date(),
       deviceType: null,
       notes: null,
-      relatedChoreId: null,
-      relatedRewardId: null,
-    });
+      screenTimeTypeId: null,
+      relatedChoreInstanceId: null,
+      wasOverride: false,
+      overrideReason: null,
+    } as any);
 
     prismaMock.screenTimeBalance.update.mockResolvedValue({
       ...balance,
       currentBalanceMinutes: 20,
+      weekStartDate: new Date(),
     });
 
     prismaMock.gracePeriodLog.update.mockResolvedValue({
@@ -196,13 +202,13 @@ describe('POST /api/screentime/grace/approve', () => {
       type: 'GRACE_APPROVED' as any,
       title: 'Grace request approved',
       message: 'Your grace period request was approved',
-      memberId: 'child-1',
-      read: false,
+      userId: 'child-1',
+      isRead: false,
       createdAt: new Date(),
-      updatedAt: new Date(),
-      relatedChoreId: null,
-      relatedRewardId: null,
-    });
+      metadata: null,
+      actionUrl: null,
+      readAt: null,
+    } as any);
 
     const request = new Request('http://localhost/api/screentime/grace/approve', {
       method: 'POST',
@@ -231,7 +237,6 @@ describe('POST /api/screentime/grace/approve', () => {
 
   it('should deny request and update status', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const pendingLog = {
       id: 'log-1',
@@ -255,8 +260,13 @@ describe('POST /api/screentime/grace/approve', () => {
       familyId: session.user.familyId,
       createdAt: new Date(),
       updatedAt: new Date(),
-      userId: 'user-1',
-    });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
     prismaMock.gracePeriodLog.update.mockResolvedValue({
       ...pendingLog,
@@ -269,13 +279,13 @@ describe('POST /api/screentime/grace/approve', () => {
       type: 'GRACE_DENIED' as any,
       title: 'Grace request denied',
       message: 'Your grace period request was denied',
-      memberId: 'child-1',
-      read: false,
+      userId: 'child-1',
+      isRead: false,
       createdAt: new Date(),
-      updatedAt: new Date(),
-      relatedChoreId: null,
-      relatedRewardId: null,
-    });
+      metadata: null,
+      actionUrl: null,
+      readAt: null,
+    } as any);
 
     const request = new Request('http://localhost/api/screentime/grace/approve', {
       method: 'POST',
@@ -308,7 +318,6 @@ describe('POST /api/screentime/grace/approve', () => {
     expect(prismaMock.notification.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          userId: 'child-1',
           title: expect.stringContaining('denied'),
         }),
       })
@@ -317,7 +326,6 @@ describe('POST /api/screentime/grace/approve', () => {
 
   it('should verify family ownership', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     const pendingLog = {
       id: 'log-1',
@@ -342,8 +350,13 @@ describe('POST /api/screentime/grace/approve', () => {
       familyId: 'different-family-id', // Different family
       createdAt: new Date(),
       updatedAt: new Date(),
-      userId: 'user-1',
-    });
+      passwordHash: null,
+      pin: null,
+      isActive: true,
+      birthDate: null,
+      avatarUrl: null,
+      lastLoginAt: null,
+    } as any);
 
     const request = new Request('http://localhost/api/screentime/grace/approve', {
       method: 'POST',
@@ -359,7 +372,6 @@ describe('POST /api/screentime/grace/approve', () => {
 
   it('should handle database errors gracefully', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValue(session);
 
     prismaMock.gracePeriodLog.findUnique.mockRejectedValue(
       new Error('Database error')

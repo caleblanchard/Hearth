@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -86,7 +81,6 @@ import { POST } from '@/app/api/screentime/log/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { ScreenTimeTransactionType } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
 const { wouldExceedAllowance, calculateRemainingTime, getWeekStart } = require('@/lib/screentime-utils')
 
 describe('/api/screentime/log', () => {
@@ -127,7 +121,6 @@ describe('/api/screentime/log', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/screentime/log', {
         method: 'POST',
@@ -143,7 +136,6 @@ describe('/api/screentime/log', () => {
 
     it('should return 400 if minutes is missing', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/screentime/log', {
         method: 'POST',
@@ -159,7 +151,6 @@ describe('/api/screentime/log', () => {
 
     it('should return 400 if screenTimeTypeId is missing', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/screentime/log', {
         method: 'POST',
@@ -175,7 +166,6 @@ describe('/api/screentime/log', () => {
 
     it('should return 400 if minutes is zero or negative', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/screentime/log', {
         method: 'POST',
@@ -191,7 +181,6 @@ describe('/api/screentime/log', () => {
 
     it('should return 400 if screen time type not found', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue(null)
 
@@ -209,7 +198,6 @@ describe('/api/screentime/log', () => {
 
     it('should return 400 if allowance not configured', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'type-1',
@@ -232,8 +220,7 @@ describe('/api/screentime/log', () => {
     })
 
     it('should log screen time and deduct from balance', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'type-1',
@@ -322,8 +309,7 @@ describe('/api/screentime/log', () => {
     })
 
     it('should prevent negative balance', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'type-1',
@@ -384,8 +370,7 @@ describe('/api/screentime/log', () => {
     })
 
     it('should use default deviceType if not provided', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'type-1',
@@ -442,8 +427,7 @@ describe('/api/screentime/log', () => {
     })
 
     it('should create audit log', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'type-1',
@@ -506,7 +490,6 @@ describe('/api/screentime/log', () => {
 
     it('should handle invalid JSON gracefully', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/screentime/log', {
         method: 'POST',
@@ -523,8 +506,7 @@ describe('/api/screentime/log', () => {
     })
 
     it('should return 403 if child tries to exceed allowance without override', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'type-1',
@@ -568,8 +550,7 @@ describe('/api/screentime/log', () => {
     })
 
     it('should allow parent override when exceeding allowance', async () => {
-      const session = mockParentSession({ user: { id: 'parent-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'type-1',
@@ -649,8 +630,7 @@ describe('/api/screentime/log', () => {
     })
 
     it('should return 400 if override is true but overrideReason is missing', async () => {
-      const session = mockParentSession({ user: { id: 'parent-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'type-1',
@@ -695,7 +675,6 @@ describe('/api/screentime/log', () => {
 
     it('should return 403 if child tries to override', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'type-1',
@@ -705,7 +684,6 @@ describe('/api/screentime/log', () => {
 
       prismaMock.screenTimeAllowance.findUnique.mockResolvedValue({
         id: 'allowance-1',
-        memberId: session.user.id,
         screenTimeTypeId: 'type-1',
         allowanceMinutes: 120,
       } as any)
@@ -728,8 +706,7 @@ describe('/api/screentime/log', () => {
     })
 
     it('should create balance if it does not exist', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.screenTimeType.findFirst.mockResolvedValue({
         id: 'type-1',

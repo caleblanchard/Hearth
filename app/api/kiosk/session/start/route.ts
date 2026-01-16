@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { createKioskSession, getOrCreateKioskSettings } from '@/lib/kiosk-session';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getMemberInFamily, isParentInFamily } from '@/lib/supabase/server';
+import { createKioskSession, getOrCreateKioskSettings } from '@/lib/data/kiosk';
 import { logger } from '@/lib/logger';
 
 /**
@@ -12,28 +12,23 @@ import { logger } from '@/lib/logger';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication
-    const session = await auth();
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const supabase = await createClient();
 
-    // Only parents can start kiosk sessions
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can start kiosk sessions' },
-        { status: 403 }
-      );
+    // Verify authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (!user || authError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse request body
     const body = await request.json();
     const { deviceId, familyId } = body;
 
-    // Verify family ownership
-    if (familyId !== session.user.familyId) {
+    // Verify user is a parent in the family
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
       return NextResponse.json(
-        { error: 'Cannot start kiosk session for other families' },
+        { error: 'Only parents can start kiosk sessions' },
         { status: 403 }
       );
     }
@@ -42,7 +37,7 @@ export async function POST(request: NextRequest) {
     const settings = await getOrCreateKioskSettings(familyId);
 
     // Check if kiosk is enabled
-    if (!settings.isEnabled) {
+    if (!settings.is_enabled) {
       return NextResponse.json(
         { error: 'Kiosk mode is disabled for this family' },
         { status: 403 }
@@ -52,19 +47,20 @@ export async function POST(request: NextRequest) {
     // Create kiosk session
     const kioskSession = await createKioskSession(deviceId, familyId);
 
+    // Get member record for audit log
+    const member = await getMemberInFamily(familyId);
+
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId,
-        memberId: session.user.id,
-        action: 'KIOSK_SESSION_STARTED',
-        entityType: 'KIOSK',
-        entityId: kioskSession.id,
-        result: 'SUCCESS',
-        metadata: {
-          deviceId,
-          sessionToken: kioskSession.sessionToken,
-        },
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: member?.id,
+      action: 'KIOSK_SESSION_STARTED',
+      entity_type: 'KIOSK',
+      entity_id: kioskSession.id,
+      result: 'SUCCESS',
+      metadata: {
+        deviceId,
+        sessionToken: kioskSession.session_token,
       },
     });
 
@@ -75,9 +71,9 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      sessionToken: kioskSession.sessionToken,
-      autoLockMinutes: settings.autoLockMinutes,
-      enabledWidgets: settings.enabledWidgets,
+      sessionToken: kioskSession.session_token,
+      autoLockMinutes: settings.auto_lock_minutes,
+      enabledWidgets: settings.enabled_widgets,
     });
   } catch (error) {
     logger.error('Error starting kiosk session', error);

@@ -1,18 +1,11 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // NOW import the route after mocks are set up
 import { NextRequest } from 'next/server'
 import { GET, POST } from '@/app/api/allowance/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { Frequency } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/allowance', () => {
   beforeEach(() => {
@@ -22,7 +15,6 @@ describe('/api/allowance', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const response = await GET()
       const data = await response.json()
@@ -33,7 +25,6 @@ describe('/api/allowance', () => {
 
     it('should return allowance schedules for authenticated user', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const mockSchedules = [
         {
@@ -88,7 +79,6 @@ describe('/api/allowance', () => {
 
     it('should only return schedules from user family', async () => {
       const session = mockParentSession({ user: { ...mockParentSession().user, familyId: 'family-123' } })
-      auth.mockResolvedValue(session)
 
       prismaMock.allowanceSchedule.findMany.mockResolvedValue([])
 
@@ -106,7 +96,6 @@ describe('/api/allowance', () => {
     })
 
     it('should handle database errors', async () => {
-      auth.mockResolvedValue(mockParentSession())
       prismaMock.allowanceSchedule.findMany.mockRejectedValue(new Error('Database error'))
 
       const response = await GET()
@@ -119,7 +108,6 @@ describe('/api/allowance', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/allowance', {
         method: 'POST',
@@ -134,7 +122,6 @@ describe('/api/allowance', () => {
     })
 
     it('should return 403 if user is not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession())
 
       const request = new NextRequest('http://localhost/api/allowance', {
         method: 'POST',
@@ -154,7 +141,6 @@ describe('/api/allowance', () => {
     })
 
     it('should validate required fields', async () => {
-      auth.mockResolvedValue(mockParentSession())
 
       const request = new NextRequest('http://localhost/api/allowance', {
         method: 'POST',
@@ -173,7 +159,6 @@ describe('/api/allowance', () => {
     })
 
     it('should validate amount is positive', async () => {
-      auth.mockResolvedValue(mockParentSession())
 
       const request = new NextRequest('http://localhost/api/allowance', {
         method: 'POST',
@@ -193,7 +178,6 @@ describe('/api/allowance', () => {
     })
 
     it('should validate dayOfWeek for WEEKLY frequency', async () => {
-      auth.mockResolvedValue(mockParentSession())
 
       const request = new NextRequest('http://localhost/api/allowance', {
         method: 'POST',
@@ -213,7 +197,6 @@ describe('/api/allowance', () => {
     })
 
     it('should validate dayOfMonth for MONTHLY frequency', async () => {
-      auth.mockResolvedValue(mockParentSession())
 
       const request = new NextRequest('http://localhost/api/allowance', {
         method: 'POST',
@@ -234,7 +217,6 @@ describe('/api/allowance', () => {
 
     it('should verify member belongs to same family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue(null)
 
@@ -257,7 +239,6 @@ describe('/api/allowance', () => {
 
     it('should prevent duplicate active schedules for same member', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -289,7 +270,6 @@ describe('/api/allowance', () => {
 
     it('should create weekly allowance schedule successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -363,7 +343,6 @@ describe('/api/allowance', () => {
 
     it('should create monthly allowance schedule successfully', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -413,7 +392,6 @@ describe('/api/allowance', () => {
 
     it('should handle optional startDate and endDate', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -452,7 +430,6 @@ describe('/api/allowance', () => {
 
     it('should handle database errors', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',

@@ -1,58 +1,37 @@
-/**
- * Google Calendar OAuth Connection - Initiate Flow
- *
- * POST /api/calendar/google/connect
- * Generates OAuth authorization URL and sets state cookie for CSRF protection
- */
-
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getAuthContext } from '@/lib/supabase/server';
+import { initiateGoogleCalendarConnect } from '@/lib/data/calendar';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
-import { GoogleCalendarClient } from '@/lib/integrations/google-calendar';
-import { logger } from '@/lib/logger';
-import crypto from 'crypto';
 
 export async function GET() {
   try {
-    // Check authentication
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session || !session.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Generate random state token for CSRF protection
-    const state = crypto.randomBytes(32).toString('hex');
+    const memberId = authContext.activeMemberId;
+    if (!memberId) {
+      return NextResponse.json({ error: 'No member found' }, { status: 400 });
+    }
 
-    // Create Google Calendar client and get authorization URL
-    const client = new GoogleCalendarClient();
-    const authUrl = client.getAuthUrl(state);
+    const result = await initiateGoogleCalendarConnect(memberId);
 
-    // Create response with auth URL
-    const response = NextResponse.json({ authUrl }, { status: 200 });
-
-    // Set state cookie for verification in callback
-    response.cookies.set('google_oauth_state', state, {
+    // Set state cookie for CSRF protection
+    const response = NextResponse.json(result);
+    response.cookies.set('google_oauth_state', result.state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 600, // 10 minutes
-      path: '/api/calendar/google',
-    });
-
-    logger.info('Google Calendar OAuth flow initiated', {
-      userId: session.user.id,
-      email: session.user.email,
     });
 
     return response;
   } catch (error) {
-    logger.error('Failed to initiate Google Calendar connection', { error });
-
-    return NextResponse.json(
-      { error: 'Failed to initiate Google Calendar connection' },
-      { status: 500 }
-    );
+    logger.error('Google Calendar connect error:', error);
+    return NextResponse.json({ error: 'Failed to initiate Google Calendar connection' }, { status: 500 });
   }
 }

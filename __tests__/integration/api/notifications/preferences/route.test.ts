@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { GET, PATCH } from '@/app/api/notifications/preferences/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 
-const { auth } = require('@/lib/auth')
-
 describe('/api/notifications/preferences', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -31,7 +24,6 @@ describe('/api/notifications/preferences', () => {
 
   describe('GET /api/notifications/preferences', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/notifications/preferences')
       const response = await GET(request)
@@ -42,8 +34,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should return notification preferences for authenticated user', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockPreferences = {
         id: 'pref-1',
@@ -80,8 +71,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should return default preferences if none exist', async () => {
-      const session = mockParentSession({ user: { id: 'parent-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       prismaMock.notificationPreference.findUnique.mockResolvedValue(null)
 
@@ -102,8 +92,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should handle database errors gracefully', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notificationPreference.findUnique.mockRejectedValue(new Error('Database error'))
 
@@ -118,7 +107,6 @@ describe('/api/notifications/preferences', () => {
 
   describe('PATCH /api/notifications/preferences', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/notifications/preferences', {
         method: 'PATCH',
@@ -132,8 +120,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should update notification preferences for authenticated user', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const updates = {
         pushEnabled: false,
@@ -177,8 +164,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should update enabled notification types', async () => {
-      const session = mockParentSession({ user: { id: 'parent-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       const updates = {
         enabledTypes: ['CHORE_COMPLETED', 'LEFTOVER_EXPIRING', 'DOCUMENT_EXPIRING'],
@@ -214,8 +200,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should update specific notification timing preferences', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const updates = {
         leftoverExpiringHours: 12,
@@ -251,8 +236,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should validate quiet hours format', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const invalidUpdates = {
         quietHoursStart: 'invalid',
@@ -271,8 +255,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should validate quiet hours end format', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const invalidUpdates = {
         quietHoursStart: '22:00',
@@ -291,8 +274,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should validate numeric preference values', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const invalidUpdates = {
         leftoverExpiringHours: -5,
@@ -310,8 +292,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should handle database errors gracefully', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.notificationPreference.upsert.mockRejectedValue(new Error('Database error'))
 
@@ -327,8 +308,7 @@ describe('/api/notifications/preferences', () => {
     })
 
     it('should create preferences if they do not exist (upsert behavior)', async () => {
-      const session = mockParentSession({ user: { id: 'parent-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       const updates = {
         pushEnabled: true,

@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/screentime/history/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 
-const { auth } = require('@/lib/auth')
-
 describe('/api/screentime/history', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -31,7 +24,6 @@ describe('/api/screentime/history', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/screentime/history')
       const response = await GET(request)
@@ -42,8 +34,7 @@ describe('/api/screentime/history', () => {
     })
 
     it('should return own history for child', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockTransactions = [
         {
@@ -90,8 +81,7 @@ describe('/api/screentime/history', () => {
     })
 
     it('should return 403 if child tries to view another member history', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const request = new NextRequest(
         'http://localhost/api/screentime/history?memberId=child-2'
@@ -105,7 +95,6 @@ describe('/api/screentime/history', () => {
 
     it('should allow parent to view child history', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -128,8 +117,7 @@ describe('/api/screentime/history', () => {
     })
 
     it.skip('should allow parent to view child history', async () => {
-      const session = mockParentSession({ user: { familyId: 'family-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockParentSession()
 
       const mockTransactions = [
         {
@@ -170,7 +158,6 @@ describe('/api/screentime/history', () => {
 
     it('should return 404 if member not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue(null)
 
@@ -186,7 +173,6 @@ describe('/api/screentime/history', () => {
 
     it('should return 404 if member belongs to different family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -204,8 +190,7 @@ describe('/api/screentime/history', () => {
     })
 
     it('should support pagination', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.screenTimeTransaction.findMany.mockResolvedValue([])
       prismaMock.screenTimeTransaction.count.mockResolvedValue(100)
@@ -231,8 +216,7 @@ describe('/api/screentime/history', () => {
     })
 
     it('should use default pagination values', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       prismaMock.screenTimeTransaction.findMany.mockResolvedValue([])
       prismaMock.screenTimeTransaction.count.mockResolvedValue(0)

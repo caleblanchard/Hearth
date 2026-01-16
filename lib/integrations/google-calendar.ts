@@ -8,7 +8,7 @@
 
 import { google, calendar_v3 } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { encryptToken, decryptToken } from '@/lib/token-encryption';
 
 const SCOPES = [
@@ -113,16 +113,20 @@ export class GoogleCalendarClient {
    * @throws Error if connection not found or token refresh fails
    */
   async refreshAccessToken(connectionId: string): Promise<void> {
-    const connection = await prisma.calendarConnection.findUnique({
-      where: { id: connectionId },
-    });
+    const supabase = await createClient();
+    
+    const { data: connection } = await supabase
+      .from('calendar_connections')
+      .select('*')
+      .eq('id', connectionId)
+      .single();
 
     if (!connection) {
       throw new Error('Calendar connection not found');
     }
 
     try {
-      const refreshToken = decryptToken(connection.refreshToken);
+      const refreshToken = decryptToken(connection.refresh_token);
 
       this.oauth2Client.setCredentials({
         refresh_token: refreshToken,
@@ -131,22 +135,22 @@ export class GoogleCalendarClient {
       const { credentials } = await this.oauth2Client.refreshAccessToken();
 
       // Update connection with new access token
-      await prisma.calendarConnection.update({
-        where: { id: connectionId },
-        data: {
-          accessToken: encryptToken(credentials.access_token!),
-          tokenExpiresAt: new Date(credentials.expiry_date!),
-        },
-      });
+      await supabase
+        .from('calendar_connections')
+        .update({
+          access_token: encryptToken(credentials.access_token!),
+          token_expires_at: new Date(credentials.expiry_date!).toISOString(),
+        })
+        .eq('id', connectionId);
     } catch (error) {
       // Mark connection as error if refresh fails
-      await prisma.calendarConnection.update({
-        where: { id: connectionId },
-        data: {
-          syncStatus: 'ERROR',
-          syncError: `Token refresh failed: ${(error as Error).message}`,
-        },
-      });
+      await supabase
+        .from('calendar_connections')
+        .update({
+          sync_status: 'ERROR',
+          sync_error: `Token refresh failed: ${(error as Error).message}`,
+        })
+        .eq('id', connectionId);
 
       throw error;
     }
@@ -159,33 +163,40 @@ export class GoogleCalendarClient {
    * @returns Authenticated calendar API instance
    */
   async getCalendar(connectionId: string): Promise<calendar_v3.Calendar> {
-    const connection = await prisma.calendarConnection.findUnique({
-      where: { id: connectionId },
-    });
+    const supabase = await createClient();
+    
+    const { data: connection } = await supabase
+      .from('calendar_connections')
+      .select('*')
+      .eq('id', connectionId)
+      .single();
 
     if (!connection) {
       throw new Error('Calendar connection not found');
     }
 
     // Check if token is expired and refresh if needed
-    if (connection.tokenExpiresAt < new Date()) {
+    if (connection.token_expires_at && new Date(connection.token_expires_at) < new Date()) {
       await this.refreshAccessToken(connectionId);
 
       // Reload connection to get new token
-      const refreshedConnection = await prisma.calendarConnection.findUnique({
-        where: { id: connectionId },
-      });
+      const supabase = await createClient();
+      const { data: refreshedConnection } = await supabase
+        .from('calendar_connections')
+        .select('*')
+        .eq('id', connectionId)
+        .single();
 
       if (!refreshedConnection) {
         throw new Error('Calendar connection not found after refresh');
       }
 
-      const accessToken = decryptToken(refreshedConnection.accessToken);
+      const accessToken = decryptToken(refreshedConnection.access_token);
       this.oauth2Client.setCredentials({
         access_token: accessToken,
       });
     } else {
-      const accessToken = decryptToken(connection.accessToken);
+      const accessToken = decryptToken(connection.access_token);
       this.oauth2Client.setCredentials({
         access_token: accessToken,
       });
@@ -201,25 +212,29 @@ export class GoogleCalendarClient {
    * @returns Imported events and new sync token
    */
   async importEvents(connectionId: string): Promise<ImportResult> {
-    const connection = await prisma.calendarConnection.findUnique({
-      where: { id: connectionId },
-    });
+    const supabase = await createClient();
+    
+    const { data: connection } = await supabase
+      .from('calendar_connections')
+      .select('*')
+      .eq('id', connectionId)
+      .single();
 
     if (!connection) {
       throw new Error('Calendar connection not found');
     }
 
     const calendar = await this.getCalendar(connectionId);
-    const calendarId = connection.googleCalendarId || 'primary';
+    const calendarId = connection.google_calendar_id || 'primary';
 
     try {
       let response;
 
-      if (connection.syncToken) {
+      if (connection.sync_token) {
         // Incremental sync using sync token
         response = await calendar.events.list({
           calendarId: calendarId,
-          syncToken: connection.syncToken,
+          syncToken: connection.sync_token,
           singleEvents: true,
         });
       } else {
@@ -270,10 +285,10 @@ export class GoogleCalendarClient {
       // Handle sync token invalidation (410 Gone)
       if (error.code === 410) {
         // Reset sync token and do full sync
-        await prisma.calendarConnection.update({
-          where: { id: connectionId },
-          data: { syncToken: null },
-        });
+        await supabase
+          .from('calendar_connections')
+          .update({ sync_token: null })
+          .eq('id', connectionId);
 
         // Retry with full sync
         return this.importEvents(connectionId);
@@ -291,16 +306,20 @@ export class GoogleCalendarClient {
    * @returns Created event ID and link
    */
   async exportEvent(connectionId: string, event: CalendarEvent): Promise<ExportResult> {
-    const connection = await prisma.calendarConnection.findUnique({
-      where: { id: connectionId },
-    });
+    const supabase = await createClient();
+    
+    const { data: connection } = await supabase
+      .from('calendar_connections')
+      .select('*')
+      .eq('id', connectionId)
+      .single();
 
     if (!connection) {
       throw new Error('Calendar connection not found');
     }
 
     const calendar = await this.getCalendar(connectionId);
-    const calendarId = connection.googleCalendarId || 'primary';
+    const calendarId = connection.google_calendar_id || 'primary';
 
     const requestBody: calendar_v3.Schema$Event = {
       summary: event.title,
@@ -353,16 +372,20 @@ export class GoogleCalendarClient {
     googleEventId: string,
     event: CalendarEvent
   ): Promise<void> {
-    const connection = await prisma.calendarConnection.findUnique({
-      where: { id: connectionId },
-    });
+    const supabase = await createClient();
+    
+    const { data: connection } = await supabase
+      .from('calendar_connections')
+      .select('*')
+      .eq('id', connectionId)
+      .single();
 
     if (!connection) {
       throw new Error('Calendar connection not found');
     }
 
     const calendar = await this.getCalendar(connectionId);
-    const calendarId = connection.googleCalendarId || 'primary';
+    const calendarId = connection.google_calendar_id || 'primary';
 
     const requestBody: calendar_v3.Schema$Event = {
       summary: event.title,
@@ -406,16 +429,20 @@ export class GoogleCalendarClient {
    * @param googleEventId - Google event ID to delete
    */
   async deleteEvent(connectionId: string, googleEventId: string): Promise<void> {
-    const connection = await prisma.calendarConnection.findUnique({
-      where: { id: connectionId },
-    });
+    const supabase = await createClient();
+    
+    const { data: connection } = await supabase
+      .from('calendar_connections')
+      .select('*')
+      .eq('id', connectionId)
+      .single();
 
     if (!connection) {
       throw new Error('Calendar connection not found');
     }
 
     const calendar = await this.getCalendar(connectionId);
-    const calendarId = connection.googleCalendarId || 'primary';
+    const calendarId = connection.google_calendar_id || 'primary';
 
     try {
       await calendar.events.delete({
@@ -439,15 +466,19 @@ export class GoogleCalendarClient {
    * @returns User's email address
    */
   async getUserEmail(connectionId: string): Promise<string> {
-    const connection = await prisma.calendarConnection.findUnique({
-      where: { id: connectionId },
-    });
+    const supabase = await createClient();
+    
+    const { data: connection } = await supabase
+      .from('calendar_connections')
+      .select('*')
+      .eq('id', connectionId)
+      .single();
 
     if (!connection) {
       throw new Error('Calendar connection not found');
     }
 
-    const accessToken = decryptToken(connection.accessToken);
+    const accessToken = decryptToken(connection.access_token);
 
     this.oauth2Client.setCredentials({
       access_token: accessToken,

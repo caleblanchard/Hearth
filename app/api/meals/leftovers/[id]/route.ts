@@ -1,30 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { markLeftoverUsed, markLeftoverTossed } from '@/lib/data/meals';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Get existing leftover
-    const leftover = await prisma.leftover.findUnique({
-      where: { id: params.id },
-    });
+    const { data: leftover } = await supabase
+      .from('leftovers')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
     if (!leftover) {
       return NextResponse.json({ error: 'Leftover not found' }, { status: 404 });
     }
 
     // Verify leftover belongs to user's family
-    if (leftover.familyId !== session.user.familyId) {
+    if (leftover.family_id !== familyId) {
       return NextResponse.json(
         { error: 'You do not have permission to update this leftover' },
         { status: 403 }
@@ -49,41 +61,21 @@ export async function PATCH(
       );
     }
 
-    // Update leftover based on action
-    const now = new Date();
-    const updateData = action === 'used' ? { usedAt: now } : { tossedAt: now };
-
-    const updatedLeftover = await prisma.leftover.update({
-      where: { id: params.id },
-      data: updateData,
-    });
-
-    // Create audit log
-    const auditAction = action === 'used' ? 'LEFTOVER_MARKED_USED' : 'LEFTOVER_MARKED_TOSSED';
-
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: auditAction,
-        result: 'SUCCESS',
-        metadata: {
-          leftoverId: updatedLeftover.id,
-          name: leftover.name,
-          action,
-        },
-      },
-    });
+    // Mark as used or tossed
+    let updatedLeftover;
+    if (action === 'used') {
+      updatedLeftover = await markLeftoverUsed(id);
+    } else {
+      updatedLeftover = await markLeftoverTossed(id);
+    }
 
     return NextResponse.json({
+      success: true,
       leftover: updatedLeftover,
       message: `Leftover marked as ${action}`,
     });
   } catch (error) {
-    logger.error('Error updating leftover:', error);
-    return NextResponse.json(
-      { error: 'Failed to update leftover' },
-      { status: 500 }
-    );
+    logger.error('Update leftover error:', error);
+    return NextResponse.json({ error: 'Failed to update leftover' }, { status: 500 });
   }
 }

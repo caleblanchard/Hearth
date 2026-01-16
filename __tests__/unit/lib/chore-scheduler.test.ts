@@ -119,7 +119,7 @@ describe('lib/chore-scheduler.ts', () => {
 
     describe('CUSTOM frequency', () => {
       it('should return empty array for CUSTOM (not yet implemented)', () => {
-        const dates = getNextDueDates('CUSTOM', baseDate, null, null, 30)
+        const dates = getNextDueDates('CUSTOM', baseDate, 30)
 
         expect(dates).toEqual([])
       })

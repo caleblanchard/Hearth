@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient, getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getMemberAllowances, getFamilyAllowances } from '@/lib/data/screentime';
 import { logger } from '@/lib/logger';
+import { parseJsonBody } from '@/lib/request-validation';
+import { sanitizeString } from '@/lib/input-sanitization';
 
-/**
- * GET /api/screentime/allowances
- * List all screen time allowances for the family
- * Optional query params: memberId, screenTimeTypeId
- */
+const normalizeAllowance = (allowance: any) => ({
+  id: allowance.id,
+  memberId: allowance.member_id ?? allowance.memberId,
+  screenTimeTypeId: allowance.screen_time_type_id ?? allowance.screenTimeTypeId,
+  allowanceMinutes: allowance.allowance_minutes ?? allowance.allowanceMinutes,
+  period: allowance.period,
+  rolloverEnabled: allowance.rollover_enabled ?? allowance.rolloverEnabled ?? false,
+  rolloverCapMinutes: allowance.rollover_cap_minutes ?? allowance.rolloverCapMinutes ?? null,
+  createdAt: allowance.created_at ?? allowance.createdAt,
+  updatedAt: allowance.updated_at ?? allowance.updatedAt,
+  member: allowance.member,
+  screenTimeType: allowance.screenTimeType ?? allowance.screen_type,
+});
+
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -20,85 +31,81 @@ export async function GET(request: NextRequest) {
     const memberId = searchParams.get('memberId');
     const screenTimeTypeId = searchParams.get('screenTimeTypeId');
 
-    const where: any = {
-      member: {
-        familyId: session.user.familyId,
-      },
-    };
-
+    // If memberId provided, get allowances for that member
     if (memberId) {
-      where.memberId = memberId;
+      const allowances = await getMemberAllowances(memberId);
+      const filtered = screenTimeTypeId
+        ? allowances.filter(
+            (allowance: any) =>
+              allowance.screen_time_type_id === screenTimeTypeId ||
+              allowance.screenTimeTypeId === screenTimeTypeId
+          )
+        : allowances;
+      return NextResponse.json({ allowances: filtered.map(normalizeAllowance) });
     }
 
-    if (screenTimeTypeId) {
-      where.screenTimeTypeId = screenTimeTypeId;
+    // Otherwise, get allowances for all family members
+    if (!authContext.activeFamilyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 404 });
     }
-
-    const allowances = await prisma.screenTimeAllowance.findMany({
-      where,
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        screenTimeType: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            isActive: true,
-          },
-        },
-      },
-      orderBy: [
-        { member: { name: 'asc' } },
-        { screenTimeType: { name: 'asc' } },
-      ],
-    });
-
-    return NextResponse.json({ allowances });
+    
+    const allowances = await getFamilyAllowances(authContext.activeFamilyId);
+    const filtered = screenTimeTypeId
+      ? allowances.filter(
+          (allowance: any) =>
+            allowance.screen_time_type_id === screenTimeTypeId ||
+            allowance.screenTimeTypeId === screenTimeTypeId
+        )
+      : allowances;
+    return NextResponse.json({ allowances: filtered.map(normalizeAllowance) });
   } catch (error) {
-    logger.error('Error fetching screen time allowances:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch screen time allowances' },
-      { status: 500 }
-    );
+    logger.error('Error fetching allowances:', error);
+    return NextResponse.json({ error: 'Failed to fetch allowances' }, { status: 500 });
   }
 }
 
-/**
- * POST /api/screentime/allowances
- * Create or update a screen time allowance (parents only)
- */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can create/update allowances
-    if (session.user.role !== 'PARENT') {
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can manage screen time allowances' },
         { status: 403 }
       );
     }
 
-    const body = await request.json();
+    const bodyResult = await parseJsonBody(request);
+    if (!bodyResult.success) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status }
+      );
+    }
+
     const {
-      memberId,
-      screenTimeTypeId,
+      memberId: rawMemberId,
+      screenTimeTypeId: rawScreenTimeTypeId,
       allowanceMinutes,
       period,
-      rolloverEnabled,
+      rolloverEnabled = false,
       rolloverCapMinutes,
-    } = body;
+    } = bodyResult.data;
 
-    if (!memberId || !screenTimeTypeId || !allowanceMinutes || !period) {
+    if (!rawMemberId || !rawScreenTimeTypeId || allowanceMinutes === undefined || !period) {
       return NextResponse.json(
         { error: 'Member ID, screen time type ID, allowance minutes, and period are required' },
         { status: 400 }
@@ -112,109 +119,91 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (rolloverEnabled && rolloverCapMinutes !== null && rolloverCapMinutes < 0) {
+    if (rolloverEnabled && rolloverCapMinutes !== undefined && rolloverCapMinutes !== null) {
+      if (rolloverCapMinutes < 0) {
+        return NextResponse.json(
+          { error: 'Rollover cap must be non-negative' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (period !== 'DAILY' && period !== 'WEEKLY') {
       return NextResponse.json(
-        { error: 'Rollover cap must be non-negative' },
+        { error: 'Invalid period - must be DAILY or WEEKLY' },
         { status: 400 }
       );
     }
 
-    // Verify member belongs to family
-    const member = await prisma.familyMember.findUnique({
-      where: { id: memberId },
-      select: { id: true, familyId: true },
-    });
+    const memberIdValue = sanitizeString(rawMemberId);
+    const screenTimeTypeIdValue = sanitizeString(rawScreenTimeTypeId);
+    if (!memberIdValue || !screenTimeTypeIdValue) {
+      return NextResponse.json(
+        { error: 'Member ID and screen time type ID are required' },
+        { status: 400 }
+      );
+    }
 
-    if (!member || member.familyId !== session.user.familyId) {
+    const { data: member, error: memberError } = await supabase
+      .from('family_members')
+      .select('id, family_id, name')
+      .eq('id', memberIdValue)
+      .single();
+
+    if (memberError || !member || member.family_id !== familyId) {
       return NextResponse.json(
         { error: 'Member not found or does not belong to your family' },
         { status: 400 }
       );
     }
 
-    // Verify screen time type belongs to family
-    const type = await prisma.screenTimeType.findFirst({
-      where: {
-        id: screenTimeTypeId,
-        familyId: session.user.familyId,
-        isArchived: false,
-      },
-    });
+    const { data: screenTimeType, error: typeError } = await supabase
+      .from('screen_time_types')
+      .select('id, family_id, is_archived')
+      .eq('id', screenTimeTypeIdValue)
+      .single();
 
-    if (!type) {
+    if (typeError || !screenTimeType || screenTimeType.family_id !== familyId || screenTimeType.is_archived) {
       return NextResponse.json(
         { error: 'Screen time type not found or is archived' },
         { status: 400 }
       );
     }
 
-    // Upsert allowance
-    const allowance = await prisma.screenTimeAllowance.upsert({
-      where: {
-        memberId_screenTimeTypeId: {
-          memberId,
-          screenTimeTypeId,
-        },
-      },
-      create: {
-        memberId,
-        screenTimeTypeId,
-        allowanceMinutes,
-        period,
-        rolloverEnabled: rolloverEnabled || false,
-        rolloverCapMinutes: rolloverCapMinutes || null,
-      },
-      update: {
-        allowanceMinutes,
-        period,
-        rolloverEnabled: rolloverEnabled || false,
-        rolloverCapMinutes: rolloverCapMinutes || null,
-      },
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        screenTimeType: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            isActive: true,
-          },
-        },
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'SCREENTIME_ALLOWANCE_UPDATED',
-        result: 'SUCCESS',
-        metadata: {
-          allowanceId: allowance.id,
-          memberName: allowance.member.name,
-          typeName: allowance.screenTimeType.name,
-          allowanceMinutes,
+    const { data: allowance, error: allowanceError } = await supabase
+      .from('screen_time_allowances')
+      .upsert(
+        {
+          member_id: memberIdValue,
+          screen_time_type_id: screenTimeTypeIdValue,
+          allowance_minutes: allowanceMinutes,
           period,
-          rolloverEnabled,
+          rollover_enabled: rolloverEnabled,
+          rollover_cap_minutes: rolloverEnabled ? rolloverCapMinutes ?? null : null,
         },
-      },
-    });
+        { onConflict: 'member_id,screen_time_type_id' }
+      )
+      .select(
+        `
+        *,
+        member:family_members!screen_time_allowances_member_id_fkey(id, name),
+        screenTimeType:screen_time_types!screen_time_allowances_screen_time_type_id_fkey(id, name)
+      `
+      )
+      .single();
+
+    if (allowanceError || !allowance) {
+      logger.error('Error saving allowance:', allowanceError);
+      return NextResponse.json({ error: 'Failed to save allowance' }, { status: 500 });
+    }
 
     return NextResponse.json({
-      allowance,
-      message: 'Screen time allowance saved successfully',
+      success: true,
+      allowance: normalizeAllowance(allowance),
+      message: 'Allowance saved successfully',
     });
   } catch (error) {
-    logger.error('Error saving screen time allowance:', error);
-    return NextResponse.json(
-      { error: 'Failed to save screen time allowance' },
-      { status: 500 }
-    );
+    logger.error('Error saving allowance:', error);
+    return NextResponse.json({ error: 'Failed to save allowance' }, { status: 500 });
   }
 }

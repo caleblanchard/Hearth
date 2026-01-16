@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { useRouter } from 'next/navigation';
 import {
   ClockIcon,
@@ -41,7 +42,8 @@ interface AdjustmentForm {
 }
 
 export default function FamilyScreenTimeManagement() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const router = useRouter();
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,10 +64,10 @@ export default function FamilyScreenTimeManagement() {
 
   // Check if user is a parent
   useEffect(() => {
-    if (session?.user && session.user.role !== 'PARENT') {
+    if (!memberLoading && !isParent && user) {
       router.push('/dashboard/screentime');
     }
-  }, [session, router]);
+  }, [memberLoading, isParent, user, router]);
 
   const fetchFamilyScreenTime = async () => {
     try {
@@ -75,7 +77,42 @@ export default function FamilyScreenTimeManagement() {
         throw new Error('Failed to fetch family screen time data');
       }
       const data = await response.json();
-      setMembers(data.members || []);
+      // API returns { overview } where each item has { member, allowances, stats }
+      const transformedMembers = (data.overview || []).map((item: any) => {
+        const allowances =
+          item.allowances?.map((a: any) => ({
+            id: a.id,
+            screenTimeTypeId: a.screen_time_type_id,
+            screenTimeTypeName: a.screen_type?.name || 'Unknown',
+            allowanceMinutes: a.allowance_minutes,
+            period: a.period,
+            remainingMinutes: a.remaining_minutes,
+          })) || [];
+
+        const weeklyAllocation = allowances.reduce(
+          (sum: number, allowance: Allowance) =>
+            sum +
+            (allowance.period === 'DAILY'
+              ? allowance.allowanceMinutes * 7
+              : allowance.allowanceMinutes),
+          0
+        );
+        const weeklyUsage = item.stats?.totalMinutes || 0;
+        const currentBalance = Math.max(0, weeklyAllocation - weeklyUsage);
+
+        return {
+          id: item.member.id,
+          name: item.member.name,
+          avatarUrl: item.member.avatar_url,
+          role: item.member.role || 'CHILD',
+          currentBalance,
+          weeklyAllocation,
+          weeklyUsage,
+          weekStartDate: null,
+          allowances,
+        };
+      });
+      setMembers(transformedMembers.filter((member: FamilyMember) => member.allowances?.length));
     } catch (error) {
       console.error('Error fetching family screen time:', error);
       setAlertModal({
@@ -90,10 +127,10 @@ export default function FamilyScreenTimeManagement() {
   };
 
   useEffect(() => {
-    if (session?.user?.role === 'PARENT') {
+    if (!memberLoading && isParent) {
       fetchFamilyScreenTime();
     }
-  }, [session]);
+  }, [memberLoading, isParent]);
 
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -185,7 +222,7 @@ export default function FamilyScreenTimeManagement() {
     );
   }
 
-  if (session?.user?.role !== 'PARENT') {
+  if (!isParent) {
     return null; // Will redirect in useEffect
   }
 

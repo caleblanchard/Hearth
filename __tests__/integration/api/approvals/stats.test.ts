@@ -9,8 +9,6 @@ jest.mock('@/lib/auth', () => ({
 import { GET } from '@/app/api/approvals/stats/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/approvals/stats', () => {
   beforeEach(() => {
     resetPrismaMock();
@@ -18,7 +16,6 @@ describe('GET /api/approvals/stats', () => {
   });
 
   it('should reject unauthenticated requests', async () => {
-    auth.mockResolvedValueOnce(null);
 
     const request = new Request('http://localhost/api/approvals/stats');
     const response = await GET(request as any);
@@ -29,7 +26,6 @@ describe('GET /api/approvals/stats', () => {
   });
 
   it('should reject child users', async () => {
-    auth.mockResolvedValueOnce(mockChildSession());
 
     const request = new Request('http://localhost/api/approvals/stats');
     const response = await GET(request as any);
@@ -40,7 +36,6 @@ describe('GET /api/approvals/stats', () => {
   });
 
   it('should return stats when no pending approvals exist', async () => {
-    auth.mockResolvedValueOnce(mockParentSession());
 
     prismaMock.choreInstance.count.mockResolvedValueOnce(0);
     prismaMock.rewardRedemption.count.mockResolvedValueOnce(0);
@@ -70,7 +65,6 @@ describe('GET /api/approvals/stats', () => {
   });
 
   it('should return correct counts for chores and rewards', async () => {
-    auth.mockResolvedValueOnce(mockParentSession());
 
     prismaMock.choreInstance.count.mockResolvedValue(5);
     prismaMock.rewardRedemption.count.mockResolvedValue(3);
@@ -96,7 +90,6 @@ describe('GET /api/approvals/stats', () => {
   });
 
   it('should return oldest pending chore when it is older than oldest reward', async () => {
-    auth.mockResolvedValueOnce(mockParentSession());
 
     const oldChore = {
       completedAt: new Date('2024-01-01T10:00:00Z')
@@ -119,7 +112,6 @@ describe('GET /api/approvals/stats', () => {
   });
 
   it('should return oldest pending reward when it is older than oldest chore', async () => {
-    auth.mockResolvedValueOnce(mockParentSession());
 
     const oldReward = {
       requestedAt: new Date('2024-01-01T08:00:00Z')
@@ -143,7 +135,6 @@ describe('GET /api/approvals/stats', () => {
 
   it('should enforce family isolation for chore counts', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValueOnce(session);
 
     prismaMock.choreInstance.count.mockResolvedValue(3);
     prismaMock.rewardRedemption.count.mockResolvedValue(0);
@@ -163,7 +154,6 @@ describe('GET /api/approvals/stats', () => {
 
   it('should enforce family isolation for reward counts', async () => {
     const session = mockParentSession();
-    auth.mockResolvedValueOnce(session);
 
     prismaMock.choreInstance.count.mockResolvedValue(0);
     prismaMock.rewardRedemption.count.mockResolvedValue(2);

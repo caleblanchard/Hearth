@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/achievements/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 
-const { auth } = require('@/lib/auth')
-
 describe('/api/achievements', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -31,7 +24,6 @@ describe('/api/achievements', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/achievements')
       const response = await GET(request)
@@ -42,8 +34,7 @@ describe('/api/achievements', () => {
     })
 
     it('should return achievements for authenticated user', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockAchievements = [
         {
@@ -91,8 +82,7 @@ describe('/api/achievements', () => {
     })
 
     it('should calculate progress for CHORES category', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockAchievements = [
         {
@@ -121,8 +111,7 @@ describe('/api/achievements', () => {
     })
 
     it('should calculate progress for CREDITS category', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockAchievements = [
         {
@@ -151,8 +140,7 @@ describe('/api/achievements', () => {
     })
 
     it('should calculate progress for STREAKS category', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockAchievements = [
         {
@@ -189,7 +177,6 @@ describe('/api/achievements', () => {
 
     it('should allow parent to view child achievements', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.achievement.findMany.mockResolvedValue([])
       prismaMock.userAchievement.findMany.mockResolvedValue([])
@@ -211,8 +198,7 @@ describe('/api/achievements', () => {
     })
 
     it('should return 403 if child tries to view another child achievements', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const request = new NextRequest(
         'http://localhost/api/achievements?userId=child-2'
@@ -225,8 +211,7 @@ describe('/api/achievements', () => {
     })
 
     it('should calculate completion statistics', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockAchievements = [
         { id: 'ach-1', requirement: 1 },
@@ -262,8 +247,7 @@ describe('/api/achievements', () => {
     })
 
     it('should cap percentage at 100', async () => {
-      const session = mockChildSession({ user: { id: 'child-1' } })
-      auth.mockResolvedValue(session)
+      const session = mockChildSession()
 
       const mockAchievements = [
         {

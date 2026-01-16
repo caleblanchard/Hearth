@@ -1,71 +1,46 @@
-/**
- * API Route: /api/rules/templates
- *
- * GET - Get all rule templates
- *
- * Parent-only access
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getAllTemplates, getTemplatesByCategory } from '@/lib/rules-engine/templates';
 import { logger } from '@/lib/logger';
 
-// ============================================
-// GET /api/rules/templates
-// Get all rule templates
-// ============================================
-
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Check if user is a parent
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Forbidden - Parent access required' },
         { status: 403 }
       );
     }
 
-    // Parse query parameters
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
+    const categoryParam = searchParams.get('category');
+    const validCategories = ['rewards', 'productivity', 'safety', 'convenience'] as const;
+    const category = categoryParam && validCategories.includes(categoryParam as any)
+      ? (categoryParam as 'rewards' | 'productivity' | 'safety' | 'convenience')
+      : undefined;
 
-    let templates;
+    const templates = category
+      ? getTemplatesByCategory(category)
+      : getAllTemplates();
 
-    if (category) {
-      // Validate category
-      const validCategories = ['productivity', 'safety', 'rewards', 'convenience'];
-      if (!validCategories.includes(category)) {
-        return NextResponse.json(
-          { error: 'Invalid category. Must be one of: productivity, safety, rewards, convenience' },
-          { status: 400 }
-        );
-      }
-
-      // Get templates by category
-      templates = getTemplatesByCategory(
-        category as 'productivity' | 'safety' | 'rewards' | 'convenience'
-      );
-    } else {
-      // Get all templates
-      templates = getAllTemplates();
-    }
-
-    return NextResponse.json({
-      templates,
-      count: templates.length,
-    });
+    return NextResponse.json({ templates });
   } catch (error) {
-    logger.error('Error fetching templates:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch templates' },
-      { status: 500 }
-    );
+    logger.error('Fetch rule templates error:', error);
+    return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 });
   }
 }

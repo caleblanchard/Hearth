@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -69,7 +70,8 @@ export default function TaskDetailPage({
   params: { id: string; taskId: string } 
 }) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -92,7 +94,7 @@ export default function TaskDetailPage({
 
   const fetchFamilyMembers = async () => {
     try {
-      const res = await fetch('/api/family');
+      const res = await fetch('/api/family-data');
       if (res.ok) {
         const data = await res.json();
         setFamilyMembers(data.family.members || []);
@@ -246,7 +248,7 @@ export default function TaskDetailPage({
     });
   };
 
-  if (session?.user?.role !== 'PARENT') {
+  if (!isParent) {
     return (
       <div className="p-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">

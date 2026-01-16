@@ -218,7 +218,6 @@ describe('Rules Engine Trigger Evaluators', () => {
       const context: RuleContext = {
         familyId: 'family-1',
         memberId: 'member-1',
-        memberId: 'member-1',
         currentBalance: 30,
       };
 
@@ -740,7 +739,7 @@ describe('Rules Engine Trigger Evaluators', () => {
     });
 
     it('should not fail with missing cron', async () => {
-      const config = { description: 'No cron' };
+      const config = { cron: '', description: 'No cron' };
       const context: RuleContext = {
         familyId: 'family-1',
       };
@@ -751,7 +750,7 @@ describe('Rules Engine Trigger Evaluators', () => {
     });
 
     it('should handle empty config', async () => {
-      const config = {};
+      const config = { cron: '', description: '' };
       const context: RuleContext = {
         familyId: 'family-1',
       };

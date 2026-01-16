@@ -1,126 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getPetMedications, addPetMedication } from '@/lib/data/pets';
 import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Verify pet exists and belongs to family
-    const pet = await prisma.pet.findUnique({
-      where: { id: params.id },
-    });
+    const { data: pet } = await supabase
+      .from('pets')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
     if (!pet) {
       return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
     }
 
-    if (pet.familyId !== session.user.familyId) {
+    if (pet.family_id !== familyId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Get medications
-    const medications = await prisma.petMedication.findMany({
-      where: {
-        petId: params.id,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const medications = await getPetMedications(id);
 
-    return NextResponse.json({ medications });
+    // Map to camelCase for frontend
+    const mappedMedications = medications.map(med => ({
+      id: med.id,
+      petId: med.pet_id,
+      medicationName: med.medication_name,
+      dosage: med.dosage,
+      frequency: med.frequency,
+      minIntervalHours: med.min_interval_hours,
+      lastGivenAt: med.last_given_at,
+      lastGivenBy: med.last_given_by,
+      nextDoseAt: med.next_dose_at,
+      notes: med.notes,
+      isActive: med.is_active,
+      createdAt: med.created_at,
+      updatedAt: med.updated_at,
+    }));
+
+    return NextResponse.json({ medications: mappedMedications });
   } catch (error) {
-    logger.error('Error fetching medications:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch medications' },
-      { status: 500 }
-    );
+    logger.error('Get pet medications error:', error);
+    return NextResponse.json({ error: 'Failed to get medications' }, { status: 500 });
   }
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify pet exists and belongs to family
-    const pet = await prisma.pet.findUnique({
-      where: { id: params.id },
-    });
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
 
-    if (!pet) {
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Verify pet exists and belongs to family
+    const { data: pet } = await supabase
+      .from('pets')
+      .select('family_id')
+      .eq('id', id)
+      .single();
+
+    if (!pet || pet.family_id !== familyId) {
       return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
     }
 
-    if (pet.familyId !== session.user.familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
     const body = await request.json();
-    const { medicationName, dosage, frequency, minIntervalHours, notes, isActive } = body;
+    const medication = await addPetMedication(id, memberId, body);
 
-    if (!medicationName || !dosage || !frequency) {
-      return NextResponse.json(
-        { error: 'Medication name, dosage, and frequency are required' },
-        { status: 400 }
-      );
-    }
+    // Map to camelCase for frontend
+    const mappedMedication = {
+      id: medication.id,
+      petId: medication.pet_id,
+      medicationName: medication.medication_name,
+      dosage: medication.dosage,
+      frequency: medication.frequency,
+      minIntervalHours: medication.min_interval_hours,
+      lastGivenAt: medication.last_given_at,
+      lastGivenBy: medication.last_given_by,
+      nextDoseAt: medication.next_dose_at,
+      notes: medication.notes,
+      isActive: medication.is_active,
+      createdAt: medication.created_at,
+      updatedAt: medication.updated_at,
+    };
 
-    // Calculate nextDoseAt based on frequency and minIntervalHours
-    let nextDoseAt: Date | null = null;
-    if (minIntervalHours) {
-      nextDoseAt = new Date(Date.now() + minIntervalHours * 60 * 60 * 1000);
-    }
-
-    const medication = await prisma.petMedication.create({
-      data: {
-        petId: params.id,
-        medicationName: medicationName.trim(),
-        dosage: dosage.trim(),
-        frequency: frequency.trim(),
-        minIntervalHours: minIntervalHours || null,
-        notes: notes?.trim() || null,
-        isActive: isActive !== undefined ? isActive : true,
-        nextDoseAt,
-      },
+    return NextResponse.json({
+      success: true,
+      medication: mappedMedication,
+      message: 'Medication recorded successfully',
     });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'PET_MEDICATION_GIVEN',
-        result: 'SUCCESS',
-        metadata: {
-          petId: pet.id,
-          petName: pet.name,
-          medicationName: medication.medicationName,
-        },
-      },
-    });
-
-    return NextResponse.json(
-      { medication, message: 'Medication added successfully' },
-      { status: 201 }
-    );
   } catch (error) {
-    logger.error('Error adding medication:', error);
+    logger.error('Add pet medication error:', error);
     return NextResponse.json({ error: 'Failed to add medication' }, { status: 500 });
   }
 }

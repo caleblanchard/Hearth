@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import {
   CheckCircleIcon,
@@ -68,7 +69,7 @@ interface Schedule {
   requiresApproval: boolean;
   requiresPhoto: boolean;
   assignments: Assignment[];
-  _count: {
+  _count?: {
     instances: number;
   };
 }
@@ -94,7 +95,9 @@ interface FamilyMember {
 
 export default function ManageChoresPage() {
   console.log('🚀 ManageChoresPage component rendered');
-  const { data: session } = useSession();
+  const session = useSupabaseSession();
+  const { user } = session;
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const router = useRouter();
   const [chores, setChores] = useState<Chore[]>([]);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
@@ -134,11 +137,11 @@ export default function ManageChoresPage() {
 
   // Check authorization
   useEffect(() => {
-    // Only redirect if session is loaded and user is not a parent
-    if (session && session?.user?.role !== 'PARENT') {
+    // Only redirect if loading is complete and user is not a parent
+    if (!memberLoading && !isParent && user) {
       router.push('/dashboard');
     }
-  }, [session, router]);
+  }, [memberLoading, isParent, user, router]);
 
   const fetchChores = async () => {
     try {
@@ -160,7 +163,7 @@ export default function ManageChoresPage() {
     console.log('🔍 fetchFamilyMembers called');
     try {
       console.log('📡 Fetching from /api/family...');
-      const response = await fetch('/api/family');
+      const response = await fetch('/api/family-data');
       console.log('📥 Response status:', response.status, response.ok);
 
       if (response.ok) {
@@ -492,7 +495,7 @@ export default function ManageChoresPage() {
     return `${names} (${type})`;
   };
 
-  if (session?.user?.role !== 'PARENT') {
+  if (!isParent) {
     return null;
   }
 
@@ -797,7 +800,7 @@ export default function ManageChoresPage() {
                     </span>
                   </div>
 
-                  {chore.schedules.map(schedule => (
+                  {chore.schedules?.map(schedule => (
                     <div key={schedule.id} className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="flex flex-wrap gap-4 text-sm">
                         <span className="flex items-center gap-1 text-gray-700 dark:text-gray-300">
@@ -821,9 +824,11 @@ export default function ManageChoresPage() {
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        {schedule._count.instances} instances created
-                      </div>
+                      {schedule._count && (
+                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {schedule._count.instances} instances created
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

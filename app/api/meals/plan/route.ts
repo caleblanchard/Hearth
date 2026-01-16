@@ -1,44 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
-import { MealType } from '@/app/generated/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { 
+  getMealPlanWithEntries, 
+  getOrCreateMealPlan, 
+  createMealPlanEntry,
+  addDishToMealEntry 
+} from '@/lib/data/meals';
 import { logger } from '@/lib/logger';
 
 const VALID_MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'];
 
-// Helper function to get start of week based on family setting
-async function getWeekStart(date: Date, familyId: string): Promise<Date> {
-  // Fetch family settings to get week start day
-  const family = await prisma.family.findUnique({
-    where: { id: familyId },
-    select: { settings: true },
-  });
-
-  const weekStartDay = (family?.settings as any)?.weekStartDay || 'MONDAY';
-  
-  const d = new Date(date);
-  d.setUTCHours(0, 0, 0, 0);
-  const day = d.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-  
-  if (weekStartDay === 'SUNDAY') {
-    // Get Sunday of the week
-    const diff = d.getUTCDate() - day;
-    d.setUTCDate(diff);
-  } else {
-    // Get Monday of the week (default)
-    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-    d.setUTCDate(diff);
-  }
-  
-  return d;
-}
-
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -53,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse and validate date
-    const weekDate = new Date(weekParam);
+    const weekDate = new Date(weekParam + 'T00:00:00'); // Parse as local date
     if (isNaN(weekDate.getTime())) {
       return NextResponse.json(
         { error: 'Invalid date format' },
@@ -61,35 +45,42 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Normalize to start of week based on family setting (already sets UTC hours to 0)
-    const weekStartDate = await getWeekStart(weekDate, session.user.familyId);
+    // Use the week parameter directly as the week start
+    // The frontend already calculates the correct week start based on family settings
+    const weekStart = weekParam;
 
-    // Get meal plan for the week
-    const mealPlan = await prisma.mealPlan.findUnique({
-      where: {
-        familyId_weekStart: {
-          familyId: session.user.familyId,
-          weekStart: weekStartDate,
-        },
-      },
-      include: {
-        meals: {
-          include: {
-            dishes: {
-              orderBy: { sortOrder: 'asc' },
-            },
-          },
-          orderBy: [
-            { date: 'asc' },
-            { mealType: 'asc' },
-          ],
-        },
-      },
-    });
+    // Use data module
+    const mealPlan = await getMealPlanWithEntries(familyId, weekStart);
+
+    // Map 'entries' to 'meals' for frontend compatibility with camelCase
+    const response = mealPlan ? {
+      id: mealPlan.id,
+      weekStart: mealPlan.week_start,
+      meals: (mealPlan.entries || []).map((entry: any) => ({
+        id: entry.id,
+        date: entry.date,
+        mealType: entry.meal_type,
+        customName: entry.custom_name,
+        notes: entry.notes,
+        recipeId: entry.recipe_id,
+        dishes: (entry.dishes || []).map((dish: any) => ({
+          id: dish.id,
+          dishName: dish.dish_name,
+          recipeId: dish.recipe_id,
+          sortOrder: dish.sort_order,
+          recipe: dish.recipe ? {
+            id: dish.recipe.id,
+            name: dish.recipe.name,
+            prepTimeMinutes: dish.recipe.prep_time_minutes,
+            cookTimeMinutes: dish.recipe.cook_time_minutes,
+          } : null,
+        })),
+      }))
+    } : null;
 
     return NextResponse.json({
-      mealPlan,
-      weekStart: weekStartDate.toISOString().split('T')[0],
+      mealPlan: response,
+      weekStart: weekStart,
     });
   } catch (error) {
     logger.error('Error fetching meal plan:', error);
@@ -102,10 +93,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+    
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const body = await request.json();
@@ -151,34 +150,26 @@ export async function POST(request: NextRequest) {
     }
     mealDate.setUTCHours(0, 0, 0, 0);
 
-    // Get start of week based on family setting (getWeekStart already sets UTC hours to 0)
-    const weekStart = await getWeekStart(mealDate, session.user.familyId);
+    // Get start of week
+    const weekStart = new Date(mealDate);
+    const day = weekStart.getUTCDay();
+    const diff = weekStart.getUTCDate() - day + (day === 0 ? -6 : 1);
+    weekStart.setUTCDate(diff);
 
-    // Upsert meal plan for the week
-    const mealPlan = await prisma.mealPlan.upsert({
-      where: {
-        familyId_weekStart: {
-          familyId: session.user.familyId,
-          weekStart,
-        },
-      },
-      create: {
-        familyId: session.user.familyId,
-        weekStart,
-      },
-      update: {},
-    });
+    // Create meal plan for the week
+    const mealPlan = await getOrCreateMealPlan(
+      familyId,
+      weekStart.toISOString().split('T')[0]
+    );
 
     // Create meal entry
-    const entry = await prisma.mealPlanEntry.create({
-      data: {
-        mealPlanId: mealPlan.id,
-        date: mealDate,
-        mealType: mealType as MealType,
-        customName: customName?.trim() || null, // DEPRECATED - for backward compatibility
-        notes: notes?.trim() || null,
-        recipeId: recipeId || null, // DEPRECATED - for backward compatibility
-      },
+    const entry = await createMealPlanEntry({
+      meal_plan_id: mealPlan.id,
+      date: mealDate.toISOString().split('T')[0],
+      meal_type: mealType,
+      custom_name: customName?.trim() || null,
+      notes: notes?.trim() || null,
+      recipe_id: recipeId || null,
     });
 
     // Create dishes if provided
@@ -189,57 +180,47 @@ export async function POST(request: NextRequest) {
 
         // If recipeId provided, fetch recipe name
         if (dish.recipeId && !dishName) {
-          const recipe = await prisma.recipe.findUnique({
-            where: { id: dish.recipeId },
-            select: { name: true, familyId: true },
-          });
+          const { data: recipe } = await supabase
+            .from('recipes')
+            .select('name, family_id')
+            .eq('id', dish.recipeId)
+            .eq('family_id', familyId)
+            .single();
 
-          if (recipe && recipe.familyId === session.user.familyId) {
+          if (recipe) {
             dishName = recipe.name;
           }
         }
 
         if (dishName) {
-          await prisma.mealPlanDish.create({
-            data: {
-              mealEntryId: entry.id,
-              recipeId: dish.recipeId || null,
-              dishName,
-              sortOrder: i,
-            },
+          await addDishToMealEntry({
+            meal_entry_id: entry.id,
+            recipe_id: dish.recipeId || null,
+            dish_name: dishName,
+            sort_order: i,
           });
         }
       }
     }
 
-    // Fetch entry with dishes for response
-    const entryWithDishes = await prisma.mealPlanEntry.findUnique({
-      where: { id: entry.id },
-      include: {
-        dishes: {
-          orderBy: { sortOrder: 'asc' },
-        },
-      },
-    });
-
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'MEAL_ENTRY_ADDED',
-        result: 'SUCCESS',
-        metadata: {
-          entryId: entry.id,
-          mealType: entry.mealType,
-          date: entry.date.toISOString(),
-        },
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'MEAL_ENTRY_ADDED',
+      entity_type: 'MEAL_PLAN',
+      entity_id: entry.id,
+      result: 'SUCCESS',
+      metadata: {
+        entryId: entry.id,
+        mealType: entry.meal_type,
+        date: entry.date,
       },
     });
 
     return NextResponse.json(
       {
-        entry: entryWithDishes,
+        entry,
         message: 'Meal entry created successfully',
       },
       { status: 201 }

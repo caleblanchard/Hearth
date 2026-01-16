@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { updateScreenTimeType, deleteScreenTimeType } from '@/lib/data/screentime';
 import { logger } from '@/lib/logger';
 import { sanitizeString } from '@/lib/input-sanitization';
 import { parseJsonBody } from '@/lib/request-validation';
+
+const normalizeScreenTimeType = (type: any) => ({
+  id: type.id,
+  familyId: type.family_id ?? type.familyId,
+  name: type.name,
+  description: type.description ?? null,
+  isActive: type.is_active ?? type.isActive ?? false,
+  isArchived: type.is_archived ?? type.isArchived ?? false,
+  createdAt: type.created_at ?? type.createdAt,
+  updatedAt: type.updated_at ?? type.updatedAt,
+  _count: type._count,
+});
 
 /**
  * GET /api/screentime/types/[id]
@@ -11,38 +24,37 @@ import { parseJsonBody } from '@/lib/request-validation';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const type = await prisma.screenTimeType.findFirst({
-      where: {
-        id: params.id,
-        familyId: session.user.familyId,
-      },
-      include: {
-        _count: {
-          select: {
-            transactions: true,
-            allowances: true,
-          },
-        },
-      },
-    });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    if (!type) {
+    const { data: type, error } = await supabase
+      .from('screen_time_types')
+      .select('*')
+      .eq('id', id)
+      .eq('family_id', familyId)
+      .single();
+
+    if (error || !type) {
       return NextResponse.json(
         { error: 'Screen time type not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ type });
+    return NextResponse.json({ type: normalizeScreenTimeType(type) });
   } catch (error) {
     logger.error('Error fetching screen time type:', error);
     return NextResponse.json(
@@ -52,110 +64,49 @@ export async function GET(
   }
 }
 
-/**
- * PATCH /api/screentime/types/[id]
- * Update a screen time type (parents only)
- */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can update types
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can update screen time types' },
-        { status: 403 }
-      );
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const type = await prisma.screenTimeType.findFirst({
-      where: {
-        id: params.id,
-        familyId: session.user.familyId,
-      },
-    });
+    // Verify type exists
+    const { data: existing } = await supabase
+      .from('screen_time_types')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
-    if (!type) {
-      return NextResponse.json(
-        { error: 'Screen time type not found' },
-        { status: 404 }
-      );
+    if (!existing || existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Screen time type not found' }, { status: 404 });
     }
 
-    // Validate and parse JSON body
-    const bodyResult = await parseJsonBody(request);
-    if (!bodyResult.success) {
-      return NextResponse.json(
-        { error: bodyResult.error },
-        { status: bodyResult.status }
-      );
+    const body = await request.json();
+    const updateData: Record<string, any> = {};
+    if (body.name !== undefined) updateData.name = sanitizeString(body.name);
+    if (body.description !== undefined) {
+      updateData.description = body.description ? sanitizeString(body.description) : null;
     }
-    const { name, description, isActive } = bodyResult.data;
+    if (body.isActive !== undefined) updateData.is_active = body.isActive;
+    if (body.isArchived !== undefined) updateData.is_archived = body.isArchived;
 
-    const updateData: any = {};
-    if (name !== undefined) {
-      // Sanitize and validate name
-      const sanitizedName = sanitizeString(name);
-      if (!sanitizedName || sanitizedName.trim().length === 0) {
-        return NextResponse.json(
-          { error: 'Name cannot be empty' },
-          { status: 400 }
-        );
-      }
-      // Check for duplicate name (excluding current type)
-      const existing = await prisma.screenTimeType.findFirst({
-        where: {
-          familyId: session.user.familyId,
-          name: sanitizedName,
-          isArchived: false,
-          id: { not: params.id },
-        },
-      });
-
-      if (existing) {
-        return NextResponse.json(
-          { error: 'A screen time type with this name already exists' },
-          { status: 400 }
-        );
-      }
-      updateData.name = sanitizedName;
-    }
-    if (description !== undefined) {
-      updateData.description = description ? sanitizeString(description) : null;
-    }
-    if (isActive !== undefined) {
-      updateData.isActive = Boolean(isActive);
-    }
-
-    const updated = await prisma.screenTimeType.update({
-      where: { id: params.id },
-      data: updateData,
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'SCREENTIME_TYPE_UPDATED',
-        result: 'SUCCESS',
-        metadata: {
-          typeId: updated.id,
-          typeName: updated.name,
-          changes: Object.keys(updateData),
-        },
-      },
-    });
+    const type = await updateScreenTimeType(id, updateData);
 
     return NextResponse.json({
-      type: updated,
+      success: true,
+      type: normalizeScreenTimeType(type),
       message: 'Screen time type updated successfully',
     });
   } catch (error) {
@@ -167,102 +118,39 @@ export async function PATCH(
   }
 }
 
-/**
- * DELETE /api/screentime/types/[id]
- * Archive a screen time type (parents only)
- * Cannot delete if there are transactions, only archive
- */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only parents can archive types
-    if (session.user.role !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can archive screen time types' },
-        { status: 403 }
-      );
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const type = await prisma.screenTimeType.findFirst({
-      where: {
-        id: params.id,
-        familyId: session.user.familyId,
-      },
-      include: {
-        _count: {
-          select: {
-            transactions: true,
-          },
-        },
-      },
-    });
+    // Verify type exists
+    const { data: existing } = await supabase
+      .from('screen_time_types')
+      .select('family_id')
+      .eq('id', id)
+      .single();
 
-    if (!type) {
-      return NextResponse.json(
-        { error: 'Screen time type not found' },
-        { status: 404 }
-      );
+    if (!existing || existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Screen time type not found' }, { status: 404 });
     }
 
-    // If there are transactions, archive instead of delete
-    if (type._count.transactions > 0) {
-      const archived = await prisma.screenTimeType.update({
-        where: { id: params.id },
-        data: {
-          isArchived: true,
-          isActive: false,
-        },
-      });
-
-      // Create audit log
-      await prisma.auditLog.create({
-        data: {
-          familyId: session.user.familyId,
-          memberId: session.user.id,
-          action: 'SCREENTIME_TYPE_ARCHIVED',
-          result: 'SUCCESS',
-          metadata: {
-            typeId: archived.id,
-            typeName: archived.name,
-            reason: 'Has transaction history',
-          },
-        },
-      });
-
-      return NextResponse.json({
-        type: archived,
-        message: 'Screen time type archived successfully (has transaction history)',
-      });
-    }
-
-    // No transactions, can delete
-    await prisma.screenTimeType.delete({
-      where: { id: params.id },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'SCREENTIME_TYPE_DELETED',
-        result: 'SUCCESS',
-        metadata: {
-          typeId: type.id,
-          typeName: type.name,
-        },
-      },
-    });
+    await deleteScreenTimeType(id);
 
     return NextResponse.json({
+      success: true,
       message: 'Screen time type deleted successfully',
     });
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { processGraceRepayment } from '@/lib/screentime-grace';
 import { logger } from '@/lib/logger';
 
@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const supabase = await createClient();
     const now = new Date();
     let balancesReset = 0;
     let graceRepaymentsProcessed = 0;
@@ -39,106 +40,102 @@ export async function GET(request: NextRequest) {
     let errors = 0;
 
     // Get all screen time balances
-    const balances = await prisma.screenTimeBalance.findMany({
-      include: {
-        member: {
-          select: {
-            id: true,
-            name: true,
-            familyId: true,
-          },
-        },
-      },
-    });
+    const { data: balances } = await supabase
+      .from('screen_time_balances')
+      .select(`
+        *,
+        member:family_members!inner(
+          id,
+          name,
+          family_id
+        )
+      `);
 
     // Process each balance
-    for (const balance of balances) {
+    for (const balance of balances || []) {
       try {
-        await prisma.$transaction(async (tx) => {
-          // Process grace repayments BEFORE resetting balance
-          const repaymentResult = await processGraceRepayment(balance.memberId);
-          if (repaymentResult.logsProcessed > 0) {
-            graceRepaymentsProcessed += repaymentResult.logsProcessed;
-            totalGraceMinutesRepaid += repaymentResult.totalRepaid;
-          }
+        // Process grace repayments BEFORE resetting balance
+        const repaymentResult = await processGraceRepayment(balance.member_id);
+        if (repaymentResult.logsProcessed > 0) {
+          graceRepaymentsProcessed += repaymentResult.logsProcessed;
+          totalGraceMinutesRepaid += repaymentResult.totalRepaid;
+        }
 
-          // Get updated balance after repayment (might have been deducted)
-          const updatedBalance = await tx.screenTimeBalance.findUnique({
-            where: { memberId: balance.memberId },
-            include: {
-              member: {
-                select: {
-                  screenTimeSettings: {
-                    select: {
-                      weeklyAllocationMinutes: true,
-                    },
-                  },
-                },
-              },
+        // Get updated balance after repayment (might have been deducted)
+        const { data: updatedBalance } = await supabase
+          .from('screen_time_balances')
+          .select(`
+            *,
+            member:family_members!inner(
+              screen_time_settings:screen_time_settings(
+                weekly_allocation_minutes
+              )
+            )
+          `)
+          .eq('member_id', balance.member_id)
+          .single();
+
+        const settings = (updatedBalance?.member?.screen_time_settings as any)?.[0];
+        if (!updatedBalance || !settings) {
+          throw new Error(`Balance or settings not found for member ${balance.member_id}`);
+        }
+
+        const weeklyAllocation = settings.weekly_allocation_minutes;
+
+        // Reset to weekly allocation
+        await supabase
+          .from('screen_time_balances')
+          .update({
+            current_balance_minutes: weeklyAllocation,
+            week_start_date: now.toISOString(),
+          })
+          .eq('member_id', balance.member_id);
+
+        // Create transaction record for the reset
+        await supabase
+          .from('screen_time_transactions')
+          .insert({
+            member_id: balance.member_id,
+            type: 'ALLOCATION',
+            amount_minutes: weeklyAllocation,
+            balance_after: weeklyAllocation,
+            reason: 'Weekly reset',
+            created_by_id: balance.member_id, // System reset
+          });
+
+        // Create audit log
+        await supabase
+          .from('audit_logs')
+          .insert({
+            family_id: balance.member.family_id,
+            member_id: balance.member_id,
+            action: 'SCREENTIME_ADJUSTED',
+            entity_type: 'SCREEN_TIME',
+            result: 'SUCCESS',
+            details: {
+              memberName: balance.member.name,
+              weeklyAllocationMinutes: weeklyAllocation,
+              previousBalance: balance.current_balance_minutes,
+              graceRepaymentsProcessed: repaymentResult.logsProcessed,
+              graceMinutesRepaid: repaymentResult.totalRepaid,
             },
           });
 
-          if (!updatedBalance || !updatedBalance.member.screenTimeSettings) {
-            throw new Error(`Balance or settings not found for member ${balance.memberId}`);
-          }
-
-          const weeklyAllocation = updatedBalance.member.screenTimeSettings.weeklyAllocationMinutes;
-
-          // Reset to weekly allocation
-          await tx.screenTimeBalance.update({
-            where: { memberId: balance.memberId },
-            data: {
-              currentBalanceMinutes: weeklyAllocation,
-              weekStartDate: now,
-            },
+        // Create notification for the reset
+        await (supabase as any)
+          .from('notifications')
+          .insert({
+            user_id: balance.member_id,
+            type: 'SCREENTIME_ADJUSTED',
+            title: 'Screen Time Reset',
+            message: `Your screen time has been reset to ${weeklyAllocation} minutes for the week!`,
+            is_read: false,
           });
 
-          // Create transaction record for the reset
-          await tx.screenTimeTransaction.create({
-            data: {
-              memberId: balance.memberId,
-              type: 'ALLOCATION',
-              amountMinutes: weeklyAllocation,
-              balanceAfter: weeklyAllocation,
-              reason: 'Weekly reset',
-              createdById: balance.memberId, // System reset
-            },
-          });
-
-          // Create audit log
-          await tx.auditLog.create({
-            data: {
-              familyId: balance.member.familyId,
-              memberId: balance.memberId,
-              action: 'SCREENTIME_ADJUSTED',
-              entityType: 'SCREEN_TIME',
-              result: 'SUCCESS',
-              metadata: {
-                memberName: balance.member.name,
-                weeklyAllocationMinutes: weeklyAllocation,
-                previousBalance: balance.currentBalanceMinutes,
-                graceRepaymentsProcessed: repaymentResult.logsProcessed,
-                graceMinutesRepaid: repaymentResult.totalRepaid,
-              },
-            },
-          });
-
-          // Create notification for the reset
-          await tx.notification.create({
-            data: {
-              userId: balance.memberId,
-              type: 'SCREEN_TIME_RESET' as any,
-              title: 'Screen Time Reset',
-              message: `Your screen time has been reset to ${weeklyAllocation} minutes for the week!`,
-              isRead: false,
-            },
-          });
-
-          balancesReset++;
-        });
+        balancesReset++;
       } catch (error) {
         logger.error('Error processing screen time reset for member', {
-          memberId: balance.memberId,
+          memberId: balance.member_id,
           memberName: balance.member.name,
           error,
         });
@@ -152,7 +149,7 @@ export async function GET(request: NextRequest) {
       graceRepaymentsProcessed,
       totalGraceMinutesRepaid,
       errors,
-      totalMembers: balances.length,
+      totalMembers: balances?.length || 0,
       timestamp: now.toISOString(),
     };
 

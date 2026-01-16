@@ -1,61 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getGuestInvites } from '@/lib/data/guests';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
     // Only parents can view guest invites
-    if (session.user.role !== 'PARENT') {
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
       return NextResponse.json(
         { error: 'Only parents can view guest invites' },
         { status: 403 }
       );
     }
 
-    // Get all active guest invites (PENDING and ACTIVE status)
-    const invites = await prisma.guestInvite.findMany({
-      where: {
-        familyId: session.user.familyId,
-        status: {
-          in: ['PENDING', 'ACTIVE'],
-        },
-      },
-      include: {
-        invitedBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        sessions: {
-          where: {
-            endedAt: null, // Only active sessions
-          },
-          orderBy: {
-            startedAt: 'desc',
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const invites = await getGuestInvites(familyId);
 
     return NextResponse.json({ invites });
   } catch (error) {
-    logger.error('Error fetching guest invites:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch guest invites' },
-      { status: 500 }
-    );
+    logger.error('Get guest invites error:', error);
+    return NextResponse.json({ error: 'Failed to get guest invites' }, { status: 500 });
   }
 }

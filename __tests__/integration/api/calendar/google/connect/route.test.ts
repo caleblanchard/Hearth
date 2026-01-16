@@ -32,22 +32,24 @@ const originalJson = NextResponse.json;
 NextResponse.json = function (body: any, init?: any) {
   const response = originalJson(body, init);
   if (!response.cookies) {
-    response.cookies = {
-      set: jest.fn(),
-      get: jest.fn(),
-      delete: jest.fn(),
-      getAll: jest.fn(),
-      has: jest.fn(),
-      clear: jest.fn(),
-    } as any;
+    Object.defineProperty(response, 'cookies', {
+      value: {
+        set: jest.fn(),
+        get: jest.fn(),
+        delete: jest.fn(),
+        getAll: jest.fn(),
+        has: jest.fn(),
+        clear: jest.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
   }
   return response;
 };
 
 // Import route
 import { GET } from '@/app/api/calendar/google/connect/route';
-
-const { auth } = require('@/lib/auth');
 
 describe('/api/calendar/google/connect', () => {
   let mockGetAuthUrl: jest.Mock;
@@ -72,7 +74,6 @@ describe('/api/calendar/google/connect', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/google/connect');
       const response = await GET();
@@ -84,7 +85,6 @@ describe('/api/calendar/google/connect', () => {
 
     it('should generate OAuth URL and set state cookie for authenticated user', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/google/connect');
       const response = await GET();
@@ -110,7 +110,6 @@ describe('/api/calendar/google/connect', () => {
 
     it('should allow child users to connect their calendar', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/google/connect');
       const response = await GET();
@@ -122,7 +121,6 @@ describe('/api/calendar/google/connect', () => {
 
     it('should generate unique state token for each request', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request1 = new NextRequest('http://localhost:3001/api/calendar/google/connect');
       const response1 = await GET();
@@ -146,7 +144,6 @@ describe('/api/calendar/google/connect', () => {
 
     it('should handle errors from GoogleCalendarClient', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       mockGetAuthUrl.mockImplementation(() => {
         throw new Error('Google Calendar API error');
@@ -162,7 +159,6 @@ describe('/api/calendar/google/connect', () => {
 
     it('should handle missing GOOGLE_CLIENT_ID', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       (GoogleCalendarClient as jest.Mock).mockImplementation(() => {
         throw new Error('GOOGLE_CLIENT_ID must be set');
@@ -178,7 +174,6 @@ describe('/api/calendar/google/connect', () => {
 
     it('should set cookie with correct path and expiry', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/google/connect');
       const response = await GET();

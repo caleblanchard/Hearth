@@ -1,12 +1,22 @@
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getAuthContext } from '@/lib/supabase/server';
+import { isCloudMode } from '@/lib/deployment-mode';
+import LandingPage from '@/components/landing/LandingPage';
 
 export default async function Home() {
-  const session = await auth();
+  const authContext = await getAuthContext();
+  const cloudMode = isCloudMode();
 
-  if (session?.user) {
+  // If user is authenticated, redirect to dashboard
+  if (authContext?.user) {
     redirect('/dashboard');
-  } else {
-    redirect('/auth/signin');
   }
+
+  // Cloud mode: Show landing page
+  if (cloudMode) {
+    return <LandingPage />;
+  }
+
+  // Local mode: Redirect to sign in
+  redirect('/auth/signin');
 }

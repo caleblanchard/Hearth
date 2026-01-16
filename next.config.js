@@ -15,14 +15,21 @@ const withPWA = require('next-pwa')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+  // swcMinify removed - default in Next.js 16
   poweredByHeader: false,
   output: 'standalone', // For Docker deployment
+  
+  // Turbopack configuration
+  // Note: next-pwa uses webpack, so we explicitly allow webpack in dev
+  // and use Turbopack for production builds
+  turbopack: {},
+  
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
     },
   },
+  
   images: {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
@@ -31,6 +38,12 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+  },
+  
+  // Webpack config (for next-pwa compatibility)
+  webpack: (config, { isServer }) => {
+    // next-pwa uses webpack plugins
+    return config;
   },
 };
 

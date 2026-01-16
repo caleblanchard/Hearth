@@ -1,18 +1,11 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // NOW import the route after mocks are set up
 import { NextRequest } from 'next/server'
 import { GET, PUT, PATCH, DELETE } from '@/app/api/allowance/[id]/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { Frequency } from '@/app/generated/prisma'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/allowance/[id]', () => {
   beforeEach(() => {
@@ -43,11 +36,10 @@ describe('/api/allowance/[id]', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const response = await GET(
         new NextRequest('http://localhost/api/allowance/schedule-1'),
-        { params: { id: 'schedule-1' } }
+        { params: Promise.resolve({ id: 'schedule-1' }) }
       )
       const data = await response.json()
 
@@ -56,12 +48,11 @@ describe('/api/allowance/[id]', () => {
     })
 
     it('should return schedule by ID', async () => {
-      auth.mockResolvedValue(mockParentSession())
       prismaMock.allowanceSchedule.findUnique.mockResolvedValue(mockSchedule as any)
 
       const response = await GET(
         new NextRequest('http://localhost/api/allowance/schedule-1'),
-        { params: { id: 'schedule-1' } }
+        { params: Promise.resolve({ id: 'schedule-1' }) }
       )
       const data = await response.json()
 
@@ -70,12 +61,11 @@ describe('/api/allowance/[id]', () => {
     })
 
     it('should return 404 if schedule not found or wrong family', async () => {
-      auth.mockResolvedValue(mockParentSession())
       prismaMock.allowanceSchedule.findUnique.mockResolvedValue(null)
 
       const response = await GET(
         new NextRequest('http://localhost/api/allowance/schedule-1'),
-        { params: { id: 'schedule-1' } }
+        { params: Promise.resolve({ id: 'schedule-1' }) }
       )
       const data = await response.json()
 
@@ -86,14 +76,13 @@ describe('/api/allowance/[id]', () => {
 
   describe('PUT', () => {
     it('should return 403 if user is not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession())
 
       const request = new NextRequest('http://localhost/api/allowance/schedule-1', {
         method: 'PUT',
         body: JSON.stringify({ amount: 600 }),
       })
 
-      const response = await PUT(request, { params: { id: 'schedule-1' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: 'schedule-1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -101,7 +90,6 @@ describe('/api/allowance/[id]', () => {
     })
 
     it('should update allowance schedule', async () => {
-      auth.mockResolvedValue(mockParentSession())
       prismaMock.allowanceSchedule.findUnique.mockResolvedValue(mockSchedule as any)
 
       const updatedSchedule = { ...mockSchedule, amount: 600 }
@@ -116,7 +104,7 @@ describe('/api/allowance/[id]', () => {
         }),
       })
 
-      const response = await PUT(request, { params: { id: 'schedule-1' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: 'schedule-1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -125,7 +113,6 @@ describe('/api/allowance/[id]', () => {
     })
 
     it('should validate amount is positive', async () => {
-      auth.mockResolvedValue(mockParentSession())
       prismaMock.allowanceSchedule.findUnique.mockResolvedValue(mockSchedule as any)
 
       const request = new NextRequest('http://localhost/api/allowance/schedule-1', {
@@ -133,7 +120,7 @@ describe('/api/allowance/[id]', () => {
         body: JSON.stringify({ amount: -100 }),
       })
 
-      const response = await PUT(request, { params: { id: 'schedule-1' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: 'schedule-1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -143,7 +130,6 @@ describe('/api/allowance/[id]', () => {
 
   describe('PATCH', () => {
     it('should pause allowance schedule', async () => {
-      auth.mockResolvedValue(mockParentSession())
       prismaMock.allowanceSchedule.findUnique.mockResolvedValue(mockSchedule as any)
 
       const pausedSchedule = { ...mockSchedule, isPaused: true }
@@ -154,7 +140,7 @@ describe('/api/allowance/[id]', () => {
         body: JSON.stringify({ isPaused: true }),
       })
 
-      const response = await PATCH(request, { params: { id: 'schedule-1' } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'schedule-1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -163,7 +149,6 @@ describe('/api/allowance/[id]', () => {
     })
 
     it('should resume allowance schedule', async () => {
-      auth.mockResolvedValue(mockParentSession())
       const pausedSchedule = { ...mockSchedule, isPaused: true }
       prismaMock.allowanceSchedule.findUnique.mockResolvedValue(pausedSchedule as any)
 
@@ -175,7 +160,7 @@ describe('/api/allowance/[id]', () => {
         body: JSON.stringify({ isPaused: false }),
       })
 
-      const response = await PATCH(request, { params: { id: 'schedule-1' } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'schedule-1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -185,7 +170,6 @@ describe('/api/allowance/[id]', () => {
 
   describe('DELETE', () => {
     it('should deactivate allowance schedule', async () => {
-      auth.mockResolvedValue(mockParentSession())
       prismaMock.allowanceSchedule.findUnique.mockResolvedValue(mockSchedule as any)
 
       const deactivatedSchedule = { ...mockSchedule, isActive: false }
@@ -193,7 +177,7 @@ describe('/api/allowance/[id]', () => {
 
       const response = await DELETE(
         new NextRequest('http://localhost/api/allowance/schedule-1'),
-        { params: { id: 'schedule-1' } }
+        { params: Promise.resolve({ id: 'schedule-1' }) }
       )
       const data = await response.json()
 
@@ -206,12 +190,11 @@ describe('/api/allowance/[id]', () => {
     })
 
     it('should return 404 if schedule not found', async () => {
-      auth.mockResolvedValue(mockParentSession())
       prismaMock.allowanceSchedule.findUnique.mockResolvedValue(null)
 
       const response = await DELETE(
         new NextRequest('http://localhost/api/allowance/schedule-1'),
-        { params: { id: 'schedule-1' } }
+        { params: Promise.resolve({ id: 'schedule-1' }) }
       )
       const data = await response.json()
 

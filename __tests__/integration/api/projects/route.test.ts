@@ -11,8 +11,6 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/projects/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/projects', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -20,7 +18,6 @@ describe('GET /api/projects', () => {
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects');
       const response = await GET(request);
@@ -31,7 +28,6 @@ describe('GET /api/projects', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects');
       const response = await GET(request);
@@ -44,7 +40,6 @@ describe('GET /api/projects', () => {
 
   describe('Project Listing', () => {
     it('should return all projects for the family', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProjects = [
         {
@@ -121,7 +116,6 @@ describe('GET /api/projects', () => {
     });
 
     it('should filter projects by status', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProjects = [
         {
@@ -166,7 +160,6 @@ describe('GET /api/projects', () => {
     });
 
     it('should return empty array when no projects exist', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.project.findMany.mockResolvedValue([]);
 
       const request = new NextRequest('http://localhost:3000/api/projects');
@@ -178,7 +171,6 @@ describe('GET /api/projects', () => {
     });
 
     it('should only return projects for the user family', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.project.findMany.mockResolvedValue([]);
 
       const request = new NextRequest('http://localhost:3000/api/projects');
@@ -196,7 +188,6 @@ describe('GET /api/projects', () => {
 
   describe('Error Handling', () => {
     it('should return 500 if database query fails', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.project.findMany.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest('http://localhost:3000/api/projects');
@@ -216,7 +207,6 @@ describe('POST /api/projects', () => {
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects', {
         method: 'POST',
@@ -232,7 +222,6 @@ describe('POST /api/projects', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects', {
         method: 'POST',
@@ -250,7 +239,6 @@ describe('POST /api/projects', () => {
 
   describe('Validation', () => {
     it('should return 400 if name is missing', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects', {
         method: 'POST',
@@ -266,7 +254,6 @@ describe('POST /api/projects', () => {
     });
 
     it('should return 400 if name is empty string', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects', {
         method: 'POST',
@@ -282,7 +269,6 @@ describe('POST /api/projects', () => {
     });
 
     it('should return 400 if status is invalid', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects', {
         method: 'POST',
@@ -299,7 +285,6 @@ describe('POST /api/projects', () => {
     });
 
     it('should return 400 if budget is negative', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects', {
         method: 'POST',
@@ -316,7 +301,6 @@ describe('POST /api/projects', () => {
     });
 
     it('should return 400 if dueDate is before startDate', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects', {
         method: 'POST',
@@ -336,7 +320,6 @@ describe('POST /api/projects', () => {
 
   describe('Project Creation', () => {
     it('should create a project with minimal data', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -386,7 +369,6 @@ describe('POST /api/projects', () => {
     });
 
     it('should create a project with all fields', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -427,7 +409,6 @@ describe('POST /api/projects', () => {
     });
 
     it('should trim whitespace from name', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -460,7 +441,6 @@ describe('POST /api/projects', () => {
     });
 
     it('should default status to ACTIVE if not provided', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -495,7 +475,6 @@ describe('POST /api/projects', () => {
 
   describe('Audit Logging', () => {
     it('should create an audit log entry on successful project creation', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockProject = {
         id: 'project-1',
@@ -536,7 +515,6 @@ describe('POST /api/projects', () => {
 
   describe('Error Handling', () => {
     it('should return 500 if database operation fails', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.project.create.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest('http://localhost:3000/api/projects', {

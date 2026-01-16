@@ -237,6 +237,7 @@ export default function BudgetsPage() {
   };
 
   const getUsagePercentage = (budget: Budget) => {
+    if (!budget.periods || budget.periods.length === 0) return 0;
     const currentPeriod = budget.periods[0];
     if (!currentPeriod) return 0;
     return Math.round((currentPeriod.spent / budget.limitAmount) * 100);

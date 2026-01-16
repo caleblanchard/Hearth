@@ -11,8 +11,6 @@ import { NextRequest } from 'next/server';
 import { GET, PATCH, DELETE } from '@/app/api/projects/tasks/[taskId]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('GET /api/projects/tasks/[taskId]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -20,10 +18,9 @@ describe('GET /api/projects/tasks/[taskId]', () => {
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1');
-      const response = await GET(request, { params: { taskId: 'task-1' } });
+      const response = await GET(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(401);
       const data = await response.json();
@@ -31,10 +28,9 @@ describe('GET /api/projects/tasks/[taskId]', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1');
-      const response = await GET(request, { params: { taskId: 'task-1' } });
+      const response = await GET(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -44,7 +40,6 @@ describe('GET /api/projects/tasks/[taskId]', () => {
 
   describe('Task Retrieval', () => {
     it('should return task details with dependencies', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -74,7 +69,7 @@ describe('GET /api/projects/tasks/[taskId]', () => {
       prismaMock.projectTask.findUnique.mockResolvedValue(mockTask as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1');
-      const response = await GET(request, { params: { taskId: 'task-1' } });
+      const response = await GET(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -84,11 +79,10 @@ describe('GET /api/projects/tasks/[taskId]', () => {
     });
 
     it('should return 404 if task does not exist', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.projectTask.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1');
-      const response = await GET(request, { params: { taskId: 'task-1' } });
+      const response = await GET(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -96,7 +90,6 @@ describe('GET /api/projects/tasks/[taskId]', () => {
     });
 
     it('should return 403 if task belongs to different family', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -111,7 +104,7 @@ describe('GET /api/projects/tasks/[taskId]', () => {
       prismaMock.projectTask.findUnique.mockResolvedValue(mockTask as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1');
-      const response = await GET(request, { params: { taskId: 'task-1' } });
+      const response = await GET(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -121,11 +114,10 @@ describe('GET /api/projects/tasks/[taskId]', () => {
 
   describe('Error Handling', () => {
     it('should return 500 if database query fails', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.projectTask.findUnique.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1');
-      const response = await GET(request, { params: { taskId: 'task-1' } });
+      const response = await GET(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();
@@ -141,13 +133,12 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Task' }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(401);
       const data = await response.json();
@@ -155,13 +146,12 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Task' }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -171,7 +161,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
   describe('Validation', () => {
     it('should return 400 if name is empty string', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -185,7 +174,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: '   ' }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -193,7 +182,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should return 400 if status is invalid', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -207,7 +195,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ status: 'INVALID_STATUS' }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -215,7 +203,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should return 400 if estimatedHours is negative', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -229,7 +216,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ estimatedHours: -5 }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -237,7 +224,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should return 400 if actualHours is negative', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -251,7 +237,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ actualHours: -3 }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -261,14 +247,13 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
   describe('Task Updates', () => {
     it('should return 404 if task does not exist', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.projectTask.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Task' }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -276,7 +261,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should return 403 if task belongs to different family', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -290,7 +274,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Task' }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -298,7 +282,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should update task name', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -320,7 +303,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Task Name' }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -329,7 +312,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should update task status', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -351,7 +333,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ status: 'IN_PROGRESS' }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -359,7 +341,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should update multiple fields at once', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -389,7 +370,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
           estimatedHours: 8,
         }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -399,7 +380,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should trim whitespace from name', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -415,7 +395,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: '  Trimmed Name  ' }),
       });
-      await PATCH(request, { params: { taskId: 'task-1' } });
+      await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(prismaMock.projectTask.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -427,7 +407,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should update assigneeId', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -449,7 +428,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ assigneeId: 'child-test-123' }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -457,7 +436,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
     });
 
     it('should update sortOrder', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -479,7 +457,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ sortOrder: 5 }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -489,7 +467,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
   describe('Audit Logging', () => {
     it('should create an audit log entry on successful update', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -506,7 +483,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'New Name' }),
       });
-      await PATCH(request, { params: { taskId: 'task-1' } });
+      await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
         data: {
@@ -526,7 +503,6 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
   describe('Error Handling', () => {
     it('should return 500 if database operation fails', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -541,7 +517,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
       });
-      const response = await PATCH(request, { params: { taskId: 'task-1' } });
+      const response = await PATCH(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();
@@ -557,12 +533,11 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { taskId: 'task-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(401);
       const data = await response.json();
@@ -570,12 +545,11 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
     });
 
     it('should return 403 if user is a child', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { taskId: 'task-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -585,13 +559,12 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
 
   describe('Task Deletion', () => {
     it('should return 404 if task does not exist', async () => {
-      auth.mockResolvedValue(mockParentSession());
       prismaMock.projectTask.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { taskId: 'task-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -599,7 +572,6 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
     });
 
     it('should return 403 if task belongs to different family', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -613,7 +585,7 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { taskId: 'task-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(403);
       const data = await response.json();
@@ -621,7 +593,6 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
     });
 
     it('should delete task successfully', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -637,7 +608,7 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { taskId: 'task-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -650,7 +621,6 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
 
   describe('Audit Logging', () => {
     it('should create an audit log entry on successful deletion', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -666,7 +636,7 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'DELETE',
       });
-      await DELETE(request, { params: { taskId: 'task-1' } });
+      await DELETE(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
         data: {
@@ -686,7 +656,6 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
 
   describe('Error Handling', () => {
     it('should return 500 if database operation fails', async () => {
-      auth.mockResolvedValue(mockParentSession());
 
       const mockTask = {
         id: 'task-1',
@@ -701,7 +670,7 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: { taskId: 'task-1' } });
+      const response = await DELETE(request, { params: Promise.resolve({ taskId: 'task-1' }) });
 
       expect(response.status).toBe(500);
       const data = await response.json();

@@ -1,25 +1,19 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
-    const children = await prisma.familyMember.findMany({
-      where: {
-        role: 'CHILD',
-        isActive: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        avatarUrl: true,
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    const supabase = await createClient();
+    
+    const { data: children } = await supabase
+      .from('family_members')
+      .select('id, name, avatar_url')
+      .eq('role', 'CHILD')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
 
-    return NextResponse.json(children);
+    return NextResponse.json(children || []);
   } catch (error) {
     logger.error('Children API error:', error);
     return NextResponse.json(

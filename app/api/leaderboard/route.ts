@@ -1,149 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getLeaderboard } from '@/lib/data/leaderboard';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.familyId) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || 'weekly'; // weekly, monthly, all-time
-
-    // Calculate period key
-    const now = new Date();
-    let periodKey: string;
-    if (period === 'weekly') {
-      const weekNum = Math.ceil((now.getDate() - now.getDay() + 1) / 7);
-      periodKey = `${now.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
-    } else if (period === 'monthly') {
-      periodKey = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-    } else {
-      periodKey = 'all-time';
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    // Get all children in the family
-    const members = await prisma.familyMember.findMany({
-      where: {
-        familyId: session.user.familyId,
-        role: 'CHILD',
-        isActive: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        avatarUrl: true,
-      },
-    });
+    const { searchParams } = new URL(request.url);
+    const periodParam = searchParams.get('period') || 'weekly';
+    
+    // Map period param to enum
+    const periodMap: Record<string, 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ALL_TIME'> = {
+      'daily': 'DAILY',
+      'weekly': 'WEEKLY',
+      'monthly': 'MONTHLY',
+      'all-time': 'ALL_TIME',
+      'alltime': 'ALL_TIME',
+    };
+    const period = periodMap[periodParam.toLowerCase()] || 'WEEKLY';
 
-    // Calculate scores for each member
-    const leaderboard = await Promise.all(
-      members.map(async (member) => {
-        let score = 0;
-
-        if (period === 'all-time') {
-          // All-time: total credits earned
-          const creditBalance = await prisma.creditBalance.findUnique({
-            where: { memberId: member.id },
-            select: { lifetimeEarned: true },
-          });
-          score = creditBalance?.lifetimeEarned || 0;
-        } else {
-          // Weekly/Monthly: chores completed + credits earned in period
-          const startDate = new Date(now);
-          if (period === 'weekly') {
-            startDate.setDate(now.getDate() - now.getDay()); // Start of week
-          } else {
-            startDate.setDate(1); // Start of month
-          }
-          startDate.setHours(0, 0, 0, 0);
-
-          const [choresCompleted, creditsEarned] = await Promise.all([
-            prisma.choreInstance.count({
-              where: {
-                assignedToId: member.id,
-                status: 'APPROVED',
-                completedAt: { gte: startDate },
-              },
-            }),
-            prisma.creditTransaction.aggregate({
-              where: {
-                memberId: member.id,
-                type: 'CHORE_REWARD',
-                createdAt: { gte: startDate },
-              },
-              _sum: { amount: true },
-            }),
-          ]);
-
-          score = (choresCompleted * 10) + (creditsEarned._sum.amount || 0);
-        }
-
-        // Get streak info
-        const dailyStreak = await prisma.streak.findUnique({
-          where: {
-            userId_type: {
-              userId: member.id,
-              type: 'DAILY_CHORES',
-            },
-          },
-        });
-
-        return {
-          userId: member.id,
-          name: member.name,
-          avatarUrl: member.avatarUrl,
-          score,
-          streak: dailyStreak?.currentCount || 0,
-        };
-      })
-    );
-
-    // Sort by score and assign ranks
-    leaderboard.sort((a, b) => b.score - a.score);
-    const rankedLeaderboard = leaderboard.map((entry, index) => ({
-      ...entry,
-      rank: index + 1,
-    }));
-
-    // Update/create leaderboard entries in database
-    await Promise.all(
-      rankedLeaderboard.map((entry) =>
-        prisma.leaderboardEntry.upsert({
-          where: {
-            userId_period_periodKey: {
-              userId: entry.userId,
-              period,
-              periodKey,
-            },
-          },
-          update: {
-            score: entry.score,
-            rank: entry.rank,
-          },
-          create: {
-            userId: entry.userId,
-            familyId: session.user.familyId,
-            period,
-            periodKey,
-            score: entry.score,
-            rank: entry.rank,
-          },
-        })
-      )
-    );
+    const leaderboard = await getLeaderboard(familyId, period);
 
     return NextResponse.json({
+      leaderboard,
       period,
-      periodKey,
-      leaderboard: rankedLeaderboard,
     });
   } catch (error) {
-    logger.error('Leaderboard error:', error);
-    return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 });
+    logger.error('Fetch leaderboard error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch leaderboard' },
+      { status: 500 }
+    );
   }
 }

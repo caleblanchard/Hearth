@@ -24,7 +24,6 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/rules/templates/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
 const { getAllTemplates, getTemplatesByCategory } = require('@/lib/rules-engine/templates');
 
 describe('GET /api/rules/templates', () => {
@@ -64,7 +63,6 @@ describe('GET /api/rules/templates', () => {
   ];
 
   it('should return 401 if not authenticated', async () => {
-    auth.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/rules/templates');
     const response = await GET(request);
@@ -75,7 +73,6 @@ describe('GET /api/rules/templates', () => {
   });
 
   it('should return 403 if user is not a parent', async () => {
-    auth.mockResolvedValue(mockChildSession() as any);
 
     const request = new NextRequest('http://localhost:3000/api/rules/templates');
     const response = await GET(request);
@@ -86,7 +83,6 @@ describe('GET /api/rules/templates', () => {
   });
 
   it('should return all templates when no category filter', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     getAllTemplates.mockReturnValue(mockTemplates);
 
     const request = new NextRequest('http://localhost:3000/api/rules/templates');
@@ -100,7 +96,6 @@ describe('GET /api/rules/templates', () => {
   });
 
   it('should filter templates by category', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     const rewardsTemplates = [mockTemplates[0]];
     getTemplatesByCategory.mockReturnValue(rewardsTemplates);
 
@@ -116,7 +111,6 @@ describe('GET /api/rules/templates', () => {
   });
 
   it('should support productivity category filter', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     getTemplatesByCategory.mockReturnValue([]);
 
     const request = new NextRequest(
@@ -130,7 +124,6 @@ describe('GET /api/rules/templates', () => {
   });
 
   it('should support safety category filter', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     getTemplatesByCategory.mockReturnValue([]);
 
     const request = new NextRequest('http://localhost:3000/api/rules/templates?category=safety');
@@ -142,7 +135,6 @@ describe('GET /api/rules/templates', () => {
   });
 
   it('should support convenience category filter', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     const convenienceTemplates = [mockTemplates[1]];
     getTemplatesByCategory.mockReturnValue(convenienceTemplates);
 
@@ -158,7 +150,6 @@ describe('GET /api/rules/templates', () => {
   });
 
   it('should return 400 for invalid category', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
 
     const request = new NextRequest(
       'http://localhost:3000/api/rules/templates?category=invalid'
@@ -171,7 +162,6 @@ describe('GET /api/rules/templates', () => {
   });
 
   it('should include customizable fields in template response', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     getAllTemplates.mockReturnValue(mockTemplates);
 
     const request = new NextRequest('http://localhost:3000/api/rules/templates');
@@ -184,7 +174,6 @@ describe('GET /api/rules/templates', () => {
   });
 
   it('should return 500 on unexpected error', async () => {
-    auth.mockResolvedValue(mockParentSession() as any);
     getAllTemplates.mockImplementation(() => {
       throw new Error('Unexpected error');
     });

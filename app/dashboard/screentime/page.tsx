@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { AlertModal } from '@/components/ui/Modal';
 import GraceRequestButton from '@/components/screentime/GraceRequestButton';
 import {
@@ -99,7 +99,7 @@ interface AllowanceWithRemaining {
 }
 
 export default function ScreenTimePage() {
-  const { data: session } = useSession();
+  const { user } = useSupabaseSession();
   const router = useRouter();
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -199,7 +199,7 @@ export default function ScreenTimePage() {
 
   const fetchAllowances = async () => {
     try {
-      const memberId = session?.user?.id;
+      const memberId = user?.id;
       if (!memberId) return;
 
       // Fetch both allowances and available types
@@ -234,7 +234,7 @@ export default function ScreenTimePage() {
   };
 
   useEffect(() => {
-    if (!session?.user?.id) return;
+    if (!user?.id) return;
     
     const loadData = async () => {
       await Promise.all([
@@ -247,7 +247,7 @@ export default function ScreenTimePage() {
       ]);
     };
     loadData();
-  }, [session]);
+  }, [user]);
 
   const handleLogTime = async (minutes: number, override: boolean = false) => {
     if (minutes <= 0) {

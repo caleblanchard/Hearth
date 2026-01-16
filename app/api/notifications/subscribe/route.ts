@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { createPushSubscription, deletePushSubscription } from '@/lib/data/notifications';
 import { logger } from '@/lib/logger';
 
 interface PushSubscriptionPayload {
@@ -13,10 +14,15 @@ interface PushSubscriptionPayload {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = authContext.user.id;
+    if (!userId) {
+      return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }
 
     const body: PushSubscriptionPayload = await request.json();
@@ -28,33 +34,28 @@ export async function POST(request: NextRequest) {
 
     const userAgent = request.headers.get('user-agent') || undefined;
 
-    // Upsert subscription (update if exists, create if not)
-    const subscription = await prisma.pushSubscription.upsert({
-      where: { endpoint: body.endpoint },
-      update: {
-        p256dh: body.keys.p256dh,
-        auth: body.keys.auth,
-        userAgent,
-      },
-      create: {
-        userId: session.user.id,
-        endpoint: body.endpoint,
-        p256dh: body.keys.p256dh,
-        auth: body.keys.auth,
-        userAgent,
-      },
+    const subscription = await createPushSubscription({
+      user_id: userId,
+      endpoint: body.endpoint,
+      p256dh: body.keys.p256dh,
+      auth: body.keys.auth,
+      user_agent: userAgent || null,
     });
 
     logger.info('Push subscription saved', {
-      userId: session.user.id,
+      userId,
       endpoint: body.endpoint,
     });
 
-    return NextResponse.json({ subscription });
+    return NextResponse.json({
+      success: true,
+      subscription,
+      message: 'Push subscription created successfully',
+    });
   } catch (error) {
-    logger.error('Save push subscription error:', error);
+    logger.error('Subscribe push error:', error);
     return NextResponse.json(
-      { error: 'Failed to save subscription' },
+      { error: 'Failed to create subscription' },
       { status: 500 }
     );
   }
@@ -62,36 +63,39 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-
-    if (!body.endpoint) {
-      return NextResponse.json({ error: 'Endpoint required' }, { status: 400 });
+    const userId = authContext.user.id;
+    if (!userId) {
+      return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }
 
-    // Delete subscription only if it belongs to the authenticated user
-    await prisma.pushSubscription.deleteMany({
-      where: {
-        userId: session.user.id,
-        endpoint: body.endpoint,
-      },
+    const body = await request.json();
+    const { endpoint } = body;
+
+    if (!endpoint) {
+      return NextResponse.json({ error: 'Endpoint is required' }, { status: 400 });
+    }
+
+    await deletePushSubscription(endpoint);
+
+    logger.info('Push subscription deleted', {
+      userId,
+      endpoint,
     });
 
-    logger.info('Push subscription removed', {
-      userId: session.user.id,
-      endpoint: body.endpoint,
+    return NextResponse.json({
+      success: true,
+      message: 'Push subscription deleted successfully',
     });
-
-    return NextResponse.json({ message: 'Subscription removed' });
   } catch (error) {
-    logger.error('Remove push subscription error:', error);
+    logger.error('Unsubscribe push error:', error);
     return NextResponse.json(
-      { error: 'Failed to remove subscription' },
+      { error: 'Failed to delete subscription' },
       { status: 500 }
     );
   }

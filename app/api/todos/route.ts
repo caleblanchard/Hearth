@@ -1,172 +1,97 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
-import { TodoStatus } from '@/app/generated/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getTodoItems, createTodoItem } from '@/lib/data/todos';
 import { logger } from '@/lib/logger';
-import { sanitizeString } from '@/lib/input-sanitization';
-import { parsePaginationParams, createPaginationResponse } from '@/lib/pagination';
-import { parseJsonBody } from '@/lib/request-validation';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { familyId, id: userId } = session.user;
-
-    // Get filter from query params
-    const { searchParams } = new URL(request.url);
-    const filter = searchParams.get('filter') || 'active';
-
-    // Determine status filter based on filter param
-    let statusFilter: TodoStatus[];
-    if (filter === 'completed') {
-      statusFilter = [TodoStatus.COMPLETED];
-    } else if (filter === 'all') {
-      statusFilter = [TodoStatus.PENDING, TodoStatus.IN_PROGRESS, TodoStatus.COMPLETED];
-    } else {
-      // Default to active (pending + in progress)
-      statusFilter = [TodoStatus.PENDING, TodoStatus.IN_PROGRESS];
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    // Parse pagination
-    const { page, limit } = parsePaginationParams(searchParams);
-    const skip = (page - 1) * limit;
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status') as 'pending' | 'completed' | 'all' | undefined;
+    const assignedTo = searchParams.get('assignedTo') || undefined;
 
-    // Fetch todos for the family with pagination
-    const [todos, total] = await Promise.all([
-      prisma.todoItem.findMany({
-        where: {
-          familyId,
-          status: {
-            in: statusFilter,
-          },
-        },
-        include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          assignedTo: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-        orderBy: [
-          { priority: 'desc' },
-          { dueDate: 'asc' },
-          { createdAt: 'desc' },
-        ],
-        skip,
-        take: limit,
-      }),
-      prisma.todoItem.count({
-        where: {
-          familyId,
-          status: {
-            in: statusFilter,
-          },
-        },
-      }),
-    ]);
-
-    return NextResponse.json({
-      ...createPaginationResponse(todos, page, limit, total),
-      currentUserId: userId,
+    // Use data module
+    const todos = await getTodoItems(familyId, {
+      status: status || 'pending',
+      assignedTo,
     });
+
+    return NextResponse.json({ todos });
   } catch (error) {
-    logger.error('Todos API error', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch todos' },
-      { status: 500 }
-    );
+    logger.error('Error fetching todos:', error);
+    return NextResponse.json({ error: 'Failed to fetch todos' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Validate and parse JSON body
-    const bodyResult = await parseJsonBody(request);
-    if (!bodyResult.success) {
-      return NextResponse.json(
-        { error: bodyResult.error },
-        { status: bodyResult.status }
-      );
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+    
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
-    const { title, description, assignedToId, dueDate, priority, category, notes } = bodyResult.data;
 
-    // Sanitize and validate input
-    const sanitizedTitle = sanitizeString(title);
-    if (!sanitizedTitle || sanitizedTitle.trim().length === 0) {
+    const body = await request.json();
+    const { title, description, priority, dueDate, assignedTo } = body;
+
+    // Validation
+    if (!title || title.trim().length === 0) {
       return NextResponse.json(
         { error: 'Title is required' },
         { status: 400 }
       );
     }
 
-    const sanitizedDescription = description ? sanitizeString(description) : null;
-    const sanitizedCategory = category ? sanitizeString(category) : null;
-    const sanitizedNotes = notes ? sanitizeString(notes) : null;
+    // Use data module
+    const todo = await createTodoItem({
+      family_id: familyId,
+      title: title.trim(),
+      description: description?.trim() || null,
+      priority: priority || 'MEDIUM',
+      due_date: dueDate || null,
+      assigned_to_id: assignedTo || null,
+      created_by_id: memberId,
+    });
 
-    const { familyId } = session.user;
-
-    // Validate priority
-    const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-    const sanitizedPriority = priority && validPriorities.includes(priority) ? priority : 'MEDIUM';
-
-    // Create todo
-    const todo = await prisma.todoItem.create({
-      data: {
-        familyId,
-        title: sanitizedTitle,
-        description: sanitizedDescription,
-        createdById: session.user.id,
-        assignedToId: assignedToId || null,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        priority: sanitizedPriority,
-        category: sanitizedCategory,
-        status: 'PENDING',
-        notes: sanitizedNotes,
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+    // Create audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'TODO_CREATED',
+      entity_type: 'TODO',
+      entity_id: todo.id,
+      result: 'SUCCESS',
+      metadata: {
+        title: todo.title,
+        priority: todo.priority,
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      todo,
-      message: 'Todo created successfully',
-    });
-  } catch (error) {
-    logger.error('Create todo error', error);
     return NextResponse.json(
-      { error: 'Failed to create todo' },
-      { status: 500 }
+      { todo, message: 'Todo created successfully' },
+      { status: 201 }
     );
+  } catch (error) {
+    logger.error('Error creating todo:', error);
+    return NextResponse.json({ error: 'Failed to create todo' }, { status: 500 });
   }
 }

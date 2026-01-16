@@ -397,7 +397,7 @@ describe('Rules Engine Action Executors', () => {
         itemName: 'Milk',
         quantity: 2,
         category: 'FOOD_FRIDGE',
-        priority: 'NEEDED_SOON',
+        priority: 'NEEDED_SOON' as const,
       };
       const context: RuleContext = {
         familyId: 'family-1',
@@ -453,8 +453,9 @@ describe('Rules Engine Action Executors', () => {
 
     it('should pull from inventory context if fromInventory is true', async () => {
       const config = {
+        itemName: '', // Will be overwritten from inventory
         fromInventory: true,
-        priority: 'NEEDED_SOON',
+        priority: 'NEEDED_SOON' as const,
       };
       const context: RuleContext = {
         familyId: 'family-1',
@@ -504,7 +505,7 @@ describe('Rules Engine Action Executors', () => {
     it('should validate priority values', async () => {
       const config = {
         itemName: 'Test',
-        priority: 'NEEDED_SOON',
+        priority: 'NEEDED_SOON' as const,
       };
       const context: RuleContext = {
         familyId: 'family-1',
@@ -573,7 +574,7 @@ describe('Rules Engine Action Executors', () => {
         description: 'Get milk and eggs',
         assignedToId: 'member-1',
         dueDate: '2024-12-31',
-        priority: 'HIGH',
+        priority: 'HIGH' as const,
       };
       const context: RuleContext = {
         familyId: 'family-1',
@@ -666,7 +667,7 @@ describe('Rules Engine Action Executors', () => {
     it('should validate priority values', async () => {
       const config = {
         title: 'Priority test',
-        priority: 'MEDIUM',
+        priority: 'MEDIUM' as const,
       };
       const context: RuleContext = {
         familyId: 'family-1',
@@ -688,7 +689,7 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      prismaMock.todo.create.mockRejectedValue(new Error('DB error'));
+      prismaMock.todoItem.create.mockRejectedValue(new Error('DB error'));
 
       const result = await executeCreateTodo(config, context);
 
@@ -743,6 +744,7 @@ describe('Rules Engine Action Executors', () => {
 
     it('should use medication from context if not specified', async () => {
       const config = {
+        medicationId: '', // Will be overwritten from context
         hours: 4,
       };
       const context: RuleContext = {
@@ -759,6 +761,7 @@ describe('Rules Engine Action Executors', () => {
 
     it('should require medication ID', async () => {
       const config = {
+        medicationId: undefined as any,
         hours: 6,
       };
       const context: RuleContext = {
@@ -774,7 +777,8 @@ describe('Rules Engine Action Executors', () => {
     it('should require hours', async () => {
       const config = {
         medicationId: 'med-1',
-      } as any;
+        hours: undefined as any,
+      };
       const context: RuleContext = {
         familyId: 'family-1',
       };
@@ -855,7 +859,7 @@ describe('Rules Engine Action Executors', () => {
   describe('Suggest Meal Action', () => {
     it('should suggest meal with difficulty filter', async () => {
       const config = {
-        difficulty: 'EASY',
+        difficulty: 'EASY' as const,
       };
       const context: RuleContext = {
         familyId: 'family-1',
@@ -901,7 +905,7 @@ describe('Rules Engine Action Executors', () => {
 
     it('should handle no meals found', async () => {
       const config = {
-        difficulty: 'EASY',
+        difficulty: 'EASY' as const,
       };
       const context: RuleContext = {
         familyId: 'family-1',
@@ -940,7 +944,7 @@ describe('Rules Engine Action Executors', () => {
 
     it('should send notification to family', async () => {
       const config = {
-        difficulty: 'MEDIUM',
+        difficulty: 'MEDIUM' as const,
       };
       const context: RuleContext = {
         familyId: 'family-1',
@@ -964,7 +968,7 @@ describe('Rules Engine Action Executors', () => {
 
     it('should handle both difficulty and category filters', async () => {
       const config = {
-        difficulty: 'EASY',
+        difficulty: 'EASY' as const,
         category: 'LUNCH',
       };
       const context: RuleContext = {
@@ -988,7 +992,7 @@ describe('Rules Engine Action Executors', () => {
 
     it('should handle database errors', async () => {
       const config = {
-        difficulty: 'EASY',
+        difficulty: 'EASY' as const,
       };
       const context: RuleContext = {
         familyId: 'family-1',
@@ -1055,6 +1059,7 @@ describe('Rules Engine Action Executors', () => {
 
     it('should use context memberId if not specified', async () => {
       const config = {
+        memberId: '', // Will be overwritten from context
         percentage: 10,
         duration: 3,
       };
@@ -1076,6 +1081,7 @@ describe('Rules Engine Action Executors', () => {
 
     it('should require member ID', async () => {
       const config = {
+        memberId: undefined as any,
         percentage: 20,
         duration: 7,
       };
@@ -1200,6 +1206,7 @@ describe('Rules Engine Action Executors', () => {
         id: 'balance-1',
         memberId: 'member-1',
         currentBalanceMinutes: 60,
+        weekStartDate: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -1208,6 +1215,7 @@ describe('Rules Engine Action Executors', () => {
         id: 'balance-1',
         memberId: 'member-1',
         currentBalanceMinutes: 90,
+        weekStartDate: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -1232,6 +1240,7 @@ describe('Rules Engine Action Executors', () => {
         id: 'balance-1',
         memberId: 'member-1',
         currentBalanceMinutes: 60,
+        weekStartDate: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -1240,6 +1249,7 @@ describe('Rules Engine Action Executors', () => {
         id: 'balance-1',
         memberId: 'member-1',
         currentBalanceMinutes: 45,
+        weekStartDate: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -1253,6 +1263,7 @@ describe('Rules Engine Action Executors', () => {
 
     it('should use context memberId if not specified', async () => {
       const config = {
+        memberId: '', // Will be overwritten from context
         amountMinutes: 20,
       };
       const context: RuleContext = {
@@ -1264,6 +1275,7 @@ describe('Rules Engine Action Executors', () => {
         id: 'balance-2',
         memberId: 'member-from-context',
         currentBalanceMinutes: 30,
+        weekStartDate: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -1278,6 +1290,7 @@ describe('Rules Engine Action Executors', () => {
 
     it('should require member ID', async () => {
       const config = {
+        memberId: undefined as any,
         amountMinutes: 30,
       };
       const context: RuleContext = {
@@ -1335,6 +1348,7 @@ describe('Rules Engine Action Executors', () => {
         id: 'balance-1',
         memberId: 'member-1',
         currentBalanceMinutes: 50, // Would go negative
+        weekStartDate: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -1343,6 +1357,7 @@ describe('Rules Engine Action Executors', () => {
         id: 'balance-1',
         memberId: 'member-1',
         currentBalanceMinutes: 0, // Clamped to 0
+        weekStartDate: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });

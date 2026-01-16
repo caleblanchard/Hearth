@@ -6,11 +6,8 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/health/temperature/route';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
 
 describe('/api/health/temperature', () => {
   beforeEach(() => {
@@ -50,8 +47,6 @@ describe('/api/health/temperature', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
       const request = new NextRequest('http://localhost:3000/api/health/temperature', {
         method: 'POST',
         body: JSON.stringify({
@@ -66,8 +61,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should return 403 if child tries to log temperature for another member', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/temperature', {
         method: 'POST',
         body: JSON.stringify({
@@ -84,7 +77,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should allow parents to log temperature for any family member', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -127,7 +119,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should allow children to log their own temperature', async () => {
-      mockAuth.mockResolvedValue(mockChildSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -154,8 +145,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should return 400 if memberId is missing', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/temperature', {
         method: 'POST',
         body: JSON.stringify({
@@ -171,8 +160,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should return 400 if temperature is missing', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/temperature', {
         method: 'POST',
         body: JSON.stringify({
@@ -188,8 +175,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should return 400 if method is missing', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/temperature', {
         method: 'POST',
         body: JSON.stringify({
@@ -205,8 +190,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should return 400 if method is invalid', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/temperature', {
         method: 'POST',
         body: JSON.stringify({
@@ -223,8 +206,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should return 400 if temperature is too low', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/temperature', {
         method: 'POST',
         body: JSON.stringify({
@@ -241,8 +222,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should return 400 if temperature is too high', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
-
       const request = new NextRequest('http://localhost:3000/api/health/temperature', {
         method: 'POST',
         body: JSON.stringify({
@@ -259,7 +238,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should return 404 if member not found', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/health/temperature', {
@@ -278,7 +256,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should return 404 if member belongs to different family', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'other-family-child',
         familyId: 'other-family-123',
@@ -301,7 +278,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should accept all valid temperature methods', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -333,7 +309,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should accept optional notes', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -365,7 +340,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should log audit event on successful creation', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -398,7 +372,6 @@ describe('/api/health/temperature', () => {
 
     describe('Sick Mode Auto-Trigger', () => {
       it('should auto-trigger sick mode when temperature exceeds threshold', async () => {
-        mockAuth.mockResolvedValue(mockParentSession as any);
         prismaMock.familyMember.findUnique.mockResolvedValue({
           id: 'child-test-123',
         familyId: 'family-test-123',
@@ -446,7 +419,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should not auto-trigger if temperature is below threshold', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -482,7 +454,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should not auto-trigger if setting is disabled', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -518,7 +489,6 @@ describe('/api/health/temperature', () => {
     });
 
     it('should not auto-trigger if sick mode already active', async () => {
-      mockAuth.mockResolvedValue(mockParentSession as any);
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',

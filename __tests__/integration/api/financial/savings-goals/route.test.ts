@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -20,8 +15,6 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { GET, POST } from '@/app/api/financial/savings-goals/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-
-const { auth } = require('@/lib/auth')
 
 describe('/api/financial/savings-goals', () => {
   beforeEach(() => {
@@ -49,7 +42,6 @@ describe('/api/financial/savings-goals', () => {
     ]
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/financial/savings-goals')
       const response = await GET()
@@ -61,7 +53,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return goals for child (own goals only)', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.savingsGoal.findMany.mockResolvedValue(mockGoals as any)
 
@@ -94,7 +85,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return goals for parent (all family goals)', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.savingsGoal.findMany.mockResolvedValue(mockGoals as any)
 
@@ -126,7 +116,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.savingsGoal.findMany.mockRejectedValue(new Error('Database error'))
 
@@ -156,7 +145,6 @@ describe('/api/financial/savings-goals', () => {
     }
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/financial/savings-goals', {
         method: 'POST',
@@ -176,7 +164,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return 400 if name is missing', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/financial/savings-goals', {
         method: 'POST',
@@ -195,7 +182,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return 400 if name is empty', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/financial/savings-goals', {
         method: 'POST',
@@ -215,7 +201,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return 400 if targetAmount is invalid', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/financial/savings-goals', {
         method: 'POST',
@@ -235,7 +220,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return 400 if targetAmount is zero', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/financial/savings-goals', {
         method: 'POST',
@@ -255,7 +239,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return 400 if memberId is missing for parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const request = new NextRequest('http://localhost/api/financial/savings-goals', {
         method: 'POST',
@@ -274,7 +257,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should create goal for child (using own ID)', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: session.user.id,
@@ -326,7 +308,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should create goal for parent (specified memberId)', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -378,7 +359,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return 404 if member not found', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue(null)
 
@@ -400,7 +380,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return 404 if member belongs to different family', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',
@@ -425,7 +404,6 @@ describe('/api/financial/savings-goals', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-1',

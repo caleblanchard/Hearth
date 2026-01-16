@@ -11,13 +11,10 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/pets/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/pets', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetPrismaMock();
-    auth.mockResolvedValue(mockParentSession());
   });
 
   describe('GET /api/pets', () => {
@@ -49,7 +46,6 @@ describe('/api/pets', () => {
     ];
 
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/pets');
       const response = await GET(request);
@@ -114,7 +110,6 @@ describe('/api/pets', () => {
     });
 
     it('should allow children to view pets', async () => {
-      auth.mockResolvedValue(mockChildSession());
       
       const mockPetsWithFeedings = mockPets.map(pet => ({
         ...pet,
@@ -145,7 +140,6 @@ describe('/api/pets', () => {
 
   describe('POST /api/pets', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/pets', {
         method: 'POST',
@@ -157,7 +151,6 @@ describe('/api/pets', () => {
     });
 
     it('should return 403 if not a parent', async () => {
-      auth.mockResolvedValue(mockChildSession());
 
       const request = new NextRequest('http://localhost:3000/api/pets', {
         method: 'POST',

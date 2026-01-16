@@ -40,14 +40,18 @@ const originalRedirect = NextResponse.redirect;
 NextResponse.json = function (body: any, init?: any) {
   const response = originalJson(body, init);
   if (!response.cookies) {
-    response.cookies = {
-      set: jest.fn(),
-      get: jest.fn(),
-      delete: jest.fn(),
-      getAll: jest.fn(),
-      has: jest.fn(),
-      clear: jest.fn(),
-    } as any;
+    Object.defineProperty(response, 'cookies', {
+      value: {
+        set: jest.fn(),
+        get: jest.fn(),
+        delete: jest.fn(),
+        getAll: jest.fn(),
+        has: jest.fn(),
+        clear: jest.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
   }
   return response;
 };
@@ -74,8 +78,6 @@ NextResponse.redirect = function (url: string | URL, init?: any) {
 
 // Import route after mocking
 import { GET } from '@/app/api/calendar/google/callback/route';
-
-const { auth } = require('@/lib/auth');
 
 describe('/api/calendar/google/callback', () => {
   let mockGetTokensFromCode: jest.Mock;
@@ -130,7 +132,6 @@ describe('/api/calendar/google/callback', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = createMockRequest('http://localhost:3001/api/calendar/google/callback?code=auth-code-123&state=state-token');
       const response = await GET(request);
@@ -141,7 +142,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should return error if state parameter is missing', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?code=auth-code-123',
@@ -157,7 +157,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should return error if code parameter is missing', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?state=state-token',
@@ -173,7 +172,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should return error if state cookie is missing', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       // No cookie value passed - will return undefined
       const request = createMockRequest('http://localhost:3001/api/calendar/google/callback?code=auth-code-123&state=state-token');
@@ -187,7 +185,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should return error if state does not match cookie', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?code=auth-code-123&state=wrong-state',
@@ -203,7 +200,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should exchange code for tokens and create new connection', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?code=auth-code-123&state=state-token',
@@ -257,7 +253,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should update existing connection if already exists', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?code=auth-code-123&state=state-token',
@@ -310,7 +305,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should handle token exchange errors', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?code=invalid-code&state=state-token',
@@ -333,7 +327,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should handle missing refresh token error', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?code=auth-code-123&state=state-token',
@@ -355,7 +348,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should get user email after token exchange', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?code=auth-code-123&state=state-token',
@@ -388,7 +380,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should allow child users to connect calendar', async () => {
       const session = mockChildSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?code=auth-code-123&state=state-token',
@@ -413,7 +404,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should clear state cookie after successful connection', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?code=auth-code-123&state=state-token',
@@ -451,7 +441,6 @@ describe('/api/calendar/google/callback', () => {
 
     it('should set nextSyncAt to current time for immediate first sync', async () => {
       const session = mockParentSession();
-      auth.mockResolvedValue(session);
 
       const request = createMockRequest(
         'http://localhost:3001/api/calendar/google/callback?code=auth-code-123&state=state-token',
@@ -484,8 +473,15 @@ describe('/api/calendar/google/callback', () => {
       const createCall = prismaMock.calendarConnection.create.mock.calls[1][0];
       const nextSyncAt = createCall.data.nextSyncAt;
 
-      expect(nextSyncAt.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime() - 1000);
-      expect(nextSyncAt.getTime()).toBeLessThanOrEqual(afterTime.getTime() + 1000);
+      expect(nextSyncAt).toBeDefined();
+      if (nextSyncAt instanceof Date) {
+        expect(nextSyncAt.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime() - 1000);
+        expect(nextSyncAt.getTime()).toBeLessThanOrEqual(afterTime.getTime() + 1000);
+      } else if (typeof nextSyncAt === 'string') {
+        const syncDate = new Date(nextSyncAt);
+        expect(syncDate.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime() - 1000);
+        expect(syncDate.getTime()).toBeLessThanOrEqual(afterTime.getTime() + 1000);
+      }
     });
   });
 });

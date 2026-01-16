@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getDocuments, createDocument } from '@/lib/data/documents';
 import { logger } from '@/lib/logger';
 
 const VALID_CATEGORIES = [
@@ -10,35 +11,21 @@ const VALID_CATEGORIES = [
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
 
-    const where: any = {
-      familyId: session.user.familyId,
-    };
-
-    if (category) {
-      where.category = category;
-    }
-
-    const documents = await prisma.document.findMany({
-      where,
-      include: {
-        uploader: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const documents = await getDocuments(familyId, category ? { category } : undefined);
 
     return NextResponse.json({ documents });
   } catch (error) {
@@ -52,10 +39,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
     const body = await request.json();
@@ -89,57 +84,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create document
-    const document = await prisma.document.create({
-      data: {
-        familyId: session.user.familyId,
-        name: name.trim(),
-        category,
-        fileUrl,
-        fileSize,
-        mimeType,
-        documentNumber: documentNumber?.trim() || null,
-        issuedDate: issuedDate ? new Date(issuedDate) : null,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        tags: tags || [],
-        notes: notes?.trim() || null,
-        uploadedBy: session.user.id,
-        accessList: accessList || [session.user.id],
-      },
-      include: {
-        uploader: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+    const document = await createDocument({
+      family_id: familyId,
+      name,
+      category,
+      file_url: fileUrl,
+      file_size: fileSize,
+      mime_type: mimeType,
+      document_number: documentNumber || null,
+      issued_date: issuedDate ? new Date(issuedDate).toISOString() : null,
+      expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+      tags: tags || null,
+      notes: notes || null,
+      uploaded_by: memberId,
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        familyId: session.user.familyId,
-        memberId: session.user.id,
-        action: 'DOCUMENT_UPLOADED',
-        result: 'SUCCESS',
-        metadata: {
-          documentId: document.id,
-          name: document.name,
-          category: document.category,
-        },
-      },
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'DOCUMENT_UPLOADED',
+      entity_type: 'DOCUMENT',
+      entity_id: document.id,
+      result: 'SUCCESS',
+      metadata: { name, category },
     });
 
-    return NextResponse.json(
-      { document, message: 'Document uploaded successfully' },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      success: true,
+      document,
+      message: 'Document uploaded successfully',
+    });
   } catch (error) {
-    logger.error('Error uploading document:', error);
-    return NextResponse.json(
-      { error: 'Failed to upload document' },
-      { status: 500 }
-    );
+    logger.error('Error creating document:', error);
+    return NextResponse.json({ error: 'Failed to create document' }, { status: 500 });
   }
 }

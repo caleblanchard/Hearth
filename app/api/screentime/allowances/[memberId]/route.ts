@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
-import { calculateRemainingTime } from '@/lib/screentime-utils';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/server';
+import { getScreenTimeAllowances } from '@/lib/data/screentime';
 import { logger } from '@/lib/logger';
 
 /**
@@ -10,85 +10,43 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { memberId: string } }
+  { params }: { params: Promise<{ memberId: string }> }
 ) {
+  const { memberId } = await params
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
 
-    if (!session?.user?.id) {
+    if (!authContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify member belongs to family
-    const member = await prisma.familyMember.findUnique({
-      where: { id: params.memberId },
-      select: { id: true, familyId: true, name: true },
-    });
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
 
-    if (!member || member.familyId !== session.user.familyId) {
+    // Verify member belongs to family
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('id, family_id, name')
+      .eq('id', memberId)
+      .single();
+
+    if (!member || member.family_id !== familyId) {
       return NextResponse.json(
         { error: 'Member not found or does not belong to your family' },
         { status: 404 }
       );
     }
 
-    // Get all allowances for this member
-    const allowances = await prisma.screenTimeAllowance.findMany({
-      where: {
-        memberId: params.memberId,
-        screenTimeType: {
-          isActive: true,
-          isArchived: false,
-        },
-      },
-      include: {
-        screenTimeType: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-          },
-        },
-      },
-      orderBy: {
-        screenTimeType: {
-          name: 'asc',
-        },
-      },
-    });
+    const allowances = await getScreenTimeAllowances(memberId);
 
-    // Calculate remaining time for each allowance
-    const allowancesWithRemaining = await Promise.all(
-      allowances.map(async (allowance) => {
-        const remaining = await calculateRemainingTime(
-          params.memberId,
-          allowance.screenTimeTypeId
-        );
-
-        return {
-          ...allowance,
-          remaining: {
-            remainingMinutes: remaining.remainingMinutes,
-            usedMinutes: remaining.usedMinutes,
-            rolloverMinutes: remaining.rolloverMinutes,
-            periodStart: remaining.periodStart,
-            periodEnd: remaining.periodEnd,
-          },
-        };
-      })
-    );
-
-    return NextResponse.json({
-      member: {
-        id: member.id,
-        name: member.name,
-      },
-      allowances: allowancesWithRemaining,
-    });
+    return NextResponse.json({ allowances });
   } catch (error) {
-    logger.error('Error fetching member allowances:', error);
+    logger.error('Get screen time allowances error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch member allowances' },
+      { error: 'Failed to get allowances' },
       { status: 500 }
     );
   }

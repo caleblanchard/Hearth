@@ -23,8 +23,6 @@ import { POST } from '@/app/api/dashboard/layout/reset/route';
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
 import { ModuleId, Role } from '@/app/generated/prisma';
 
-const { auth } = require('@/lib/auth');
-
 describe('/api/dashboard/layout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -33,7 +31,6 @@ describe('/api/dashboard/layout', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/dashboard/layout');
       const response = await GET(request);
@@ -49,9 +46,11 @@ describe('/api/dashboard/layout', () => {
           id: 'child-1',
           familyId: 'family-1',
           role: Role.CHILD,
+          name: 'Test Child',
+          email: null,
+          familyName: 'Test Family',
         },
       });
-      auth.mockResolvedValue(session);
 
       // Mock no existing layout
       prismaMock.dashboardLayout.findUnique.mockResolvedValue(null);
@@ -86,9 +85,11 @@ describe('/api/dashboard/layout', () => {
           id: 'parent-1',
           familyId: 'family-1',
           role: Role.PARENT,
+          name: 'Test Parent',
+          email: 'parent@test.com',
+          familyName: 'Test Family',
         },
       });
-      auth.mockResolvedValue(session);
 
       const savedLayout = {
         widgets: [
@@ -149,9 +150,11 @@ describe('/api/dashboard/layout', () => {
           id: 'child-1',
           familyId: 'family-1',
           role: Role.CHILD,
+          name: 'Test Child',
+          email: null,
+          familyName: 'Test Family',
         },
       });
-      auth.mockResolvedValue(session);
 
       const savedLayout = {
         widgets: [
@@ -186,7 +189,6 @@ describe('/api/dashboard/layout', () => {
 
   describe('PUT', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/dashboard/layout', {
         method: 'PUT',
@@ -205,9 +207,11 @@ describe('/api/dashboard/layout', () => {
           id: 'child-1',
           familyId: 'family-1',
           role: Role.CHILD,
+          name: 'Test Child',
+          email: null,
+          familyName: 'Test Family',
         },
       });
-      auth.mockResolvedValue(session);
 
       const newLayout = {
         widgets: [
@@ -253,9 +257,11 @@ describe('/api/dashboard/layout', () => {
           id: 'parent-1',
           familyId: 'family-1',
           role: Role.PARENT,
+          name: 'Test Parent',
+          email: 'parent@test.com',
+          familyName: 'Test Family',
         },
       });
-      auth.mockResolvedValue(session);
 
       const existingLayout = {
         id: 'layout-1',
@@ -306,9 +312,11 @@ describe('/api/dashboard/layout', () => {
           id: 'child-1',
           familyId: 'family-1',
           role: Role.CHILD,
+          name: 'Test Child',
+          email: null,
+          familyName: 'Test Family',
         },
       });
-      auth.mockResolvedValue(session);
 
       prismaMock.moduleConfiguration.findMany.mockResolvedValue([
         { moduleId: ModuleId.CHORES, isEnabled: true } as any,
@@ -337,9 +345,11 @@ describe('/api/dashboard/layout', () => {
           id: 'child-1',
           familyId: 'family-1',
           role: Role.CHILD,
+          name: 'Test Child',
+          email: null,
+          familyName: 'Test Family',
         },
       });
-      auth.mockResolvedValue(session);
 
       // Only CHORES is enabled
       prismaMock.moduleConfiguration.findMany.mockResolvedValue([
@@ -367,7 +377,6 @@ describe('/api/dashboard/layout', () => {
 
   describe('POST /reset', () => {
     it('should return 401 if not authenticated', async () => {
-      auth.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/dashboard/layout/reset', {
         method: 'POST',
@@ -385,9 +394,11 @@ describe('/api/dashboard/layout', () => {
           id: 'child-1',
           familyId: 'family-1',
           role: Role.CHILD,
+          name: 'Test Child',
+          email: null,
+          familyName: 'Test Family',
         },
       });
-      auth.mockResolvedValue(session);
 
       prismaMock.dashboardLayout.delete.mockResolvedValue({
         id: 'layout-1',
@@ -423,9 +434,11 @@ describe('/api/dashboard/layout', () => {
           id: 'child-1',
           familyId: 'family-1',
           role: Role.CHILD,
+          name: 'Test Child',
+          email: null,
+          familyName: 'Test Family',
         },
       });
-      auth.mockResolvedValue(session);
 
       // Simulate no layout to delete
       prismaMock.dashboardLayout.delete.mockRejectedValue(new Error('Not found'));

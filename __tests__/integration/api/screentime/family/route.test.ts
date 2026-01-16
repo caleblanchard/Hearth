@@ -1,11 +1,6 @@
 // Set up mocks BEFORE any imports
 import { prismaMock, resetPrismaMock } from '@/lib/test-utils/prisma-mock'
 
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}))
-
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -21,8 +16,6 @@ import { GET } from '@/app/api/screentime/family/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
 import { Role } from '@/app/generated/prisma'
 
-const { auth } = require('@/lib/auth')
-
 describe('/api/screentime/family', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -31,7 +24,6 @@ describe('/api/screentime/family', () => {
 
   describe('GET', () => {
     it('should return 403 if not authenticated', async () => {
-      auth.mockResolvedValue(null)
 
       const response = await GET()
       const data = await response.json()
@@ -42,7 +34,6 @@ describe('/api/screentime/family', () => {
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-      auth.mockResolvedValue(session)
 
       const response = await GET()
       const data = await response.json()
@@ -53,7 +44,6 @@ describe('/api/screentime/family', () => {
 
     it('should return family screen time overview for parent', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const mockMembers = [
         {
@@ -155,7 +145,6 @@ describe('/api/screentime/family', () => {
 
     it('should handle members without balance or settings', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       const mockMembers = [
         {
@@ -189,7 +178,6 @@ describe('/api/screentime/family', () => {
 
     it('should return 500 on error', async () => {
       const session = mockParentSession()
-      auth.mockResolvedValue(session)
 
       prismaMock.familyMember.findMany.mockRejectedValue(new Error('Database error'))
 
