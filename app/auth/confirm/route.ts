@@ -13,21 +13,6 @@ export async function GET(request: Request) {
   const origin = requestUrl.origin
 
   if (token_hash && type) {
-    const supabase = await createClient()
-
-    // Verify the OTP token
-    const { error } = await supabase.auth.verifyOtp({
-      type,
-      token_hash,
-    })
-
-    if (error) {
-      console.error('Error verifying OTP:', error)
-      // Redirect to an error page or signin with error
-      return NextResponse.redirect(`${origin}/auth/signin?error=invalid_token&message=${encodeURIComponent(error.message)}`)
-    }
-
-    // For invite type, redirect to password setup page
     if (type === 'invite') {
       const redirectUrl = new URL(`${origin}/auth/set-password`)
       redirectUrl.searchParams.set('next', next)
@@ -45,6 +30,20 @@ export async function GET(request: Request) {
       }
 
       return NextResponse.redirect(redirectUrl.toString())
+    }
+
+    const supabase = await createClient()
+
+    // Verify the OTP token
+    const { error } = await supabase.auth.verifyOtp({
+      type,
+      token_hash,
+    })
+
+    if (error) {
+      console.error('Error verifying OTP:', error)
+      // Redirect to an error page or signin with error
+      return NextResponse.redirect(`${origin}/auth/signin?error=invalid_token&message=${encodeURIComponent(error.message)}`)
     }
 
     // For other types (signup confirmation, recovery), redirect to next
