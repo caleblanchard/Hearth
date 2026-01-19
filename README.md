@@ -65,20 +65,19 @@ cd Hearth
 cp .env.example .env
 ```
 
-3. Start the development environment:
+3. Start the Supabase local environment:
 ```bash
-docker-compose up -d hearth-db
+supabase start
 ```
 
-4. Run database migrations:
+4. Apply database migrations:
 ```bash
-npm install
-npx prisma migrate dev --name init
+supabase db push
 ```
 
-5. Generate Prisma Client:
+5. Generate Supabase types:
 ```bash
-npx prisma generate
+supabase gen types typescript --local > lib/database.types.ts
 ```
 
 6. Start the development server:
@@ -95,19 +94,19 @@ npm run dev
 npm install
 ```
 
-2. Set up PostgreSQL database and update `.env` with your database URL:
-```env
-DATABASE_URL="postgresql://username:password@localhost:5432/hearth_db?schema=public"
+2. Start the Supabase local environment:
+```bash
+supabase start
 ```
 
-3. Run database migrations:
+3. Apply database migrations:
 ```bash
-npx prisma migrate dev --name init
+supabase db push
 ```
 
-4. Generate Prisma Client:
+4. Generate Supabase types:
 ```bash
-npx prisma generate
+supabase gen types typescript --local > lib/database.types.ts
 ```
 
 5. Start the development server:
@@ -127,12 +126,9 @@ docker-compose up -d
 docker-compose up -d hearth-db
 ```
 
-### Start with Prisma Studio (database GUI):
-```bash
-docker-compose --profile tools up -d
-```
+### Supabase Studio (database GUI):
 
-Access Prisma Studio at [http://localhost:5555](http://localhost:5555)
+Access Supabase Studio at [http://127.0.0.1:54323](http://127.0.0.1:54323) when running `supabase start`.
 
 ### View logs:
 ```bash
@@ -164,28 +160,27 @@ docker-compose up -d --build
 - `npm run test:watch` - Run tests in watch mode
 - `npm run type-check` - Type check with TypeScript
 - `npm run db:seed` - Seed the database with initial data
-- `npm run db:reset` - Reset database (WARNING: deletes all data)
 
 ## Database Commands
 
 ### Create a new migration:
 ```bash
-npx prisma migrate dev --name <migration-name>
+supabase migration new <migration-name>
+```
+
+### Apply migrations:
+```bash
+supabase db push
 ```
 
 ### Reset database (WARNING: deletes all data):
 ```bash
-npx prisma migrate reset
+supabase db reset
 ```
 
-### Open Prisma Studio (database GUI):
+### Generate Supabase types after schema changes:
 ```bash
-npx prisma studio
-```
-
-### Generate Prisma Client after schema changes:
-```bash
-npx prisma generate
+supabase gen types typescript --local > lib/database.types.ts
 ```
 
 ## Project Structure
@@ -207,9 +202,7 @@ hearth/
 ├── lib/                          # Utility functions
 │   ├── integrations/             # External integrations (Google Calendar, iCal)
 │   └── test-utils/               # Testing utilities
-├── prisma/                       # Prisma schema and migrations
-│   ├── schema.prisma             # Database schema (2600+ lines)
-│   └── migrations/               # Database migrations
+├── supabase/                     # Supabase configuration and migrations
 ├── hooks/                        # React hooks
 ├── public/                       # Static files (PWA manifest, service worker)
 ├── types/                        # TypeScript type definitions
@@ -286,7 +279,7 @@ docker buildx build --platform linux/amd64 --file ./Dockerfile --tag hearth:late
    ```
 4. Run database migrations:
    ```bash
-   npx prisma migrate deploy
+   supabase db push
    ```
 
 See `DEPLOYMENT.md` and `DEPLOYMENT-PORTAINER.md` for detailed deployment instructions.
@@ -295,7 +288,7 @@ See `DEPLOYMENT.md` and `DEPLOYMENT-PORTAINER.md` for detailed deployment instru
 
 ### ✅ Completed Features
 - **Foundation**
-  - [x] Project setup (Next.js, Tailwind, Prisma, Docker)
+  - [x] Project setup (Next.js, Tailwind, Supabase, Docker)
   - [x] Database schema for Family & Members
   - [x] Authentication (parent login, child PIN)
   - [x] Basic dashboard shell

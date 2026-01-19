@@ -7,22 +7,12 @@
  */
 
 import 'dotenv/config';
-import { PrismaClient } from '../app/generated/prisma';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { hash } from 'bcrypt';
+import { ModuleId } from '@/app/generated/prisma';
 import * as readline from 'readline';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is not set');
-}
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const adminClient = createAdminClient();
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -83,8 +73,14 @@ async function main() {
   console.log('🚀 Hearth - Create Admin User\n');
 
   // Check if any families exist
-  const existingFamilyCount = await prisma.family.count();
-  if (existingFamilyCount > 0) {
+  const { data: existingFamilies, error: familyCheckError } = await adminClient
+    .from('families')
+    .select('id')
+    .limit(1);
+  if (familyCheckError) {
+    throw new Error(`Failed to check existing families: ${familyCheckError.message}`);
+  }
+  if (existingFamilies && existingFamilies.length > 0) {
     console.log('⚠️  Warning: Families already exist in the database.');
     const proceed = await question('Do you want to create another family? (yes/no): ');
     if (proceed.toLowerCase() !== 'yes' && proceed.toLowerCase() !== 'y') {
@@ -119,9 +115,16 @@ async function main() {
   }
 
   // Check if email already exists
-  const existingUser = await prisma.familyMember.findUnique({
-    where: { email: adminEmail },
-  });
+  const { data: existingUser, error: existingUserError } = await adminClient
+    .from('family_members')
+    .select('id')
+    .eq('email', adminEmail)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingUserError) {
+    throw new Error(`Failed to check existing users: ${existingUserError.message}`);
+  }
 
   if (existingUser) {
     console.error('❌ A user with this email already exists.');
@@ -151,55 +154,86 @@ async function main() {
   console.log('\n🔨 Creating family and admin user...');
 
   try {
+    const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+      email: adminEmail.trim().toLowerCase(),
+      password,
+      email_confirm: true,
+      user_metadata: {
+        name: adminName.trim(),
+      },
+    });
+
+    if (authError || !authData.user) {
+      throw new Error(authError?.message || 'Failed to create auth user');
+    }
+
     // Create family
-    const family = await prisma.family.create({
-      data: {
-        name: familyName,
+    const { data: family, error: familyError } = await adminClient
+      .from('families')
+      .insert({
+        name: familyName.trim(),
         timezone: timezone,
         settings: {
           currency: 'USD',
           weekStartDay: 'SUNDAY',
         },
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (familyError || !family) {
+      throw new Error(familyError?.message || 'Failed to create family');
+    }
 
     console.log(`✅ Family created: ${family.name}`);
 
     // Create admin user
     const passwordHash = await hash(password, 12);
-    const admin = await prisma.familyMember.create({
-      data: {
-        familyId: family.id,
-        name: adminName,
-        email: adminEmail,
-        passwordHash: passwordHash,
+    const { data: admin, error: adminError } = await adminClient
+      .from('family_members')
+      .insert({
+        family_id: family.id,
+        auth_user_id: authData.user.id,
+        name: adminName.trim(),
+        email: adminEmail.trim().toLowerCase(),
+        password_hash: passwordHash,
         role: 'PARENT',
-        isActive: true,
-      },
-    });
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (adminError || !admin) {
+      throw new Error(adminError?.message || 'Failed to create family member');
+    }
 
     console.log(`✅ Admin user created: ${admin.name} (${admin.email})`);
 
     // Enable core modules
-    const coreModules = [
-      'CHORES',
-      'SCREEN_TIME',
-      'CREDITS',
-      'SHOPPING',
-      'CALENDAR',
-      'TODOS',
-      'ROUTINES',
+    const coreModules: ModuleId[] = [
+      ModuleId.CHORES,
+      ModuleId.SCREEN_TIME,
+      ModuleId.CREDITS,
+      ModuleId.SHOPPING,
+      ModuleId.CALENDAR,
+      ModuleId.TODOS,
+      ModuleId.ROUTINES,
     ];
 
-    for (const moduleId of coreModules) {
-      await prisma.moduleConfiguration.create({
-        data: {
-          familyId: family.id,
-          moduleId: moduleId as any,
-          isEnabled: true,
-          enabledAt: new Date(),
-        },
-      });
+    const moduleConfigurations = coreModules.map((moduleId) => ({
+      family_id: family.id,
+      module_id: moduleId,
+      is_enabled: true,
+      enabled_at: new Date().toISOString(),
+      disabled_at: null,
+    }));
+
+    const { error: moduleError } = await adminClient
+      .from('module_configurations')
+      .upsert(moduleConfigurations, { onConflict: 'family_id,module_id' });
+
+    if (moduleError) {
+      throw new Error(moduleError.message || 'Failed to enable modules');
     }
 
     console.log('✅ Core modules enabled');
@@ -213,9 +247,6 @@ async function main() {
   } catch (error) {
     console.error('❌ Error creating admin user:', error);
     process.exit(1);
-  } finally {
-    await prisma.$disconnect();
-    await pool.end();
   }
 }
 

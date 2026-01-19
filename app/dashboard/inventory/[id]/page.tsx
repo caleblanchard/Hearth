@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
 
 interface InventoryItem {
   id: string;
@@ -26,6 +27,13 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({ isOpen: false, title: '', message: '', type: 'error' });
 
   useEffect(() => {
     params.then(setResolvedParams);
@@ -60,10 +68,13 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
     loadItem();
   }, [resolvedParams]);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!resolvedParams?.id) return;
-    if (!confirm('Are you sure you want to delete this inventory item?')) return;
+    setConfirmDelete(true);
+  };
 
+  const deleteItem = async () => {
+    if (!resolvedParams?.id) return;
     try {
       const response = await fetch(`/api/inventory/${resolvedParams.id}`, {
         method: 'DELETE',
@@ -72,10 +83,20 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
       if (response.ok) {
         router.push('/dashboard/inventory');
       } else {
-        alert('Failed to delete inventory item');
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: 'Failed to delete inventory item',
+          type: 'error',
+        });
       }
     } catch (err) {
-      alert('Failed to delete inventory item');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to delete inventory item',
+        type: 'error',
+      });
     }
   };
 
@@ -271,6 +292,23 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={deleteItem}
+        title="Delete Inventory Item"
+        message="Are you sure you want to delete this inventory item?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="red"
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

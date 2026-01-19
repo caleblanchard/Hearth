@@ -5,7 +5,6 @@
  * Users can instantiate these with customizations.
  */
 
-import { Prisma } from '@/app/generated/prisma';
 import { RuleTemplate } from './types';
 
 // ============================================

@@ -14,6 +14,16 @@ export interface SessionOverrides {
   expires?: string
 }
 
+const TEST_SESSION_KEY = '__TEST_SESSION__'
+
+export function setMockSession(session: Session | null) {
+  ;(globalThis as Record<string, unknown>)[TEST_SESSION_KEY] = session
+}
+
+export function getMockSession(): Session | null {
+  return (globalThis as Record<string, unknown>)[TEST_SESSION_KEY] as Session | null
+}
+
 export function mockParentSession(overrides?: SessionOverrides): Session {
   const defaultSession: Session = {
     user: {
@@ -27,11 +37,14 @@ export function mockParentSession(overrides?: SessionOverrides): Session {
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   } as Session
 
-  if (!overrides) return defaultSession
+  if (!overrides) {
+    setMockSession(defaultSession)
+    return defaultSession
+  }
 
   // Deep merge user object if provided
   if (overrides.user) {
-    return {
+    const session = {
       ...defaultSession,
       ...overrides,
       user: {
@@ -39,12 +52,16 @@ export function mockParentSession(overrides?: SessionOverrides): Session {
         ...overrides.user,
       },
     } as Session
+    setMockSession(session)
+    return session
   }
 
-  return {
+  const session = {
     ...defaultSession,
     ...overrides,
   } as Session
+  setMockSession(session)
+  return session
 }
 
 export function mockChildSession(overrides?: SessionOverrides): Session {
@@ -60,11 +77,14 @@ export function mockChildSession(overrides?: SessionOverrides): Session {
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   } as Session
 
-  if (!overrides) return defaultSession
+  if (!overrides) {
+    setMockSession(defaultSession)
+    return defaultSession
+  }
 
   // Deep merge user object if provided
   if (overrides.user) {
-    return {
+    const session = {
       ...defaultSession,
       ...overrides,
       user: {
@@ -72,12 +92,16 @@ export function mockChildSession(overrides?: SessionOverrides): Session {
         ...overrides.user,
       },
     } as Session
+    setMockSession(session)
+    return session
   }
 
-  return {
+  const session = {
     ...defaultSession,
     ...overrides,
   } as Session
+  setMockSession(session)
+  return session
 }
 
 export function mockSession(role: 'PARENT' | 'CHILD' = 'PARENT', overrides?: SessionOverrides): Session {

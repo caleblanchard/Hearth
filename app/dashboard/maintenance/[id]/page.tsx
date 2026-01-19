@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon, PencilIcon, TrashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
 
 interface MaintenanceItem {
   id: string;
@@ -26,6 +27,13 @@ export default function MaintenanceDetailPage({ params }: { params: Promise<{ id
   const [error, setError] = useState<string | null>(null);
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
   const [completing, setCompleting] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'complete' | 'delete' | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({ isOpen: false, title: '', message: '', type: 'error' });
 
   useEffect(() => {
     params.then(setResolvedParams);
@@ -60,9 +68,13 @@ export default function MaintenanceDetailPage({ params }: { params: Promise<{ id
     loadItem();
   }, [resolvedParams]);
 
-  const handleComplete = async () => {
-    if (!resolvedParams?.id || !confirm('Mark this maintenance task as complete?')) return;
+  const handleComplete = () => {
+    if (!resolvedParams?.id) return;
+    setConfirmAction('complete');
+  };
 
+  const completeItem = async () => {
+    if (!resolvedParams?.id) return;
     try {
       setCompleting(true);
       const response = await fetch(`/api/maintenance/${resolvedParams.id}/complete`, {
@@ -79,19 +91,32 @@ export default function MaintenanceDetailPage({ params }: { params: Promise<{ id
           setItem(data.item);
         }
       } else {
-        alert('Failed to complete maintenance task');
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: 'Failed to complete maintenance task',
+          type: 'error',
+        });
       }
     } catch (err) {
-      alert('Failed to complete maintenance task');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to complete maintenance task',
+        type: 'error',
+      });
     } finally {
       setCompleting(false);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!resolvedParams?.id) return;
-    if (!confirm('Are you sure you want to delete this maintenance item?')) return;
+    setConfirmAction('delete');
+  };
 
+  const deleteItem = async () => {
+    if (!resolvedParams?.id) return;
     try {
       const response = await fetch(`/api/maintenance/${resolvedParams.id}`, {
         method: 'DELETE',
@@ -100,10 +125,29 @@ export default function MaintenanceDetailPage({ params }: { params: Promise<{ id
       if (response.ok) {
         router.push('/dashboard/maintenance');
       } else {
-        alert('Failed to delete maintenance item');
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: 'Failed to delete maintenance item',
+          type: 'error',
+        });
       }
     } catch (err) {
-      alert('Failed to delete maintenance item');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to delete maintenance item',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (confirmAction === 'complete') {
+      await completeItem();
+    }
+    if (confirmAction === 'delete') {
+      await deleteItem();
     }
   };
 
@@ -311,6 +355,27 @@ export default function MaintenanceDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={confirmAction !== null}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+        title={confirmAction === 'delete' ? 'Delete Maintenance Item' : 'Complete Maintenance Task'}
+        message={
+          confirmAction === 'delete'
+            ? 'Are you sure you want to delete this maintenance item?'
+            : 'Mark this maintenance task as complete?'
+        }
+        confirmText={confirmAction === 'delete' ? 'Delete' : 'Complete'}
+        cancelText="Cancel"
+        confirmColor={confirmAction === 'delete' ? 'red' : 'green'}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

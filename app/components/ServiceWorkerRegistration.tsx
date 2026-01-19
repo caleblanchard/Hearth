@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { ConfirmModal } from '@/components/ui/Modal';
 
 export default function ServiceWorkerRegistration() {
+  const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
+
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
       return;
@@ -37,18 +40,12 @@ export default function ServiceWorkerRegistration() {
               if (
                 newWorker.state === 'installed' &&
                 navigator.serviceWorker.controller
-              ) {
+                ) {
                 // New service worker available
                 console.log('[SW] New service worker available');
 
                 // Optionally notify the user
-                if (
-                  confirm(
-                    'A new version of Hearth is available. Reload to update?'
-                  )
-                ) {
-                  window.location.reload();
-                }
+                setShowUpdatePrompt(true);
               }
             });
           }
@@ -71,5 +68,16 @@ export default function ServiceWorkerRegistration() {
     }
   }, []);
 
-  return null; // This component doesn't render anything
+  return (
+    <ConfirmModal
+      isOpen={showUpdatePrompt}
+      onClose={() => setShowUpdatePrompt(false)}
+      onConfirm={() => window.location.reload()}
+      title="Update Available"
+      message="A new version of Hearth is available. Reload to update?"
+      confirmText="Reload"
+      cancelText="Later"
+      confirmColor="green"
+    />
+  );
 }

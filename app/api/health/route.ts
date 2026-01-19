@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
 
 /**
@@ -17,12 +17,17 @@ export async function GET() {
   
   try {
     // Check database connection with timeout
-    await Promise.race([
-      prisma.$queryRaw`SELECT 1`,
-      new Promise((_, reject) => 
+    const supabase = createAdminClient();
+    const { error } = (await Promise.race([
+      supabase.from('families').select('id').limit(1),
+      new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Database connection timeout')), 5000)
       ),
-    ]);
+    ])) as { error?: { message?: string } };
+
+    if (error) {
+      throw new Error(error.message || 'Database connection failed');
+    }
 
     return NextResponse.json(
       {

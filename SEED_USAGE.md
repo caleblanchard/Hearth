@@ -65,6 +65,6 @@ npm run db:seed
 
 ## Seed Script Location
 
-The seed script is located at: `/prisma/seed.ts`
+The seed script is located at: `/scripts/seed.ts`
 
 You can customize the test data by editing this file.

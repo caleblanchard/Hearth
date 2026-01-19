@@ -75,7 +75,7 @@ export async function getOrCreateShoppingList(familyId: string) {
     .from('shopping_lists')
     .insert({
       family_id: familyId,
-      name: 'Shopping List',
+      name: 'Family Shopping List',
       is_active: true,
     })
     .select()

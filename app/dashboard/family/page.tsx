@@ -122,6 +122,11 @@ export default function FamilyPage() {
     memberName: string;
     action: 'deactivate' | 'reactivate';
   }>({ isOpen: false, memberId: '', memberName: '', action: 'deactivate' });
+  const [cancelInviteModal, setCancelInviteModal] = useState<{
+    isOpen: boolean;
+    memberId: string;
+    memberName: string;
+  }>({ isOpen: false, memberId: '', memberName: '' });
 
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
@@ -494,11 +499,21 @@ export default function FamilyPage() {
     }
   };
 
-  const handleCancelInvite = async (member: FamilyMember) => {
-    if (!confirm(`Cancel the invitation for ${member.name}?`)) return;
+  const handleCancelInvite = (member: FamilyMember) => {
+    setCancelInviteModal({
+      isOpen: true,
+      memberId: member.id,
+      memberName: member.name,
+    });
+  };
+
+  const handleCancelInviteConfirm = async () => {
+    const { memberId } = cancelInviteModal;
+    setCancelInviteModal({ ...cancelInviteModal, isOpen: false });
+    if (!memberId) return;
 
     try {
-      const response = await fetch(`/api/family/members/${member.id}`, {
+      const response = await fetch(`/api/family/members/${memberId}`, {
         method: 'DELETE',
       });
 
@@ -1500,6 +1515,16 @@ export default function FamilyPage() {
         confirmText={confirmModal.action === 'deactivate' ? 'Deactivate' : 'Reactivate'}
         cancelText="Cancel"
         confirmColor={confirmModal.action === 'deactivate' ? 'red' : 'green'}
+      />
+      <ConfirmModal
+        isOpen={cancelInviteModal.isOpen}
+        onClose={() => setCancelInviteModal({ ...cancelInviteModal, isOpen: false })}
+        onConfirm={handleCancelInviteConfirm}
+        title="Cancel Invitation"
+        message={`Cancel the invitation for ${cancelInviteModal.memberName}? They will need a new invite to join.`}
+        confirmText="Cancel Invite"
+        cancelText="Keep Invite"
+        confirmColor="red"
       />
 
       {/* Alert Modal */}

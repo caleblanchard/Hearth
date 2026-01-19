@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { updateFamilyMember, deleteFamilyMember } from '@/lib/data/family';
 import { logger } from '@/lib/logger';
@@ -95,12 +96,40 @@ export async function DELETE(
     // Verify member exists and belongs to family
     const { data: targetMember } = await supabase
       .from('family_members')
-      .select('family_id, name')
+      .select('family_id, name, invite_status')
       .eq('id', id)
       .single();
 
     if (!targetMember || targetMember.family_id !== familyId) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+    }
+
+    if ((targetMember as any).invite_status === 'PENDING') {
+      const adminClient = createAdminClient();
+      const { error: cancelError } = await adminClient
+        .from('family_members')
+        .delete()
+        .eq('id', id);
+
+      if (cancelError) {
+        logger.error('Error cancelling invite:', cancelError);
+        return NextResponse.json({ error: 'Failed to cancel invitation' }, { status: 500 });
+      }
+
+      await (adminClient as any).from('audit_logs').insert({
+        family_id: familyId,
+        member_id: memberId,
+        action: 'MEMBER_DELETED',
+        entity_type: 'MEMBER',
+        entity_id: id,
+        result: 'SUCCESS',
+        metadata: { name: targetMember.name },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Invitation cancelled successfully',
+      });
     }
 
     await deleteFamilyMember(id);

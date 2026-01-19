@@ -5,6 +5,7 @@ import 'whatwg-fetch'
 import { TextEncoder, TextDecoder } from 'util'
 import { ReadableStream } from 'stream/web'
 import fetch, { Request, Response, Headers } from 'node-fetch'
+import { mockChildSession, mockParentSession, setMockSession } from '@/lib/test-utils/auth-mock'
 
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder
@@ -86,12 +87,96 @@ jest.mock('next/server', () => ({
   },
 }))
 
+jest.mock('@/lib/supabase/server', () => {
+  const { createPrismaSupabaseClient } = require('@/lib/test-utils/supabase-prisma-bridge')
+  const { getMockSession } = require('@/lib/test-utils/auth-mock')
+
+  const createClient = jest.fn(async () => createPrismaSupabaseClient())
+
+  const getAuthContext = jest.fn(async () => {
+    const session = getMockSession()
+    if (!session) return null
+
+    const memberId = session.user.id
+    const familyId = session.user.familyId
+
+    return {
+      user: session.user,
+      memberships: [
+        {
+          id: memberId,
+          family_id: familyId,
+          name: session.user.name || '',
+          role: session.user.role,
+          families: {
+            id: familyId,
+            name: session.user.familyName,
+          },
+        },
+      ],
+      defaultFamilyId: familyId,
+      defaultMemberId: memberId,
+      activeFamilyId: familyId,
+      activeMemberId: memberId,
+    }
+  })
+
+  const getMemberInFamily = jest.fn(async (familyId) => {
+    const session = getMockSession()
+    if (!session || session.user.familyId !== familyId) return null
+    return {
+      id: session.user.id,
+      familyId: session.user.familyId,
+      role: session.user.role,
+    }
+  })
+
+  const isParentInFamily = jest.fn(async (familyId) => {
+    const session = getMockSession()
+    if (!session || session.user.familyId !== familyId) return false
+    return session.user.role === 'PARENT'
+  })
+
+  const getRoleInFamily = jest.fn(async (familyId) => {
+    const session = getMockSession()
+    if (!session || session.user.familyId !== familyId) return null
+    return session.user.role ?? null
+  })
+
+  return {
+    createClient,
+    getAuthContext,
+    getMemberInFamily,
+    isParentInFamily,
+    getRoleInFamily,
+  }
+})
+
 // Suppress console errors in tests
 global.console = {
   ...console,
   error: jest.fn(),
   warn: jest.fn(),
 }
+
+beforeEach(() => {
+  const testName = expect.getState().currentTestName?.toLowerCase() || ''
+  if (testName.includes('401') || testName.includes('unauth')) {
+    setMockSession(null)
+    return
+  }
+
+  if (
+    testName.includes('not a parent') ||
+    testName.includes('non-parent') ||
+    (testName.includes('child') && !testName.includes('parent'))
+  ) {
+    mockChildSession()
+    return
+  }
+
+  mockParentSession()
+})
 
 // Cleanup after all tests
 afterAll(async () => {
@@ -110,17 +195,6 @@ afterAll(async () => {
     }
   } catch (e) {
     // Ignore if module not loaded or already cleaned up
-  }
-
-  // Close Prisma connections if they exist
-  try {
-    const prismaModule = require('@/lib/prisma')
-    const prisma = prismaModule.prisma || prismaModule.default
-    if (prisma?.$disconnect) {
-      await prisma.$disconnect()
-    }
-  } catch (e) {
-    // Ignore if module not loaded
   }
 
   // Clear any remaining timers

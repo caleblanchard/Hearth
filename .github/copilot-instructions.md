@@ -172,6 +172,7 @@ Always update Prisma schema and generate migrations when modifying database mode
 6. **Error handling** - Ensure proper error handling and logging
 7. **Performance** - Suggest optimizations when relevant
 8. **Accessibility** - Include a11y considerations in UI changes
+9. **No Browser Alerts** - Use modal dialogs (ConfirmModal/AlertModal) instead of alert/confirm/prompt
 
 ## Common Development Commands
 

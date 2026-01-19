@@ -191,6 +191,7 @@ For each new feature, we follow this order:
 5. **Mock External Dependencies**: Use mocks for database, auth, and external APIs
 6. **Test Edge Cases**: Don't just test happy paths - test failures and edge cases
 7. **Keep Tests Fast**: Use mocks to avoid slow database or network calls
+8. **No Browser Alerts**: Use modal dialogs (ConfirmModal/AlertModal) instead of alert/confirm
 
 ## Running Tests
 

@@ -20,6 +20,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { WidgetConfig, WidgetMetadata } from '@/types/dashboard';
+import { AlertModal, ConfirmModal } from '@/components/ui/Modal';
 
 interface DashboardCustomizerProps {
   isOpen: boolean;
@@ -109,6 +110,13 @@ export default function DashboardCustomizer({
   const [widgets, setWidgets] = useState<WidgetConfig[]>(initialWidgets);
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({ isOpen: false, title: '', message: '', type: 'error' });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -156,28 +164,34 @@ export default function DashboardCustomizer({
       onClose();
     } catch (error) {
       console.error('Failed to save dashboard layout:', error);
-      alert('Failed to save dashboard layout. Please try again.');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to save dashboard layout. Please try again.',
+        type: 'error',
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleReset = async () => {
-    if (
-      !confirm(
-        'Are you sure you want to reset to default layout? This cannot be undone.'
-      )
-    ) {
-      return;
-    }
+  const handleReset = () => {
+    setShowResetConfirm(true);
+  };
 
+  const confirmReset = async () => {
     setIsResetting(true);
     try {
       await onReset();
       onClose();
     } catch (error) {
       console.error('Failed to reset dashboard layout:', error);
-      alert('Failed to reset dashboard layout. Please try again.');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to reset dashboard layout. Please try again.',
+        type: 'error',
+      });
     } finally {
       setIsResetting(false);
     }
@@ -308,6 +322,23 @@ export default function DashboardCustomizer({
           </div>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        onClose={() => setShowResetConfirm(false)}
+        onConfirm={confirmReset}
+        title="Reset Dashboard"
+        message="Are you sure you want to reset to the default layout? This cannot be undone."
+        confirmText="Reset"
+        cancelText="Cancel"
+        confirmColor="red"
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

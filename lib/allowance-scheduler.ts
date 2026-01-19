@@ -1,5 +1,31 @@
 import { Frequency } from '@/app/generated/prisma'
-import type { AllowanceSchedule } from '@/app/generated/prisma'
+import type { Database } from '@/lib/database.types'
+
+type AllowanceScheduleRow = Database['public']['Tables']['allowance_schedules']['Row']
+type AllowanceScheduleCamel = {
+  amount: number
+  frequency: Frequency
+  dayOfWeek: number | null
+  dayOfMonth: number | null
+  isActive: boolean
+  isPaused: boolean
+  startDate: Date | string
+  endDate: Date | string | null
+  lastProcessedAt: Date | string | null
+}
+
+type AllowanceSchedule = AllowanceScheduleRow | AllowanceScheduleCamel
+
+function getScheduleValue<T>(
+  schedule: AllowanceSchedule,
+  snakeKey: keyof AllowanceScheduleRow,
+  camelKey: keyof AllowanceScheduleCamel
+): T {
+  if (snakeKey in schedule) {
+    return (schedule as AllowanceScheduleRow)[snakeKey] as T
+  }
+  return (schedule as AllowanceScheduleCamel)[camelKey] as T
+}
 
 /**
  * Calculate the next allowance date based on frequency and schedule parameters
@@ -150,12 +176,14 @@ export function shouldProcessAllowance(
   currentDate: Date
 ): boolean {
   // Check if schedule is active
-  if (!schedule.isActive) {
+  const isActive = getScheduleValue<boolean>(schedule, 'is_active', 'isActive')
+  if (!isActive) {
     return false
   }
 
   // Check if schedule is paused
-  if (schedule.isPaused) {
+  const isPaused = getScheduleValue<boolean>(schedule, 'is_paused', 'isPaused')
+  if (isPaused) {
     return false
   }
 
@@ -164,7 +192,8 @@ export function shouldProcessAllowance(
   checkDate.setUTCHours(0, 0, 0, 0)
 
   // Check if schedule has started
-  const startDate = new Date(schedule.startDate)
+  const startDateValue = getScheduleValue<string | Date>(schedule, 'start_date', 'startDate')
+  const startDate = new Date(startDateValue)
   startDate.setUTCHours(0, 0, 0, 0)
 
   // Use timestamp comparison for proper date-only checking
@@ -173,8 +202,9 @@ export function shouldProcessAllowance(
   }
 
   // Check if schedule has ended
-  if (schedule.endDate) {
-    const endDate = new Date(schedule.endDate)
+  const endDateValue = getScheduleValue<string | Date | null>(schedule, 'end_date', 'endDate')
+  if (endDateValue) {
+    const endDate = new Date(endDateValue)
     endDate.setUTCHours(0, 0, 0, 0)
     if (checkDate.getTime() > endDate.getTime()) {
       return false
@@ -182,8 +212,13 @@ export function shouldProcessAllowance(
   }
 
   // Check if already processed today
-  if (schedule.lastProcessedAt) {
-    const lastProcessed = new Date(schedule.lastProcessedAt)
+  const lastProcessedValue = getScheduleValue<string | Date | null>(
+    schedule,
+    'last_processed_at',
+    'lastProcessedAt'
+  )
+  if (lastProcessedValue) {
+    const lastProcessed = new Date(lastProcessedValue)
     lastProcessed.setUTCHours(0, 0, 0, 0)
 
     if (isSameDay(lastProcessed, checkDate)) {
@@ -192,27 +227,31 @@ export function shouldProcessAllowance(
   }
 
   // Check if today matches the schedule
-  switch (schedule.frequency) {
+  const frequency = schedule.frequency
+  const dayOfWeek = getScheduleValue<number | null>(schedule, 'day_of_week', 'dayOfWeek')
+  const dayOfMonth = getScheduleValue<number | null>(schedule, 'day_of_month', 'dayOfMonth')
+
+  switch (frequency) {
     case Frequency.DAILY:
       return true // Process every day (if not already processed)
 
     case Frequency.WEEKLY:
-      return checkDate.getUTCDay() === schedule.dayOfWeek
+      return dayOfWeek !== null && checkDate.getUTCDay() === dayOfWeek
 
     case Frequency.BIWEEKLY:
       // For biweekly, we need to check if it's the correct day
       // and if enough time has passed since last processing
-      if (checkDate.getUTCDay() !== schedule.dayOfWeek) {
+      if (dayOfWeek === null || checkDate.getUTCDay() !== dayOfWeek) {
         return false
       }
 
       // If never processed, process now
-      if (!schedule.lastProcessedAt) {
+      if (!lastProcessedValue) {
         return true
       }
 
       // Check if at least 14 days have passed
-      const lastProcessed = new Date(schedule.lastProcessedAt)
+      const lastProcessed = new Date(lastProcessedValue)
       lastProcessed.setUTCHours(0, 0, 0, 0)
       const daysSinceLastProcessed = Math.floor(
         (checkDate.getTime() - lastProcessed.getTime()) / (1000 * 60 * 60 * 24)
@@ -221,7 +260,7 @@ export function shouldProcessAllowance(
       return daysSinceLastProcessed >= 14
 
     case Frequency.MONTHLY:
-      return checkDate.getUTCDate() === schedule.dayOfMonth
+      return dayOfMonth !== null && checkDate.getUTCDate() === dayOfMonth
 
     case Frequency.CUSTOM:
       // Not yet supported

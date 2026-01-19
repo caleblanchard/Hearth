@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { AlertModal } from '@/components/ui/Modal';
 
 const TRIGGER_TYPES = [
   { value: 'chore_completed', label: 'Chore Completed' },
@@ -115,6 +116,12 @@ export default function EditRulePage() {
   const [actions, setActions] = useState<any>(null);
   const [conditions, setConditions] = useState<any>(null);
   const [isActive, setIsActive] = useState(true);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({ isOpen: false, title: '', message: '', type: 'error' });
 
   useEffect(() => {
     fetchRule();
@@ -164,11 +171,21 @@ export default function EditRulePage() {
         router.push('/dashboard/rules');
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to update rule');
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: data.error || 'Failed to update rule',
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('Error updating rule:', error);
-      alert('Failed to update rule');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to update rule',
+        type: 'error',
+      });
     } finally {
       setSaving(false);
     }
@@ -381,6 +398,13 @@ export default function EditRulePage() {
           </Link>
         </div>
       </form>
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

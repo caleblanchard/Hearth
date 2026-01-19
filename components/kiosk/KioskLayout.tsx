@@ -6,6 +6,7 @@ import { useKioskAutoLock } from '@/hooks/useKioskAutoLock';
 import { useActivityDetection } from '@/hooks/useActivityDetection';
 import KioskHeader from './KioskHeader';
 import KioskPinModal from './KioskPinModal';
+import { AlertModal } from '@/components/ui/Modal';
 
 interface KioskLayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,12 @@ interface KioskLayoutProps {
 
 export default function KioskLayout({ children, familyId }: KioskLayoutProps) {
   const [showPinModal, setShowPinModal] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({ isOpen: false, title: '', message: '', type: 'error' });
 
   const {
     sessionToken,
@@ -67,7 +74,12 @@ export default function KioskLayout({ children, familyId }: KioskLayoutProps) {
       window.location.href = '/dashboard';
     } catch (error) {
       console.error('Failed to end session:', error);
-      alert(error instanceof Error ? error.message : 'Failed to end kiosk session');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to end kiosk session',
+        type: 'error',
+      });
     }
   };
 
@@ -96,6 +108,13 @@ export default function KioskLayout({ children, familyId }: KioskLayoutProps) {
         onUnlock={handleUnlock}
         familyId={familyId}
         sessionToken={sessionToken}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
       />
     </div>
   );

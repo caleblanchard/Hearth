@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       .eq('is_active', true)
       .eq('chore_definition.is_active', true)
       .eq('assignments.is_active', true)
-      .order('assignments.rotation_order', { ascending: true });
+      .order('rotation_order', { ascending: true, foreignTable: 'assignments' });
 
     if (schedulesError) {
       throw schedulesError;

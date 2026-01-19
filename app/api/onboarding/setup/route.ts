@@ -174,18 +174,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Generate sample data if requested
-      // NOTE: This still uses Prisma in the sample-data-generator
-      // which is acceptable for a one-time setup operation
       if (shouldGenerateSampleData && selectedModules.length > 0) {
         try {
-          // Sample data generator still uses Prisma - would need major refactor
-          // For now, we'll note this in logs
-          logger.warn('Sample data generation uses Prisma - skipped in Supabase migration');
-          // await generateSampleData(tx, {
-          //   familyId: family.id,
-          //   adminId: admin.id,
-          //   enabledModules: selectedModules as ModuleId[],
-          // });
+          await generateSampleData(adminClient, {
+            familyId: family.id,
+            adminId: admin.id,
+            enabledModules: selectedModules as ModuleId[],
+          });
         } catch (error) {
           logger.error('Sample data generation failed', error);
           // Don't fail the entire setup if sample data fails
@@ -244,8 +239,7 @@ export async function POST(request: NextRequest) {
           count: selectedModules.length,
         },
         sampleData: {
-          generated: false, // Currently disabled for Supabase
-          note: 'Sample data generation requires Prisma transaction support',
+          generated: shouldGenerateSampleData,
         },
       });
     } catch (error: any) {

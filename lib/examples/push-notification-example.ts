@@ -236,43 +236,70 @@ export async function notifyRuleTriggered(rule: {
  * This would be called from /api/cron/send-notifications
  */
 export async function checkAndSendExpiringNotifications() {
-  // This is a pseudo-code example of how a cron job might work
-  const prisma = (await import('@/lib/prisma')).default;
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const adminClient = createAdminClient();
 
-  // Get user preferences to determine notification timings
-  const preferences = await prisma.notificationPreference.findMany();
+  const { data: prefData, error: prefError } = await adminClient
+    .from('notification_preferences')
+    .select('*');
+  if (prefError) {
+    throw new Error(prefError.message);
+  }
 
+  const preferences = prefData ?? [];
   for (const pref of preferences) {
-    // Check leftovers expiring within user's preferred hours
-    const expiringLeftovers = await prisma.leftover.findMany({
-      where: {
-        family: { members: { some: { id: pref.userId } } },
-        usedAt: null,
-        tossedAt: null,
-        expiresAt: {
-          lte: new Date(Date.now() + pref.leftoverExpiringHours * 60 * 60 * 1000),
-          gt: new Date(),
-        },
-      },
-    });
-
-    for (const leftover of expiringLeftovers) {
-      await notifyLeftoverExpiring(leftover);
+    const { data: member, error: memberError } = await adminClient
+      .from('family_members')
+      .select('family_id')
+      .eq('id', pref.user_id)
+      .maybeSingle();
+    if (memberError || !member) {
+      continue;
     }
 
-    // Check documents expiring within user's preferred days
-    const expiringDocuments = await prisma.document.findMany({
-      where: {
-        family: { members: { some: { id: pref.userId } } },
-        expiresAt: {
-          lte: new Date(Date.now() + pref.documentExpiringDays * 24 * 60 * 60 * 1000),
-          gt: new Date(),
-        },
-      },
-    });
+    const leftoverCutoff = new Date(Date.now() + pref.leftover_expiring_hours * 60 * 60 * 1000).toISOString();
+    const { data: leftoverData, error: leftoverError } = await adminClient
+      .from('leftovers')
+      .select('id, name, family_id, created_by, expires_at')
+      .eq('family_id', member.family_id)
+      .is('used_at', null)
+      .is('tossed_at', null)
+      .lte('expires_at', leftoverCutoff)
+      .gt('expires_at', new Date().toISOString());
+    if (leftoverError) {
+      continue;
+    }
 
+    const expiringLeftovers = leftoverData ?? [];
+    for (const leftover of expiringLeftovers) {
+      await notifyLeftoverExpiring({
+        id: leftover.id,
+        name: leftover.name,
+        familyId: leftover.family_id,
+        createdBy: leftover.created_by,
+        expiresAt: new Date(leftover.expires_at),
+      });
+    }
+
+    const documentCutoff = new Date(Date.now() + pref.document_expiring_days * 24 * 60 * 60 * 1000).toISOString();
+    const { data: documentData, error: documentError } = await adminClient
+      .from('documents')
+      .select('id, name, family_id, expires_at')
+      .eq('family_id', member.family_id)
+      .lte('expires_at', documentCutoff)
+      .gt('expires_at', new Date().toISOString());
+    if (documentError) {
+      continue;
+    }
+
+    const expiringDocuments = documentData ?? [];
     for (const doc of expiringDocuments) {
-      await notifyDocumentExpiring(doc);
+      await notifyDocumentExpiring({
+        id: doc.id,
+        name: doc.name,
+        familyId: doc.family_id,
+        expiresAt: doc.expires_at ? new Date(doc.expires_at) : null,
+      });
     }
   }
 }

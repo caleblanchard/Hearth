@@ -5,7 +5,8 @@
  * All sample data can be deleted by the user later.
  */
 
-import { PrismaClient } from '@/app/generated/prisma';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/database.types';
 import { ModuleId, Difficulty, TodoPriority } from '@/app/generated/prisma';
 
 interface SampleDataOptions {
@@ -14,155 +15,182 @@ interface SampleDataOptions {
   enabledModules: ModuleId[];
 }
 
+type SupabaseDatabaseClient = SupabaseClient<Database>;
+
+async function insertSingle<T>(
+  supabase: SupabaseDatabaseClient,
+  table: keyof Database['public']['Tables'],
+  data: Record<string, unknown>
+): Promise<T> {
+  const { data: row, error } = await supabase
+    .from(table as any)
+    .insert(data)
+    .select()
+    .single();
+  if (error) {
+    throw new Error(error.message);
+  }
+  return row as T;
+}
+
+async function insertMany(
+  supabase: SupabaseDatabaseClient,
+  table: keyof Database['public']['Tables'],
+  data: Record<string, unknown>[]
+) {
+  if (data.length === 0) return;
+  const { error } = await supabase.from(table as any).insert(data);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 /**
  * Generate sample data based on enabled modules
  */
 export async function generateSampleData(
-  prisma: PrismaClient | any, // Allow transaction client
+  supabase: SupabaseDatabaseClient,
   options: SampleDataOptions
 ): Promise<void> {
   const { familyId, adminId, enabledModules } = options;
 
   // Generate sample data for each enabled module
   if (enabledModules.includes(ModuleId.CHORES)) {
-    await generateSampleChores(prisma, familyId, adminId);
+    await generateSampleChores(supabase, familyId, adminId);
   }
 
   if (enabledModules.includes(ModuleId.TODOS)) {
-    await generateSampleTodos(prisma, familyId, adminId);
+    await generateSampleTodos(supabase, familyId, adminId);
   }
 
   if (enabledModules.includes(ModuleId.SHOPPING)) {
-    await generateSampleShoppingLists(prisma, familyId, adminId);
+    await generateSampleShoppingLists(supabase, familyId, adminId);
   }
 
   if (enabledModules.includes(ModuleId.CALENDAR)) {
-    await generateSampleCalendarEvents(prisma, familyId, adminId);
+    await generateSampleCalendarEvents(supabase, familyId, adminId);
   }
 
   if (enabledModules.includes(ModuleId.RECIPES)) {
-    await generateSampleRecipes(prisma, familyId, adminId);
+    await generateSampleRecipes(supabase, familyId, adminId);
   }
 
   if (enabledModules.includes(ModuleId.MEAL_PLANNING)) {
-    await generateSampleMealPlans(prisma, familyId, adminId);
+    await generateSampleMealPlans(supabase, familyId, adminId);
   }
 
   if (enabledModules.includes(ModuleId.ROUTINES)) {
-    await generateSampleRoutines(prisma, familyId, adminId);
+    await generateSampleRoutines(supabase, familyId, adminId);
   }
 
   if (enabledModules.includes(ModuleId.COMMUNICATION)) {
-    await generateSampleCommunicationPosts(prisma, familyId, adminId);
+    await generateSampleCommunicationPosts(supabase, familyId, adminId);
   }
 
   if (enabledModules.includes(ModuleId.INVENTORY)) {
-    await generateSampleInventoryItems(prisma, familyId, adminId);
+    await generateSampleInventoryItems(supabase, familyId, adminId);
   }
 
   if (enabledModules.includes(ModuleId.MAINTENANCE)) {
-    await generateSampleMaintenanceItems(prisma, familyId, adminId);
+    await generateSampleMaintenanceItems(supabase, familyId, adminId);
   }
 }
 
-async function generateSampleChores(prisma: any, familyId: string, adminId: string) {
+async function generateSampleChores(supabase: SupabaseDatabaseClient, familyId: string, adminId: string) {
   const choreDefinitions = [
     {
-      familyId,
+      family_id: familyId,
       name: 'Wash Dishes',
       description: 'Clean and dry all dishes, pots, and pans',
       difficulty: Difficulty.EASY,
-      creditValue: 5,
-      estimatedMinutes: 15,
-      isActive: true,
+      credit_value: 5,
+      estimated_minutes: 15,
+      is_active: true,
     },
     {
-      familyId,
+      family_id: familyId,
       name: 'Vacuum Living Room',
       description: 'Vacuum all carpets and rugs in the living room',
       difficulty: Difficulty.MEDIUM,
-      creditValue: 8,
-      estimatedMinutes: 20,
-      isActive: true,
+      credit_value: 8,
+      estimated_minutes: 20,
+      is_active: true,
     },
     {
-      familyId,
+      family_id: familyId,
       name: 'Take Out Trash',
       description: 'Empty all trash cans and take bags to outdoor bins',
       difficulty: Difficulty.EASY,
-      creditValue: 3,
-      estimatedMinutes: 10,
-      isActive: true,
+      credit_value: 3,
+      estimated_minutes: 10,
+      is_active: true,
     },
     {
-      familyId,
+      family_id: familyId,
       name: 'Water Plants',
       description: 'Water all indoor and outdoor plants',
       difficulty: Difficulty.EASY,
-      creditValue: 4,
-      estimatedMinutes: 15,
-      isActive: true,
+      credit_value: 4,
+      estimated_minutes: 15,
+      is_active: true,
     },
     {
-      familyId,
+      family_id: familyId,
       name: 'Make Bed',
       description: 'Make your bed with clean sheets',
       difficulty: Difficulty.EASY,
-      creditValue: 2,
-      estimatedMinutes: 5,
-      isActive: true,
+      credit_value: 2,
+      estimated_minutes: 5,
+      is_active: true,
     },
   ];
 
-  for (const chore of choreDefinitions) {
-    await prisma.choreDefinition.create({ data: chore });
-  }
+  await insertMany(supabase, 'chore_definitions', choreDefinitions);
 }
 
-async function generateSampleTodos(prisma: any, familyId: string, adminId: string) {
+async function generateSampleTodos(supabase: SupabaseDatabaseClient, familyId: string, adminId: string) {
   const todos = [
     {
-      familyId,
+      family_id: familyId,
       title: 'Schedule dentist appointment',
       description: 'Call Dr. Smith\'s office for routine cleaning',
       priority: TodoPriority.MEDIUM,
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      isCompleted: false,
-      createdById: adminId,
+      due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+      status: 'PENDING',
+      created_by_id: adminId,
     },
     {
-      familyId,
+      family_id: familyId,
       title: 'Buy birthday gift for grandma',
       description: 'Her birthday is next month',
       priority: TodoPriority.LOW,
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      isCompleted: false,
-      createdById: adminId,
+      due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+      status: 'PENDING',
+      created_by_id: adminId,
     },
     {
-      familyId,
+      family_id: familyId,
       title: 'Pay electricity bill',
       description: 'Due by the 15th of this month',
       priority: TodoPriority.HIGH,
-      dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-      isCompleted: false,
-      createdById: adminId,
+      due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days from now
+      status: 'PENDING',
+      created_by_id: adminId,
     },
   ];
 
-  for (const todo of todos) {
-    await prisma.todoItem.create({ data: todo });
-  }
+  await insertMany(supabase, 'todo_items', todos);
 }
 
-async function generateSampleShoppingLists(prisma: any, familyId: string, adminId: string) {
-  const shoppingList = await prisma.shoppingList.create({
-    data: {
-      familyId,
-      name: 'Weekly Groceries',
-      description: 'Regular grocery shopping list',
-      createdById: adminId,
-    },
+async function generateSampleShoppingLists(
+  supabase: SupabaseDatabaseClient,
+  familyId: string,
+  adminId: string
+) {
+  const shoppingList = await insertSingle<{ id: string }>(supabase, 'shopping_lists', {
+    family_id: familyId,
+    name: 'Weekly Groceries',
+    is_active: true,
   });
 
   const items = [
@@ -175,71 +203,79 @@ async function generateSampleShoppingLists(prisma: any, familyId: string, adminI
     { name: 'Bananas', quantity: 1, unit: 'bunch', category: 'Produce', isPurchased: false },
   ];
 
-  for (const item of items) {
-    await prisma.shoppingListItem.create({
-      data: {
-        ...item,
-        shoppingListId: shoppingList.id,
-        addedById: adminId,
-      },
-    });
-  }
+  const mappedItems = items.map((item) => ({
+    list_id: shoppingList.id,
+    name: item.name,
+    category: item.category,
+    quantity: item.quantity,
+    unit: item.unit,
+    added_by_id: adminId,
+    requested_by_id: adminId,
+    status: item.isPurchased ? 'PURCHASED' : 'PENDING',
+    priority: 'NORMAL',
+  }));
+
+  await insertMany(supabase, 'shopping_items', mappedItems);
 }
 
-async function generateSampleCalendarEvents(prisma: any, familyId: string, adminId: string) {
+async function generateSampleCalendarEvents(
+  supabase: SupabaseDatabaseClient,
+  familyId: string,
+  adminId: string
+) {
   const events = [
     {
-      familyId,
+      family_id: familyId,
       title: 'Family Game Night',
       description: 'Board games and snacks',
-      startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-      endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours duration
-      isAllDay: false,
-      createdById: adminId,
+      start_time: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+      end_time: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString(), // 2 hours duration
+      is_all_day: false,
+      created_by_id: adminId,
+      event_type: 'INTERNAL',
     },
     {
-      familyId,
+      family_id: familyId,
       title: 'Dentist Appointment',
       description: 'Routine cleaning for everyone',
-      startTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), // 10 days from now
-      endTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000), // 1 hour duration
-      isAllDay: false,
-      createdById: adminId,
+      start_time: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days from now
+      end_time: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(), // 1 hour duration
+      is_all_day: false,
+      created_by_id: adminId,
+      event_type: 'INTERNAL',
     },
     {
-      familyId,
+      family_id: familyId,
       title: 'Grandma\'s Birthday',
       description: 'Don\'t forget to call!',
-      startTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      endTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      isAllDay: true,
-      createdById: adminId,
+      start_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+      end_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      is_all_day: true,
+      created_by_id: adminId,
+      event_type: 'INTERNAL',
     },
   ];
 
-  for (const event of events) {
-    await prisma.calendarEvent.create({ data: event });
-  }
+  await insertMany(supabase, 'calendar_events', events);
 }
 
-async function generateSampleRecipes(prisma: any, familyId: string, adminId: string) {
+async function generateSampleRecipes(
+  supabase: SupabaseDatabaseClient,
+  familyId: string,
+  adminId: string
+) {
   const recipes = [
     {
-      familyId,
+      family_id: familyId,
       name: 'Spaghetti with Marinara Sauce',
       description: 'Classic Italian pasta dish with homemade marinara',
-      prepTimeMinutes: 15,
-      cookTimeMinutes: 30,
+      prep_time_minutes: 15,
+      cook_time_minutes: 30,
       servings: 4,
       difficulty: Difficulty.EASY,
-      ingredients: JSON.stringify([
-        { quantity: 1, unit: 'lb', name: 'spaghetti' },
-        { quantity: 2, unit: 'cups', name: 'marinara sauce' },
-        { quantity: 2, unit: 'tbsp', name: 'olive oil' },
-        { quantity: 3, unit: 'cloves', name: 'garlic, minced' },
-        { quantity: 0.25, unit: 'cup', name: 'parmesan cheese, grated' },
-      ]),
-      instructions: JSON.stringify([
+      category: 'DINNER',
+      dietary_tags: ['VEGETARIAN'],
+      instructions: [
         'Bring a large pot of salted water to a boil',
         'Add spaghetti and cook according to package directions',
         'While pasta cooks, heat olive oil in a pan over medium heat',
@@ -247,30 +283,26 @@ async function generateSampleRecipes(prisma: any, familyId: string, adminId: str
         'Add marinara sauce and simmer for 10 minutes',
         'Drain pasta and toss with sauce',
         'Serve topped with parmesan cheese',
-      ]),
-      category: 'Main Course',
-      cuisine: 'Italian',
-      dietaryTags: JSON.stringify(['vegetarian']),
-      createdById: adminId,
+      ],
+      ingredients: [
+        { quantity: 1, unit: 'lb', name: 'spaghetti' },
+        { quantity: 2, unit: 'cups', name: 'marinara sauce' },
+        { quantity: 2, unit: 'tbsp', name: 'olive oil' },
+        { quantity: 3, unit: 'cloves', name: 'garlic, minced' },
+        { quantity: 0.25, unit: 'cup', name: 'parmesan cheese, grated' },
+      ],
     },
     {
-      familyId,
+      family_id: familyId,
       name: 'Chicken Stir-Fry',
       description: 'Quick and healthy Asian-inspired chicken and vegetable stir-fry',
-      prepTimeMinutes: 20,
-      cookTimeMinutes: 15,
+      prep_time_minutes: 20,
+      cook_time_minutes: 15,
       servings: 4,
       difficulty: Difficulty.MEDIUM,
-      ingredients: JSON.stringify([
-        { quantity: 1, unit: 'lb', name: 'chicken breast, cubed' },
-        { quantity: 2, unit: 'cups', name: 'mixed vegetables' },
-        { quantity: 3, unit: 'tbsp', name: 'soy sauce' },
-        { quantity: 1, unit: 'tbsp', name: 'sesame oil' },
-        { quantity: 2, unit: 'cloves', name: 'garlic, minced' },
-        { quantity: 1, unit: 'tbsp', name: 'ginger, grated' },
-        { quantity: 2, unit: 'cups', name: 'cooked rice' },
-      ]),
-      instructions: JSON.stringify([
+      category: 'DINNER',
+      dietary_tags: ['GLUTEN_FREE'],
+      instructions: [
         'Heat sesame oil in a large wok or skillet over high heat',
         'Add chicken and stir-fry for 5-7 minutes until cooked through',
         'Remove chicken and set aside',
@@ -278,73 +310,105 @@ async function generateSampleRecipes(prisma: any, familyId: string, adminId: str
         'Add vegetables and stir-fry for 3-4 minutes',
         'Return chicken to wok, add soy sauce, and toss to combine',
         'Serve over rice',
-      ]),
-      category: 'Main Course',
-      cuisine: 'Asian',
-      dietaryTags: JSON.stringify(['gluten-free']),
-      createdById: adminId,
+      ],
+      ingredients: [
+        { quantity: 1, unit: 'lb', name: 'chicken breast, cubed' },
+        { quantity: 2, unit: 'cups', name: 'mixed vegetables' },
+        { quantity: 3, unit: 'tbsp', name: 'soy sauce' },
+        { quantity: 1, unit: 'tbsp', name: 'sesame oil' },
+        { quantity: 2, unit: 'cloves', name: 'garlic, minced' },
+        { quantity: 1, unit: 'tbsp', name: 'ginger, grated' },
+        { quantity: 2, unit: 'cups', name: 'cooked rice' },
+      ],
     },
   ];
 
   for (const recipe of recipes) {
-    await prisma.recipe.create({ data: recipe });
+    const created = await insertSingle<{ id: string }>(supabase, 'recipes', {
+      family_id: recipe.family_id,
+      name: recipe.name,
+      description: recipe.description,
+      prep_time_minutes: recipe.prep_time_minutes,
+      cook_time_minutes: recipe.cook_time_minutes,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      category: recipe.category,
+      dietary_tags: recipe.dietary_tags,
+      instructions: JSON.stringify(recipe.instructions),
+      created_by: adminId,
+      is_favorite: false,
+    });
+
+    const ingredientRows = recipe.ingredients.map((ingredient, index) => ({
+      recipe_id: created.id,
+      name: ingredient.name,
+      quantity: ingredient.quantity,
+      unit: ingredient.unit,
+      sort_order: index,
+    }));
+
+    await insertMany(supabase, 'recipe_ingredients', ingredientRows);
   }
 }
 
-async function generateSampleMealPlans(prisma: any, familyId: string, adminId: string) {
-  // Get the recipes we just created
-  const recipes = await prisma.recipe.findMany({
-    where: { familyId },
-    take: 2,
-  });
+async function generateSampleMealPlans(
+  supabase: SupabaseDatabaseClient,
+  familyId: string,
+  adminId: string
+) {
+  const { data: recipes, error: recipesError } = await supabase
+    .from('recipes')
+    .select('id')
+    .eq('family_id', familyId)
+    .limit(2);
 
-  if (recipes.length === 0) return;
+  if (recipesError) {
+    throw new Error(recipesError.message);
+  }
+
+  const recipeRows = recipes ?? [];
+  if (recipeRows.length === 0) return;
 
   const startDate = new Date();
   startDate.setHours(0, 0, 0, 0);
 
-  const mealPlan = await prisma.mealPlan.create({
-    data: {
-      familyId,
-      name: 'This Week',
-      startDate,
-      endDate: new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000),
-      createdById: adminId,
-    },
+  const mealPlan = await insertSingle<{ id: string }>(supabase, 'meal_plans', {
+    family_id: familyId,
+    week_start: startDate.toISOString(),
   });
 
   // Add some meal plan items
-  const mealPlanItems = [
+  const mealPlanEntries = [
     {
-      mealPlanId: mealPlan.id,
-      date: new Date(startDate.getTime() + 1 * 24 * 60 * 60 * 1000),
-      mealType: 'DINNER',
-      recipeId: recipes[0]?.id,
+      meal_plan_id: mealPlan.id,
+      date: new Date(startDate.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+      meal_type: 'DINNER',
+      recipe_id: recipeRows[0]?.id,
     },
     {
-      mealPlanId: mealPlan.id,
-      date: new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000),
-      mealType: 'DINNER',
-      recipeId: recipes[1]?.id,
+      meal_plan_id: mealPlan.id,
+      date: new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+      meal_type: 'DINNER',
+      recipe_id: recipeRows[1]?.id,
     },
   ];
 
-  for (const item of mealPlanItems) {
-    if (item.recipeId) {
-      await prisma.mealPlanItem.create({ data: item });
-    }
-  }
+  const entriesToInsert = mealPlanEntries.filter((entry) => entry.recipe_id);
+  await insertMany(supabase, 'meal_plan_entries', entriesToInsert);
 }
 
-async function generateSampleRoutines(prisma: any, familyId: string, adminId: string) {
-  const routine = await prisma.routine.create({
-    data: {
-      familyId,
-      name: 'Morning Routine',
-      description: 'Things to do every morning',
-      isActive: true,
-      createdById: adminId,
-    },
+async function generateSampleRoutines(
+  supabase: SupabaseDatabaseClient,
+  familyId: string,
+  adminId: string
+) {
+  const routine = await insertSingle<{ id: string }>(supabase, 'routines', {
+    family_id: familyId,
+    name: 'Morning Routine',
+    type: 'MORNING',
+    assigned_to: adminId,
+    is_weekday: true,
+    is_weekend: true,
   });
 
   const steps = [
@@ -355,102 +419,106 @@ async function generateSampleRoutines(prisma: any, familyId: string, adminId: st
     { name: 'Pack backpack', estimatedMinutes: 5, order: 5 },
   ];
 
-  for (const step of steps) {
-    await prisma.routineStep.create({
-      data: {
-        ...step,
-        routineId: routine.id,
-      },
-    });
-  }
+  const stepRows = steps.map((step) => ({
+    name: step.name,
+    estimated_minutes: step.estimatedMinutes,
+    sort_order: step.order,
+    routine_id: routine.id,
+  }));
+
+  await insertMany(supabase, 'routine_steps', stepRows);
 }
 
-async function generateSampleCommunicationPosts(prisma: any, familyId: string, adminId: string) {
+async function generateSampleCommunicationPosts(
+  supabase: SupabaseDatabaseClient,
+  familyId: string,
+  adminId: string
+) {
   const posts = [
     {
-      familyId,
-      authorId: adminId,
-      content: 'Welcome to Hearth! This is your family communication board. Use it to share updates, photos, and stay connected.',
-      postType: 'ANNOUNCEMENT',
+      family_id: familyId,
+      author_id: adminId,
+      content:
+        'Welcome to Hearth! This is your family communication board. Use it to share updates, photos, and stay connected.',
+      type: 'ANNOUNCEMENT',
+      is_pinned: true,
     },
     {
-      familyId,
-      authorId: adminId,
-      content: 'Don\'t forget we have dentist appointments next week. I\'ll send calendar invites.',
-      postType: 'MESSAGE',
+      family_id: familyId,
+      author_id: adminId,
+      content:
+        'Don\'t forget we have dentist appointments next week. I\'ll send calendar invites.',
+      type: 'NOTE',
+      is_pinned: false,
     },
   ];
 
-  for (const post of posts) {
-    await prisma.communicationPost.create({ data: post });
-  }
+  await insertMany(supabase, 'communication_posts', posts);
 }
 
-async function generateSampleInventoryItems(prisma: any, familyId: string, adminId: string) {
+async function generateSampleInventoryItems(
+  supabase: SupabaseDatabaseClient,
+  familyId: string,
+  adminId: string
+) {
   const items = [
     {
-      familyId,
+      family_id: familyId,
       name: 'AA Batteries',
-      category: 'Electronics',
-      currentQuantity: 8,
-      minQuantity: 4,
-      maxQuantity: 20,
+      category: 'OTHER',
+      current_quantity: 8,
+      low_stock_threshold: 4,
       unit: 'count',
-      location: 'Utility drawer',
-      createdById: adminId,
+      location: 'OTHER',
     },
     {
-      familyId,
+      family_id: familyId,
       name: 'Dish Soap',
-      category: 'Cleaning',
-      currentQuantity: 2,
-      minQuantity: 1,
-      maxQuantity: 5,
+      category: 'CLEANING',
+      current_quantity: 2,
+      low_stock_threshold: 1,
       unit: 'bottles',
-      location: 'Under sink',
-      createdById: adminId,
+      location: 'KITCHEN_CABINET',
     },
     {
-      familyId,
+      family_id: familyId,
       name: 'Paper Towels',
-      category: 'Cleaning',
-      currentQuantity: 3,
-      minQuantity: 2,
-      maxQuantity: 12,
+      category: 'PAPER_GOODS',
+      current_quantity: 3,
+      low_stock_threshold: 2,
       unit: 'rolls',
-      location: 'Pantry',
-      createdById: adminId,
+      location: 'PANTRY',
     },
   ];
 
-  for (const item of items) {
-    await prisma.inventoryItem.create({ data: item });
-  }
+  await insertMany(supabase, 'inventory_items', items);
 }
 
-async function generateSampleMaintenanceItems(prisma: any, familyId: string, adminId: string) {
+async function generateSampleMaintenanceItems(
+  supabase: SupabaseDatabaseClient,
+  familyId: string,
+  adminId: string
+) {
   const items = [
     {
-      familyId,
+      family_id: familyId,
       name: 'Change HVAC Filter',
       description: 'Replace air filter in HVAC system',
       category: 'HVAC',
       frequency: 'Monthly',
-      nextDueAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
-      estimatedCost: 25,
+      next_due_at: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days from now
+      estimated_cost: 25,
     },
     {
-      familyId,
+      family_id: familyId,
       name: 'Clean Gutters',
       description: 'Remove leaves and debris from rain gutters',
       category: 'EXTERIOR',
       frequency: 'Yearly',
-      nextDueAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
-      estimatedCost: 150,
+      next_due_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days from now
+      estimated_cost: 150,
     },
   ];
 
-  for (const item of items) {
-    await prisma.maintenanceItem.create({ data: item });
-  }
+  await insertMany(supabase, 'maintenance_items', items);
 }
