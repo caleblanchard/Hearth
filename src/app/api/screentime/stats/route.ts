@@ -164,7 +164,8 @@ export async function GET(request: NextRequest) {
           })
         )?.weeklyAllocationMinutes ?? 0
       : allowances?.reduce(
-          (sum, a) => sum + (a.allowance_minutes ?? a.allowanceMinutes ?? 0),
+          (sum: number, allowance: { allowance_minutes?: number | null }) =>
+            sum + (allowance?.allowance_minutes ?? 0),
           0
         ) || 0;
     const currentBalance = useMockDb

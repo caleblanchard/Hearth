@@ -41,11 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Process each family
     for (const settings of settingsWithAutoDisable) {
-      const hoursThreshold =
-        settings.auto_disable_after_hours ??
-        settings.autoDisableAfterHours ??
-        (settings.auto_disable_after_24_hours ? 24 : null) ??
-        (settings.autoDisableAfter24Hours ? 24 : null);
+      const hoursThreshold = settings.auto_disable_after_24_hours ? 24 : null;
 
       if (!hoursThreshold) {
         continue;
@@ -73,7 +69,7 @@ export async function POST(request: NextRequest) {
           .from('sick_mode_instances')
           .update({
             is_active: false,
-            ended_at: now,
+            ended_at: now.toISOString(),
           })
           .eq('id', instance.id);
 

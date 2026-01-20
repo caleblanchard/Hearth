@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { calculateAnalytics, getSpendingByCategory, getTrends } from '@/lib/financial-analytics';
+import { CreditTransactionType, SpendingCategory } from '@/app/generated/prisma';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,8 @@ export async function GET(request: NextRequest) {
     const targetMemberId = searchParams.get('memberId');
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
+    const periodParam = searchParams.get('period');
+    const period = periodParam === 'weekly' ? 'weekly' : 'monthly';
 
     if (targetMemberId && targetMemberId !== memberId) {
       const isParent = await isParentInFamily(familyId);
@@ -58,16 +61,22 @@ export async function GET(request: NextRequest) {
     }
 
     const { data: transactions } = await query;
+    const normalizedTransactions = (transactions || []).map((transaction) => ({
+      ...transaction,
+      type: transaction.type as CreditTransactionType,
+      category: transaction.category as SpendingCategory,
+      createdAt: new Date(transaction.created_at),
+    }));
 
-    const summary = calculateAnalytics(transactions || []);
-    const spendingByCategory = getSpendingByCategory(transactions || []);
-    const trends = getTrends(transactions || []);
+    const summary = calculateAnalytics(normalizedTransactions);
+    const spendingByCategory = getSpendingByCategory(normalizedTransactions);
+    const trends = getTrends(normalizedTransactions, period);
 
     return NextResponse.json({
       summary,
       spendingByCategory,
       trends,
-      period: startDate && endDate ? 'custom' : 'monthly',
+      period: startDate && endDate ? 'custom' : period,
     });
   } catch (error) {
     logger.error('Get financial analytics error:', error);

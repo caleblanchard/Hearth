@@ -33,7 +33,7 @@ export async function GET(
     }
 
     // Check if link is revoked
-    if (shareLink.revoked_at || shareLink.revokedAt) {
+    if (shareLink.revoked_at) {
       return NextResponse.json(
         { error: 'Share link has been revoked' },
         { status: 410 }
@@ -41,7 +41,7 @@ export async function GET(
     }
 
     // Check if link is expired
-    const expiresAt = shareLink.expires_at ?? shareLink.expiresAt
+    const expiresAt = shareLink.expires_at
     if (expiresAt && new Date(expiresAt) < new Date()) {
       return NextResponse.json(
         { error: 'Share link has expired' },
@@ -53,8 +53,8 @@ export async function GET(
     await supabase
       .from('document_share_links')
       .update({
-        access_count: { increment: 1 },
-        last_accessed_at: new Date(),
+        access_count: (shareLink.access_count || 0) + 1,
+        last_accessed_at: new Date().toISOString(),
       })
       .eq('id', shareLink.id);
 
@@ -90,16 +90,16 @@ export async function GET(
         id: shareLink.document.id,
         name: shareLink.document.name,
         category: shareLink.document.category,
-        fileUrl: shareLink.document.file_url ?? shareLink.document.fileUrl,
-        fileSize: shareLink.document.file_size ?? shareLink.document.fileSize,
-        mimeType: shareLink.document.mime_type ?? shareLink.document.mimeType,
+        fileUrl: shareLink.document.file_url,
+        fileSize: shareLink.document.file_size,
+        mimeType: shareLink.document.mime_type,
         notes: shareLink.document.notes,
         uploader: shareLink.document.uploader,
       },
       shareInfo: {
-        createdAt: shareLink.created_at ?? shareLink.createdAt,
-        expiresAt: shareLink.expires_at ?? shareLink.expiresAt,
-        createdBy: shareLink.created_by ?? shareLink.createdBy,
+        createdAt: shareLink.created_at,
+        expiresAt: shareLink.expires_at,
+        createdBy: shareLink.created_by,
       },
     });
   } catch (error) {

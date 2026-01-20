@@ -50,14 +50,14 @@ export async function POST(
       return NextResponse.json({ error: 'Share link not found' }, { status: 403 });
     }
 
-    if (shareLink.revoked_at || shareLink.revokedAt) {
+    if (shareLink.revoked_at) {
       return NextResponse.json(
         { error: 'Share link is already revoked' },
         { status: 400 }
       );
     }
 
-    const revokedAt = new Date();
+    const revokedAt = new Date().toISOString();
     const { data: updatedLink, error: updateError } = await supabase
       .from('document_share_links')
       .update({

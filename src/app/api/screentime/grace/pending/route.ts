@@ -57,7 +57,7 @@ export async function GET() {
           minutesGranted: request.minutes_granted ?? request.minutesGranted,
           reason: request.reason,
           requestedAt: new Date(request.requested_at ?? request.requestedAt).toISOString(),
-          currentBalance: balance?.current_balance_minutes ?? balance?.currentBalanceMinutes ?? 0,
+          currentBalance: balance?.current_balance_minutes ?? 0,
         };
       })
     );

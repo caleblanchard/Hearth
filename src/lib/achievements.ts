@@ -230,7 +230,7 @@ export async function checkAndAwardAchievement(
         .maybeSingle()).data;
 
   const isCompleted = currentProgress >= achievement.requirement;
-  const completedAt = isCompleted ? new Date() : null;
+  const completedAt = isCompleted ? new Date().toISOString() : null;
 
   if (!userAchievement) {
     const newUserAchievement = useMockDb
@@ -262,7 +262,7 @@ export async function checkAndAwardAchievement(
           .single()).data;
     
     // Create notification if just completed
-    if (isCompleted && completedAt && Date.now() - completedAt.getTime() <= 5000) {
+    if (isCompleted && completedAt && Date.now() - new Date(completedAt).getTime() <= 5000) {
       if (useMockDb) {
         await (dbMock as any).notification.create({
           data: {
@@ -306,14 +306,14 @@ export async function checkAndAwardAchievement(
     
     return newUserAchievement;
   } else if (!(userAchievement.is_completed ?? userAchievement.isCompleted) && isCompleted) {
-    const now = new Date();
+    const now = new Date().toISOString();
     const updated = useMockDb
       ? await (dbMock as any).userAchievement.update({
           where: { id: userAchievement.id },
           data: {
             progress: currentProgress,
             isCompleted: true,
-            completedAt: now,
+            completedAt: new Date(now),
           },
           include: { achievement: true },
         })
@@ -334,7 +334,7 @@ export async function checkAndAwardAchievement(
           .single()).data;
     
     // Create notification for newly completed achievement
-    if (Date.now() - now.getTime() <= 5000) {
+    if (Date.now() - new Date(now).getTime() <= 5000) {
       if (useMockDb) {
         await (dbMock as any).notification.create({
           data: {

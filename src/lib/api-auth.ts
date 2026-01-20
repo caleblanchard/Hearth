@@ -38,7 +38,7 @@ export async function authenticateRequest(
       isGuest: false,
       user: {
         id: member.id,
-        role: member.role,
+        role: member.role || 'CHILD',
         familyId: member.family_id,
         name: member.name || 'Unknown',
       },

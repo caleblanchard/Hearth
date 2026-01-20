@@ -77,9 +77,13 @@ export async function POST(request: Request) {
     // Create family member record for the user as PARENT
     // Use admin client as well since user doesn't have family_id yet
     // Use email as name if no display name available
-    const userName = authContext.user.user_metadata?.name || 
-                     authContext.user.email?.split('@')[0] || 
-                     'User';
+    const userName =
+      (authContext.user as { user_metadata?: { name?: string }; email?: string }).user_metadata
+        ?.name ||
+      (authContext.user as { user_metadata?: { name?: string }; email?: string }).email?.split(
+        '@'
+      )[0] ||
+      'User';
     
     const { error: memberError } = await adminClient
       .from('family_members')

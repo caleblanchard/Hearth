@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
     const authContext = await getAuthContext();
 
     if (!authContext) {
@@ -66,8 +67,8 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    const oldestChoreDate = oldestChore?.completed_at ?? oldestChore?.completedAt;
-    const oldestRewardDate = oldestReward?.requested_at ?? oldestReward?.requestedAt;
+    const oldestChoreDate = oldestChore?.completed_at;
+    const oldestRewardDate = oldestReward?.requested_at;
     const oldestPending = [oldestChoreDate, oldestRewardDate]
       .filter(Boolean)
       .map((value) => new Date(value as any))

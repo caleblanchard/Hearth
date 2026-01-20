@@ -32,7 +32,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Notification not found' }, { status: 404 });
     }
 
-    const notificationUserId = notification.user_id ?? notification.userId
+    const notificationUserId = notification.user_id
     if (notificationUserId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -41,7 +41,7 @@ export async function PATCH(
       .from('notifications')
       .update({
         is_read: true,
-        read_at: new Date(),
+        read_at: new Date().toISOString(),
       })
       .eq('id', id)
       .select()
@@ -91,7 +91,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Notification not found' }, { status: 404 });
     }
 
-    const notificationUserId = notification.user_id ?? notification.userId
+    const notificationUserId = notification.user_id
     if (notificationUserId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

@@ -21,17 +21,18 @@ export async function PATCH(request: NextRequest) {
       .from('notifications')
       .update({
         is_read: true,
-        read_at: new Date(),
+        read_at: new Date().toISOString(),
       })
       .eq('user_id', userId)
-      .eq('is_read', false);
+      .eq('is_read', false)
+      .select('id');
 
     if (error) {
       logger.error('Error marking all notifications as read:', error);
       return NextResponse.json({ error: 'Failed to mark all notifications as read' }, { status: 500 });
     }
 
-    const count = typeof data?.count === 'number' ? data.count : 0
+    const count = data?.length ?? 0
     const message =
       count === 1
         ? 'Marked 1 notification as read'

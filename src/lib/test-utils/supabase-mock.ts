@@ -1,5 +1,9 @@
 // @ts-nocheck
-import { jest } from '@jest/globals'
+const jest = (globalThis as any).jest
+
+if (!jest) {
+  throw new Error('jest globals are required to use supabase-mock')
+}
 
 /**
  * Supabase Client Mock

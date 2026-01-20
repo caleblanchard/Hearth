@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { CreditTransactionType, SpendingCategory } from '@/app/generated/prisma';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -65,11 +66,11 @@ export async function GET(request: NextRequest) {
     if (targetMemberId) {
       query = query.eq('member_id', targetMemberId);
     }
-    if (type) {
-      query = query.eq('type', type);
+    if (type && Object.values(CreditTransactionType).includes(type as CreditTransactionType)) {
+      query = query.eq('type', type as CreditTransactionType);
     }
-    if (category) {
-      query = query.eq('category', category);
+    if (category && Object.values(SpendingCategory).includes(category as SpendingCategory)) {
+      query = query.eq('category', category as SpendingCategory);
     }
     if (startDate) {
       query = query.gte('created_at', new Date(startDate));
