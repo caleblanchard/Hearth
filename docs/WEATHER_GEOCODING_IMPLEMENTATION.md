@@ -14,7 +14,7 @@ Implemented a user-friendly geocoding feature that allows users to enter zip cod
 
 ### Backend: Geocoding API
 
-**File**: `/app/api/geocoding/route.ts`
+**File**: `/src/app/api/geocoding/route.ts`
 
 **Capabilities**:
 - Accepts zip/postal code OR city name
@@ -54,7 +54,7 @@ Implemented a user-friendly geocoding feature that allows users to enter zip cod
 
 ### Frontend: Family Settings UI Update
 
-**File**: `/app/dashboard/family/page.tsx`
+**File**: `/src/app/dashboard/family/page.tsx`
 
 **New Features**:
 
@@ -227,9 +227,9 @@ const [showAdvanced, setShowAdvanced] = useState(false);
 
 | File | Changes | Lines Added/Modified |
 |------|---------|---------------------|
-| `/app/api/geocoding/route.ts` | Created | 145 lines (new) |
-| `/__tests__/integration/api/geocoding/route.test.ts` | Created | 272 lines (new) |
-| `/app/dashboard/family/page.tsx` | Updated | ~250 lines modified |
+| `/src/app/api/geocoding/route.ts` | Created | 145 lines (new) |
+| `/tests/integration/api/geocoding/route.test.ts` | Created | 272 lines (new) |
+| `/src/app/dashboard/family/page.tsx` | Updated | ~250 lines modified |
 
 **Total**: ~667 lines added/modified
 

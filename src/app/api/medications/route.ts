@@ -1,0 +1,140 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { getMedications, createMedication } from '@/lib/data/medications';
+import { logger } from '@/lib/logger';
+
+export async function GET(request: NextRequest) {
+  try {
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const memberId = searchParams.get('memberId');
+
+    const medications = await getMedications(familyId, memberId || undefined);
+
+    return NextResponse.json({ medications });
+  } catch (error) {
+    logger.error('Error fetching medications:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch medications' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Only parents can create medication safety configs
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
+      return NextResponse.json(
+        { error: 'Only parents can create medication safety configurations' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const {
+      memberId: targetMemberId,
+      medicationName,
+      activeIngredient,
+      minIntervalHours,
+      maxDosesPerDay,
+      notifyWhenReady,
+    } = body;
+
+    if (!targetMemberId || !medicationName || !minIntervalHours) {
+      return NextResponse.json(
+        { error: 'Member ID, medication name, and minimum interval are required' },
+        { status: 400 }
+      );
+    }
+
+    // Verify member belongs to family
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('id, family_id')
+      .eq('id', targetMemberId)
+      .eq('family_id', familyId)
+      .single();
+
+    if (!member) {
+      return NextResponse.json(
+        { error: 'Member not found or does not belong to your family' },
+        { status: 400 }
+      );
+    }
+
+    const { data: medication, error: medError } = await (supabase as any)
+      .from('medication_safety')
+      .insert({
+        member_id: targetMemberId,
+        medication_name: medicationName,
+        active_ingredient: activeIngredient || null,
+        min_interval_hours: minIntervalHours,
+        max_doses_per_day: maxDosesPerDay || null,
+        notify_when_ready: notifyWhenReady ?? false,
+      })
+      .select(
+        `
+        *,
+        member:family_members(id, name)
+      `
+      )
+      .single();
+
+    if (medError) throw medError;
+
+    // Audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'MEDICATION_SAFETY_CREATED',
+      result: 'SUCCESS',
+      metadata: {
+        medicationId: medication.id,
+        medicationName,
+        memberName: medication.member?.name,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        medication,
+        message: 'Medication safety configuration created successfully',
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    logger.error('Error creating medication:', error);
+    return NextResponse.json(
+      { error: 'Failed to create medication' },
+      { status: 500 }
+    );
+  }
+}

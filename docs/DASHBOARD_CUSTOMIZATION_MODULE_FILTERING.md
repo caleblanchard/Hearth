@@ -151,7 +151,7 @@ export function getAvailableWidgets(
 ### Database Query
 
 ```typescript
-// From app/api/dashboard/layout/route.ts
+// From src/app/api/dashboard/layout/route.ts
 const moduleConfigs = await prisma.moduleConfiguration.findMany({
   where: {
     familyId,
@@ -212,7 +212,7 @@ Or use the Settings UI:
 
 ## Files Modified
 
-- `components/dashboard/DashboardCustomizer.tsx`
+- `src/components/dashboard/DashboardCustomizer.tsx`
   - Added helpful tip message
   - Only shows when `widgets.length < 14`
   - Links to module settings

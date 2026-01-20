@@ -211,15 +211,15 @@ This allows users to customize their preferences, but the current page won't ref
 ## Files Created
 
 ```
-/app/api/dashboard/layout/route.ts       - API endpoints
-/components/dashboard/DashboardCustomizer.tsx
-/components/dashboard/DashboardCustomizerButton.tsx
+/src/app/api/dashboard/layout/route.ts       - API endpoints
+/src/components/dashboard/DashboardCustomizer.tsx
+/src/components/dashboard/DashboardCustomizerButton.tsx
 /hooks/useDashboardLayout.ts
 /lib/dashboard/widget-registry.ts
 /lib/dashboard/layout-utils.ts
 /types/dashboard.ts
 /prisma/migrations/.../add_dashboard_layout/
-/__tests__/integration/api/dashboard/layout.test.ts
+/tests/integration/api/dashboard/layout.test.ts
 ```
 
 ## Next Steps After Integration

@@ -50,8 +50,8 @@
   - Selection callback
 
 **Files Created:**
-- `/components/approvals/ApprovalCard.tsx` (255 lines)
-- `/__tests__/components/approvals/ApprovalCard.test.tsx` (405 lines)
+- `/src/components/approvals/ApprovalCard.tsx` (255 lines)
+- `/tests/components/approvals/ApprovalCard.test.tsx` (405 lines)
 
 **Dependencies Used:**
 - `next/image` - Optimized image component
@@ -109,7 +109,7 @@ interface ApprovalCardProps {
 ## Test Execution
 
 ```bash
-npx jest __tests__/components/approvals/ApprovalCard.test.tsx
+npx jest tests/components/approvals/ApprovalCard.test.tsx
 
 Test Suites: 1 passed, 1 total
 Tests:       21 passed, 21 total
@@ -120,7 +120,7 @@ Time:        0.74s
 
 ### Immediate (Remaining UI Components):
 
-1. **Create Approvals Page** (`/app/dashboard/approvals/page.tsx`)
+1. **Create Approvals Page** (`/src/app/dashboard/approvals/page.tsx`)
    - Fetch approvals from API
    - Display list of ApprovalCard components
    - Filter dropdown (All, Chores, Rewards)
@@ -131,7 +131,7 @@ Time:        0.74s
    - Loading state
    - Error handling
 
-2. **Create Approvals Widget** (`/components/dashboard/widgets/ApprovalsWidget.tsx`)
+2. **Create Approvals Widget** (`/src/components/dashboard/widgets/ApprovalsWidget.tsx`)
    - Display pending count badge
    - Show 3-5 high-priority items
    - Link to full approvals page

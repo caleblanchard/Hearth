@@ -242,7 +242,7 @@ async function main() {
     console.log('You can now login with:');
     console.log(`   Email: ${adminEmail}`);
     console.log(`   Password: (the password you just set)`);
-    console.log('\nAccess your application at:', process.env.NEXTAUTH_URL || 'http://localhost:3000');
+    console.log('\nAccess your application at:', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
 
   } catch (error) {
     console.error('❌ Error creating admin user:', error);

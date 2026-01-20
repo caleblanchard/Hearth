@@ -419,9 +419,9 @@ The Sick Mode feature was added via Prisma migration:
 ## Support
 
 For questions or issues:
-1. Check test files in `__tests__/integration/api/family/sick-mode/`
-2. Review API implementation in `app/api/family/sick-mode/*/route.ts`
-3. See auto-trigger logic in `app/api/health/temperature/route.ts`
+1. Check test files in `tests/integration/api/family/sick-mode/`
+2. Review API implementation in `src/app/api/family/sick-mode/*/route.ts`
+3. See auto-trigger logic in `src/app/api/health/temperature/route.ts`
 
 ---
 

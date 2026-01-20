@@ -719,7 +719,7 @@ export default async function XsPage() {
 ### Error: "Cannot find module '@/lib/database.types'"
 **Solution:** Generate types
 ```bash
-supabase gen types typescript --local > lib/database.types.ts
+supabase gen types typescript --local > src/lib/database.types.ts
 ```
 
 ### Error: "Cannot access cookies() in this context"
@@ -753,11 +753,11 @@ const member = await createMember({ family_id: family.id, ... })
 ### Documentation
 - `docs/PHASE_7_COMPLETE_SUMMARY.md` - Complete phase 7 summary
 - `docs/PHASE_7_5_DATA_EXPANSION_COMPLETE.md` - Data module details
-- `lib/test-utils/README.md` - Testing patterns
+- `src/lib/test-utils/README.md` - Testing patterns
 
 ### Examples
-- `__tests__/integration/api/kiosk/` - Example tests using data modules
-- `app/api/kiosk/` - Example API routes using data modules
+- `tests/integration/api/kiosk/` - Example tests using data modules
+- `src/app/api/kiosk/` - Example API routes using data modules
 
 ---
 

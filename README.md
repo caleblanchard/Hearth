@@ -35,7 +35,7 @@ A family-first household management system that helps run a home the same way an
 - **Frontend:** Next.js 14+ (App Router), React 18+, Tailwind CSS
 - **Backend:** Next.js API Routes / Server Actions
 - **Database:** PostgreSQL 16+
-- **ORM:** Prisma 7+
+- **Database Client:** Supabase (supabase-js)
 - **Authentication:** NextAuth.js v5
 - **Containerization:** Docker, Docker Compose
 - **Testing:** Jest, React Testing Library
@@ -77,7 +77,7 @@ supabase db push
 
 5. Generate Supabase types:
 ```bash
-supabase gen types typescript --local > lib/database.types.ts
+supabase gen types typescript --local > src/lib/database.types.ts
 ```
 
 6. Start the development server:
@@ -106,7 +106,7 @@ supabase db push
 
 4. Generate Supabase types:
 ```bash
-supabase gen types typescript --local > lib/database.types.ts
+supabase gen types typescript --local > src/lib/database.types.ts
 ```
 
 5. Start the development server:
@@ -118,12 +118,12 @@ npm run dev
 
 ### Start all services (development):
 ```bash
-docker-compose up -d
+docker-compose -f infra/docker/docker-compose.yml up -d
 ```
 
 ### Start only the database:
 ```bash
-docker-compose up -d hearth-db
+docker-compose -f infra/docker/docker-compose.yml up -d hearth-db
 ```
 
 ### Supabase Studio (database GUI):
@@ -132,22 +132,22 @@ Access Supabase Studio at [http://127.0.0.1:54323](http://127.0.0.1:54323) when 
 
 ### View logs:
 ```bash
-docker-compose logs -f hearth-app-dev
+docker-compose -f infra/docker/docker-compose.yml logs -f hearth-app-dev
 ```
 
 ### Stop all services:
 ```bash
-docker-compose down
+docker-compose -f infra/docker/docker-compose.yml down
 ```
 
 ### Stop and remove all data:
 ```bash
-docker-compose down -v
+docker-compose -f infra/docker/docker-compose.yml down -v
 ```
 
 ### Rebuild containers:
 ```bash
-docker-compose up -d --build
+docker-compose -f infra/docker/docker-compose.yml up -d --build
 ```
 
 ## Available Scripts
@@ -180,41 +180,31 @@ supabase db reset
 
 ### Generate Supabase types after schema changes:
 ```bash
-supabase gen types typescript --local > lib/database.types.ts
+supabase gen types typescript --local > src/lib/database.types.ts
 ```
 
 ## Project Structure
 
 ```
 hearth/
-├── app/                           # Next.js app directory
-│   ├── api/                      # API routes (150+ endpoints)
-│   ├── auth/                     # Authentication pages
-│   ├── dashboard/                # Dashboard pages (30+ modules)
-│   ├── kiosk/                    # Kiosk mode interface
-│   ├── onboarding/               # Onboarding flow
-│   └── layout.tsx                # Root layout
-├── components/                   # React components
-│   ├── auth/                     # Authentication components
-│   ├── dashboard/                # Dashboard components & widgets
-│   ├── kiosk/                    # Kiosk mode components
-│   └── ui/                       # Reusable UI components
-├── lib/                          # Utility functions
-│   ├── integrations/             # External integrations (Google Calendar, iCal)
-│   └── test-utils/               # Testing utilities
-├── supabase/                     # Supabase configuration and migrations
-├── hooks/                        # React hooks
-├── public/                       # Static files (PWA manifest, service worker)
-├── types/                        # TypeScript type definitions
-├── __tests__/                    # Test files
-│   ├── integration/              # API integration tests
-│   ├── components/               # Component tests
-│   └── unit/                     # Unit tests
-├── docs/                         # Documentation
-├── scripts/                      # Utility scripts
-├── docker-compose.yml            # Docker services configuration
-├── Dockerfile                    # Production Docker image
-├── Dockerfile.dev                 # Development Docker image
+├── src/                           # Application source
+│   ├── src/app/                       # Next.js app directory
+│   ├── src/components/                # React components
+│   ├── contexts/                  # React contexts
+│   ├── hooks/                     # React hooks
+│   ├── lib/                       # Utilities & helpers
+│   └── types/                     # TypeScript types
+├── tests/                         # Test files
+│   ├── integration/               # API integration tests
+│   ├── components/                # Component tests
+│   └── unit/                      # Unit tests
+├── infra/                         # Deployment & infrastructure
+│   ├── docker/                    # Dockerfiles & compose stacks
+│   └── nginx/                     # Nginx config & certs
+├── public/                        # Static files (PWA manifest, service worker)
+├── supabase/                      # Supabase configuration and migrations
+├── docs/                          # Documentation
+├── scripts/                       # Utility scripts
 └── .env.example                   # Environment variables template
 ```
 
@@ -222,9 +212,12 @@ hearth/
 
 See `.env.example` for all available environment variables. Key variables:
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `NEXTAUTH_URL` - Application URL
-- `NEXTAUTH_SECRET` - Secret for NextAuth.js (generate with `openssl rand -base64 32`)
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anon key
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (server only)
+- `TOKEN_ENCRYPTION_SECRET` - Encryption secret for OAuth tokens (generate with `openssl rand -base64 32`)
+- `NEXT_PUBLIC_APP_URL` - Application URL
+- `DATABASE_URL` - Optional PostgreSQL connection string (scripts/migrations)
 - `REDIS_URL` - Redis connection string (optional, falls back to in-memory rate limiting)
 - `GOOGLE_CLIENT_ID` - Google OAuth client ID (for Calendar sync)
 - `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
@@ -263,10 +256,10 @@ npx jest <path>             # Run specific test file
 
 ### Docker Production Build
 
-The project includes a multi-stage Dockerfile optimized for production:
+The project includes a multi-stage Dockerfile (`infra/docker/Dockerfile`) optimized for production:
 
 ```bash
-docker buildx build --platform linux/amd64 --file ./Dockerfile --tag hearth:latest .
+docker buildx build --platform linux/amd64 --file ./infra/docker/Dockerfile --tag hearth:latest .
 ```
 
 ### Environment Setup
@@ -282,7 +275,7 @@ docker buildx build --platform linux/amd64 --file ./Dockerfile --tag hearth:late
    supabase db push
    ```
 
-See `DEPLOYMENT.md` and `DEPLOYMENT-PORTAINER.md` for detailed deployment instructions.
+See `docs/DEPLOYMENT.md` and `docs/DEPLOYMENT-PORTAINER.md` for detailed deployment instructions.
 
 ## Development Status
 

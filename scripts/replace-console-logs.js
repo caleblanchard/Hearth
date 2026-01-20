@@ -4,16 +4,16 @@
  * Usage: node scripts/replace-console-logs.js
  * 
  * This script finds all console.log/error/warn/info/debug statements
- * in app/api and replaces them with appropriate logger calls.
+ * in src/app/api and replaces them with appropriate logger calls.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const API_DIR = path.join(__dirname, '../app/api');
+const API_DIR = path.join(__dirname, '../src/app/api');
 
-// Find all TypeScript files in app/api
+// Find all TypeScript files in src/app/api
 function findTsFiles(dir) {
   let results = [];
   const list = fs.readdirSync(dir);
@@ -120,7 +120,7 @@ function replaceConsoleLogs(filePath) {
 }
 
 // Main execution
-console.log('Finding TypeScript files in app/api...');
+console.log('Finding TypeScript files in src/app/api...');
 const files = findTsFiles(API_DIR);
 console.log(`Found ${files.length} files`);
 

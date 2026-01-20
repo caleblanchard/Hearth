@@ -15,45 +15,6 @@ global.Request = Request
 global.Response = Response
 global.Headers = Headers
 
-// Mock next-auth
-jest.mock('next-auth', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    handlers: { GET: jest.fn(), POST: jest.fn() },
-    auth: jest.fn(),
-    signIn: jest.fn(),
-    signOut: jest.fn(),
-  })),
-}))
-
-jest.mock('next-auth/react', () => ({
-  useSession: jest.fn(),
-  signIn: jest.fn(),
-  signOut: jest.fn(),
-}))
-
-jest.mock('next-auth/providers/credentials', () => ({
-  __esModule: true,
-  default: jest.fn((config) => ({
-    id: config?.id || 'credentials',
-    name: config?.name || 'Credentials',
-    type: 'credentials',
-    credentials: config?.credentials || {},
-    authorize: config?.authorize || jest.fn(),
-  })),
-}))
-
-jest.mock('@auth/core/providers/credentials', () => ({
-  __esModule: true,
-  default: jest.fn((config) => ({
-    id: config?.id || 'credentials',
-    name: config?.name || 'Credentials',
-    type: 'credentials',
-    credentials: config?.credentials || {},
-    authorize: config?.authorize || jest.fn(),
-  })),
-}))
-
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
@@ -88,10 +49,10 @@ jest.mock('next/server', () => ({
 }))
 
 jest.mock('@/lib/supabase/server', () => {
-  const { createPrismaSupabaseClient } = require('@/lib/test-utils/supabase-prisma-bridge')
+  const { createSupabaseMockClient } = require('@/lib/test-utils/supabase-db-bridge')
   const { getMockSession } = require('@/lib/test-utils/auth-mock')
 
-  const createClient = jest.fn(async () => createPrismaSupabaseClient())
+  const createClient = jest.fn(async () => createSupabaseMockClient())
 
   const getAuthContext = jest.fn(async () => {
     const session = getMockSession()
@@ -163,6 +124,11 @@ beforeEach(() => {
   const testName = expect.getState().currentTestName?.toLowerCase() || ''
   if (testName.includes('401') || testName.includes('unauth')) {
     setMockSession(null)
+    return
+  }
+
+  if (testName.includes('403 if not authenticated')) {
+    mockChildSession()
     return
   }
 

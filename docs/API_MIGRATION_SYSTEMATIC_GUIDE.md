@@ -279,17 +279,17 @@ await supabase.from('audit_logs').insert({
 
 ### Find All Routes Using Old Auth
 ```bash
-grep -r "from '@/lib/auth'" app/api --include="*.ts" -l
+grep -r "from '@/lib/auth'" src/app/api --include="*.ts" -l
 ```
 
 ### Find All Routes Using Prisma
 ```bash
-grep -r "import prisma" app/api --include="*.ts" -l
+grep -r "import prisma" src/app/api --include="*.ts" -l
 ```
 
 ### Find Routes Already Migrated
 ```bash
-grep -r "getAuthContext\|createClient" app/api --include="*.ts" -l
+grep -r "getAuthContext\|createClient" src/app/api --include="*.ts" -l
 ```
 
 ---

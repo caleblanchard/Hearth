@@ -58,17 +58,17 @@ The manifest must be accessible and valid.
 
 In Next.js standalone mode, ensure static files are properly copied.
 
-**Check Dockerfile:**
+**Check infra/docker/Dockerfile:**
 ```dockerfile
 # Public directory must be copied
-COPY --from=builder /app/public ./public
+COPY --from=builder /src/app/public ./public
 ```
 
 **Verify in container:**
 ```bash
-docker exec hearth-app ls -la /app/public
-docker exec hearth-app cat /app/public/manifest.json
-docker exec hearth-app cat /app/public/sw.js
+docker exec hearth-app ls -la /src/app/public
+docker exec hearth-app cat /src/app/public/manifest.json
+docker exec hearth-app cat /src/app/public/sw.js
 ```
 
 ### 5. Browser Console Debugging
@@ -98,7 +98,7 @@ Before deploying, verify:
 
 #### Issue: Service Worker Not Found (404)
 **Cause:** Service worker file not copied to production or wrong path
-**Fix:** Verify Dockerfile copies public directory and service worker is generated
+**Fix:** Verify infra/docker/Dockerfile copies public directory and service worker is generated
 
 #### Issue: Manifest Not Found (404)
 **Cause:** Manifest not accessible in standalone mode

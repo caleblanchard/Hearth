@@ -67,7 +67,7 @@ This message:
 - Tells you exactly how many widgets are hidden
 - Reminds you to scroll down
 
-**File:** `components/dashboard/DashboardCustomizer.tsx`
+**File:** `src/components/dashboard/DashboardCustomizer.tsx`
 
 ---
 
@@ -131,7 +131,7 @@ After refreshing your browser:
 1. `lib/dashboard/layout-utils.ts`
    - Changed `enabled: false` → `enabled: true` for new widgets
 
-2. `components/dashboard/DashboardCustomizer.tsx`
+2. `src/components/dashboard/DashboardCustomizer.tsx`
    - Added amber warning for hidden widgets
    - Improved user guidance
 

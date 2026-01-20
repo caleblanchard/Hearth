@@ -25,7 +25,7 @@ This project follows a strict Test-Driven Development methodology for all featur
 
 For each new feature, we follow this order:
 
-1. **Database Schema** - Define Prisma models and relationships
+1. **Database Schema** - Define Supabase SQL schema/migrations
 2. **API Integration Tests** - Write comprehensive tests for all API endpoints
 3. **API Implementation** - Implement routes to make tests pass
 4. **Component Tests** - Write tests for UI components
@@ -98,9 +98,9 @@ For each new feature, we follow this order:
   - Category mapping to enum values
 - **Implementation Files**:
   - `/lib/recipe-extractor.ts` - Schema.org extraction utility (300+ lines)
-  - `/app/api/meals/recipes/import/route.ts` - Import API endpoint
-  - `/app/dashboard/meals/recipes/new/page.tsx` - Recipe creation form (700+ lines)
-  - `/app/dashboard/meals/RecipesList.tsx` - Added "Add Recipe" button
+  - `/src/app/api/meals/recipes/import/route.ts` - Import API endpoint
+  - `/src/app/dashboard/meals/recipes/new/page.tsx` - Recipe creation form (700+ lines)
+  - `/src/app/dashboard/meals/RecipesList.tsx` - Added "Add Recipe" button
 
 ### Communication Board (Section 8.1)
 - **Status**: Complete
@@ -177,9 +177,9 @@ For each new feature, we follow this order:
 
 - **Test Framework**: Jest
 - **Component Testing**: React Testing Library
-- **API Testing**: Supertest-style with mocked Prisma client
+- **API Testing**: Supertest-style with mocked Supabase client
 - **Mocking**:
-  - `@/lib/test-utils/prisma-mock` for database mocking
+- `@/lib/test-utils/db-mock` for database mocking
   - `@/lib/test-utils/auth-mock` for session mocking
 
 ## Best Practices
@@ -200,10 +200,10 @@ For each new feature, we follow this order:
 npm test
 
 # Run tests for a specific feature
-npx jest __tests__/integration/api/communication --no-watchman --runInBand
+npx jest tests/integration/api/communication --no-watchman --runInBand
 
 # Run component tests
-npx jest __tests__/components/communication --no-watchman
+npx jest tests/components/communication --no-watchman
 
 # Run with coverage
 npm test -- --coverage

@@ -106,15 +106,15 @@ Ensure types are up to date:
 
 ```bash
 # Generate types from local database
-supabase gen types typescript --local > lib/database.types.ts
+supabase gen types typescript --local > src/lib/database.types.ts
 
 # Verify file was created (should be ~167KB)
-ls -lh lib/database.types.ts
+ls -lh src/lib/database.types.ts
 ```
 
 You should see:
 ```
--rw-r--r--  1 user  staff   167K Jan 10 XX:XX lib/database.types.ts
+-rw-r--r--  1 user  staff   167K Jan 10 XX:XX src/lib/database.types.ts
 ```
 
 ---
@@ -191,8 +191,8 @@ Verify everything works:
 npm test
 
 # Or run specific test suites
-npm test -- __tests__/integration/api/kiosk
-npm test -- __tests__/lib/test-utils
+npm test -- tests/integration/api/kiosk
+npm test -- src/lib/test-utils/__tests__
 ```
 
 **Expected Results:**
@@ -256,8 +256,8 @@ Create a test API route to verify data modules work:
 
 ```bash
 # Create test route
-mkdir -p app/api/test
-cat > app/api/test/route.ts << 'EOF'
+mkdir -p src/app/api/test
+cat > src/app/api/test/route.ts << 'EOF'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserFamilies } from '@/lib/data/families'
@@ -435,7 +435,7 @@ supabase start
 
 **Regenerate types:**
 ```bash
-supabase gen types typescript --local > lib/database.types.ts
+supabase gen types typescript --local > src/lib/database.types.ts
 ```
 
 ### Issue: "Auth user not found"
@@ -490,7 +490,7 @@ npm test
 
 **Check mocks are working:**
 ```bash
-npm test -- __tests__/lib/test-utils
+npm test -- src/lib/test-utils/__tests__
 ```
 
 ### Issue: "Port already in use"
@@ -520,7 +520,7 @@ npm run dev -- -p 3001
 Once setup is complete, verify these work:
 
 - [ ] Supabase is running (`supabase status`)
-- [ ] Types are generated (`lib/database.types.ts` exists)
+- [ ] Types are generated (`src/lib/database.types.ts` exists)
 - [ ] Tests pass (`npm test` = 100%)
 - [ ] Dev server starts (`npm run dev`)
 - [ ] Can sign up new user
@@ -558,7 +558,7 @@ supabase status             # Show running status
 supabase db reset           # Reset database (applies migrations)
 supabase db push            # Push local migrations to remote
 supabase migration list     # List all migrations
-supabase gen types typescript --local > lib/database.types.ts  # Generate types
+supabase gen types typescript --local > src/lib/database.types.ts  # Generate types
 
 # Next.js Commands
 npm run dev                 # Start dev server

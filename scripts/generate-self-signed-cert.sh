@@ -3,7 +3,7 @@
 # This will be replaced by Let's Encrypt certificate once Certbot runs
 
 DOMAIN="hearth.blanchardsd.com"
-CERT_DIR="./nginx/certs"
+CERT_DIR="./infra/nginx/certs"
 
 mkdir -p "$CERT_DIR"
 

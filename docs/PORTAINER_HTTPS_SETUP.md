@@ -47,7 +47,7 @@ We'll set up:
 
 ### 3.2 Add Docker Compose
 
-1. In the **Web editor** tab, paste the contents of `docker-compose.nginx.yml`
+1. In the **Web editor** tab, paste the contents of `infra/docker/docker-compose.nginx.yml`
 2. **Important:** Update the email address in the Certbot section:
    ```yaml
    --email your-email@blanchardsd.com \
@@ -60,19 +60,19 @@ Before deploying, you need to create the volume bind mounts. In Portainer:
 
 1. Click **Volumes** in the left sidebar
 2. For each volume, click **Add volume**:
-   - `nginx-config` (or use bind mount to `./nginx`)
-   - `nginx-certs` (or use bind mount to `./nginx/certs`)
-   - `nginx-logs` (or use bind mount to `./nginx/logs`)
+   - `nginx-config` (or use bind mount to `./infra/nginx`)
+   - `nginx-certs` (or use bind mount to `./infra/nginx/certs`)
+   - `nginx-logs` (or use bind mount to `./infra/nginx/logs`)
 
 **OR** use bind mounts (recommended for easier access):
 
 In the stack editor, update volumes to use bind mounts:
 ```yaml
 volumes:
-  - /path/to/your/repo/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-  - /path/to/your/repo/nginx/conf.d:/etc/nginx/conf.d:ro
-  - /path/to/your/repo/nginx/certs:/etc/nginx/certs:ro
-  - /path/to/your/repo/nginx/logs:/var/log/nginx
+  - /path/to/your/repo/infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  - /path/to/your/repo/infra/nginx/conf.d:/etc/nginx/conf.d:ro
+  - /path/to/your/repo/infra/nginx/certs:/etc/nginx/certs:ro
+  - /path/to/your/repo/infra/nginx/logs:/var/log/nginx
 ```
 
 ### 3.4 Deploy
@@ -86,7 +86,7 @@ volumes:
 ### 4.1 Edit Hearth Stack
 
 1. In Portainer, go to **Stacks**
-2. Find your Hearth stack (or create it from `docker-compose.prod.yml`)
+2. Find your Hearth stack (or create it from `infra/docker/docker-compose.prod.yml`)
 3. Click **Editor** (or **Duplicate/Edit**)
 
 ### 4.2 Update Configuration
@@ -229,7 +229,7 @@ Certificates auto-renew, but to manually renew:
    ```
 
 ### Update Nginx Configuration
-1. Edit files in `nginx/` directory
+1. Edit files in `infra/nginx/` directory
 2. In Portainer, go to `nginx-reverse-proxy` stack
 3. Click **Editor**
 4. Make changes

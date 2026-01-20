@@ -183,7 +183,7 @@ npx prisma generate
 
 ### E2E Tests (Playwright)
 
-See `__tests__/e2e/kiosk.spec.ts` for example tests:
+See `tests/e2e/kiosk.spec.ts` for example tests:
 - Navigation to kiosk mode
 - Member unlock flow
 - Widget display

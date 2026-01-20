@@ -77,7 +77,7 @@ Hearth - Generate Chore Instances
 
 **Address (URL):**
 ```
-https://YOUR-APP-NAME.vercel.app/api/cron/generate-chore-instances
+https://YOUR-APP-NAME.vercel.src/app/api/cron/generate-chore-instances
 ```
 *Replace `YOUR-APP-NAME` with your actual Vercel deployment URL*
 
@@ -140,7 +140,7 @@ Hearth - Distribute Allowances
 
 **Address (URL):**
 ```
-https://YOUR-APP-NAME.vercel.app/api/cron/distribute-allowances
+https://YOUR-APP-NAME.vercel.src/app/api/cron/distribute-allowances
 ```
 
 **Schedule:**
@@ -181,7 +181,7 @@ Hearth - Sync External Calendars
 
 **Address (URL):**
 ```
-https://YOUR-APP-NAME.vercel.app/api/cron/sync-external-calendars
+https://YOUR-APP-NAME.vercel.src/app/api/cron/sync-external-calendars
 ```
 
 **Schedule:**
@@ -434,15 +434,15 @@ HEARTH CRON CONFIGURATION
 CRON_SECRET: [your-secret-here]
 
 Job 1: Generate Chore Instances
-  URL: https://your-app.vercel.app/api/cron/generate-chore-instances
+  URL: https://your-app.vercel.src/app/api/cron/generate-chore-instances
   Schedule: Daily at 00:00
   
 Job 2: Distribute Allowances
-  URL: https://your-app.vercel.app/api/cron/distribute-allowances
+  URL: https://your-app.vercel.src/app/api/cron/distribute-allowances
   Schedule: Daily at 01:00
   
 Job 3: Sync External Calendars
-  URL: https://your-app.vercel.app/api/cron/sync-external-calendars
+  URL: https://your-app.vercel.src/app/api/cron/sync-external-calendars
   Schedule: Daily at 02:00
 
 cron-job.org account: [your-email]

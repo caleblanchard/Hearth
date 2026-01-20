@@ -29,7 +29,7 @@ This allows Nginx to start immediately with HTTPS (browser will show warning unt
 
 1. Portainer → **Stacks** → **Add stack**
 2. Name: `nginx-reverse-proxy`
-3. Paste contents of `docker-compose.nginx.yml`
+3. Paste contents of `infra/docker/docker-compose.nginx.yml`
 4. **IMPORTANT:** Update email in the file:
    ```yaml
    EMAIL="your-email@blanchardsd.com"
@@ -37,10 +37,10 @@ This allows Nginx to start immediately with HTTPS (browser will show warning unt
 5. For volumes, use bind mounts pointing to your repo:
    ```yaml
    volumes:
-     - /path/to/repo/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-     - /path/to/repo/nginx/conf.d:/etc/nginx/conf.d:ro
-     - /path/to/repo/nginx/certs:/etc/nginx/certs:rw
-     - /path/to/repo/nginx/logs:/var/log/nginx
+     - /path/to/repo/infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+     - /path/to/repo/infra/nginx/conf.d:/etc/nginx/conf.d:ro
+     - /path/to/repo/infra/nginx/certs:/etc/nginx/certs:rw
+     - /path/to/repo/infra/nginx/logs:/var/log/nginx
    ```
 6. Click **Deploy the stack**
 

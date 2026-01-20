@@ -409,7 +409,7 @@ export async function getChoreDefinitions(familyId: string) {
 ### Type Generation
 
 ```bash
-supabase gen types typescript --project-id <id> > lib/database.types.ts
+supabase gen types typescript --project-id <id> > src/lib/database.types.ts
 ```
 
 ---
@@ -418,7 +418,7 @@ supabase gen types typescript --project-id <id> > lib/database.types.ts
 
 ```
 hearth/
-├── app/
+├── src/app/
 │   ├── auth/
 │   │   ├── signin/page.tsx
 │   │   ├── signup/page.tsx
@@ -431,7 +431,7 @@ hearth/
 │   │   └── page.tsx
 │   └── api/
 │       └── kiosk/...
-├── components/
+├── src/components/
 ├── lib/
 │   ├── supabase/
 │   │   ├── server.ts
@@ -474,7 +474,7 @@ git tag pre-supabase-migration
 
 ### Phase 2: Test Infrastructure (Day 3-4)
 
-Create test mocks in `lib/test-utils/supabase-mock.ts`:
+Create test mocks in `src/lib/test-utils/supabase-mock.ts`:
 
 ```typescript
 import { jest } from '@jest/globals'

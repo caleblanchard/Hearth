@@ -15,7 +15,7 @@ Sick Mode is now fully integrated throughout the Hearth system. When activated f
 
 ### 1. Chores Module
 
-**Integration Point:** `/app/api/cron/generate-chore-instances/route.ts`
+**Integration Point:** `/src/app/api/cron/generate-chore-instances/route.ts`
 
 **Behavior:**
 - Chore instance generation checks if the assignee is in sick mode
@@ -40,7 +40,7 @@ if (inSickMode) {
 
 ### 2. Screen Time Module
 
-**Integration Point:** `/app/api/screentime/log/route.ts`
+**Integration Point:** `/src/app/api/screentime/log/route.ts`
 
 **Behavior:**
 - Screen time logging checks if tracking should be paused
@@ -68,7 +68,7 @@ if (pauseTracking) {
 
 ### 3. Routines Module
 
-**Integration Point:** `/app/api/routines/[id]/complete/route.ts`
+**Integration Point:** `/src/app/api/routines/[id]/complete/route.ts`
 
 **Behavior:**
 - Routine completion checks if the routine type should be skipped
@@ -148,7 +148,7 @@ const shouldMute = await shouldMuteNonEssentialNotifications(memberId);
 
 Shows active sick mode instances with ability to dismiss.
 
-**Location:** `/components/sick-mode/SickModeBanner.tsx`
+**Location:** `/src/components/sick-mode/SickModeBanner.tsx`
 
 **Usage:**
 ```tsx
@@ -176,7 +176,7 @@ function Dashboard() {
 
 Full configuration UI for sick mode settings.
 
-**Location:** `/components/sick-mode/SickModeSettings.tsx`
+**Location:** `/src/components/sick-mode/SickModeSettings.tsx`
 
 **Usage:**
 ```tsx
@@ -200,7 +200,7 @@ function SettingsPage() {
 
 Allows starting sick mode from health event views.
 
-**Location:** `/components/sick-mode/StartSickModeButton.tsx`
+**Location:** `/src/components/sick-mode/StartSickModeButton.tsx`
 
 **Usage:**
 ```tsx
@@ -282,11 +282,11 @@ When testing modules that integrate with sick mode:
 
 ```typescript
 // In your test file
-import { prismaMock } from '@/lib/test-utils/prisma-mock';
+import { dbMock } from '@/lib/test-utils/db-mock';
 
 it('should skip operation when member in sick mode', async () => {
   // Mock sick mode as active
-  prismaMock.sickModeInstance.findFirst.mockResolvedValue({
+  dbMock.sickModeInstance.findFirst.mockResolvedValue({
     id: 'sick-mode-1',
     memberId: 'child-123',
     isActive: true,
@@ -294,7 +294,7 @@ it('should skip operation when member in sick mode', async () => {
   } as any);
 
   // Mock settings if needed
-  prismaMock.sickModeSettings.findUnique.mockResolvedValue({
+  dbMock.sickModeSettings.findUnique.mockResolvedValue({
     pauseChores: true, // or other relevant setting
   } as any);
 
@@ -449,15 +449,15 @@ Total: 33+ tests passing
 
 **New Files:**
 - `/lib/notifications.ts` - Centralized notification helper
-- `/app/api/cron/sick-mode-auto-disable/route.ts` - Auto-disable cron job
-- `/app/dashboard/settings/sick-mode/page.tsx` - Settings page
-- `/components/sick-mode/` - All UI components integrated
-- `/__tests__/integration/sick-mode/` - Comprehensive test suite
+- `/src/app/api/cron/sick-mode-auto-disable/route.ts` - Auto-disable cron job
+- `/src/app/dashboard/settings/sick-mode/page.tsx` - Settings page
+- `/src/components/sick-mode/` - All UI components integrated
+- `/tests/integration/sick-mode/` - Comprehensive test suite
 
 **Modified Files:**
-- `/components/dashboard/DashboardContent.tsx` - Added SickModeBanner
-- `/app/dashboard/health/[id]/page.tsx` - Added StartSickModeButton
-- `/app/api/screentime/stats/route.ts` - Added bonus calculation
+- `/src/components/dashboard/DashboardContent.tsx` - Added SickModeBanner
+- `/src/app/dashboard/health/[id]/page.tsx` - Added StartSickModeButton
+- `/src/app/api/screentime/stats/route.ts` - Added bonus calculation
 
 ### Production Readiness
 

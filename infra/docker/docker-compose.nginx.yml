@@ -1,0 +1,46 @@
+version: '3.9'
+
+services:
+  nginx-reverse-proxy:
+    image: nginx:alpine
+    container_name: nginx-reverse-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/conf.d:/etc/nginx/conf.d:ro
+      - ../nginx/certs:/etc/nginx/certs:rw
+      - ../nginx/logs:/var/log/nginx
+      - certbot-www:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+    networks:
+      - hearth-network
+    # Note: depends_on removed - nginx can start without certbot
+    # Certbot will generate certs in background
+    command: >
+      sh -c "nginx -g 'daemon off;'"
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    restart: unless-stopped
+    volumes:
+      - certbot-www:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+      - ../nginx/certs:/etc/nginx/certs
+      - ../../scripts/certbot-init.sh:/usr/local/bin/certbot-init.sh:ro
+    entrypoint: /bin/sh
+    command: /usr/local/bin/certbot-init.sh
+
+volumes:
+  certbot-www:
+    name: certbot-www
+  certbot-certs:
+    name: certbot-certs
+
+networks:
+  hearth-network:
+    name: hearth-network
+    external: true

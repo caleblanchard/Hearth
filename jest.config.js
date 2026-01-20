@@ -8,7 +8,8 @@ const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^lucide-react$': '<rootDir>/tests/__mocks__/lucide-react.js',
   },
   testMatch: [
     '**/__tests__/**/*.(test|spec).[jt]s?(x)',
@@ -18,17 +19,16 @@ const customJestConfig = {
     '/node_modules/',
     '/.next/',
     '/coverage/',
-    '/__tests__/e2e/', // Exclude E2E tests (require Playwright)
+    '/tests/e2e/', // Exclude E2E tests (require Playwright)
   ],
   collectCoverageFrom: [
-    'app/**/*.{js,jsx,ts,tsx}',
-    'lib/**/*.{js,jsx,ts,tsx}',
-    'components/**/*.{js,jsx,ts,tsx}',
+    'src/**/*.{js,jsx,ts,tsx}',
     '!**/*.d.ts',
+    '!**/__tests__/**',
     '!**/node_modules/**',
     '!**/.next/**',
     '!**/coverage/**',
-    '!**/app/generated/**',
+    '!**/src/app/generated/**',
   ],
   coverageThreshold: {
     global: {

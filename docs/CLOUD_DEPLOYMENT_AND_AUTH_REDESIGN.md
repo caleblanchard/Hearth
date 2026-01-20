@@ -277,7 +277,7 @@ For self-hosted deployments, security is different:
 **Self-Hosted Security Options:**
 
 ```yaml
-# docker-compose.yml options for self-hosted security
+# infra/docker/docker-compose.yml options for self-hosted security
 environment:
   # Strictest (recommended) - same as cloud
   ALLOW_CHILD_PIN_LOGIN: "false"
@@ -291,7 +291,7 @@ environment:
 
 ### Docker Compose for Self-Hosted
 
-**File:** `/docker-compose.yml` (updated)
+**File:** `/infra/docker/docker-compose.yml` (updated)
 
 ```yaml
 version: '3.8'
@@ -300,7 +300,7 @@ services:
   hearth-app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: infra/docker/Dockerfile
     ports:
       - "3000:3000"
     environment:
@@ -403,7 +403,7 @@ Credentials({ id: 'parent-login' })  // Email + password for parents
 Credentials({ id: 'child-pin' })      // Member ID + PIN for children
 ```
 
-**Current Login Flow (`/app/auth/signin/page.tsx`):**
+**Current Login Flow (`/src/app/auth/signin/page.tsx`):**
 1. User selects "Parent Login" or "Child Login"
 2. Parent: Email + password authentication
 3. Child: Select avatar → Enter 4-6 digit PIN
@@ -440,9 +440,9 @@ model FamilyMember {
 ### Current Kiosk Mode
 
 **Files:**
-- `/app/kiosk/page.tsx` - Kiosk route (requires parent auth first)
-- `/components/kiosk/KioskPinModal.tsx` - PIN entry for member switching
-- `/components/kiosk/KioskLayout.tsx` - Kiosk UI wrapper
+- `/src/app/kiosk/page.tsx` - Kiosk route (requires parent auth first)
+- `/src/components/kiosk/KioskPinModal.tsx` - PIN entry for member switching
+- `/src/components/kiosk/KioskLayout.tsx` - Kiosk UI wrapper
 
 **Current Kiosk Flow:**
 1. Parent navigates to `/kiosk` (must be authenticated as PARENT)
@@ -700,7 +700,7 @@ Dashboard  Has default family?
 
 ### Family Picker Component
 
-**New File:** `/components/auth/FamilyPicker.tsx`
+**New File:** `/src/components/auth/FamilyPicker.tsx`
 
 ```typescript
 interface FamilyPickerProps {
@@ -724,7 +724,7 @@ interface FamilyPickerProps {
 
 ### Family Switching While Logged In
 
-**New Component:** `/components/dashboard/FamilySwitcher.tsx`
+**New Component:** `/src/components/dashboard/FamilySwitcher.tsx`
 
 Location: Header or sidebar dropdown
 
@@ -866,7 +866,7 @@ pin String? // Hashed, for kiosk mode - available to ALL members
 
 ### Updated KioskPinModal
 
-**File:** `/components/kiosk/KioskPinModal.tsx`
+**File:** `/src/components/kiosk/KioskPinModal.tsx`
 
 **Changes:**
 - Fetch ALL family members (not just children)
@@ -1070,7 +1070,7 @@ UPSTASH_REDIS_REST_TOKEN=[token]
 
 **Route:** `/` (root)
 
-**New File:** `/app/page.tsx` (replace current redirect)
+**New File:** `/src/app/page.tsx` (replace current redirect)
 
 **Sections:**
 
@@ -1204,7 +1204,7 @@ interface SignupRequest {
 ### Authentication APIs
 
 **Remove:**
-- NextAuth route handler (`/app/api/auth/[...nextauth]/route.ts`)
+- NextAuth route handler (`/src/app/api/auth/[...nextauth]/route.ts`)
 
 **Add:**
 - `/api/auth/signup` - New user registration
@@ -1316,7 +1316,7 @@ if (!member.pin) {
 
 ### Login Page Redesign
 
-**File:** `/app/auth/signin/page.tsx`
+**File:** `/src/app/auth/signin/page.tsx`
 
 **Remove:**
 - "Child Login" button and `ChildPinLogin` component
@@ -1355,7 +1355,7 @@ if (!member.pin) {
 
 ### Family Picker UI
 
-**New File:** `/app/auth/select-family/page.tsx`
+**New File:** `/src/app/auth/select-family/page.tsx`
 
 Shown after login if user has multiple families and no default:
 
@@ -1379,7 +1379,7 @@ Shown after login if user has multiple families and no default:
 
 ### Dashboard Header Update
 
-**File:** `/components/dashboard/TopBar.tsx`
+**File:** `/src/components/dashboard/TopBar.tsx`
 
 Add family switcher dropdown:
 
@@ -1399,7 +1399,7 @@ Add family switcher dropdown:
 
 ### Profile Page Update
 
-**File:** `/app/dashboard/profile/page.tsx`
+**File:** `/src/app/dashboard/profile/page.tsx`
 
 Add PIN management section for kiosk:
 
@@ -1422,7 +1422,7 @@ Add PIN management section for kiosk:
 
 ### Family Management Update
 
-**File:** `/app/dashboard/family/page.tsx`
+**File:** `/src/app/dashboard/family/page.tsx`
 
 Update member cards to show:
 - Whether member has email (can login independently)
