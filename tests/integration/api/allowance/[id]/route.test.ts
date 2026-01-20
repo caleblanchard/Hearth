@@ -5,7 +5,7 @@ import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock'
 import { NextRequest } from 'next/server'
 import { GET, PUT, PATCH, DELETE } from '@/app/api/allowance/[id]/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
-import { Frequency } from '@/app/generated/prisma'
+import { Frequency } from '@/lib/enums'
 
 describe('/api/allowance/[id]', () => {
   beforeEach(() => {

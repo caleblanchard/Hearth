@@ -21,7 +21,7 @@ jest.mock('@/lib/budget-tracker', () => ({
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/rewards/[id]/redeem/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { RewardStatus, RedemptionStatus } from '@/app/generated/prisma'
+import { RewardStatus, RedemptionStatus } from '@/lib/enums'
 
 const { checkBudgetStatus } = require('@/lib/budget-tracker')
 

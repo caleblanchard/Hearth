@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { hash } from 'bcrypt';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateSampleData } from '@/lib/sample-data-generator';
-import { ModuleId } from '@/app/generated/prisma';
+import { ModuleId } from '@/lib/enums';
 
 async function main() {
   console.log('🌱 Seeding database...');

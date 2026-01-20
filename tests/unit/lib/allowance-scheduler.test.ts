@@ -1,4 +1,4 @@
-import { Frequency } from '@/app/generated/prisma'
+import { Frequency } from '@/lib/enums'
 import {
   getNextAllowanceDate,
   shouldProcessAllowance,

@@ -5,7 +5,7 @@ import {
   getSpendingByCategory,
   getTrends,
 } from '@/lib/financial-analytics'
-import { CreditTransactionType, SpendingCategory } from '@/app/generated/prisma'
+import { CreditTransactionType, SpendingCategory } from '@/lib/enums'
 import { mockCurrentDate, restoreRealTimers } from '@/lib/test-utils/date-helpers'
 
 describe('financial-analytics', () => {

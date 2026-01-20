@@ -4,7 +4,7 @@ import {
   checkBudgetStatus,
   shouldWarnUser,
 } from '@/lib/budget-tracker'
-import { SpendingCategory } from '@/app/generated/prisma'
+import { SpendingCategory } from '@/lib/enums'
 import { mockCurrentDate, restoreRealTimers } from '@/lib/test-utils/date-helpers'
 
 describe('budget-tracker', () => {

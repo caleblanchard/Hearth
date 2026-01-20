@@ -79,7 +79,7 @@ jest.mock('@/lib/request-validation', () => ({
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/screentime/log/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { ScreenTimeTransactionType } from '@/app/generated/prisma'
+import { ScreenTimeTransactionType } from '@/lib/enums'
 
 const { wouldExceedAllowance, calculateRemainingTime, getWeekStart } = require('@/lib/screentime-utils')
 

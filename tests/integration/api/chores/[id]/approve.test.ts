@@ -21,7 +21,7 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/chores/[id]/approve/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
-import { ChoreStatus } from '@/app/generated/prisma'
+import { ChoreStatus } from '@/lib/enums'
 
 const { checkAndAwardAchievement, updateStreak } = require('@/lib/achievements')
 

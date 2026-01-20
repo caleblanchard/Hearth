@@ -22,7 +22,7 @@ jest.mock('@/lib/financial-analytics', () => ({
 import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/financial/analytics/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { CreditTransactionType, SpendingCategory } from '@/app/generated/prisma'
+import { CreditTransactionType, SpendingCategory } from '@/lib/enums'
 
 const {
   calculateAnalytics,

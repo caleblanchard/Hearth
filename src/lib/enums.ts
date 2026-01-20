@@ -79,4 +79,3 @@ export type TodoPriority = Database['public']['Enums']['todo_priority']
 
 export const TodoStatus = createEnum(Constants.public.Enums.todo_status)
 export type TodoStatus = Database['public']['Enums']['todo_status']
-

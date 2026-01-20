@@ -21,7 +21,7 @@ jest.mock('@/lib/screentime-utils', () => ({
 import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/dashboard/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { ChoreStatus, TodoStatus } from '@/app/generated/prisma'
+import { ChoreStatus, TodoStatus } from '@/lib/enums'
 
 const { calculateRemainingTime } = require('@/lib/screentime-utils')
 

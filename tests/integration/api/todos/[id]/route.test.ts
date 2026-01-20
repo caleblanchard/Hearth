@@ -15,7 +15,7 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { PATCH, DELETE } from '@/app/api/todos/[id]/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { TodoStatus } from '@/app/generated/prisma'
+import { TodoStatus } from '@/lib/enums'
 
 describe('/api/todos/[id]', () => {
   beforeEach(() => {

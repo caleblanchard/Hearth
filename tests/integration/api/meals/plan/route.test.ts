@@ -10,7 +10,7 @@ jest.mock('@/lib/auth', () => ({
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/meals/plan/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
-import { MealType } from '@/app/generated/prisma';
+import { MealType } from '@/lib/enums';
 
 describe('GET /api/meals/plan', () => {
   beforeEach(() => {

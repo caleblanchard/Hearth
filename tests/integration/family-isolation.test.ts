@@ -18,7 +18,7 @@ import { GET as getRewards } from '@/app/api/rewards/route'
 import { GET as getTransactions } from '@/app/api/financial/transactions/route'
 import { GET as getSavingsGoals } from '@/app/api/financial/savings-goals/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { RewardStatus } from '@/app/generated/prisma'
+import { RewardStatus } from '@/lib/enums'
 
 describe('Family Isolation Tests - Data Security', () => {
   beforeEach(() => {

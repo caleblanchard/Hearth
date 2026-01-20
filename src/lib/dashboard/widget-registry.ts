@@ -1,4 +1,4 @@
-import { ModuleId, Role } from '@/app/generated/prisma';
+import { ModuleId, Role } from '@/lib/enums';
 import { WidgetMetadata, WidgetId } from '@/types/dashboard';
 
 /**

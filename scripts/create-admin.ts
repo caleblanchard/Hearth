@@ -9,7 +9,7 @@
 import 'dotenv/config';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { hash } from 'bcrypt';
-import { ModuleId } from '@/app/generated/prisma';
+import { ModuleId } from '@/lib/enums';
 import * as readline from 'readline';
 
 const adminClient = createAdminClient();

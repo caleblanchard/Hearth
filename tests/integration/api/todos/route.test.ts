@@ -15,7 +15,7 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { GET, POST } from '@/app/api/todos/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
-import { TodoStatus } from '@/app/generated/prisma'
+import { TodoStatus } from '@/lib/enums'
 
 const { logger } = require('@/lib/logger')
 

@@ -7,7 +7,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/database.types';
-import { ModuleId, Difficulty, TodoPriority } from '@/app/generated/prisma';
+import { ModuleId, Difficulty, TodoPriority } from '@/lib/enums';
 
 interface SampleDataOptions {
   familyId: string;

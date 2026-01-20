@@ -14,7 +14,7 @@ jest.mock('@/lib/logger', () => ({
 // NOW import the route after mocks are set up
 import { GET } from '@/app/api/screentime/family/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { Role } from '@/app/generated/prisma'
+import { Role } from '@/lib/enums'
 
 describe('/api/screentime/family', () => {
   beforeEach(() => {

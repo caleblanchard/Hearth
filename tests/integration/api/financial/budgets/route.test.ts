@@ -15,7 +15,7 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { GET, POST } from '@/app/api/financial/budgets/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
-import { SpendingCategory } from '@/app/generated/prisma'
+import { SpendingCategory } from '@/lib/enums'
 
 describe('/api/financial/budgets', () => {
   beforeEach(() => {

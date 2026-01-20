@@ -6,7 +6,7 @@
  */
 
 import { sendPushNotificationToUser, sendPushNotificationToFamily } from '@/lib/push-notifications';
-import { NotificationType } from '@/app/generated/prisma';
+import { NotificationType } from '@/lib/enums';
 
 /**
  * Example 1: Send notification when a leftover is expiring

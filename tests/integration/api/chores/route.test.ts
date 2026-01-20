@@ -15,7 +15,7 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { GET, POST } from '@/app/api/chores/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
-import { Frequency, AssignmentType, Difficulty } from '@/app/generated/prisma'
+import { Frequency, AssignmentType, Difficulty } from '@/lib/enums'
 
 describe('/api/chores', () => {
   beforeEach(() => {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { calculateAnalytics, getSpendingByCategory, getTrends } from '@/lib/financial-analytics';
-import { CreditTransactionType, SpendingCategory } from '@/app/generated/prisma';
+import { CreditTransactionType, SpendingCategory } from '@/lib/enums';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';

@@ -1,4 +1,4 @@
-import { CreditTransactionType, SpendingCategory } from '@/app/generated/prisma'
+import { CreditTransactionType, SpendingCategory } from '@/lib/enums'
 
 export interface Transaction {
   id: string

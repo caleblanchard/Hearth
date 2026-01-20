@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getAuthContext, isParentInFamily } from '@/lib/supabase/server';
-import { CreditTransactionType, SpendingCategory } from '@/app/generated/prisma';
+import { CreditTransactionType, SpendingCategory } from '@/lib/enums';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';

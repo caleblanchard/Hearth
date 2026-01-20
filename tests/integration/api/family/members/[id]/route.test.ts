@@ -20,7 +20,7 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { PATCH, DELETE } from '@/app/api/family/members/[id]/route'
 import { mockParentSession } from '@/lib/test-utils/auth-mock'
-import { Role } from '@/app/generated/prisma'
+import { Role } from '@/lib/enums'
 import { BCRYPT_ROUNDS } from '@/lib/constants'
 
 const { hash } = require('bcrypt')

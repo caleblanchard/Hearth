@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
-import { TodoStatus } from '@/app/generated/prisma';
+import { TodoStatus } from '@/lib/enums';
 import { dbMock } from '@/lib/test-utils/db-mock';
 
 const useMockDb = process.env.NODE_ENV === 'test';

@@ -10,7 +10,7 @@ jest.mock('@/lib/auth', () => ({
 import { NextRequest } from 'next/server';
 import { GET, PATCH, DELETE } from '@/app/api/routines/[id]/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
-import { RoutineType } from '@/app/generated/prisma';
+import { RoutineType } from '@/lib/enums';
 
 describe('GET /api/routines/[id]', () => {
   beforeEach(() => {

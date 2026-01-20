@@ -15,7 +15,7 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/screentime/adjust/route'
 import { mockParentSession } from '@/lib/test-utils/auth-mock'
-import { ScreenTimeTransactionType } from '@/app/generated/prisma'
+import { ScreenTimeTransactionType } from '@/lib/enums'
 
 describe('/api/screentime/adjust', () => {
   beforeEach(() => {

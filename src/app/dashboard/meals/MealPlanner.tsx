@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { MealType } from '@/app/generated/prisma';
+import { MealType } from '@/lib/enums';
 import RecipeAutocomplete from '@/components/meals/RecipeAutocomplete';
 import { PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 

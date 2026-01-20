@@ -15,7 +15,7 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { GET, PATCH } from '@/app/api/family/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { Role } from '@/app/generated/prisma'
+import { Role } from '@/lib/enums'
 
 describe('/api/family', () => {
   beforeEach(() => {

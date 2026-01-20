@@ -14,7 +14,7 @@ jest.mock('@/lib/logger', () => ({
 // NOW import the route after mocks are set up
 import { GET } from '@/app/api/screentime/grace/pending/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { RepaymentStatus } from '@/app/generated/prisma'
+import { RepaymentStatus } from '@/lib/enums'
 
 describe('/api/screentime/grace/pending', () => {
   beforeEach(() => {

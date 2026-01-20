@@ -15,7 +15,7 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/reports/family/route'
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { ChoreStatus, TodoStatus, CreditTransactionType, ScreenTimeTransactionType } from '@/app/generated/prisma'
+import { ChoreStatus, TodoStatus, CreditTransactionType, ScreenTimeTransactionType } from '@/lib/enums'
 
 describe('/api/reports/family', () => {
   beforeEach(() => {

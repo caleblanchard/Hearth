@@ -1,4 +1,4 @@
-import { SpendingCategory } from '@/app/generated/prisma'
+import { SpendingCategory } from '@/lib/enums'
 
 export interface Budget {
   id: string

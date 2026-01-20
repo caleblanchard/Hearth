@@ -6,7 +6,7 @@ import {
   processGraceRepayment,
   getOrCreateGraceSettings,
 } from '@/lib/screentime-grace';
-import { GraceRepaymentMode, RepaymentStatus } from '@/app/generated/prisma';
+import { GraceRepaymentMode, RepaymentStatus } from '@/lib/enums';
 
 describe('screentime-grace', () => {
   beforeEach(() => {

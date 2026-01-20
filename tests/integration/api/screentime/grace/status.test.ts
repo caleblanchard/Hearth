@@ -10,7 +10,7 @@ jest.mock('@/lib/auth', () => ({
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/screentime/grace/status/route';
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
-import { GraceRepaymentMode } from '@/app/generated/prisma';
+import { GraceRepaymentMode } from '@/lib/enums';
 
 describe('GET /api/screentime/grace/status', () => {
   beforeEach(() => {

@@ -4,7 +4,7 @@ import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock'
 // NOW import after mocks
 import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/cron/distribute-allowances/route'
-import { Frequency } from '@/app/generated/prisma'
+import { Frequency } from '@/lib/enums'
 import { mockCurrentDate, restoreRealTimers } from '@/lib/test-utils/date-helpers'
 
 describe('/api/cron/distribute-allowances', () => {

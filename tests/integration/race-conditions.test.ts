@@ -22,7 +22,7 @@ import { NextRequest } from 'next/server'
 import { POST as completeChore } from '@/app/api/chores/[id]/complete/route'
 import { POST as redeemReward } from '@/app/api/rewards/[id]/redeem/route'
 import { mockChildSession } from '@/lib/test-utils/auth-mock'
-import { ChoreStatus, RewardStatus, RedemptionStatus } from '@/app/generated/prisma'
+import { ChoreStatus, RewardStatus, RedemptionStatus } from '@/lib/enums'
 
 const { checkBudgetStatus } = require('@/lib/budget-tracker')
 

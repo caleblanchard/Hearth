@@ -21,7 +21,7 @@ import { NextRequest } from 'next/server';
 import { GET, PUT } from '@/app/api/dashboard/layout/route';
 import { POST } from '@/app/api/dashboard/layout/reset/route';
 import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
-import { ModuleId, Role } from '@/app/generated/prisma';
+import { ModuleId, Role } from '@/lib/enums';
 
 describe('/api/dashboard/layout', () => {
   beforeEach(() => {

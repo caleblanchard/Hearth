@@ -1,4 +1,4 @@
-import { Frequency } from '@/app/generated/prisma'
+import { Frequency } from '@/lib/enums'
 import type { Database } from '@/lib/database.types'
 
 type AllowanceScheduleRow = Database['public']['Tables']['allowance_schedules']['Row']

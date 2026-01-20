@@ -1,4 +1,4 @@
-import type { Frequency } from '@/app/generated/prisma'
+import type { Frequency } from '@/lib/enums'
 
 export interface TestAllowanceSchedule {
   id: string
