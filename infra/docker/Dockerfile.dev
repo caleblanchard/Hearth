@@ -14,12 +14,6 @@ COPY package.json package-lock.json* ./
 # Install all dependencies (including dev dependencies)
 RUN npm ci
 
-# Copy Prisma schema
-COPY prisma ./prisma/
-
-# Generate Prisma Client
-RUN npx prisma generate
-
 # Expose ports
 EXPOSE 3000 5555
 

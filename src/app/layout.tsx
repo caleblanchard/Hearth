@@ -8,6 +8,9 @@ import { ToastProvider } from '@/components/ui/Toast';
 export const metadata: Metadata = {
   title: 'Hearth - Household ERP',
   description: 'A family-first household management system',
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  ),
   manifest: '/manifest.json',
   icons: {
     icon: [

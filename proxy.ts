@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { apiRateLimiter, authRateLimiter, cronRateLimiter, getClientIdentifier } from '@/lib/rate-limit-redis';
+import {
+  apiRateLimiter,
+  authRateLimiter,
+  cronRateLimiter,
+  getClientIdentifier,
+} from '@/lib/rate-limit';
 import { MAX_REQUEST_SIZE_BYTES } from '@/lib/constants';
-import { logger } from '@/lib/logger';
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -94,14 +98,16 @@ export async function proxy(request: NextRequest) {
       .limit(1);
 
     if (error) {
-      logger.error('Error checking family membership in middleware:', error);
+      console.error('Error checking family membership in middleware:', error);
     }
 
     const hasFamilies = familyMembers && familyMembers.length > 0;
     
     // Debug logging
     if (pathname === '/dashboard' || pathname === '/onboarding') {
-      logger.info(`Middleware check for ${pathname}: user=${user.id}, hasFamilies=${hasFamilies}, familyCount=${familyMembers?.length || 0}`);
+      console.info(
+        `Middleware check for ${pathname}: user=${user.id}, hasFamilies=${hasFamilies}, familyCount=${familyMembers?.length || 0}`
+      );
     }
 
     // User accessing dashboard without a family - redirect to onboarding
@@ -137,7 +143,7 @@ export async function proxy(request: NextRequest) {
     if (contentLength) {
       const size = parseInt(contentLength, 10);
       if (!isNaN(size) && size > MAX_REQUEST_SIZE_BYTES) {
-        logger.warn('Request size exceeded in middleware', {
+        console.warn('Request size exceeded in middleware', {
           size,
           maxSize: MAX_REQUEST_SIZE_BYTES,
           path: pathname,
