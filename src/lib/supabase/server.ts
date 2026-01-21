@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/lib/database.types'
+import { hashSecret } from '@/lib/kiosk-auth'
+import { createServiceClient } from '@/lib/supabase/service'
+import { headers as nextHeaders } from 'next/headers'
 
 /**
  * Create a Supabase client for use in Server Components, Server Actions, and Route Handlers
@@ -74,7 +77,57 @@ export async function getAuthContext() {
   const supabase = await createClient()
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (!user || authError) return null
+  if (!user || authError) {
+  // Fallback: kiosk child session via header or cookie
+  try {
+    const headersList = await nextHeaders()
+    const childToken =
+      headersList.get('x-kiosk-child') ||
+      headersList.get('cookie')?.split(';').find((c) => c.trim().startsWith('kiosk_child_token='))?.split('=')[1]
+    if (childToken) {
+      const service = createServiceClient()
+      const tokenHash = hashSecret(childToken)
+      const { data: session } = await service
+        .from('kiosk_child_sessions')
+          .select('id,member_id,expires_at,kiosk_device_secrets(family_id)')
+          .eq('session_token_hash', tokenHash)
+          .is('ended_at', null)
+          .maybeSingle()
+        if (session) {
+          const expiresAt = new Date(session.expires_at)
+          if (expiresAt.getTime() > Date.now()) {
+            return {
+              user: {
+                id: session.member_id,
+                role: 'CHILD',
+                familyId: (session as any).kiosk_device_secrets.family_id,
+                name: 'Kiosk User',
+              },
+              memberships: [
+                {
+                  id: session.member_id,
+                  family_id: (session as any).kiosk_device_secrets.family_id,
+                  name: 'Kiosk User',
+                  role: 'CHILD',
+                  families: {
+                    id: (session as any).kiosk_device_secrets.family_id,
+                    name: '',
+                  },
+                },
+              ],
+              defaultFamilyId: (session as any).kiosk_device_secrets.family_id,
+              defaultMemberId: session.member_id,
+              activeFamilyId: (session as any).kiosk_device_secrets.family_id,
+              activeMemberId: session.member_id,
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // ignore and continue unauthenticated
+    }
+    return null
+  }
 
   // Get all family memberships for this user
   const { data: memberships } = await supabase
@@ -100,8 +153,7 @@ export async function getAuthContext() {
   let activeMemberId: string | null = null;
   
   try {
-    const { headers } = await import('next/headers');
-    const headersList = await headers();
+    const headersList = await nextHeaders();
     const requestedFamilyId = headersList.get('x-active-family-id');
     
     if (requestedFamilyId && memberships) {

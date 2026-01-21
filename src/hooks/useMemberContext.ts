@@ -36,13 +36,14 @@ export function useMemberContext(): UseMemberContextResult {
   const [member, setMember] = useState<MemberContext | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const kioskChild = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null
 
   useEffect(() => {
     if (authLoading || familyLoading) {
       return // Wait for auth and family context to finish loading
     }
 
-    if (!user) {
+    if (!user && !kioskChild) {
       setMember(null)
       setLoading(false)
       return
@@ -50,8 +51,71 @@ export function useMemberContext(): UseMemberContextResult {
 
     async function fetchMember() {
       try {
+        const headers: Record<string, string> = {}
+        if (kioskChild) {
+          headers['X-Kiosk-Child'] = kioskChild
+        }
+
+        // Kiosk child sessions fetch via API endpoints that honor kiosk headers
+        if (kioskChild) {
+          const [roleRes, membersRes] = await Promise.all([
+            fetch('/api/user/role', { headers }),
+            fetch('/api/family/members', { headers }),
+          ])
+
+          if (!roleRes.ok) {
+            throw new Error(`Failed to fetch kiosk role: ${roleRes.status}`)
+          }
+          if (!membersRes.ok) {
+            throw new Error(`Failed to fetch kiosk members: ${membersRes.status}`)
+          }
+
+          const roleData = await roleRes.json()
+          const membersData = await membersRes.json()
+
+          const current = membersData.members?.find(
+            (m: any) => m.id === roleData.memberId
+          )
+
+          if (current) {
+            const mapped: MemberContext = {
+              id: current.id,
+              name: current.name,
+              email: current.email ?? null,
+              role: roleData.role || current.role,
+              family_id: roleData.familyId || current.familyId,
+              avatar_url: current.avatarUrl ?? null,
+              birth_date: current.birthDate ?? null,
+              is_active: current.isActive,
+            }
+            setMember(mapped)
+            setActiveFamilyId(roleData.familyId || current.familyId)
+            setError(null)
+          } else {
+            // Fallback: synthesize minimal kiosk member so dependent UI can render
+            if (roleData.memberId && roleData.familyId) {
+              setMember({
+                id: roleData.memberId,
+                name: 'Kiosk Member',
+                email: null,
+                role: roleData.role || 'CHILD',
+                family_id: roleData.familyId,
+                avatar_url: null,
+                birth_date: null,
+                is_active: true,
+              })
+              setActiveFamilyId(roleData.familyId)
+              setError(null)
+            } else {
+              setMember(null)
+              setError('No kiosk member found')
+            }
+          }
+          return
+        }
+
         const supabase = createClient()
-        
+
         // If we have an active family ID, fetch that specific membership
         if (activeFamilyId) {
           const { data, error: fetchError } = await supabase
@@ -105,7 +169,7 @@ export function useMemberContext(): UseMemberContextResult {
     }
 
     fetchMember()
-  }, [user, authLoading, activeFamilyId, familyLoading, setActiveFamilyId])
+  }, [user, authLoading, activeFamilyId, familyLoading, setActiveFamilyId, kioskChild])
 
   return {
     user,

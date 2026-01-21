@@ -56,7 +56,15 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
         ? `/api/medications?memberId=${memberId}`
         : '/api/medications';
 
-      const response = await fetch(url);
+      const deviceSecret = typeof window !== 'undefined' ? localStorage.getItem('kioskDeviceSecret') : null;
+      const childToken = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null;
+      const headers: Record<string, string> = {};
+      if (!memberId) {
+        if (childToken) headers['X-Kiosk-Child'] = childToken;
+        else if (deviceSecret) headers['X-Kiosk-Device'] = deviceSecret;
+      }
+
+      const response = await fetch(url, { headers: Object.keys(headers).length ? headers : undefined });
 
       if (!response.ok) {
         throw new Error('Failed to fetch medication data');
@@ -75,10 +83,22 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
     try {
       setMarkingDose(medication.id);
 
+      const childToken = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null;
+      if (!childToken && typeof window !== 'undefined' && localStorage.getItem('kioskDeviceSecret')) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Unlock required',
+          message: 'Unlock with your PIN to log a dose.',
+          type: 'warning',
+        });
+        return;
+      }
+
       const response = await fetch('/api/medications/dose', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(childToken ? { 'X-Kiosk-Child': childToken } : {}),
         },
         body: JSON.stringify({
           medicationSafetyId: medication.id,

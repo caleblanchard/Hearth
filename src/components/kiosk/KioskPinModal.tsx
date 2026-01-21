@@ -13,8 +13,7 @@ interface FamilyMember {
 interface KioskPinModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUnlock: (memberId: string, pin: string) => Promise<void>;
-  familyId: string;
+  onUnlock: (memberId: string, memberName: string, pin: string) => Promise<void>;
   sessionToken: string | null;
 }
 
@@ -22,7 +21,6 @@ export default function KioskPinModal({
   isOpen,
   onClose,
   onUnlock,
-  familyId,
   sessionToken,
 }: KioskPinModalProps) {
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -38,12 +36,12 @@ export default function KioskPinModal({
           setError('');
           setMembers([]);
           if (!sessionToken) {
-            setError('Kiosk session not found');
+            setError('Device not activated');
             return;
           }
           const response = await fetch('/api/kiosk/members', {
             headers: {
-              'X-Kiosk-Token': sessionToken,
+              'X-Kiosk-Device': sessionToken,
             },
           });
           if (!response.ok) {
@@ -57,9 +55,9 @@ export default function KioskPinModal({
           setError(error instanceof Error ? error.message : 'Failed to load family members');
         }
       };
-      fetchMembers();
+       fetchMembers();
     }
-  }, [isOpen, familyId, sessionToken]);
+  }, [isOpen, sessionToken]);
 
   const handlePinInput = (digit: string) => {
     if (pin.length < 6) {
@@ -81,7 +79,7 @@ export default function KioskPinModal({
     setIsLoading(true);
 
     try {
-      await onUnlock(selectedMember.id, pin);
+       await onUnlock(selectedMember.id, selectedMember.name, pin);
       // Success - modal will close from parent
       setPin('');
       setSelectedMember(null);

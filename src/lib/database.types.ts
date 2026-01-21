@@ -1960,6 +1960,153 @@ export type Database = {
           },
         ]
       }
+      kiosk_activation_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          family_id: string
+          id: string
+          is_revoked: boolean
+          redeemed_at: string | null
+          redeemed_device_id: string | null
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          family_id: string
+          id?: string
+          is_revoked?: boolean
+          redeemed_at?: string | null
+          redeemed_device_id?: string | null
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          family_id?: string
+          id?: string
+          is_revoked?: boolean
+          redeemed_at?: string | null
+          redeemed_device_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_activation_codes_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_activation_codes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kiosk_device_secrets: {
+        Row: {
+          created_at: string
+          device_id: string
+          family_id: string
+          id: string
+          last_used_at: string | null
+          revoked_at: string | null
+          rotated_from: string | null
+          secret_hash: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          family_id: string
+          id?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          rotated_from?: string | null
+          secret_hash: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          family_id?: string
+          id?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          rotated_from?: string | null
+          secret_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_device_secrets_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_device_secrets_rotated_from_fkey"
+            columns: ["rotated_from"]
+            isOneToOne: false
+            referencedRelation: "kiosk_device_secrets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kiosk_child_sessions: {
+        Row: {
+          created_at: string
+          device_secret_id: string
+          ended_at: string | null
+          expires_at: string
+          id: string
+          last_activity_at: string
+          member_id: string
+          session_token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          device_secret_id: string
+          ended_at?: string | null
+          expires_at: string
+          id?: string
+          last_activity_at?: string
+          member_id: string
+          session_token_hash: string
+        }
+        Update: {
+          created_at?: string
+          device_secret_id?: string
+          ended_at?: string | null
+          expires_at?: string
+          id?: string
+          last_activity_at?: string
+          member_id?: string
+          session_token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_child_sessions_device_secret_id_fkey"
+            columns: ["device_secret_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_device_secrets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_child_sessions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kiosk_settings: {
         Row: {
           allow_guest_view: boolean

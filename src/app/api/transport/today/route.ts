@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
+import { authenticateChildSession, authenticateDeviceSecret } from '@/lib/kiosk-auth';
 import { getTodaysTransportSchedules } from '@/lib/data/transport';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
     const authContext = await getAuthContext();
+    const childAuth = authContext ? null : await authenticateChildSession();
+    const deviceAuth = authContext || childAuth ? null : await authenticateDeviceSecret();
 
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const familyId = authContext?.activeFamilyId ?? childAuth?.familyId ?? deviceAuth?.familyId;
+    const memberId = authContext?.activeMemberId ?? childAuth?.memberId ?? undefined;
 
-    const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
+
+    const { searchParams } = new URL(request.url);
+    const targetMemberId = searchParams.get('memberId') || memberId;
 
     const schedules = await getTodaysTransportSchedules(familyId);
 

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import bcrypt from 'bcrypt';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
-import { updateFamilyMember, deleteFamilyMember } from '@/lib/data/family';
+import { updateFamilyMember, deleteFamilyMember, updateMemberModuleAccess } from '@/lib/data/family';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
@@ -34,7 +35,7 @@ export async function PATCH(
     // Verify member exists and belongs to family
     const { data: targetMember } = await supabase
       .from('family_members')
-      .select('family_id')
+      .select('family_id, role')
       .eq('id', id)
       .single();
 
@@ -43,7 +44,36 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const member = await updateFamilyMember(id, body);
+
+    const { allowedModules, pin, ...memberUpdates } = body || {};
+
+    let pinUpdate: string | null | undefined = undefined;
+    if (typeof pin === 'string' && pin.trim()) {
+      // Validate PIN format (4-6 digits)
+      if (!/^\d{4,6}$/.test(pin.trim())) {
+        return NextResponse.json(
+          { error: 'PIN must be 4-6 digits' },
+          { status: 400 }
+        );
+      }
+      pinUpdate = await bcrypt.hash(pin.trim(), 10);
+    }
+
+    const member = await updateFamilyMember(id, {
+      ...memberUpdates,
+      pin: pinUpdate ?? memberUpdates.pin,
+    });
+
+    // Update module access when provided (only for children)
+    if (targetMember.role === 'CHILD' && Array.isArray(allowedModules)) {
+      const modulesPayload = Array.from(new Set(allowedModules.filter(Boolean))).map(
+        (moduleId: string) => ({
+          module_id: moduleId,
+          has_access: true,
+        })
+      );
+      await updateMemberModuleAccess(id, modulesPayload);
+    }
 
     // Audit log
     await supabase.from('audit_logs').insert({

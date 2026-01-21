@@ -54,6 +54,7 @@ interface NavGroup {
 
 export default function Sidebar() {
   const { user, member, loading: memberLoading } = useMemberContext();
+  const kioskChild = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null;
   const router = useRouter();
   const pathname = usePathname();
   const customizeContext = useDashboardCustomize();
@@ -68,10 +69,18 @@ export default function Sidebar() {
   useEffect(() => {
     async function fetchEnabledModules() {
       try {
-        const res = await fetch('/api/settings/modules/enabled');
+        const headers: HeadersInit = {};
+        const kioskChild = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null;
+        if (kioskChild) {
+          headers['X-Kiosk-Child'] = kioskChild;
+        }
+        const res = await fetch('/api/settings/modules/enabled', { headers });
         if (res.ok) {
           const data = await res.json();
           setEnabledModules(new Set(data.enabledModules));
+        } else {
+          // If fetch fails, show nothing to avoid over-exposure
+          setEnabledModules(new Set());
         }
       } catch (error) {
         console.error('Error fetching enabled modules:', error);
@@ -83,10 +92,10 @@ export default function Sidebar() {
         ]));
       }
     }
-    if (user && member) {
+    if ((user || kioskChild) && member) {
       fetchEnabledModules();
     }
-  }, [user, member]);
+  }, [user, member, kioskChild]);
 
   const toggleGroup = (groupName: string) => {
     const newExpanded = new Set(expandedGroups);

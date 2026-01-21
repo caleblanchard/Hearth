@@ -6,9 +6,13 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-// Mock kiosk session
-jest.mock('@/lib/kiosk-session', () => ({
-  getKioskSession: jest.fn(),
+// Mock kiosk auth + supabase auth context
+jest.mock('@/lib/kiosk-auth', () => ({
+  authenticateChildSession: jest.fn(),
+  authenticateDeviceSecret: jest.fn(),
+}));
+jest.mock('@/lib/supabase/server', () => ({
+  getAuthContext: jest.fn(),
 }));
 
 // Mock the widget route handlers
@@ -31,9 +35,9 @@ jest.mock('@/app/api/weather/route', () => ({
 // NOW import the routes after mocks are set up
 import { NextRequest, NextResponse } from 'next/server';
 import { GET as GetWidgets } from '@/app/api/dashboard/widgets/route';
-import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
-
-const { getKioskSession } = require('@/lib/kiosk-session');
+import { mockParentSession } from '@/lib/test-utils/auth-mock';
+import { authenticateChildSession, authenticateDeviceSecret } from '@/lib/kiosk-auth';
+import { getAuthContext } from '@/lib/supabase/server';
 const { GET: GetTransport } = require('@/app/api/transport/today/route');
 const { GET: GetMedications } = require('@/app/api/medications/route');
 const { GET: GetMaintenance } = require('@/app/api/maintenance/upcoming/route');
@@ -67,7 +71,9 @@ describe('/api/dashboard/widgets', () => {
 
   describe('GET /api/dashboard/widgets', () => {
     it('should return 401 if not authenticated and no kiosk token', async () => {
-      getKioskSession.mockResolvedValue(null);
+      (getAuthContext as jest.Mock).mockResolvedValue(null);
+      (authenticateChildSession as jest.Mock).mockResolvedValue(null);
+      (authenticateDeviceSecret as jest.Mock).mockResolvedValue(null);
 
       const request = new NextRequest(
         'http://localhost:3000/api/dashboard/widgets?widgets[]=transport'
@@ -81,6 +87,7 @@ describe('/api/dashboard/widgets', () => {
 
     it('should fetch single widget for authenticated user', async () => {
       const session = mockParentSession();
+      (getAuthContext as jest.Mock).mockResolvedValue(session);
 
       GetTransport.mockResolvedValue(
         NextResponse.json(mockTransportData, { status: 200 })
@@ -100,6 +107,7 @@ describe('/api/dashboard/widgets', () => {
 
     it('should fetch multiple widgets in parallel', async () => {
       const session = mockParentSession();
+      (getAuthContext as jest.Mock).mockResolvedValue(session);
 
       GetTransport.mockResolvedValue(
         NextResponse.json(mockTransportData, { status: 200 })
@@ -123,42 +131,49 @@ describe('/api/dashboard/widgets', () => {
       expect(GetWeather).toHaveBeenCalledTimes(1);
     });
 
-    it('should authenticate via kiosk token if no regular session', async () => {
-
-      const mockKioskSession = {
-        id: 'session-123',
+    it('should authenticate via kiosk child session if no regular session', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValue(null);
+      (authenticateChildSession as jest.Mock).mockResolvedValue({
         familyId: 'family-test-123',
-        currentMemberId: 'child-test-123',
-        isActive: true,
-        currentMember: {
-          id: 'child-test-123',
-          name: 'Test Child',
-          role: 'CHILD',
-          familyId: 'family-test-123',
-        },
-      };
-      getKioskSession.mockResolvedValue(mockKioskSession);
+        memberId: 'child-test-123',
+      });
+      GetTransport.mockResolvedValue(
+        NextResponse.json(mockTransportData, { status: 200 })
+      );
 
+      const request = new NextRequest(
+        'http://localhost:3000/api/dashboard/widgets?widgets[]=transport'
+      );
+      const response = await GetWidgets(request);
+
+      expect(response.status).toBe(200);
+      expect(authenticateChildSession).toHaveBeenCalled();
+    });
+
+    it('should authenticate via kiosk device secret if no session or child', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValue(null);
+      (authenticateChildSession as jest.Mock).mockResolvedValue(null);
+      (authenticateDeviceSecret as jest.Mock).mockResolvedValue({
+        deviceId: 'device-123',
+        familyId: 'family-test-123',
+      });
       GetTransport.mockResolvedValue(
         NextResponse.json(mockTransportData, { status: 200 })
       );
 
       const request = new NextRequest(
         'http://localhost:3000/api/dashboard/widgets?widgets[]=transport',
-        {
-          headers: {
-            'X-Kiosk-Token': 'valid-token',
-          },
-        }
+        { headers: { 'X-Kiosk-Device': 'device-secret' } }
       );
       const response = await GetWidgets(request);
 
       expect(response.status).toBe(200);
-      expect(getKioskSession).toHaveBeenCalledWith('valid-token');
+      expect(authenticateDeviceSecret).toHaveBeenCalled();
     });
 
     it('should handle widget fetch failures gracefully', async () => {
       const session = mockParentSession();
+      (getAuthContext as jest.Mock).mockResolvedValue(session);
 
       GetTransport.mockResolvedValue(
         NextResponse.json(mockTransportData, { status: 200 })
@@ -181,6 +196,7 @@ describe('/api/dashboard/widgets', () => {
 
     it('should return 400 if no widgets parameter provided', async () => {
       const session = mockParentSession();
+      (getAuthContext as jest.Mock).mockResolvedValue(session);
 
       const request = new NextRequest('http://localhost:3000/api/dashboard/widgets');
       const response = await GetWidgets(request);
@@ -192,6 +208,7 @@ describe('/api/dashboard/widgets', () => {
 
     it('should return 400 for invalid widget names', async () => {
       const session = mockParentSession();
+      (getAuthContext as jest.Mock).mockResolvedValue(session);
 
       const request = new NextRequest(
         'http://localhost:3000/api/dashboard/widgets?widgets[]=invalid-widget'
@@ -205,6 +222,7 @@ describe('/api/dashboard/widgets', () => {
 
     it('should handle all valid widget types', async () => {
       const session = mockParentSession();
+      (getAuthContext as jest.Mock).mockResolvedValue(session);
 
       GetTransport.mockResolvedValue(NextResponse.json({}, { status: 200 }));
       GetMedications.mockResolvedValue(NextResponse.json({}, { status: 200 }));

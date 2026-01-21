@@ -11,6 +11,12 @@ interface KioskSettings {
   requirePinForSwitch: boolean;
 }
 
+interface DeviceInfo {
+  id: string;
+  deviceId: string;
+  lastUsedAt?: string | null;
+}
+
 const AVAILABLE_WIDGETS = [
   { id: 'transport', name: 'Transport', description: 'Daily transport schedules' },
   { id: 'medication', name: 'Medications', description: 'Upcoming and overdue doses' },
@@ -25,6 +31,12 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [devices, setDevices] = useState<DeviceInfo[]>([]);
+  const [activationResponse, setActivationResponse] = useState<{
+    code?: string;
+    expiresAt?: string;
+    error?: string;
+  } | null>(null);
 
   const [settings, setSettings] = useState<KioskSettings>({
     isEnabled: true,
@@ -43,7 +55,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/kiosk/settings');
+      const response = await fetch(`/api/kiosk/settings?familyId=${familyId}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch settings');
@@ -53,10 +65,39 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
       if (data.settings) {
         setSettings(data.settings);
       }
+      if (Array.isArray(data.devices)) {
+        setDevices(
+          data.devices.map((d: any) => ({
+            id: d.id,
+            deviceId: d.device_id || d.deviceId || d.id,
+            lastUsedAt: d.last_used_at || d.lastUsedAt || null,
+          }))
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleGenerateActivationCode() {
+    try {
+      setError(null);
+      setActivationResponse(null);
+      const res = await fetch('/api/kiosk/activation/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ familyId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to generate activation code');
+      }
+      setActivationResponse({ code: data.code, expiresAt: data.expiresAt });
+    } catch (err) {
+      setActivationResponse(null);
+      setError(err instanceof Error ? err.message : 'Failed to generate activation code');
     }
   }
 
@@ -73,7 +114,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ familyId, ...settings }),
       });
 
       if (!response.ok) {
@@ -97,6 +138,26 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
         ? prev.enabledWidgets.filter((w) => w !== widgetId)
         : [...prev.enabledWidgets, widgetId],
     }));
+  }
+
+  async function handleRevokeDevice(deviceSecretId: string, deviceId?: string) {
+    try {
+      const res = await fetch('/api/kiosk/activation/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceSecretId, familyId }),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to revoke device');
+      }
+      setDevices((prev) =>
+        prev.filter((d) => d.id !== deviceSecretId && d.deviceId !== deviceId)
+      );
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to revoke device');
+    }
   }
 
   if (loading) {
@@ -267,6 +328,71 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Devices */}
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+          Activated Devices
+        </h2>
+        <div className="flex items-center justify-between mb-4 gap-3">
+          <div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Generate a single-use activation code for a new device.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleGenerateActivationCode}
+            className="px-3 py-2 rounded-md text-sm font-semibold bg-ember-700 text-white hover:bg-ember-800"
+          >
+            Generate Activation Code
+          </button>
+        </div>
+        {activationResponse?.code && (
+          <div className="mb-4 p-4 border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+              Code: {activationResponse.code}
+            </p>
+            {activationResponse.expiresAt && (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Expires at {new Date(activationResponse.expiresAt).toLocaleString()}
+              </p>
+            )}
+          </div>
+        )}
+        {devices.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No devices have been activated yet.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {devices.map((device) => (
+              <div
+                key={device.id}
+                className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+              >
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {device.deviceId}
+                  </p>
+                  {device.lastUsedAt && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Last used: {new Date(device.lastUsedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRevokeDevice(device.id, device.deviceId)}
+                  className="px-3 py-1.5 rounded-md text-sm font-semibold bg-red-600 text-white hover:bg-red-700"
+                >
+                  Revoke
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Error/Success Messages */}

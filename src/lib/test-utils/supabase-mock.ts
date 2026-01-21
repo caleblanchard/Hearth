@@ -1,9 +1,40 @@
 // @ts-nocheck
-const jest = (globalThis as any).jest
+// Ensure we reuse the already-declared global jest to avoid redeclaration errors in Jest runtime
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let jestLocal: any = (globalThis as any).jest
 
-if (!jest) {
-  throw new Error('jest globals are required to use supabase-mock')
+if (!jestLocal || typeof jestLocal.fn !== 'function') {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    jestLocal = require('@jest/globals').jest
+  } catch {
+    jestLocal = undefined
+  }
 }
+
+if (!jestLocal || typeof jestLocal.fn !== 'function') {
+  const fallbackFn = () => {
+    const mockFn: any = (...args: any[]) => {
+      mockFn.mock.calls.push(args)
+      return mockFn.mockReturnValueValue
+    }
+    mockFn.mock = { calls: [] }
+    mockFn.mockReturnValue = (v: any) => {
+      mockFn.mockReturnValueValue = v
+      return mockFn
+    }
+    mockFn.mockResolvedValue = (v: any) => {
+      mockFn.mockReturnValueValue = Promise.resolve(v)
+      return mockFn
+    }
+    mockFn.mockReturnThis = () => mockFn
+    return mockFn
+  }
+  jestLocal = { fn: fallbackFn }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const jest: any = jestLocal
 
 /**
  * Supabase Client Mock

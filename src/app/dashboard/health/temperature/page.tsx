@@ -29,7 +29,7 @@ interface TemperatureLog {
   member: {
     id: string;
     name: string;
-  };
+  } | null;
 }
 
 interface FamilyMember {
@@ -126,7 +126,7 @@ export default function TemperatureHistoryPage() {
         minute: '2-digit',
       }),
       temperature: log.temperature,
-      name: log.member.name,
+      name: log.member?.name ?? 'Unknown',
     }));
 
   // Temperature classification
@@ -341,7 +341,7 @@ export default function TemperatureHistoryPage() {
                     </div>
                     <div className="border-l border-gray-300 dark:border-gray-600 pl-4">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {log.member.name}
+                        {log.member?.name ?? 'Unknown'}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         {new Date(log.recordedAt).toLocaleString()}

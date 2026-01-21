@@ -8,6 +8,61 @@ import {
   getClientIdentifier,
 } from '@/lib/rate-limit';
 import { MAX_REQUEST_SIZE_BYTES } from '@/lib/constants';
+import { createServiceClient } from '@/lib/supabase/service';
+import { hashSecret } from '@/lib/kiosk-auth';
+
+async function isKioskDevice(request: NextRequest) {
+  const headerSecret = request.headers.get('x-kiosk-device');
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookieSecret =
+    cookieHeader
+      .split(';')
+      .map((c) => c.trim())
+      .find((c) => c.startsWith('kiosk_device_secret='))?.split('=')[1] || null;
+
+  const secret = headerSecret || cookieSecret;
+  if (!secret) return false;
+
+  const supabase = createServiceClient();
+  const secretHash = hashSecret(secret);
+
+  const { data, error } = await supabase
+    .from('kiosk_device_secrets')
+    .select('id,revoked_at')
+    .eq('secret_hash', secretHash)
+    .is('revoked_at', null)
+    .maybeSingle();
+
+  return !error && !!data;
+}
+
+async function isKioskChild(request: NextRequest) {
+  const headerToken = request.headers.get('x-kiosk-child');
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookieToken =
+    cookieHeader
+      .split(';')
+      .map((c) => c.trim())
+      .find((c) => c.startsWith('kiosk_child_token='))?.split('=')[1] || null;
+
+  const token = headerToken || cookieToken;
+  if (!token) return false;
+
+  const supabase = createServiceClient();
+  const tokenHash = hashSecret(token);
+
+  const { data, error } = await supabase
+    .from('kiosk_child_sessions')
+    .select('id,expires_at,ended_at')
+    .eq('session_token_hash', tokenHash)
+    .is('ended_at', null)
+    .maybeSingle();
+
+  if (error || !data) return false;
+
+  const expiresAt = new Date(data.expires_at);
+  return expiresAt.getTime() > Date.now();
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -63,14 +118,18 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const kioskDevice = user ? false : await isKioskDevice(request);
+  const kioskChild = user ? false : await isKioskChild(request);
 
   const isCloudMode = process.env.VERCEL === '1';
-  const isProtectedRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/kiosk');
+  const isKioskRoute = pathname.startsWith('/kiosk');
+  const isProtectedRoute = pathname.startsWith('/dashboard');
   const isAuthRoute = pathname.startsWith('/auth');
   const isOnboardingRoute = pathname.startsWith('/onboarding');
+  const allowKioskAccess = kioskDevice && isKioskRoute;
 
   // Redirect unauthenticated users trying to access protected routes
-  if (!user && isProtectedRoute) {
+  if (!user && !kioskChild && !allowKioskAccess && isProtectedRoute) {
     const redirectUrl = isCloudMode 
       ? new URL('/', request.url) 
       : new URL('/auth/signin', request.url);
@@ -81,7 +140,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Redirect unauthenticated users trying to access onboarding
-  if (!user && isOnboardingRoute) {
+  if (!user && !kioskChild && !allowKioskAccess && isOnboardingRoute) {
     const redirectUrl = isCloudMode 
       ? new URL('/', request.url) 
       : new URL('/auth/signin', request.url);
@@ -128,6 +187,12 @@ export async function proxy(request: NextRequest) {
     if (isAuthRoute && pathname !== '/auth/signout' && !hasFamilies) {
       return NextResponse.redirect(new URL('/onboarding', request.url));
     }
+  } else if (kioskChild) {
+    if (isAuthRoute && pathname !== '/auth/signout') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  } else if (kioskDevice && isAuthRoute && pathname !== '/auth/signout') {
+    return NextResponse.redirect(new URL('/kiosk', request.url));
   }
 
   // Skip rate limiting for session checks (read-only, called frequently)

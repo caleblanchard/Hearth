@@ -17,6 +17,8 @@ interface CurrentMember {
  */
 export function useCurrentMember() {
   const { user, loading: authLoading } = useSupabaseSession();
+  const kioskChild =
+    typeof window !== 'undefined' && !user ? localStorage.getItem('kioskChildToken') : null;
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,18 +26,23 @@ export function useCurrentMember() {
   useEffect(() => {
     async function fetchMember() {
       if (authLoading) return;
-      
-      if (!user) {
+
+      // Avoid treating normal parent sessions as kiosk when kiosk token lingers
+      const kioskToken = kioskChild && !user ? kioskChild : null;
+
+      if (!user && !kioskToken) {
         setMember(null);
         setLoading(false);
         return;
       }
-
       try {
         // Use separate endpoints due to Next.js routing bug with /api/family
+        const headers: HeadersInit = {};
+        if (kioskToken) headers['X-Kiosk-Child'] = kioskToken;
+
         const [roleRes, membersRes] = await Promise.all([
-          fetch('/api/user/role'),
-          fetch('/api/family/members'),
+          fetch('/api/user/role', { headers }),
+          fetch('/api/family/members', { headers }),
         ]);
 
         if (!roleRes.ok || !membersRes.ok) {
@@ -45,17 +52,32 @@ export function useCurrentMember() {
         const roleData = await roleRes.json();
         const membersData = await membersRes.json();
 
-        const currentMember = membersData.members?.find(
-          (m: any) => m.email === user.email || m.userId === user.id
-        );
+        const currentMember =
+          membersData.members?.find((m: any) => {
+            if (roleData?.memberId && m.id === roleData.memberId) return true;
+            if (user?.id && (m.userId === user.id || m.authUserId === user.id)) return true;
+            // Also match on auth_user_id from role response
+            if (roleData?.authUserId && (m.userId === roleData.authUserId || m.authUserId === roleData.authUserId)) return true;
+            return false;
+          }) || membersData.members?.find((m: any) => user?.email && m.email === user.email);
+
+        const resolvedRole = currentMember?.role || roleData.role;
 
         if (currentMember) {
           setMember({
             id: currentMember.id,
             name: currentMember.name,
             email: currentMember.email,
-            role: roleData.role,
+            role: resolvedRole,
             familyId: currentMember.familyId,
+          });
+        } else if (roleData?.memberId && roleData?.familyId) {
+          setMember({
+            id: roleData.memberId,
+            name: 'Current Member',
+            email: user?.email || '',
+            role: resolvedRole,
+            familyId: roleData.familyId,
           });
         } else {
           setMember(null);
@@ -69,7 +91,7 @@ export function useCurrentMember() {
     }
 
     fetchMember();
-  }, [user, authLoading]);
+  }, [user, authLoading, kioskChild]);
 
   return {
     member,

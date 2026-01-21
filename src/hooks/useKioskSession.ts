@@ -1,234 +1,165 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react'
 
-const STORAGE_KEY = 'kioskSessionToken';
-
-interface KioskMember {
-  id: string;
-  name: string;
-  role?: string;
-  avatarUrl?: string;
+export interface KioskMember {
+  id: string
+  name: string
+  role?: string
+  avatarUrl?: string
 }
 
+const DEVICE_KEY = 'kioskDeviceSecret'
+const CHILD_KEY = 'kioskChildToken'
+
 interface KioskSessionState {
-  sessionToken: string | null;
-  isActive: boolean;
-  isLocked: boolean;
-  currentMember: KioskMember | null;
-  autoLockMinutes: number;
-  lastActivityAt?: string;
+  deviceSecret: string | null
+  childToken: string | null
+  isLocked: boolean
+  currentMember: KioskMember | null
+  autoLockMinutes: number
+  allowedModules: string[]
+  lastActivityAt?: string
 }
 
 interface UseKioskSessionReturn extends KioskSessionState {
-  startSession: (deviceId: string, familyId: string) => Promise<void>;
-  endSession: () => Promise<void>;
-  updateActivity: () => Promise<void>;
-  unlock: (memberId: string, pin: string) => Promise<void>;
-  lock: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  activateDevice: (code: string, deviceId: string) => Promise<void>
+  unlock: (member: KioskMember, pin: string) => Promise<void>
+  logoutChild: () => Promise<void>
+  clearDevice: () => void
+  heartbeat: () => Promise<void>
 }
 
 export function useKioskSession(): UseKioskSessionReturn {
   const [state, setState] = useState<KioskSessionState>({
-    sessionToken: null,
-    isActive: false,
+    deviceSecret: null,
+    childToken: null,
     isLocked: true,
     currentMember: null,
     autoLockMinutes: 15,
-  });
+    allowedModules: [],
+  })
 
-  // Fetch session status from server
-  const fetchSessionStatus = useCallback(async (token: string) => {
-    try {
-      const response = await fetch('/api/kiosk/session', {
-        headers: {
-          'X-Kiosk-Token': token,
-        },
-      });
-
-      if (!response.ok) {
-        // Session not found or expired, clear local storage
-        if (response.status === 404 || response.status === 401) {
-          localStorage.removeItem(STORAGE_KEY);
-          setState((prev) => ({
-            ...prev,
-            sessionToken: null,
-            isActive: false,
-            isLocked: true,
-            currentMember: null,
-          }));
-        }
-        return;
-      }
-
-      const data = await response.json();
-      setState((prev) => ({
-        ...prev,
-        sessionToken: token,
-        isActive: data.isActive,
-        isLocked: data.isLocked,
-        currentMember: data.currentMember,
-        autoLockMinutes: data.autoLockMinutes,
-        lastActivityAt: data.lastActivityAt,
-      }));
-    } catch (error) {
-      console.error('Error fetching kiosk session status:', error);
-    }
-  }, []);
-
-  // Load session from localStorage on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem(STORAGE_KEY);
-    if (storedToken) {
-      fetchSessionStatus(storedToken);
-    }
-  }, [fetchSessionStatus]);
-
-  // Start a new kiosk session
-  const startSession = useCallback(async (deviceId: string, familyId: string) => {
-    const response = await fetch('/api/kiosk/session/start', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ deviceId, familyId }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to start kiosk session');
-    }
-
-    const data = await response.json();
-    const token = data.sessionToken;
-
-    // Save token to localStorage
-    localStorage.setItem(STORAGE_KEY, token);
-
+    const storedDevice = typeof window !== 'undefined' ? localStorage.getItem(DEVICE_KEY) : null
+    const storedChild = typeof window !== 'undefined' ? localStorage.getItem(CHILD_KEY) : null
     setState((prev) => ({
       ...prev,
-      sessionToken: token,
-      isActive: true,
-      isLocked: true,
-      autoLockMinutes: data.autoLockMinutes,
-    }));
-  }, []);
+      deviceSecret: storedDevice,
+      childToken: storedChild,
+      isLocked: !storedChild,
+    }))
+  }, [])
 
-  // End the kiosk session
-  const endSession = useCallback(async () => {
-    if (!state.sessionToken) return;
-
-    const response = await fetch('/api/kiosk/session', {
-      method: 'DELETE',
-      headers: {
-        'X-Kiosk-Token': state.sessionToken,
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to end kiosk session');
+  const clearDevice = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(DEVICE_KEY)
+      localStorage.removeItem(CHILD_KEY)
     }
-
-    // Clear localStorage and reset state
-    localStorage.removeItem(STORAGE_KEY);
     setState({
-      sessionToken: null,
-      isActive: false,
+      deviceSecret: null,
+      childToken: null,
       isLocked: true,
       currentMember: null,
       autoLockMinutes: 15,
-    });
-  }, [state.sessionToken]);
+      allowedModules: [],
+    })
+  }, [])
 
-  // Update activity timestamp
-  const updateActivity = useCallback(async () => {
-    if (!state.sessionToken) return;
-
-    const response = await fetch('/api/kiosk/session/activity', {
+  const activateDevice = useCallback(async (code: string, deviceId: string) => {
+    const response = await fetch('/api/kiosk/activation/complete', {
       method: 'POST',
-      headers: {
-        'X-Kiosk-Token': state.sessionToken,
-      },
-    });
-
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, deviceId }),
+    })
     if (!response.ok) {
-      throw new Error('Failed to update activity');
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error || 'Failed to activate device')
     }
-
-    const data = await response.json();
+    const data = await response.json()
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(DEVICE_KEY, data.deviceSecret)
+      document.cookie = `kiosk_device_secret=${data.deviceSecret}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`
+    }
     setState((prev) => ({
       ...prev,
-      lastActivityAt: data.lastActivityAt,
-    }));
-  }, [state.sessionToken]);
+      deviceSecret: data.deviceSecret,
+      isLocked: true,
+    }))
+  }, [])
 
-  // Unlock session with PIN
   const unlock = useCallback(
-    async (memberId: string, pin: string) => {
-      if (!state.sessionToken) {
-        throw new Error('No active kiosk session');
-      }
-
-      const response = await fetch('/api/kiosk/session/unlock', {
+    async (member: KioskMember, pin: string) => {
+      if (!state.deviceSecret) throw new Error('Device not activated')
+      const response = await fetch('/api/kiosk/unlock', {
         method: 'POST',
         headers: {
-          'X-Kiosk-Token': state.sessionToken,
           'Content-Type': 'application/json',
+          'X-Kiosk-Device': state.deviceSecret,
         },
-        body: JSON.stringify({ memberId, pin }),
-      });
-
+        body: JSON.stringify({ memberId: member.id, pin }),
+      })
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to unlock session');
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.error || 'Failed to unlock')
       }
-
-      const data = await response.json();
+      const data = await response.json()
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(CHILD_KEY, data.token)
+        document.cookie = `kiosk_child_token=${data.token}; path=/; max-age=900; samesite=lax`
+      }
       setState((prev) => ({
         ...prev,
+        childToken: data.token,
         isLocked: false,
-        currentMember: data.member,
-      }));
+        currentMember: member,
+      }))
+      // Redirect to full app
+      if (typeof window !== 'undefined') {
+        if (process.env.NODE_ENV === 'test') {
+          ;(window as any).__KIOSK_REDIRECT__ = '/dashboard'
+        } else {
+          window.location.href = '/dashboard'
+        }
+      }
     },
-    [state.sessionToken]
-  );
+    [state.deviceSecret]
+  )
 
-  // Lock session
-  const lock = useCallback(async () => {
-    if (!state.sessionToken) return;
-
-    const response = await fetch('/api/kiosk/session/lock', {
+  const logoutChild = useCallback(async () => {
+    if (!state.childToken) return
+    await fetch('/api/kiosk/logout', {
       method: 'POST',
-      headers: {
-        'X-Kiosk-Token': state.sessionToken,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to lock session');
+      headers: { 'X-Kiosk-Child': state.childToken },
+    })
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(CHILD_KEY)
+      document.cookie = 'kiosk_child_token=; path=/; max-age=0; samesite=lax'
     }
-
     setState((prev) => ({
       ...prev,
+      childToken: null,
       isLocked: true,
       currentMember: null,
-    }));
-  }, [state.sessionToken]);
-
-  // Refresh session status
-  const refreshSession = useCallback(async () => {
-    if (state.sessionToken) {
-      await fetchSessionStatus(state.sessionToken);
+    }))
+    // After child logout, stay in kiosk and return to dashboard
+    if (typeof window !== 'undefined') {
+      window.location.href = '/kiosk';
     }
-  }, [state.sessionToken, fetchSessionStatus]);
+  }, [state.childToken])
+
+  const heartbeat = useCallback(async () => {
+    if (!state.childToken) return
+    await fetch('/api/kiosk/session/heartbeat', {
+      method: 'POST',
+      headers: { 'X-Kiosk-Child': state.childToken },
+    })
+  }, [state.childToken])
 
   return {
     ...state,
-    startSession,
-    endSession,
-    updateActivity,
+    activateDevice,
     unlock,
-    lock,
-    refreshSession,
-  };
+    logoutChild,
+    clearDevice,
+    heartbeat,
+  }
 }

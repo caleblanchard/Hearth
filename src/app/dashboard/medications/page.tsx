@@ -125,7 +125,8 @@ export default function MedicationsPage() {
     return { locked: true, hours, minutes, seconds };
   };
 
-  const getDosesToday = (doses: MedicationDose[]): number => {
+  const getDosesToday = (doses?: MedicationDose[]): number => {
+    if (!Array.isArray(doses) || doses.length === 0) return 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -290,7 +291,7 @@ export default function MedicationsPage() {
         <div className="grid gap-6 md:grid-cols-2">
           {medications.map(med => {
             const timeRemaining = calculateTimeRemaining(med.nextDoseAvailableAt);
-            const dosesToday = getDosesToday(med.doses);
+            const dosesToday = getDosesToday((med as any).doses);
             const dailyLimitReached = med.maxDosesPerDay ? dosesToday >= med.maxDosesPerDay : false;
             const isLocked = timeRemaining.locked || dailyLimitReached;
 
@@ -450,13 +451,13 @@ export default function MedicationsPage() {
                   )}
                 </div>
 
-                {med.doses.length > 0 && (
+                {(med as any).doses && (med as any).doses.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Recent Doses:
                     </p>
                     <div className="space-y-2">
-                      {med.doses.slice(0, 3).map(dose => (
+                      {(med as any).doses.slice(0, 3).map((dose: any) => (
                         <div key={dose.id} className="text-sm text-gray-600 dark:text-gray-400">
                           <span className="font-medium">{dose.dosage}</span> -{' '}
                           {new Date(dose.givenAt).toLocaleString()}

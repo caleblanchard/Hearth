@@ -186,18 +186,20 @@ await completeTodoItem(todo.id, memberId)
 ```
 
 ### Kiosk Mode
-```typescript
-import { createKioskSession, unlockKioskSession, lockKioskSession } from '@/lib/data/kiosk'
+Use activation code → device secret, then child PIN unlock.
 
-// Start kiosk (parent only)
-const session = await createKioskSession('device-123', familyId)
+Auth headers:
+- Device: `X-Kiosk-Device`
+- Child session: `X-Kiosk-Child`
 
-// Unlock with PIN
-const result = await unlockKioskSession(session.session_token, memberId, '1234')
-
-// Lock kiosk
-await lockKioskSession(session.session_token)
-```
+APIs:
+- `POST /api/kiosk/activation/start` (parent) → activationCode, QR payload
+- `POST /api/kiosk/activation/complete` (public) { code, deviceId } → deviceSecret
+- `POST /api/kiosk/activation/revoke` (parent) { deviceId }
+- `POST /api/kiosk/unlock` (device) { memberId, pin } → child session
+- `POST /api/kiosk/logout` (child)
+- `POST /api/kiosk/session/heartbeat` (child)
+- `GET /api/dashboard/widgets` supports kiosk headers for family dashboard
 
 ---
 

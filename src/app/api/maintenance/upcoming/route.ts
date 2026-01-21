@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
+import { authenticateChildSession, authenticateDeviceSecret } from '@/lib/kiosk-auth';
 import { getUpcomingMaintenanceItems } from '@/lib/data/maintenance';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
     const authContext = await getAuthContext();
+    const childAuth = authContext ? null : await authenticateChildSession();
+    const deviceAuth = authContext || childAuth ? null : await authenticateDeviceSecret();
 
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
+    const familyId = authContext?.activeFamilyId ?? childAuth?.familyId ?? deviceAuth?.familyId;
     if (!familyId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const daysParam = searchParams.get('days');
     const days = daysParam && !isNaN(parseInt(daysParam)) ? parseInt(daysParam) : 30;
+    const memberId = searchParams.get('memberId') || childAuth?.memberId;
 
     const upcomingItems = await getUpcomingMaintenanceItems(familyId, days);
 

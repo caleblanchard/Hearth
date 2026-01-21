@@ -40,8 +40,19 @@ export default function WeatherWidget() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/weather');
+      const deviceSecret = typeof window !== 'undefined' ? localStorage.getItem('kioskDeviceSecret') : null;
+      const childToken = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null;
+      const headers: Record<string, string> = {};
+      if (childToken) headers['X-Kiosk-Child'] = childToken;
+      else if (deviceSecret) headers['X-Kiosk-Device'] = deviceSecret;
 
+      const response = await fetch('/api/weather', { headers: Object.keys(headers).length ? headers : undefined });
+
+      if (response.status === 404) {
+        setError('Weather not configured');
+        setLoading(false);
+        return;
+      }
       if (!response.ok) {
         throw new Error('Failed to fetch weather data');
       }
@@ -87,7 +98,7 @@ export default function WeatherWidget() {
 
       {error && (
         <div className="text-center py-8 text-red-600 dark:text-red-400">
-          Failed to load weather
+          {error}
         </div>
       )}
 

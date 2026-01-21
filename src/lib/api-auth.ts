@@ -6,6 +6,7 @@
  */
 
 import { getAuthContext } from './supabase/server';
+import { authenticateDeviceSecret, authenticateChildSession } from './kiosk-auth';
 import { validateGuestSession, type GuestSessionInfo, hasGuestAccess, canGuestWrite } from './guest-session';
 import { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
@@ -32,6 +33,21 @@ export async function authenticateRequest(
   // First try Supabase Auth session
   const authContext = await getAuthContext();
   if (authContext?.user && authContext.memberships.length > 0) {
+    const member =
+      authContext.memberships.find((m) => m.id === authContext.activeMemberId) ??
+      authContext.memberships[0];
+    return {
+      authenticated: true,
+      isGuest: false,
+      user: {
+        id: member.id,
+        role: member.role || 'CHILD',
+        familyId: member.family_id,
+        name: member.name || 'Unknown',
+      },
+    };
+  }
+  if (authContext?.user && authContext.memberships.length > 0) {
     const member = authContext.memberships[0];
     return {
       authenticated: true,
@@ -41,6 +57,36 @@ export async function authenticateRequest(
         role: member.role || 'CHILD',
         familyId: member.family_id,
         name: member.name || 'Unknown',
+      },
+    };
+  }
+
+  // Then try kiosk child session (full user)
+  const childSession = await authenticateChildSession();
+  if (!authContext && childSession) {
+    return {
+      authenticated: true,
+      isGuest: false,
+      user: {
+        id: childSession.memberId,
+        role: 'CHILD',
+        familyId: childSession.familyId,
+        name: 'Kiosk User',
+      },
+    };
+  }
+
+  // Then try kiosk device secret (family-scoped read-only)
+  const deviceAuth = await authenticateDeviceSecret();
+  if (!authContext && deviceAuth) {
+    return {
+      authenticated: true,
+      isGuest: false,
+      user: {
+        id: deviceAuth.deviceSecretId,
+        role: 'CHILD',
+        familyId: deviceAuth.familyId,
+        name: 'Kiosk Device',
       },
     };
   }

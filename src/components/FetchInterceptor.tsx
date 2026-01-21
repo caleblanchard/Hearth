@@ -25,34 +25,31 @@ export default function FetchInterceptor() {
       
       // Only add header to API routes
       if (typeof url === 'string' && url.startsWith('/api/')) {
-        // Get active family ID from localStorage
+        const headers = new Headers(options.headers);
+
+        // Active family ID
         const allKeys = Object.keys(localStorage);
         const familyKey = allKeys.find(key => key.startsWith('hearth_active_family_id_'));
-        
-        if (familyKey) {
-          const familyId = localStorage.getItem(familyKey);
-          
-          if (familyId) {
-            // Add header to request
-            const headers = new Headers(options.headers);
-            headers.set('x-active-family-id', familyId);
-            
-            // Log for debugging
-            if (!isInstalled) {
-              console.log(`🔗 Fetch interceptor: Adding family ID ${familyId.substring(0, 8)}... to ${url}`);
-            }
-            
-            return originalFetch(url, {
-              ...options,
-              headers,
-            });
+        const familyId = familyKey ? localStorage.getItem(familyKey) : null;
+        if (familyId) {
+          headers.set('x-active-family-id', familyId);
+          if (!isInstalled) {
+            console.log(`🔗 Fetch interceptor: Adding family ID ${familyId.substring(0, 8)}... to ${url}`);
           }
-        }
-        
-        // No family ID found - log warning once
-        if (!isInstalled) {
+        } else if (!isInstalled) {
           console.warn(`⚠️ Fetch interceptor: No active family ID found for ${url}`);
         }
+
+        // Kiosk headers
+        const deviceSecret = localStorage.getItem('kioskDeviceSecret');
+        const childToken = localStorage.getItem('kioskChildToken');
+        if (childToken) headers.set('X-Kiosk-Child', childToken);
+        else if (deviceSecret) headers.set('X-Kiosk-Device', deviceSecret);
+
+        return originalFetch(url, {
+          ...options,
+          headers,
+        });
       }
       
       // For non-API routes or if no family ID, use original fetch

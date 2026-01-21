@@ -31,7 +31,13 @@ export default function InventoryWidget() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/inventory/low-stock');
+      const deviceSecret = typeof window !== 'undefined' ? localStorage.getItem('kioskDeviceSecret') : null;
+      const childToken = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null;
+      const headers: Record<string, string> = {};
+      if (childToken) headers['X-Kiosk-Child'] = childToken;
+      else if (deviceSecret) headers['X-Kiosk-Device'] = deviceSecret;
+
+      const response = await fetch('/api/inventory/low-stock', { headers: Object.keys(headers).length ? headers : undefined });
 
       if (!response.ok) {
         throw new Error('Failed to fetch inventory data');

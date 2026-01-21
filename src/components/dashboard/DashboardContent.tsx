@@ -92,6 +92,7 @@ interface DashboardData {
 export default function DashboardContent() {
   const { user, loading: sessionLoading } = useSupabaseSession();
   const { guestSession, loading: guestLoading } = useGuestSession();
+  const isKiosk = typeof window !== 'undefined' && !!localStorage.getItem('kioskChildToken');
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,10 +114,10 @@ export default function DashboardContent() {
     const stillLoading = sessionLoading || guestLoading;
     
     // Only redirect if we're done loading and there's no session (user or guest)
-    if (!stillLoading && !user && !guestSession) {
+    if (!stillLoading && !user && !guestSession && !isKiosk) {
       router.push('/auth/signin');
     }
-  }, [user, sessionLoading, guestSession, guestLoading, router]);
+  }, [user, sessionLoading, guestSession, guestLoading, router, isKiosk]);
 
   useEffect(() => {
     async function fetchEnabledModules() {
@@ -124,6 +125,10 @@ export default function DashboardContent() {
         const headers: HeadersInit = {};
         if (guestSession?.sessionToken) {
           headers['x-guest-session-token'] = guestSession.sessionToken;
+        }
+        const kioskChild = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null;
+        if (kioskChild) {
+          headers['X-Kiosk-Child'] = kioskChild;
         }
         
         const res = await fetch('/api/settings/modules/enabled', { headers });
@@ -148,6 +153,10 @@ export default function DashboardContent() {
         if (guestSession?.sessionToken) {
           headers['x-guest-session-token'] = guestSession.sessionToken;
         }
+        const kioskChild = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null;
+        if (kioskChild) {
+          headers['X-Kiosk-Child'] = kioskChild;
+        }
         
         const response = await fetch('/api/dashboard', { headers });
         if (!response.ok) {
@@ -171,13 +180,13 @@ export default function DashboardContent() {
     }
     
     // If no session (user or guest), don't fetch (redirect will happen)
-    if (!user && !guestSession) {
+    if (!user && !guestSession && !isKiosk) {
       return;
     }
 
     fetchEnabledModules();
     fetchDashboard();
-  }, [user, sessionLoading, guestSession, guestLoading]);
+  }, [user, sessionLoading, guestSession, guestLoading, isKiosk]);
 
   if (loading) {
     return (

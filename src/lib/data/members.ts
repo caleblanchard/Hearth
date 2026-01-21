@@ -109,7 +109,10 @@ export async function updateMember(
 
   const { data, error } = await supabase
     .from('family_members')
-    .update(updates)
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', memberId)
     .select()
     .single()

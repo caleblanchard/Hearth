@@ -5,11 +5,8 @@ import DashboardContent from '@/components/dashboard/DashboardContent';
 export default async function DashboardPage() {
   const authContext = await getAuthContext();
 
-  // Note: Guest session validation happens client-side via useGuestSession hook
-  // Server-side we only check for Supabase Auth session
   if (!authContext?.user) {
-    // Don't redirect here - let client-side handle guest sessions
-    // The GuestStatusBanner and DashboardContent will handle guest authentication
+    redirect('/auth/signin');
   }
 
   return (

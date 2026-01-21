@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { getAuthContext } from '@/lib/supabase/server';
+import { authenticateChildSession, authenticateDeviceSecret } from '@/lib/kiosk-auth';
 import { logger } from '@/lib/logger';
 
 /**
@@ -10,16 +12,19 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
     const authContext = await getAuthContext();
+    const childAuth = authContext ? null : await authenticateChildSession();
+    const deviceAuth = authContext || childAuth ? null : await authenticateDeviceSecret();
 
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Use service client for kiosk/device flows (child role has no auth UID for RLS)
+    const supabase =
+      authContext && authContext.user?.role !== 'CHILD'
+        ? await createClient()
+        : createServiceClient();
 
-    const familyId = authContext.activeFamilyId;
+    const familyId = authContext?.activeFamilyId ?? childAuth?.familyId ?? deviceAuth?.familyId;
     if (!familyId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get family location

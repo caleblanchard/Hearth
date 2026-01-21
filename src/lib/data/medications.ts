@@ -35,19 +35,45 @@ export async function getMemberMedications(memberId: string) {
 export async function getFamilyMedications(familyId: string) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('health_medications')
-    .select(`
-      *,
-      member:family_members!inner(id, name, family_id)
-    `)
-    .eq('member.family_id', familyId)
+  // Fetch member IDs in family (avoid relying on FK/relationship metadata)
+  const { data: familyMembers, error: memberError } = await supabase
+    .from('family_members')
+    .select('id, name')
+    .eq('family_id', familyId)
     .eq('is_active', true)
-    .order('member.name')
     .order('name')
 
+  if (memberError) throw memberError
+
+  const memberIds = (familyMembers || []).map((m) => m.id)
+  if (memberIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('medication_safety')
+    .select(
+      `
+      *,
+      member:family_members(id, name)
+    `
+    )
+    .in('member_id', memberIds)
+    .order('medication_name', { ascending: true })
+
   if (error) throw error
-  return data || []
+
+  // Attach minimal member info to keep API parity with previous shape
+  const memberLookup = new Map((familyMembers || []).map((m) => [m.id, m]))
+  return (data || []).map((med) => ({
+    ...med,
+    medicationName: (med as any).medication_name ?? (med as any).medicationName,
+    activeIngredient: (med as any).active_ingredient ?? (med as any).activeIngredient,
+    minIntervalHours: (med as any).min_interval_hours ?? (med as any).minIntervalHours,
+    maxDosesPerDay: (med as any).max_doses_per_day ?? (med as any).maxDosesPerDay,
+    notifyWhenReady: (med as any).notify_when_ready ?? (med as any).notifyWhenReady,
+    lastDoseAt: (med as any).last_dose_at ?? (med as any).lastDoseAt ?? null,
+    nextDoseAvailableAt: (med as any).next_dose_available_at ?? (med as any).nextDoseAvailableAt ?? null,
+    member: memberLookup.get((med as any).member_id) || (med as any).member || null,
+  }))
 }
 
 /**
@@ -205,12 +231,11 @@ export async function getUpcomingMedications(memberId: string) {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('health_medications')
+    .from('medication_safety')
     .select('*')
     .eq('member_id', memberId)
-    .eq('is_active', true)
     .not('schedule', 'is', null)
-    .order('name')
+    .order('medication_name')
 
   if (error) throw error
   return data || []

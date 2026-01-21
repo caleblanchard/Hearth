@@ -43,11 +43,20 @@ export default function TransportWidget({ memberId }: { memberId?: string } = {}
         setLoading(true);
         setError(null);
 
+        const deviceSecret = typeof window !== 'undefined' ? localStorage.getItem('kioskDeviceSecret') : null;
+        const childToken = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null;
+
         const url = memberId
           ? `/api/transport/today?memberId=${memberId}`
           : '/api/transport/today';
 
-        const response = await fetch(url);
+        const headers: Record<string, string> = {};
+        if (!memberId) {
+          if (childToken) headers['X-Kiosk-Child'] = childToken;
+          else if (deviceSecret) headers['X-Kiosk-Device'] = deviceSecret;
+        }
+
+        const response = await fetch(url, { headers: Object.keys(headers).length ? headers : undefined });
 
         if (!response.ok) {
           throw new Error('Failed to fetch transport data');

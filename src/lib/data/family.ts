@@ -15,6 +15,7 @@ export async function updateFamilyMember(
     avatar_url?: string | null
     birth_date?: string | null
     is_active?: boolean
+    pin?: string | null
   }
 ) {
   const supabase = await createClient()

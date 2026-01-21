@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getMemberInFamily, isParentInFamily } from '@/lib/supabase/server';
-import { getOrCreateKioskSettings, updateKioskSettings } from '@/lib/data/kiosk';
+import { getOrCreateKioskSettings, updateKioskSettings } from '@/lib/data/kiosk-settings';
 import { logger } from '@/lib/logger';
 
 const VALID_WIDGETS = [
@@ -11,6 +11,16 @@ const VALID_WIDGETS = [
   'inventory',
   'weather',
 ];
+
+function toCamel(settings: any) {
+  return {
+    isEnabled: settings.is_enabled,
+    autoLockMinutes: settings.auto_lock_minutes,
+    enabledWidgets: settings.enabled_widgets,
+    allowGuestView: settings.allow_guest_view,
+    requirePinForSwitch: settings.require_pin_for_switch,
+  };
+}
 
 /**
  * GET /api/kiosk/settings
@@ -48,12 +58,30 @@ export async function GET(request: NextRequest) {
     // Get or create default settings
     const settings = await getOrCreateKioskSettings(familyId);
 
+    const { data: devices, error: deviceError } = await supabase
+      .from('kiosk_device_secrets')
+      .select('id,device_id,last_used_at,revoked_at')
+      .eq('family_id', familyId)
+      .is('revoked_at', null);
+
+    if (deviceError) {
+      logger.error('Error fetching kiosk devices', deviceError);
+    }
+
     logger.info('Retrieved kiosk settings', {
       familyId,
       settingsId: settings.id,
     });
 
-    return NextResponse.json(settings);
+    return NextResponse.json({
+      settings: toCamel(settings),
+      devices:
+        devices?.map((d) => ({
+          id: d.id,
+          deviceId: d.device_id,
+          lastUsedAt: d.last_used_at,
+        })) ?? [],
+    });
   } catch (error) {
     logger.error('Error getting kiosk settings', error);
     return NextResponse.json(
@@ -162,7 +190,7 @@ export async function PUT(request: NextRequest) {
       changes: updateData,
     });
 
-    return NextResponse.json(settings);
+    return NextResponse.json({ settings: toCamel(settings) });
   } catch (error) {
     logger.error('Error updating kiosk settings', error);
     return NextResponse.json(

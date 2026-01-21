@@ -44,6 +44,7 @@ interface FamilyMember {
   name: string;
   email?: string;
   role: string;
+  pin?: string;
   birthDate?: string;
   avatarUrl?: string;
   isActive: boolean;
@@ -69,7 +70,7 @@ interface Family {
 
 export default function FamilyPage() {
   const { user } = useSupabaseSession();
-  const { isParent, loading: memberLoading } = useCurrentMember();
+  const { member, isParent, loading: memberLoading, error: memberError } = useCurrentMember();
   const { activeFamilyId } = useActiveFamily();
   const familyFetch = useFamilyFetch();
   const { showToast } = useToast();
@@ -181,7 +182,7 @@ export default function FamilyPage() {
         const data = await response.json();
         setMemberModules(prev => ({
           ...prev,
-          [memberId]: data.allowedModules || [],
+          [memberId]: data.allowedModules || data.modules?.filter((m: any) => m.has_access).map((m: any) => m.module_id) || [],
         }));
       }
     } catch (error) {
@@ -550,9 +551,10 @@ export default function FamilyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editMemberModal.name,
-          email: editMemberModal.email,
+          email: editMemberModal.email || null,
           birthDate: editMemberModal.birthDate,
           avatarUrl: editMemberModal.avatarUrl,
+          pin: editMemberModal.pin ? editMemberModal.pin.trim() : undefined,
           // Only send allowedModules for children
           allowedModules: editMemberModal.role === 'CHILD' 
             ? (memberModules[editMemberModal.id] || [])
@@ -682,7 +684,7 @@ export default function FamilyPage() {
   }
 
   // Only parents can access this page
-  if (!isParent) {
+  if (!memberLoading && !isParent) {
     return (
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
@@ -690,6 +692,14 @@ export default function FamilyPage() {
             <p className="text-yellow-800 dark:text-yellow-200">
               Only parents can manage family settings
             </p>
+            {memberError && (
+              <p className="mt-2 text-sm text-yellow-700 dark:text-yellow-100">{memberError}</p>
+            )}
+            {member && (
+              <p className="mt-2 text-sm text-yellow-700 dark:text-yellow-100">
+                Detected member: {member.name || member.email || member.id} ({member.role})
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -1411,6 +1421,37 @@ export default function FamilyPage() {
                   onChange={(e) => setEditMemberModal({ ...editMemberModal, email: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
                 />
+              </div>
+            )}
+            {editMemberModal.role === 'CHILD' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Email (optional)
+                </label>
+                <input
+                  type="email"
+                  value={editMemberModal.email || ''}
+                  onChange={(e) => setEditMemberModal({ ...editMemberModal, email: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            )}
+            {editMemberModal.role === 'CHILD' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  PIN (4-6 digits)
+                </label>
+                <input
+                  type="password"
+                  value={editMemberModal.pin || ''}
+                  onChange={(e) => setEditMemberModal({ ...editMemberModal, pin: e.target.value })}
+                  maxLength={6}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                  placeholder="Leave blank to keep existing PIN"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Enter a new PIN to update it; leave blank to keep the current PIN.
+                </p>
               </div>
             )}
             <div>

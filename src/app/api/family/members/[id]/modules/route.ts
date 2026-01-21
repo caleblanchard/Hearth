@@ -36,8 +36,10 @@ export async function GET(
     }
 
     const modules = await getMemberModuleAccess(id);
+    const allowedModules =
+      modules?.filter((m: any) => m.has_access)?.map((m: any) => m.module_id) || [];
 
-    return NextResponse.json({ modules });
+    return NextResponse.json({ allowedModules, modules });
   } catch (error) {
     logger.error('Get member module access error:', error);
     return NextResponse.json({ error: 'Failed to get module access' }, { status: 500 });
@@ -82,10 +84,28 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const modules = await updateMemberModuleAccess(id, body.modules);
+    const allowedModules: string[] = Array.isArray(body?.allowedModules)
+      ? Array.from(new Set(body.allowedModules.filter(Boolean)))
+      : Array.isArray(body?.modules)
+        ? Array.from(
+            new Set(
+              body.modules
+                .filter((m: any) => m?.module_id)
+                .map((m: any) => m.module_id)
+            )
+          )
+        : [];
+
+    const modulesPayload = allowedModules.map((moduleId) => ({
+      module_id: moduleId,
+      has_access: true,
+    }));
+
+    const modules = await updateMemberModuleAccess(id, modulesPayload);
 
     return NextResponse.json({
       success: true,
+      allowedModules,
       modules,
       message: 'Member module access updated successfully',
     });

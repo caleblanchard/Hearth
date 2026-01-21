@@ -1,8 +1,8 @@
 // Set up mocks BEFORE any imports
 import { MAX_REQUEST_SIZE_BYTES } from '@/lib/constants'
 
-// Mock rate limiters (now from rate-limit-redis)
-jest.mock('@/lib/rate-limit-redis', () => ({
+// Mock rate limiters
+jest.mock('@/lib/rate-limit', () => ({
   apiRateLimiter: {
     check: jest.fn(),
     maxRequests: 100,
@@ -19,7 +19,7 @@ jest.mock('@/lib/rate-limit-redis', () => ({
 }))
 
 // Import after mock
-const { apiRateLimiter, authRateLimiter, cronRateLimiter, getClientIdentifier } = require('@/lib/rate-limit-redis')
+const { apiRateLimiter, authRateLimiter, cronRateLimiter, getClientIdentifier } = require('@/lib/rate-limit')
 
 // Mock constants
 jest.mock('@/lib/constants', () => ({
@@ -44,12 +44,21 @@ jest.mock('next/server', () => {
     url: string
     nextUrl: { pathname: string }
     headers: Headers
+    cookies: {
+      get: jest.Mock
+      set: jest.Mock
+    }
     
     constructor(url: string, init?: { headers?: HeadersInit }) {
       this.url = url
       const urlObj = new URL(url)
       this.nextUrl = { pathname: urlObj.pathname }
       this.headers = new Headers(init?.headers || {})
+      this.cookies = {
+        get: jest.fn(),
+        set: jest.fn(),
+      }
+      this.cookies.get.mockReturnValue(undefined)
     }
   }
   
@@ -68,15 +77,40 @@ jest.mock('next/server', () => {
         response.json = jest.fn(async () => data)
         return response
       }),
+      redirect: jest.fn((url: URL) => {
+        const response = createMockResponse()
+        response.status = 307
+        response.json = jest.fn(async () => ({}))
+        ;(response as any).url = url
+        return response
+      }),
     },
   }
 })
+
+// Mock kiosk auth helpers
+jest.mock('@/lib/kiosk-auth', () => ({
+  hashSecret: jest.fn((v) => `hash-${v}`),
+}))
+
+// Mock service client used by middleware for kiosk validation
+jest.mock('@/lib/supabase/service', () => ({
+  createServiceClient: jest.fn(() => ({
+    from: jest.fn(() => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn(async () => ({ data: null, error: null })),
+    })),
+  })),
+}))
 
 // NOW import middleware after mocks
 import { proxy as middleware } from '@/proxy'
 import { NextRequest } from 'next/server'
 
 const { NextResponse } = require('next/server')
+const { createServiceClient } = require('@/lib/supabase/service')
 
 describe('middleware.ts', () => {
   beforeEach(() => {
@@ -98,6 +132,30 @@ describe('middleware.ts', () => {
       resetTime: Date.now() + 60000,
     })
     ;(getClientIdentifier as jest.Mock).mockReturnValue('192.168.1.1')
+    ;(createServiceClient as jest.Mock).mockReturnValue({
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        is: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn(async () => ({ data: null, error: null })),
+      })),
+    })
+    ;(NextResponse.next as jest.Mock).mockReturnValue({
+      headers: {
+        set: jest.fn(),
+        get: jest.fn(),
+      },
+      json: jest.fn(async () => ({})),
+      status: 200,
+    })
+    ;(NextResponse.json as jest.Mock).mockReturnValue({
+      headers: {
+        set: jest.fn(),
+        get: jest.fn(),
+      },
+      json: jest.fn(async () => ({})),
+      status: 200,
+    })
   })
 
   describe('Static file skipping', () => {
@@ -124,6 +182,109 @@ describe('middleware.ts', () => {
       await middleware(request)
 
       expect(apiRateLimiter.check).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Kiosk child handling', () => {
+    it('allows kiosk child on protected dashboard', async () => {
+      const request = new NextRequest('http://localhost/dashboard', {
+        headers: {
+          'x-kiosk-child': 'child-token',
+        },
+      })
+
+      ;(createServiceClient as jest.Mock).mockReturnValue({
+        from: jest.fn(() => ({
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn(async () => ({
+            data: { id: 'session', expires_at: new Date(Date.now() + 60000).toISOString(), ended_at: null },
+            error: null,
+          })),
+        })),
+      })
+
+      const result = await middleware(request)
+
+      expect(NextResponse.redirect).not.toHaveBeenCalled()
+      expect(result.headers.get).toBeDefined()
+    })
+
+    it('redirects kiosk child away from auth pages', async () => {
+      const request = new NextRequest('http://localhost/auth/signin', {
+        headers: {
+          'x-kiosk-child': 'child-token',
+        },
+      })
+
+      ;(createServiceClient as jest.Mock).mockReturnValue({
+        from: jest.fn(() => ({
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn(async () => ({
+            data: { id: 'session', expires_at: new Date(Date.now() + 60000).toISOString(), ended_at: null },
+            error: null,
+          })),
+        })),
+      })
+
+      const result = await middleware(request)
+
+      expect(NextResponse.redirect).toHaveBeenCalledWith(new URL('/dashboard', 'http://localhost/auth/signin'))
+      expect(result).toBeDefined()
+    })
+  })
+
+  describe('Kiosk device access', () => {
+    it('allows kiosk device to access kiosk route without auth', async () => {
+      const request = new NextRequest('http://localhost/kiosk', {
+        headers: {
+          'x-kiosk-device': 'device-secret',
+        },
+      })
+
+      ;(createServiceClient as jest.Mock).mockReturnValue({
+        from: jest.fn(() => ({
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn(async () => ({
+            data: { id: 'secret', revoked_at: null },
+            error: null,
+          })),
+        })),
+      })
+
+      const result = await middleware(request)
+
+      expect(NextResponse.redirect).not.toHaveBeenCalled()
+      expect(result.status).toBeDefined()
+    })
+
+    it('redirects kiosk device away from auth pages', async () => {
+      const request = new NextRequest('http://localhost/auth/signin', {
+        headers: {
+          'x-kiosk-device': 'device-secret',
+        },
+      })
+
+      ;(createServiceClient as jest.Mock).mockReturnValue({
+        from: jest.fn(() => ({
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn(async () => ({
+            data: { id: 'secret', revoked_at: null },
+            error: null,
+          })),
+        })),
+      })
+
+      await middleware(request)
+
+      expect(NextResponse.redirect).toHaveBeenCalledWith(new URL('/kiosk', 'http://localhost/auth/signin'))
     })
   })
 

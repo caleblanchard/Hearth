@@ -338,19 +338,21 @@ export async function updateMedicalProfile(
 export async function recordTemperatureReading(
   memberId: string,
   temperature: number,
-  unit: 'FAHRENHEIT' | 'CELSIUS' = 'FAHRENHEIT'
+  method: Database['public']['Enums']['temp_method'],
+  notes?: string | null
 ) {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('temperature_readings')
+    .from('temperature_logs')
     .insert({
       member_id: memberId,
       temperature,
-      unit,
+      method,
+      notes: notes || null,
       recorded_at: new Date().toISOString(),
     })
-    .select()
+    .select('id, member_id, temperature, method, recorded_at, notes, member:family_members(id, name)')
     .single()
 
   if (error) throw error
@@ -367,8 +369,8 @@ export async function getTemperatureReadings(memberId: string, days = 7) {
   cutoffDate.setDate(cutoffDate.getDate() - days)
 
   const { data, error } = await supabase
-    .from('temperature_readings')
-    .select('*')
+    .from('temperature_logs')
+    .select('id, member_id, temperature, method, recorded_at, notes, member:family_members(id, name)')
     .eq('member_id', memberId)
     .gte('recorded_at', cutoffDate.toISOString())
     .order('recorded_at', { ascending: false })

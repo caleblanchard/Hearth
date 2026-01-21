@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/supabase/server';
-import { getKioskSession } from '@/lib/kiosk-session';
+import { authenticateChildSession, authenticateDeviceSecret } from '@/lib/kiosk-auth';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -31,16 +31,11 @@ const WIDGET_HANDLERS: Record<string, WidgetHandler> = {
 export async function GET(request: NextRequest) {
   try {
     const authContext = await getAuthContext();
-    let kioskSession = null;
+    const childAuth = authContext ? null : await authenticateChildSession();
+    const deviceAuth = authContext || childAuth ? null : await authenticateDeviceSecret();
 
-    if (!authContext) {
-      const kioskToken = request.headers.get('X-Kiosk-Token') || request.headers.get('x-kiosk-token');
-      if (kioskToken) {
-        kioskSession = await getKioskSession(kioskToken);
-      }
-      if (!kioskSession) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+    if (!authContext && !childAuth && !deviceAuth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);

@@ -4,7 +4,6 @@ import { getAuthContext } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    const supabase = await createClient();
     const authContext = await getAuthContext();
 
     if (!authContext) {
@@ -16,10 +15,19 @@ export async function GET() {
       return NextResponse.json({ error: 'No member found' }, { status: 400 });
     }
 
-    // Fetch the user's role from family_members
+    // For kiosk child sessions, role is already in authContext.user.role
+    if (authContext.user?.role) {
+      return NextResponse.json({
+        role: authContext.user.role,
+        memberId,
+        familyId: authContext.activeFamilyId,
+      });
+    }
+
+    const supabase = await createClient();
     const { data: member, error } = await supabase
       .from('family_members')
-      .select('role')
+      .select('role, auth_user_id')
       .eq('id', memberId)
       .single();
 
@@ -28,8 +36,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch role' }, { status: 500 });
     }
 
-    console.log('[API] /api/user/role - memberId:', memberId, 'role:', member.role);
-    return NextResponse.json({ role: member.role });
+    console.log('[API] /api/user/role - memberId:', memberId, 'role:', member.role, 'authUserId:', member.auth_user_id);
+    return NextResponse.json({ role: member.role, memberId, familyId: authContext.activeFamilyId, authUserId: member.auth_user_id });
   } catch (error) {
     console.error('Error in /api/user/role:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
