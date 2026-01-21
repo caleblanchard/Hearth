@@ -4,6 +4,51 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getAuthContext } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
+type ModuleId =
+  | 'CHORES'
+  | 'SCREEN_TIME'
+  | 'CREDITS'
+  | 'SHOPPING'
+  | 'CALENDAR'
+  | 'TODOS'
+  | 'ROUTINES'
+  | 'MEAL_PLANNING'
+  | 'RECIPES'
+  | 'INVENTORY'
+  | 'HEALTH'
+  | 'PROJECTS'
+  | 'COMMUNICATION'
+  | 'TRANSPORT'
+  | 'PETS'
+  | 'MAINTENANCE'
+  | 'DOCUMENTS'
+  | 'FINANCIAL'
+  | 'LEADERBOARD'
+  | 'RULES_ENGINE';
+
+const VALID_MODULE_IDS: ModuleId[] = [
+  'CHORES',
+  'SCREEN_TIME',
+  'CREDITS',
+  'SHOPPING',
+  'CALENDAR',
+  'TODOS',
+  'ROUTINES',
+  'MEAL_PLANNING',
+  'RECIPES',
+  'INVENTORY',
+  'HEALTH',
+  'PROJECTS',
+  'COMMUNICATION',
+  'TRANSPORT',
+  'PETS',
+  'MAINTENANCE',
+  'DOCUMENTS',
+  'FINANCIAL',
+  'LEADERBOARD',
+  'RULES_ENGINE',
+];
+
 /**
  * POST /api/setup/onboarding
  * Creates a new family and associates the authenticated user as the first member
@@ -106,10 +151,31 @@ export async function POST(request: Request) {
       );
     }
 
-    // Enable selected modules (skipped for now - table doesn't exist)
-    // TODO: Implement module enablement when family_enabled_modules table is created
-    if (selectedModules && selectedModules.length > 0) {
-      logger.info(`Would enable modules for family ${family.id}:`, selectedModules);
+    // Enable/disable modules based on selection
+    const selectedModuleSet = new Set(
+      Array.isArray(selectedModules)
+        ? selectedModules.filter((m: string): m is ModuleId => VALID_MODULE_IDS.includes(m as ModuleId))
+        : []
+    );
+
+    const moduleConfigurations = VALID_MODULE_IDS.map((moduleId) => ({
+      family_id: family.id,
+      module_id: moduleId,
+      is_enabled: selectedModuleSet.has(moduleId),
+      enabled_at: selectedModuleSet.has(moduleId) ? new Date().toISOString() : null,
+      disabled_at: selectedModuleSet.has(moduleId) ? null : new Date().toISOString(),
+    }));
+
+    const { error: moduleConfigError } = await adminClient
+      .from('module_configurations')
+      .upsert(moduleConfigurations, { onConflict: 'family_id,module_id' });
+
+    if (moduleConfigError) {
+      logger.error('Error configuring modules:', moduleConfigError);
+      return NextResponse.json(
+        { error: 'Failed to configure modules' },
+        { status: 500 }
+      );
     }
 
     logger.info(`Family created successfully: ${family.id} by user ${authContext.user.id}`);
@@ -118,6 +184,10 @@ export async function POST(request: Request) {
       success: true,
       familyId: family.id,
       familyName: family.name,
+      modules: {
+        enabled: Array.from(selectedModuleSet),
+        count: selectedModuleSet.size,
+      },
     });
   } catch (error) {
     logger.error('Onboarding error:', error);

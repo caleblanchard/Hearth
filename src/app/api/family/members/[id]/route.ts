@@ -45,7 +45,7 @@ export async function PATCH(
 
     const body = await request.json();
 
-    const { allowedModules, pin, ...memberUpdates } = body || {};
+    const { allowedModules, pin, avatarUrl, birthDate, ...memberUpdates } = body || {};
 
     let pinUpdate: string | null | undefined = undefined;
     if (typeof pin === 'string' && pin.trim()) {
@@ -61,6 +61,13 @@ export async function PATCH(
 
     const member = await updateFamilyMember(id, {
       ...memberUpdates,
+      avatar_url: avatarUrl,
+      birth_date:
+        birthDate !== undefined
+          ? birthDate
+            ? new Date(birthDate).toISOString()
+            : null
+          : undefined,
       pin: pinUpdate ?? memberUpdates.pin,
     });
 
