@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     let query = supabase
       .from('sick_mode_instances')
-      .select('*, member:family_members(id, name)')
+      .select('*, member:family_members!sick_mode_instances_member_id_fkey(id, name)')
       .eq('family_id', familyId);
 
     if (targetMemberId) {

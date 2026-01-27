@@ -59,18 +59,26 @@ export async function PATCH(
     const body = await request.json();
 
     // Validate body
-    const allowedFields = ['syncEnabled', 'importFromGoogle', 'exportToGoogle', 'isActive', 'name'];
+    const allowedFields = ['syncEnabled', 'importFromGoogle', 'exportToGoogle', 'name'];
     const invalidFields = Object.keys(body).filter(key => !allowedFields.includes(key));
     
     if (invalidFields.length > 0) {
       return NextResponse.json({ error: `Invalid fields: ${invalidFields.join(', ')}` }, { status: 400 });
     }
 
-    if (body.syncEnabled) {
-      body.syncError = null;
+    const updates: Record<string, any> = {};
+    if (body.syncEnabled !== undefined) {
+      updates.sync_enabled = body.syncEnabled;
+      // Clear error when re-enabling
+      if (body.syncEnabled) {
+        updates.sync_error = null;
+      }
     }
+    if (body.importFromGoogle !== undefined) updates.import_from_google = body.importFromGoogle;
+    if (body.exportToGoogle !== undefined) updates.export_to_google = body.exportToGoogle;
+    if (body.name !== undefined) updates.name = body.name;
 
-    const connection = await updateCalendarConnection(id, body);
+    const connection = await updateCalendarConnection(id, updates);
 
     return NextResponse.json({
       success: true,

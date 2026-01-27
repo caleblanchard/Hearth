@@ -240,7 +240,6 @@ describe('/api/calendar/google/callback', () => {
           refreshToken: 'encrypted:refresh-token-456',
           tokenExpiresAt: '2026-01-05T00:00:00.000Z',
           googleEmail: 'user@example.com',
-          isActive: true,
           syncEnabled: true,
           syncStatus: 'ACTIVE',
           name: 'Google Calendar',

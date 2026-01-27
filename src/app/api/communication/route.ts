@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthContext } from '@/lib/supabase/server'
-import { dbMock } from '@/lib/test-utils/db-mock'
 import { getCommunicationPosts, createCommunicationPost } from '@/lib/data/communication'
 import { logger } from '@/lib/logger'
 
@@ -30,7 +29,6 @@ export async function GET(request: NextRequest) {
       offset: skip,
       pinned: pinnedOnly ? true : undefined,
       type: type as any,
-      db: dbMock,
     })
 
     const mappedPosts = postsResult.posts.map((post: any) => ({

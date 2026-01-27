@@ -22,40 +22,8 @@ export async function getCommunicationPosts(
     offset?: number
     pinned?: boolean
     type?: string
-    db?: typeof import('@/lib/test-utils/db-mock').dbMock
   }
 ) {
-  // Use mock DB in tests when provided
-  if (options?.db) {
-    const where: Record<string, any> = { familyId }
-    if (options.pinned !== undefined) where.isPinned = options.pinned
-    if (options.type) where.type = options.type
-
-    const take = options.limit
-    const skip = options.offset
-
-    const [posts, total] = await Promise.all([
-      options.db.communicationPost.findMany({
-        where,
-        orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
-        take,
-        skip,
-      }),
-      options.db.communicationPost.count({ where }),
-    ])
-
-    const normalized = (posts || []).map((post: any) => ({
-      ...post,
-      family_id: post.family_id ?? post.familyId,
-      is_pinned: post.is_pinned ?? post.isPinned,
-      created_at: post.created_at ?? post.createdAt,
-      updated_at: post.updated_at ?? post.updatedAt,
-      image_url: post.image_url ?? post.imageUrl,
-    }))
-
-    return { posts: normalized, total: total ?? normalized.length }
-  }
-
   const supabase = await createClient()
 
   let query = supabase

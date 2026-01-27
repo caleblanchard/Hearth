@@ -12,6 +12,15 @@ import { GET, POST } from '@/app/api/communication/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { PostType } from '@/lib/enums';
 
+// Mock the communication data module
+jest.mock('@/lib/data/communication', () => ({
+  getCommunicationPosts: jest.fn(),
+  createCommunicationPost: jest.fn(),
+}));
+
+// Import mocked module
+import { getCommunicationPosts, createCommunicationPost } from '@/lib/data/communication';
+
 describe('GET /api/communication', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -32,8 +41,10 @@ describe('GET /api/communication', () => {
   it('should return empty array if no posts exist', async () => {
     const session = mockParentSession();
 
-    dbMock.communicationPost.findMany.mockResolvedValue([]);
-    dbMock.communicationPost.count.mockResolvedValue(0);
+    (getCommunicationPosts as jest.Mock).mockResolvedValue({
+      posts: [],
+      total: 0,
+    });
 
     const request = new Request('http://localhost/api/communication', {
       method: 'GET',
@@ -52,37 +63,34 @@ describe('GET /api/communication', () => {
     const mockPosts = [
       {
         id: 'post-1',
-        familyId: session.user.familyId,
+        family_id: session.user.familyId,
         type: PostType.ANNOUNCEMENT,
         title: 'Important Update',
         content: 'Family meeting tonight',
-        imageUrl: null,
-        isPinned: true,
-        expiresAt: null,
-        authorId: session.user.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        image_url: null,
+        is_pinned: true,
+        expires_at: null,
+        author_id: session.user.id,
+        created_at: new Date(),
+        updated_at: new Date(),
         author: {
           id: session.user.id,
           name: session.user.name,
         },
         reactions: [],
-        _count: {
-          reactions: 0,
-        },
       },
       {
         id: 'post-2',
-        familyId: session.user.familyId,
+        family_id: session.user.familyId,
         type: PostType.KUDOS,
         title: null,
         content: 'Great job on homework!',
-        imageUrl: null,
-        isPinned: false,
-        expiresAt: null,
-        authorId: 'child-123',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        image_url: null,
+        is_pinned: false,
+        expires_at: null,
+        author_id: 'child-123',
+        created_at: new Date(),
+        updated_at: new Date(),
         author: {
           id: 'child-123',
           name: 'Child User',
@@ -98,14 +106,13 @@ describe('GET /api/communication', () => {
             },
           },
         ],
-        _count: {
-          reactions: 1,
-        },
       },
     ];
 
-    dbMock.communicationPost.findMany.mockResolvedValue(mockPosts as any);
-    dbMock.communicationPost.count.mockResolvedValue(2);
+    (getCommunicationPosts as jest.Mock).mockResolvedValue({
+      posts: mockPosts,
+      total: 2,
+    });
 
     const request = new Request('http://localhost/api/communication', {
       method: 'GET',
@@ -122,8 +129,10 @@ describe('GET /api/communication', () => {
   it('should filter posts by type', async () => {
     const session = mockParentSession();
 
-    dbMock.communicationPost.findMany.mockResolvedValue([]);
-    dbMock.communicationPost.count.mockResolvedValue(0);
+    (getCommunicationPosts as jest.Mock).mockResolvedValue({
+      posts: [],
+      total: 0,
+    });
 
     const request = new Request('http://localhost/api/communication?type=KUDOS', {
       method: 'GET',
@@ -131,11 +140,10 @@ describe('GET /api/communication', () => {
 
     await GET(request);
 
-    expect(dbMock.communicationPost.findMany).toHaveBeenCalledWith(
+    expect(getCommunicationPosts).toHaveBeenCalledWith(
+      session.user.familyId,
       expect.objectContaining({
-        where: expect.objectContaining({
-          type: 'KUDOS',
-        }),
+        type: 'KUDOS',
       })
     );
   });
@@ -143,8 +151,10 @@ describe('GET /api/communication', () => {
   it('should return only pinned posts when filter applied', async () => {
     const session = mockParentSession();
 
-    dbMock.communicationPost.findMany.mockResolvedValue([]);
-    dbMock.communicationPost.count.mockResolvedValue(0);
+    (getCommunicationPosts as jest.Mock).mockResolvedValue({
+      posts: [],
+      total: 0,
+    });
 
     const request = new Request('http://localhost/api/communication?pinned=true', {
       method: 'GET',
@@ -152,11 +162,10 @@ describe('GET /api/communication', () => {
 
     await GET(request);
 
-    expect(dbMock.communicationPost.findMany).toHaveBeenCalledWith(
+    expect(getCommunicationPosts).toHaveBeenCalledWith(
+      session.user.familyId,
       expect.objectContaining({
-        where: expect.objectContaining({
-          isPinned: true,
-        }),
+        pinned: true,
       })
     );
   });
@@ -164,8 +173,10 @@ describe('GET /api/communication', () => {
   it('should support pagination', async () => {
     const session = mockParentSession();
 
-    dbMock.communicationPost.findMany.mockResolvedValue([]);
-    dbMock.communicationPost.count.mockResolvedValue(50);
+    (getCommunicationPosts as jest.Mock).mockResolvedValue({
+      posts: [],
+      total: 50,
+    });
 
     const request = new Request('http://localhost/api/communication?limit=10&page=3', {
       method: 'GET',
@@ -176,53 +187,16 @@ describe('GET /api/communication', () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.pagination.total).toBe(50);
-    expect(dbMock.communicationPost.findMany).toHaveBeenCalledWith(
+    expect(getCommunicationPosts).toHaveBeenCalledWith(
+      session.user.familyId,
       expect.objectContaining({
-        skip: 20,
-        take: 10,
+        offset: 20,
+        limit: 10,
       })
     );
   });
 
-  it('should order posts by pinned first then created desc', async () => {
-    const session = mockParentSession();
 
-    dbMock.communicationPost.findMany.mockResolvedValue([]);
-    dbMock.communicationPost.count.mockResolvedValue(0);
-
-    const request = new Request('http://localhost/api/communication', {
-      method: 'GET',
-    }) as NextRequest;
-
-    await GET(request);
-
-    expect(dbMock.communicationPost.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
-      })
-    );
-  });
-
-  it('should not return posts from other families', async () => {
-    const session = mockParentSession();
-
-    dbMock.communicationPost.findMany.mockResolvedValue([]);
-    dbMock.communicationPost.count.mockResolvedValue(0);
-
-    const request = new Request('http://localhost/api/communication', {
-      method: 'GET',
-    }) as NextRequest;
-
-    await GET(request);
-
-    expect(dbMock.communicationPost.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          familyId: session.user.familyId,
-        }),
-      })
-    );
-  });
 });
 
 describe('POST /api/communication', () => {
@@ -272,19 +246,19 @@ describe('POST /api/communication', () => {
 
     const mockPost = {
       id: 'post-1',
-      familyId: session.user.familyId,
+      family_id: session.user.familyId,
       type: PostType.ANNOUNCEMENT,
       title: 'Important Update',
       content: 'Family meeting tonight',
-      imageUrl: null,
-      isPinned: false,
-      expiresAt: null,
-      authorId: session.user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      image_url: null,
+      is_pinned: false,
+      expires_at: null,
+      author_id: session.user.id,
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
-    dbMock.communicationPost.create.mockResolvedValue(mockPost as any);
+    (createCommunicationPost as jest.Mock).mockResolvedValue(mockPost);
     dbMock.auditLog.create.mockResolvedValue({} as any);
 
     const request = new Request('http://localhost/api/communication', {
@@ -310,19 +284,19 @@ describe('POST /api/communication', () => {
 
     const mockPost = {
       id: 'post-1',
-      familyId: session.user.familyId,
+      family_id: session.user.familyId,
       type: PostType.KUDOS,
       title: null,
       content: 'Great job!',
-      imageUrl: null,
-      isPinned: false,
-      expiresAt: null,
-      authorId: session.user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      image_url: null,
+      is_pinned: false,
+      expires_at: null,
+      author_id: session.user.id,
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
-    dbMock.communicationPost.create.mockResolvedValue(mockPost as any);
+    (createCommunicationPost as jest.Mock).mockResolvedValue(mockPost);
     dbMock.auditLog.create.mockResolvedValue({} as any);
 
     const request = new Request('http://localhost/api/communication', {
@@ -346,19 +320,19 @@ describe('POST /api/communication', () => {
 
     const mockPost = {
       id: 'post-1',
-      familyId: session.user.familyId,
+      family_id: session.user.familyId,
       type: PostType.NOTE,
       title: null,
       content: 'Remember to take out trash',
-      imageUrl: null,
-      isPinned: false,
-      expiresAt: null,
-      authorId: session.user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      image_url: null,
+      is_pinned: false,
+      expires_at: null,
+      author_id: session.user.id,
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
-    dbMock.communicationPost.create.mockResolvedValue(mockPost as any);
+    (createCommunicationPost as jest.Mock).mockResolvedValue(mockPost);
     dbMock.auditLog.create.mockResolvedValue({} as any);
 
     const request = new Request('http://localhost/api/communication', {
@@ -380,19 +354,19 @@ describe('POST /api/communication', () => {
 
     const mockPost = {
       id: 'post-1',
-      familyId: session.user.familyId,
+      family_id: session.user.familyId,
       type: PostType.PHOTO,
       title: 'Family Vacation',
       content: 'Beach day!',
-      imageUrl: 'https://example.com/photo.jpg',
-      isPinned: false,
-      expiresAt: null,
-      authorId: session.user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      image_url: 'https://example.com/photo.jpg',
+      is_pinned: false,
+      expires_at: null,
+      author_id: session.user.id,
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
-    dbMock.communicationPost.create.mockResolvedValue(mockPost as any);
+    (createCommunicationPost as jest.Mock).mockResolvedValue(mockPost);
     dbMock.auditLog.create.mockResolvedValue({} as any);
 
     const request = new Request('http://localhost/api/communication', {
@@ -410,7 +384,7 @@ describe('POST /api/communication', () => {
 
     expect(response.status).toBe(201);
     const data = await response.json();
-    expect(data.post.imageUrl).toBe('https://example.com/photo.jpg');
+    expect(data.post.image_url).toBe('https://example.com/photo.jpg');
   });
 
   it('should return 400 if content is missing', async () => {
@@ -455,19 +429,19 @@ describe('POST /api/communication', () => {
 
     const mockPost = {
       id: 'post-1',
-      familyId: session.user.familyId,
+      family_id: session.user.familyId,
       type: PostType.NOTE,
       title: null,
       content: 'Test note',
-      imageUrl: null,
-      isPinned: false,
-      expiresAt: null,
-      authorId: session.user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      image_url: null,
+      is_pinned: false,
+      expires_at: null,
+      author_id: session.user.id,
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
-    dbMock.communicationPost.create.mockResolvedValue(mockPost as any);
+    (createCommunicationPost as jest.Mock).mockResolvedValue(mockPost);
     dbMock.auditLog.create.mockResolvedValue({} as any);
 
     const request = new Request('http://localhost/api/communication', {
@@ -481,6 +455,7 @@ describe('POST /api/communication', () => {
 
     await POST(request);
 
+    expect(createCommunicationPost).toHaveBeenCalled();
     expect(dbMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

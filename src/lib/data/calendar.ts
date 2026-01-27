@@ -284,7 +284,6 @@ export async function getActiveSyncConnections(familyId: string) {
     .from('calendar_connections')
     .select('*')
     .eq('family_id', familyId)
-    .eq('is_active', true)
     .eq('sync_enabled', true)
 
   if (error) throw error
@@ -482,7 +481,7 @@ export async function getCalendarConnections(memberId: string) {
 
   const { data, error } = await supabase
     .from('calendar_connections')
-    .select('id, provider, google_email, sync_status, sync_enabled, created_at, updated_at, member_id, family_id, sync_token, is_active')
+    .select('id, provider, google_email, sync_status, sync_enabled, created_at, updated_at, member_id, family_id, sync_token')
     .eq('member_id', memberId)
     .order('created_at', { ascending: false })
 
@@ -511,7 +510,7 @@ export async function getCalendarConnection(connectionId: string) {
  */
 export async function updateCalendarConnection(
   connectionId: string,
-  updates: { is_active?: boolean; sync_enabled?: boolean; name?: string }
+  updates: { sync_enabled?: boolean; name?: string }
 ) {
   const supabase = await createClient()
 
@@ -772,7 +771,6 @@ export async function handleGoogleCalendarCallback(
       access_token: encryptedAccessToken,
       refresh_token: encryptedRefreshToken,
       token_expires_at: tokens.expiresAt.toISOString(),
-      is_active: true,
       sync_enabled: true,
       sync_status: 'ACTIVE',
       name: 'Google Calendar',
