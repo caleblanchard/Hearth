@@ -15,6 +15,7 @@ const config: Config = {
         ember: {
           300: '#FFB199',
           500: '#FF8A65',
+          600: '#F26D32',
           700: '#E65100',
         },
         slate: {
