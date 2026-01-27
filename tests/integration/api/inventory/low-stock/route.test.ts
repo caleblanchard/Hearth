@@ -76,9 +76,6 @@ describe('/api/inventory/low-stock', () => {
     expect(dbMock.inventoryItem.findMany).toHaveBeenCalledWith({
       where: {
         familyId: 'family-test-123',
-        lowStockThreshold: {
-          not: null,
-        },
       },
       orderBy: {
         name: 'asc',

@@ -139,7 +139,7 @@ describe('/api/shopping/items/[id]', () => {
         where: { id: itemId },
         data: {
           status: 'PURCHASED',
-          purchasedAt: expect.any(Date),
+          purchasedAt: expect.any(String),
           purchasedById: 'user-1',
         },
       })
@@ -168,7 +168,7 @@ describe('/api/shopping/items/[id]', () => {
           familyId: 'family-1',
           memberId: 'user-1',
           action: 'SHOPPING_ITEM_UPDATED',
-          entityType: 'ShoppingItem',
+          entityType: 'SHOPPING_ITEM',
           entityId: itemId,
           result: 'SUCCESS',
           metadata: expect.objectContaining({
@@ -298,7 +298,7 @@ describe('/api/shopping/items/[id]', () => {
           familyId: 'family-1',
           memberId: 'user-1',
           action: 'SHOPPING_ITEM_DELETED',
-          entityType: 'ShoppingItem',
+          entityType: 'SHOPPING_ITEM',
           entityId: itemId,
           result: 'SUCCESS',
           metadata: expect.objectContaining({

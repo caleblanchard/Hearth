@@ -204,7 +204,7 @@ describe('GoogleCalendarClient', () => {
         where: { id: connectionId },
         data: {
           accessToken: 'encrypted:new:access',
-          tokenExpiresAt: new Date(newExpiryDate),
+          tokenExpiresAt: new Date(newExpiryDate).toISOString(),
         },
       });
     });

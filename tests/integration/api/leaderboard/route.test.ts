@@ -50,49 +50,74 @@ describe('/api/leaderboard', () => {
     it('should return leaderboard for weekly period', async () => {
       const session = mockParentSession()
 
-      dbMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
-      dbMock.choreInstance.count
-        .mockResolvedValueOnce(5) // child-1
-        .mockResolvedValueOnce(3) // child-2
-      dbMock.creditTransaction.aggregate
-        .mockResolvedValueOnce({ _sum: { amount: 50 } } as any) // child-1
-        .mockResolvedValueOnce({ _sum: { amount: 30 } } as any) // child-2
-      dbMock.streak.findUnique
-        .mockResolvedValueOnce({ currentCount: 7 } as any) // child-1
-        .mockResolvedValueOnce({ currentCount: 3 } as any) // child-2
-      dbMock.leaderboardEntry.upsert.mockResolvedValue({} as any)
+      const mockLeaderboard = [
+        {
+          id: 'entry-1',
+          user_id: 'child-1',
+          rank: 1,
+          score: 100,
+          period: 'WEEKLY',
+          streak: 7,
+          user: { id: 'child-1', name: 'Child One', avatar_url: null }
+        },
+        {
+          id: 'entry-2',
+          user_id: 'child-2',
+          rank: 2,
+          score: 60,
+          period: 'WEEKLY',
+          streak: 3,
+          user: { id: 'child-2', name: 'Child Two', avatar_url: null }
+        }
+      ]
+
+      dbMock.leaderboardEntry.findMany.mockResolvedValue(mockLeaderboard as any)
 
       const request = new NextRequest('http://localhost/api/leaderboard?period=weekly')
       const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.period).toBe('weekly')
+      expect(data.period).toBe('WEEKLY')
       expect(data.leaderboard).toHaveLength(2)
       expect(data.leaderboard[0].rank).toBe(1)
-      expect(data.leaderboard[0].score).toBe(100) // (5 * 10) + 50
+      expect(data.leaderboard[0].score).toBe(100)
       expect(data.leaderboard[1].rank).toBe(2)
-      expect(data.leaderboard[1].score).toBe(60) // (3 * 10) + 30
+      expect(data.leaderboard[1].score).toBe(60)
     })
 
     it('should return leaderboard for all-time period', async () => {
       const session = mockParentSession()
 
-      dbMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
-      dbMock.creditBalance.findUnique
-        .mockResolvedValueOnce({ lifetimeEarned: 200 } as any) // child-1
-        .mockResolvedValueOnce({ lifetimeEarned: 150 } as any) // child-2
-      dbMock.streak.findUnique
-        .mockResolvedValueOnce({ currentCount: 5 } as any)
-        .mockResolvedValueOnce({ currentCount: 2 } as any)
-      dbMock.leaderboardEntry.upsert.mockResolvedValue({} as any)
+      const mockLeaderboard = [
+        {
+          id: 'entry-1',
+          user_id: 'child-1',
+          rank: 1,
+          score: 200,
+          period: 'ALL_TIME',
+          streak: 5,
+          user: { id: 'child-1', name: 'Child One', avatar_url: null }
+        },
+        {
+          id: 'entry-2',
+          user_id: 'child-2',
+          rank: 2,
+          score: 150,
+          period: 'ALL_TIME',
+          streak: 2,
+          user: { id: 'child-2', name: 'Child Two', avatar_url: null }
+        }
+      ]
+
+      dbMock.leaderboardEntry.findMany.mockResolvedValue(mockLeaderboard as any)
 
       const request = new NextRequest('http://localhost/api/leaderboard?period=all-time')
       const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.period).toBe('all-time')
+      expect(data.period).toBe('ALL_TIME')
       expect(data.leaderboard[0].score).toBe(200)
       expect(data.leaderboard[1].score).toBe(150)
     })
@@ -100,11 +125,19 @@ describe('/api/leaderboard', () => {
     it('should handle members without streaks', async () => {
       const session = mockParentSession()
 
-      dbMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
-      dbMock.choreInstance.count.mockResolvedValue(0)
-      dbMock.creditTransaction.aggregate.mockResolvedValue({ _sum: { amount: null } } as any)
-      dbMock.streak.findUnique.mockResolvedValue(null)
-      dbMock.leaderboardEntry.upsert.mockResolvedValue({} as any)
+      const mockLeaderboard = [
+        {
+          id: 'entry-1',
+          user_id: 'child-1',
+          rank: 1,
+          score: 0,
+          period: 'WEEKLY',
+          streak: 0,
+          user: { id: 'child-1', name: 'Child One', avatar_url: null }
+        }
+      ]
+
+      dbMock.leaderboardEntry.findMany.mockResolvedValue(mockLeaderboard as any)
 
       const request = new NextRequest('http://localhost/api/leaderboard')
       const response = await GET(request)
@@ -117,7 +150,7 @@ describe('/api/leaderboard', () => {
     it('should return 500 on error', async () => {
       const session = mockParentSession()
 
-      dbMock.familyMember.findMany.mockRejectedValue(new Error('Database error'))
+      dbMock.leaderboardEntry.findMany.mockRejectedValue(new Error('Database error'))
 
       const request = new NextRequest('http://localhost/api/leaderboard')
       const response = await GET(request)

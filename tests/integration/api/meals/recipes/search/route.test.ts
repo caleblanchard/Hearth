@@ -49,7 +49,7 @@ describe('GET /api/meals/recipes/search', () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error).toBe('Search query is required');
+      expect(data.error).toBe('Search query (q) is required');
     });
 
     it('should return 400 if query is too short (less than 2 characters)', async () => {
@@ -69,19 +69,29 @@ describe('GET /api/meals/recipes/search', () => {
           id: 'recipe-1',
           name: 'Spaghetti Carbonara',
           familyId,
+          family_id: familyId,
           imageUrl: '/spaghetti.jpg',
+          image_url: '/spaghetti.jpg',
           category: 'DINNER',
           dietaryTags: [],
+          dietary_tags: [],
           ingredients: [],
+          recipe_ingredients: [],
+          ratings: [],
         },
         {
           id: 'recipe-2',
-          name: 'Chicken Alfredo',
+          name: 'Chicken Pasta',
           familyId,
+          family_id: familyId,
           imageUrl: null,
+          image_url: null,
           category: 'DINNER',
           dietaryTags: [],
-          ingredients: [],
+          dietary_tags: [],
+          ingredients: [{ name: 'Spaghetti' }],
+          recipe_ingredients: [{ name: 'Spaghetti' }],
+          ratings: [],
         },
       ];
 
@@ -99,14 +109,15 @@ describe('GET /api/meals/recipes/search', () => {
       
       expect(dbMock.recipe.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {
+          where: expect.objectContaining({
             familyId,
             OR: expect.arrayContaining([
-              { name: { contains: 'spaghetti', mode: 'insensitive' } },
+              expect.objectContaining({ name: { contains: 'spaghetti', mode: 'insensitive' } }),
+              expect.objectContaining({ description: { contains: 'spaghetti', mode: 'insensitive' } }),
             ]),
-          },
-          select: expect.objectContaining({
-            ingredients: {
+          }),
+          include: expect.objectContaining({
+            recipeIngredients: {
               select: { name: true },
             },
           }),
@@ -124,6 +135,8 @@ describe('GET /api/meals/recipes/search', () => {
           category: 'LUNCH',
           dietaryTags: ['VEGAN', 'GLUTEN_FREE'],
           ingredients: [],
+          recipe_ingredients: [],
+          ratings: [],
         },
       ];
 
@@ -154,6 +167,12 @@ describe('GET /api/meals/recipes/search', () => {
             { name: 'basil' },
             { name: 'garlic' },
           ],
+          recipe_ingredients: [
+            { name: 'tomatoes' },
+            { name: 'basil' },
+            { name: 'garlic' },
+          ],
+          ratings: [],
         },
       ];
 
@@ -179,6 +198,8 @@ describe('GET /api/meals/recipes/search', () => {
           category: 'LUNCH',
           dietaryTags: [],
           ingredients: [{ name: 'lettuce' }],
+          recipe_ingredients: [{ name: 'lettuce' }],
+          ratings: [],
         },
         {
           id: 'recipe-2',
@@ -188,6 +209,8 @@ describe('GET /api/meals/recipes/search', () => {
           category: 'LUNCH',
           dietaryTags: ['VEGAN'],
           ingredients: [{ name: 'chicken' }], // Ingredient match
+          recipe_ingredients: [{ name: 'chicken' }],
+          ratings: [],
         },
       ];
 
@@ -216,6 +239,8 @@ describe('GET /api/meals/recipes/search', () => {
         category: 'DINNER',
         dietaryTags: [],
         ingredients: [],
+        recipe_ingredients: [],
+        ratings: [],
       }));
 
       dbMock.recipe.findMany.mockResolvedValue(mockRecipes as any);
@@ -251,6 +276,8 @@ describe('GET /api/meals/recipes/search', () => {
           category: 'DINNER',
           dietaryTags: [],
           ingredients: [],
+          recipe_ingredients: [],
+          ratings: [],
         },
       ];
 
@@ -273,9 +300,13 @@ describe('GET /api/meals/recipes/search', () => {
           name: 'Test Recipe',
           familyId,
           imageUrl: '/test.jpg',
+          image_url: '/test.jpg',
           category: 'DINNER',
           dietaryTags: ['VEGAN'],
+          dietary_tags: ['VEGAN'],
           ingredients: [{ name: 'ingredient1' }],
+          recipe_ingredients: [{ name: 'ingredient1' }],
+          ratings: [],
         },
       ];
 
@@ -287,14 +318,14 @@ describe('GET /api/meals/recipes/search', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       
-      expect(data.recipes[0]).toEqual({
+      expect(data.recipes[0]).toEqual(expect.objectContaining({
         id: 'recipe-1',
         name: 'Test Recipe',
         imageUrl: '/test.jpg',
         category: 'DINNER',
         dietaryTags: ['VEGAN'],
         score: expect.any(Number),
-      });
+      }));
     });
   });
 

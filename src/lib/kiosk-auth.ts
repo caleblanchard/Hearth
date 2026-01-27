@@ -30,7 +30,12 @@ export function generateSecret(length = 32) {
 }
 
 export async function authenticateDeviceSecret(): Promise<DeviceSecretAuth | null> {
-  const headersList = await headers()
+  let headersList;
+  try {
+    headersList = await headers()
+  } catch (e) {
+    return null
+  }
   const secret = headersList.get(DEVICE_HEADER)
   if (!secret) return null
 
@@ -50,7 +55,12 @@ export async function authenticateDeviceSecret(): Promise<DeviceSecretAuth | nul
 }
 
 export async function authenticateChildSession(): Promise<ChildSessionAuth | null> {
-  const headersList = await headers()
+  let headersList;
+  try {
+    headersList = await headers()
+  } catch (e) {
+    return null
+  }
   const token = headersList.get(CHILD_HEADER)
   if (!token) return null
 

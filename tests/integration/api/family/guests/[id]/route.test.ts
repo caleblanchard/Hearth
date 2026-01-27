@@ -119,7 +119,7 @@ describe('/api/family/guests/[id]', () => {
         where: { id: 'invite-1' },
         data: {
           status: 'REVOKED',
-          revokedAt: now,
+          revokedAt: now.toISOString(),
         },
       });
 
@@ -130,7 +130,7 @@ describe('/api/family/guests/[id]', () => {
           endedAt: null,
         },
         data: {
-          endedAt: now,
+          endedAt: now.toISOString(),
         },
       });
 
@@ -139,10 +139,9 @@ describe('/api/family/guests/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'GUEST_INVITE_REVOKED',
-          result: 'SUCCESS',
-          metadata: {
-            inviteId: 'invite-1',
-            guestName: 'Grandma',
+          details: {
+            invite_id: 'invite-1',
+            guest_name: 'Grandma',
           },
         },
       });

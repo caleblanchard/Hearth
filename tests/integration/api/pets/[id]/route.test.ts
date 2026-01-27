@@ -185,10 +185,13 @@ describe('/api/pets/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'PET_UPDATED',
+          entityType: 'PET',
+          entityId: 'pet-1',
           result: 'SUCCESS',
           metadata: {
             petId: 'pet-1',
             name: 'Maximus',
+            changes: ['name', 'notes'],
           },
         },
       });
@@ -299,6 +302,8 @@ describe('/api/pets/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'PET_DELETED',
+          entityType: 'PET',
+          entityId: 'pet-1',
           result: 'SUCCESS',
           metadata: {
             petId: 'pet-1',

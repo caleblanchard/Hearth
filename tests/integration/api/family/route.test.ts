@@ -25,7 +25,7 @@ describe('/api/family', () => {
 
   describe('GET', () => {
     const mockFamily = {
-      id: 'family-1',
+      id: 'family-test-123',
       name: 'Test Family',
       timezone: 'America/New_York',
       settings: {},
@@ -83,6 +83,7 @@ describe('/api/family', () => {
             ],
             select: {
               id: true,
+              userId: true,
               name: true,
               email: true,
               role: true,
@@ -122,7 +123,9 @@ describe('/api/family', () => {
   })
 
   describe('PATCH', () => {
-    it('should return 403 if not authenticated', async () => {
+    it('should return 401 if not authenticated', async () => {
+      const { setMockSession } = require('@/lib/test-utils/auth-mock')
+      setMockSession(null)
 
       const request = new NextRequest('http://localhost/api/family', {
         method: 'PATCH',
@@ -132,8 +135,8 @@ describe('/api/family', () => {
       const response = await PATCH(request)
       const data = await response.json()
 
-      expect(response.status).toBe(403)
-      expect(data.error).toBe('Unauthorized - Parent access required')
+      expect(response.status).toBe(401)
+      expect(data.error).toBe('Unauthorized')
     })
 
     it('should return 403 if user is not a parent', async () => {

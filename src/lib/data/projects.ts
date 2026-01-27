@@ -396,6 +396,8 @@ export async function createProjectFromTemplate(
     title: string
     description?: string
     familyId: string
+    budget?: number
+    startDate?: Date | string
   }
 ) {
   const supabase = await createClient()
@@ -408,6 +410,11 @@ export async function createProjectFromTemplate(
     throw new Error('Template not found')
   }
   
+  // Calculate dates
+  const startDate = projectData.startDate ? new Date(projectData.startDate) : new Date()
+  const dueDate = new Date(startDate)
+  dueDate.setDate(dueDate.getDate() + template.estimatedDays)
+
   // Create the project
   const { data: project, error: projectError } = await supabase
     .from('projects')
@@ -416,7 +423,9 @@ export async function createProjectFromTemplate(
       name: projectData.title,
       description: projectData.description || template.description,
       status: 'ACTIVE',
-      budget: template.suggestedBudget,
+      budget: projectData.budget ?? template.suggestedBudget,
+      start_date: startDate.toISOString(),
+      due_date: dueDate.toISOString(),
       created_by_id: (await supabase.auth.getUser()).data.user?.id,
     })
     .select()
@@ -426,14 +435,19 @@ export async function createProjectFromTemplate(
   
   // Create tasks from template
   if (template.tasks && template.tasks.length > 0) {
-    const tasks = template.tasks.map((task, index) => ({
-      project_id: project.id,
-      name: task.name,
-      description: task.description,
-      status: 'PENDING',
-      estimated_hours: task.estimatedHours,
-      sort_order: index,
-    }))
+    const tasks = template.tasks.map((task, index) => {
+      // Calculate task dates if relative scheduling logic existed
+      // For now just add them
+      return {
+        project_id: project.id,
+        name: task.name,
+        description: task.description,
+        status: 'PENDING',
+        estimated_hours: task.estimatedHours,
+        sort_order: index,
+        // If we had logic to offset task dates based on startDate, we'd do it here
+      }
+    })
     
     const { error: tasksError } = await supabase
       .from('project_tasks')

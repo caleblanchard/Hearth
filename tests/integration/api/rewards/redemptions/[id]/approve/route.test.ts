@@ -166,7 +166,7 @@ describe('/api/rewards/redemptions/[id]/approve', () => {
         where: { id: redemptionId },
         data: {
           status: 'APPROVED',
-          approvedAt: expect.any(Date),
+          approvedAt: expect.any(String),
           approvedById: session.user.id,
         },
         include: {

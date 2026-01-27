@@ -215,7 +215,10 @@ describe('Token Encryption', () => {
 
       // Try to modify encrypted portion
       const parts = encrypted.split(':');
-      const modifiedEncrypted = parts[2].replace('a', 'b');
+      // Flip the last character to ensure modification occurs
+      const lastChar = parts[2].slice(-1);
+      const newLastChar = lastChar === 'a' ? 'b' : 'a';
+      const modifiedEncrypted = parts[2].slice(0, -1) + newLastChar;
       const tampered = `${parts[0]}:${parts[1]}:${modifiedEncrypted}`;
 
       // Should fail authentication

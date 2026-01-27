@@ -36,6 +36,7 @@ export async function getActiveShoppingList(familyId: string) {
     `)
     .eq('family_id', familyId)
     .eq('is_active', true)
+    .in('items.status', ['PENDING', 'IN_CART'])
     .order('created_at', { ascending: false })
     .order('created_at', { foreignTable: 'items', ascending: true })
     .limit(1)

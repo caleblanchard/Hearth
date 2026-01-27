@@ -23,6 +23,7 @@ export async function getRecipes(
   familyId: string,
   options?: {
     category?: string
+    isFavorite?: boolean
     dietaryTags?: string[]
     searchQuery?: string
     sortBy?: 'name' | 'rating' | 'created_at'
@@ -42,6 +43,10 @@ export async function getRecipes(
   // Apply filters
   if (options?.category) {
     query = query.eq('category', options.category)
+  }
+
+  if (options?.isFavorite !== undefined) {
+    query = query.eq('is_favorite', options.isFavorite)
   }
 
   if (options?.dietaryTags && options.dietaryTags.length > 0) {
@@ -98,9 +103,10 @@ export async function getRecipe(recipeId: string) {
     `)
     .eq('id', recipeId)
     .order('sort_order', { foreignTable: 'recipe_ingredients', ascending: true })
-    .single()
+    .maybeSingle()
 
   if (error) throw error
+  if (!data) return null
 
   // Calculate average rating
   const averageRating = data.ratings?.length > 0
@@ -449,21 +455,35 @@ export async function searchRecipes(
   // Filter results to include ingredient matches and calculate scores
   return (data || [])
     .map(recipe => {
+      const q = query.toLowerCase();
+      let score = 0;
+
+      // Title match: 100 points
+      if (recipe.name.toLowerCase().includes(q)) {
+        score += 100;
+      }
+
+      // Tag match: 50 points
+      if (recipe.dietary_tags && recipe.dietary_tags.some((tag: string) => tag.toLowerCase().includes(q))) {
+        score += 50;
+      }
+
+      // Ingredient match: 25 points
       const hasIngredientMatch = (recipe as any).recipe_ingredients?.some(
-        (ing: any) => ing.name.toLowerCase().includes(query.toLowerCase())
+        (ing: any) => ing.name.toLowerCase().includes(q)
       );
+      if (hasIngredientMatch) {
+        score += 25;
+      }
       
       return {
         ...recipe,
         averageRating: recipe.ratings.length > 0
           ? recipe.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / recipe.ratings.length
           : 0,
-        matchScore: hasIngredientMatch ? 1 : 0,
+        matchScore: score,
       };
     })
-    .filter(recipe => 
-      recipe.name.toLowerCase().includes(query.toLowerCase()) ||
-      recipe.description?.toLowerCase().includes(query.toLowerCase()) ||
-      recipe.matchScore > 0
-    );
+    .filter(recipe => recipe.matchScore > 0)
+    .sort((a, b) => b.matchScore - a.matchScore);
 }

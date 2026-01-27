@@ -84,6 +84,7 @@ describe('GET /api/meals/leftovers', () => {
       include: {
         creator: {
           select: {
+            avatarUrl: true,
             id: true,
             name: true,
           },
@@ -239,7 +240,7 @@ describe('POST /api/meals/leftovers', () => {
         quantity: '2 slices',
         familyId: session.user.familyId,
         createdBy: session.user.id,
-        expiresAt: new Date('2026-01-04T12:00:00Z'),
+        expiresAt: '2026-01-04T12:00:00.000Z',
       }),
     });
 
@@ -287,7 +288,7 @@ describe('POST /api/meals/leftovers', () => {
 
     expect(dbMock.leftover.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        expiresAt: new Date('2026-01-06T12:00:00Z'),
+        expiresAt: '2026-01-06T12:00:00.000Z',
       }),
     });
 

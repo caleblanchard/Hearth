@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // Fetch active rewards for the family
     const rewards = await getRewardItems(familyId, true);
 
-    return NextResponse.json({ data: rewards, total: rewards.length });
+    return NextResponse.json({ rewards, total: rewards.length });
   } catch (error) {
     logger.error('Rewards API error:', error);
     return NextResponse.json(
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Only parents can create rewards
     const isParent = await isParentInFamily( familyId);
     if (!isParent) {
-      return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Validate and parse JSON body

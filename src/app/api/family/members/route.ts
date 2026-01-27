@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, email, role, birthDate, avatarUrl, pin, allowedModules } = body;
+    const { name, email, role, birthDate, avatarUrl, pin, allowedModules, password } = body;
 
     // Validation
     if (!name || !role) {
@@ -92,8 +92,13 @@ export async function POST(request: Request) {
 
     const normalizedEmail = typeof email === 'string' ? email.trim() : '';
 
-    if (role === 'PARENT' && !normalizedEmail) {
-      return NextResponse.json({ error: 'Email is required for parent accounts' }, { status: 400 });
+    if (role === 'PARENT') {
+      if (!normalizedEmail) {
+        return NextResponse.json({ error: 'Email is required for parent accounts' }, { status: 400 });
+      }
+      if (!password) {
+        return NextResponse.json({ error: 'Password is required for parent accounts' }, { status: 400 });
+      }
     }
 
     const isChildInvite = role === 'CHILD' && normalizedEmail.length > 0;
@@ -152,6 +157,11 @@ export async function POST(request: Request) {
         ? await bcrypt.hash(pin.trim(), BCRYPT_ROUNDS)
         : null;
 
+    const passwordHash =
+      role === 'PARENT' && typeof password === 'string'
+        ? await bcrypt.hash(password, BCRYPT_ROUNDS)
+        : null;
+
     const moduleIds = Array.isArray(allowedModules)
       ? [...new Set(allowedModules.filter(Boolean))]
       : [];
@@ -167,6 +177,7 @@ export async function POST(request: Request) {
         email: normalizedEmail ? normalizedEmail.toLowerCase() : null,
         role,
         pin: pinHash,
+        password_hash: passwordHash,
         birth_date: birthDate ? new Date(birthDate).toISOString() : null,
         avatar_url: avatarUrl || null,
         is_active: true,
@@ -179,24 +190,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to create family member' }, { status: 500 });
     }
 
-    if (role === 'CHILD' && moduleIds.length > 0) {
-      const { error: modulesError } = await supabase
-        .from('member_module_access')
-        .insert(
-          moduleIds.map((moduleId) => ({
-            member_id: member.id,
-            module_id: moduleId,
-            has_access: true,
-          }))
-        );
+    if (role === 'CHILD') {
+      // Create balances and settings
+      await supabase.from('credit_balances').insert({
+        member_id: member.id,
+        balance: 0,
+      });
 
-      if (modulesError) {
-        logger.error('Error setting member module access:', modulesError);
-        await supabase.from('family_members').delete().eq('id', member.id);
-        return NextResponse.json(
-          { error: 'Failed to set member module access' },
-          { status: 500 }
-        );
+      await supabase.from('screen_time_settings').insert({
+        member_id: member.id,
+        weekly_allocation_minutes: 840, // Default 120 mins/day * 7
+      });
+
+      await supabase.from('screen_time_balances').insert({
+        member_id: member.id,
+        current_balance_minutes: 0,
+        week_start_date: new Date().toISOString(),
+      });
+
+      if (moduleIds.length > 0) {
+        const { error: modulesError } = await supabase
+          .from('member_module_access')
+          .insert(
+            moduleIds.map((moduleId) => ({
+              member_id: member.id,
+              module_id: moduleId,
+              has_access: true,
+            }))
+          );
+
+        if (modulesError) {
+          logger.error('Error setting member module access:', modulesError);
+          await supabase.from('family_members').delete().eq('id', member.id);
+          return NextResponse.json(
+            { error: 'Failed to set member module access' },
+            { status: 500 }
+          );
+        }
       }
     }
 

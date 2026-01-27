@@ -182,7 +182,7 @@ export default function ApprovalsPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
+      <div className="p-8 text-gray-900 dark:text-gray-100">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -193,27 +193,27 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-slate-900 min-h-screen">
       <div className="max-w-5xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             Approval Queue
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300">
             Review and approve pending chore completions and reward redemptions
           </p>
         </div>
 
         <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
-            <label htmlFor="filter" className="text-sm font-medium text-gray-700">
+            <label htmlFor="filter" className="text-sm font-medium text-gray-700 dark:text-gray-200">
               Filter:
             </label>
             <select
               id="filter"
               value={filter}
               onChange={(e) => setFilter(e.target.value as FilterType)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="ALL">All Types</option>
               <option value="CHORE_COMPLETION">Chores Only</option>
@@ -231,8 +231,8 @@ export default function ApprovalsPage() {
           </div>
 
           {selectedIds.size > 0 && (
-            <div className="flex items-center gap-3 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
-              <span className="text-sm font-medium text-gray-700">
+              <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/40 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-100">
                 {selectedIds.size} selected
               </span>
               <button
@@ -254,10 +254,10 @@ export default function ApprovalsPage() {
         </div>
 
         {approvals.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="bg-white dark:bg-slate-900/60 rounded-lg shadow-sm p-12 text-center border border-gray-100 dark:border-slate-800">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
-                className="w-8 h-8 text-gray-400"
+                className="w-8 h-8 text-gray-400 dark:text-gray-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -270,10 +270,10 @@ export default function ApprovalsPage() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               All caught up!
             </h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300">
               No pending approvals at the moment.
             </p>
           </div>

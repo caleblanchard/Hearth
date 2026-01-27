@@ -143,6 +143,22 @@ describe('PUT /api/routines/[id]', () => {
   it('should return 403 if child attempts to update routine', async () => {
     const session = mockChildSession();
 
+    const mockRoutine = {
+      id: 'routine-123',
+      familyId: session.user.familyId,
+      name: 'Test Routine',
+      type: RoutineType.MORNING,
+      assignedTo: null,
+      isWeekday: true,
+      isWeekend: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      steps: [],
+      assignee: null,
+    };
+
+    dbMock.routine.findUnique.mockResolvedValue(mockRoutine as any);
+
     const request = new Request('http://localhost/api/routines/routine-123', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -233,6 +249,7 @@ describe('PUT /api/routines/[id]', () => {
 
     dbMock.routine.findUnique.mockResolvedValue(existingRoutine as any);
     dbMock.routineStep.deleteMany.mockResolvedValue({ count: 0 } as any);
+    dbMock.routineStep.createMany.mockResolvedValue({ count: 2 } as any);
     dbMock.routine.update.mockResolvedValue(updatedRoutine as any);
     dbMock.auditLog.create.mockResolvedValue({} as any);
 
@@ -433,6 +450,22 @@ describe('DELETE /api/routines/[id]', () => {
   it('should return 403 if child attempts to delete routine', async () => {
     const session = mockChildSession();
 
+    const mockRoutine = {
+      id: 'routine-123',
+      familyId: session.user.familyId,
+      name: 'Test Routine',
+      type: RoutineType.MORNING,
+      assignedTo: null,
+      isWeekday: true,
+      isWeekend: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      steps: [],
+      assignee: null,
+    };
+
+    dbMock.routine.findUnique.mockResolvedValue(mockRoutine as any);
+
     const request = new Request('http://localhost/api/routines/routine-123', {
       method: 'DELETE',
     }) as NextRequest;
@@ -471,8 +504,9 @@ describe('DELETE /api/routines/[id]', () => {
     const data = await response.json();
     expect(data.message).toContain('deleted');
 
-    expect(dbMock.routine.delete).toHaveBeenCalledWith({
+    expect(dbMock.routine.update).toHaveBeenCalledWith({
       where: { id: 'routine-123' },
+      data: expect.objectContaining({ isActive: false }),
     });
   });
 

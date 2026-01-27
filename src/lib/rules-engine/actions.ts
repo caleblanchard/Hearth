@@ -142,6 +142,14 @@ export async function executeSendNotification(
       };
     }
 
+    // Validate recipient limit
+    if (config.recipients.length > DEFAULT_SAFETY_LIMITS.maxNotificationsPerExecution) {
+      return {
+        success: false,
+        error: `Maximum ${DEFAULT_SAFETY_LIMITS.maxNotificationsPerExecution} notification recipients allowed`,
+      };
+    }
+
     // Validate title
     if (!config.title || typeof config.title !== 'string' || config.title.trim().length === 0) {
       return {
@@ -308,6 +316,7 @@ export async function executeAddShoppingItem(
       .insert({
         list_id: shoppingList.id,
         name: itemName,
+        note: config.notes || null,
         quantity: config.quantity || 1,
         category: config.category || 'OTHER',
         priority: (config.priority || 'NORMAL') as any,
@@ -419,6 +428,21 @@ export async function executeLockMedication(
       return {
         success: false,
         error: 'No medication ID specified',
+      };
+    }
+
+    // Validate hours
+    if (typeof config.hours !== 'number') {
+      return {
+        success: false,
+        error: 'Lock medication action requires hours (number)',
+      };
+    }
+
+    if (config.hours < 0 || config.hours > 24) { // Assuming 24h max
+      return {
+        success: false,
+        error: 'Lock duration must be between 0 and 24 hours',
       };
     }
 

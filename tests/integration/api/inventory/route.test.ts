@@ -263,11 +263,13 @@ describe('/api/inventory', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'INVENTORY_ITEM_ADDED',
+          entityType: 'INVENTORY_ITEM',
+          entityId: 'item-1',
           result: 'SUCCESS',
           metadata: {
-            itemId: 'item-1',
             name: 'Milk',
             category: 'FOOD_FRIDGE',
+            location: 'FRIDGE',
           },
         },
       });
@@ -333,7 +335,7 @@ describe('/api/inventory', () => {
           currentQuantity: 2,
           unit: 'gallons',
           lowStockThreshold: 1,
-          expiresAt: new Date('2026-01-10T00:00:00Z'),
+          expiresAt: '2026-01-10T00:00:00.000Z',
           barcode: '123456789',
           notes: 'Organic whole milk',
         },

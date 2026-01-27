@@ -62,11 +62,15 @@ export async function checkGraceEligibility(
     const dailyUses = await countGraceUsesToday(memberId);
     const weeklyUses = await countGraceUsesThisWeek(memberId);
 
+    // Ensure we don't return negative remaining counts
+    const remainingDaily = Math.max(0, settings.max_grace_per_day - dailyUses);
+    const remainingWeekly = Math.max(0, settings.max_grace_per_week - weeklyUses);
+
     return {
       eligible: false,
       reason: 'Balance is not low enough',
-      remainingDaily: Math.max(0, settings.max_grace_per_day - dailyUses),
-      remainingWeekly: Math.max(0, settings.max_grace_per_week - weeklyUses),
+      remainingDaily: isNaN(remainingDaily) ? 0 : remainingDaily,
+      remainingWeekly: isNaN(remainingWeekly) ? 0 : remainingWeekly,
     };
   }
 
@@ -74,29 +78,36 @@ export async function checkGraceEligibility(
   const dailyUses = await countGraceUsesToday(memberId);
   if (dailyUses >= settings.max_grace_per_day) {
     const weeklyUses = await countGraceUsesThisWeek(memberId);
+    const remainingWeekly = Math.max(0, settings.max_grace_per_week - weeklyUses);
+
     return {
       eligible: false,
       reason: 'Daily grace limit exceeded',
       remainingDaily: 0,
-      remainingWeekly: Math.max(0, settings.max_grace_per_week - weeklyUses),
+      remainingWeekly: isNaN(remainingWeekly) ? 0 : remainingWeekly,
     };
   }
 
   // Count this week's grace uses
   const weeklyUses = await countGraceUsesThisWeek(memberId);
   if (weeklyUses >= settings.max_grace_per_week) {
+    const remainingDaily = Math.max(0, settings.max_grace_per_day - dailyUses);
+
     return {
       eligible: false,
       reason: 'Weekly grace limit exceeded',
-      remainingDaily: Math.max(0, settings.max_grace_per_day - dailyUses),
+      remainingDaily: isNaN(remainingDaily) ? 0 : remainingDaily,
       remainingWeekly: 0,
     };
   }
 
+  const remainingDaily = Math.max(0, settings.max_grace_per_day - dailyUses);
+  const remainingWeekly = Math.max(0, settings.max_grace_per_week - weeklyUses);
+
   return {
     eligible: true,
-    remainingDaily: Math.max(0, settings.max_grace_per_day - dailyUses),
-    remainingWeekly: Math.max(0, settings.max_grace_per_week - weeklyUses),
+    remainingDaily: isNaN(remainingDaily) ? 0 : remainingDaily,
+    remainingWeekly: isNaN(remainingWeekly) ? 0 : remainingWeekly,
   };
 }
 

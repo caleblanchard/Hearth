@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { updateFamilyMember, deleteFamilyMember, updateMemberModuleAccess } from '@/lib/data/family';
 import { logger } from '@/lib/logger';
+import { BCRYPT_ROUNDS } from '@/lib/constants';
 
 export async function PATCH(
   request: NextRequest,
@@ -40,10 +41,19 @@ export async function PATCH(
       .single();
 
     if (!targetMember || targetMember.family_id !== familyId) {
-      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
     }
 
     const body = await request.json();
+
+    if (id === memberId && (body?.isActive === false)) {
+      return NextResponse.json({ error: 'Cannot deactivate your own account' }, { status: 400 });
+    }
+
+    let passwordHash: string | undefined = undefined;
+    if (typeof body?.password === 'string' && body.password.trim()) {
+      passwordHash = await bcrypt.hash(body.password.trim(), BCRYPT_ROUNDS);
+    }
 
     const { allowedModules, pin, avatarUrl, birthDate, ...memberUpdates } = body || {};
 
@@ -56,7 +66,21 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      pinUpdate = await bcrypt.hash(pin.trim(), 10);
+      pinUpdate = await bcrypt.hash(pin.trim(), BCRYPT_ROUNDS);
+    }
+
+    if (memberUpdates.email) {
+      const { data: existingEmail } = await supabase
+        .from('family_members')
+        .select('id')
+        .eq('family_id', familyId)
+        .eq('email', memberUpdates.email)
+        .neq('id', id)
+        .single();
+
+      if (existingEmail) {
+        return NextResponse.json({ error: 'Email already in use' }, { status: 400 });
+      }
     }
 
     const member = await updateFamilyMember(id, {
@@ -69,6 +93,7 @@ export async function PATCH(
             : null
           : undefined,
       pin: pinUpdate ?? memberUpdates.pin,
+      password_hash: passwordHash,
     });
 
     // Update module access when provided (only for children)
@@ -133,12 +158,32 @@ export async function DELETE(
     // Verify member exists and belongs to family
     const { data: targetMember } = await supabase
       .from('family_members')
-      .select('family_id, name, invite_status')
+      .select('family_id, name, invite_status, role')
       .eq('id', id)
       .single();
 
     if (!targetMember || targetMember.family_id !== familyId) {
-      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    }
+
+    if (id === memberId) {
+      return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
+    }
+
+    if (targetMember.role === 'PARENT') {
+      const { count } = await supabase
+        .from('family_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('family_id', familyId)
+        .eq('role', 'PARENT')
+        .eq('is_active', true);
+
+      if (count !== null && count <= 1) {
+        return NextResponse.json(
+          { error: 'Cannot delete the last parent account' },
+          { status: 400 }
+        );
+      }
     }
 
     if ((targetMember as any).invite_status === 'PENDING') {
@@ -184,7 +229,7 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: 'Family member deleted successfully',
+      message: 'Family member deactivated successfully',
     });
   } catch (error) {
     logger.error('Error deleting family member:', error);

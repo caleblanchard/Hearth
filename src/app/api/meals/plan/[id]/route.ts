@@ -44,6 +44,20 @@ export async function PATCH(
     const body = await request.json();
     const updatedEntry = await updateMealPlanEntry(id, body);
 
+    // Create audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: authContext.activeMemberId || authContext.user.id,
+      action: 'MEAL_ENTRY_UPDATED',
+      entity_type: 'MEAL_PLAN',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        entryId: id,
+        updates: body,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       entry: updatedEntry,
@@ -93,6 +107,19 @@ export async function DELETE(
     }
 
     await deleteMealPlanEntry(id);
+
+    // Create audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: authContext.activeMemberId || authContext.user.id,
+      action: 'MEAL_ENTRY_DELETED',
+      entity_type: 'MEAL_PLAN',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        entryId: id,
+      },
+    });
 
     return NextResponse.json({
       success: true,

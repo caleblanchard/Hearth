@@ -112,30 +112,13 @@ describe('/api/chores/[id]', () => {
           schedules: {
             include: {
               assignments: {
-                include: {
-                  member: {
-                    select: {
-                      id: true,
-                      name: true,
-                      avatarUrl: true,
-                    },
-                  },
-                },
-                where: {
-                  isActive: true,
-                },
-                orderBy: {
-                  rotationOrder: 'asc',
-                },
-              },
-              _count: {
                 select: {
-                  instances: true,
+                  id: true,
+                  rotationOrder: true,
+                  isActive: true,
+                  'member:familyMembers( id, name, avatarUrl )': true,
                 },
               },
-            },
-            where: {
-              isActive: true,
             },
           },
         },
@@ -459,10 +442,10 @@ describe('/api/chores/[id]', () => {
         familyId: session.user.familyId,
         schedules: [],
       } as any)
-      dbMock.$transaction.mockResolvedValue([
-        { id: choreId, isActive: false },
-        { count: 2 },
-      ])
+      dbMock.choreDefinition.update.mockResolvedValue({
+        id: choreId,
+        isActive: false,
+      } as any)
 
       const request = new NextRequest('http://localhost/api/chores/123', {
         method: 'DELETE',
@@ -475,7 +458,10 @@ describe('/api/chores/[id]', () => {
       expect(data.success).toBe(true)
       expect(data.message).toBe('Chore deactivated successfully')
 
-      expect(dbMock.$transaction).toHaveBeenCalled()
+      expect(dbMock.choreDefinition.update).toHaveBeenCalledWith({
+        where: { id: choreId },
+        data: { isActive: false },
+      })
     })
 
     it('should return 500 on error', async () => {
@@ -486,7 +472,7 @@ describe('/api/chores/[id]', () => {
         familyId: session.user.familyId,
         schedules: [],
       } as any)
-      dbMock.$transaction.mockRejectedValue(new Error('Database error'))
+      dbMock.choreDefinition.update.mockRejectedValue(new Error('Database error'))
 
       const request = new NextRequest('http://localhost/api/chores/123', {
         method: 'DELETE',

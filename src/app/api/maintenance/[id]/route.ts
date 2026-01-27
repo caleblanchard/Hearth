@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
-import { getMaintenanceItem, updateMaintenanceItem, deleteMaintenanceItem } from '@/lib/data/maintenance';
+import { getMaintenanceItem, updateMaintenanceItem, deleteMaintenanceItem, getMaintenanceCompletions } from '@/lib/data/maintenance';
 import { logger } from '@/lib/logger';
+import { isParentInFamily } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest,
@@ -35,6 +36,9 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    // Fetch completions
+    const completions = await getMaintenanceCompletions(id);
+
     // Map to camelCase for frontend
     const mappedItem = {
       id: item.id,
@@ -49,6 +53,16 @@ export async function GET(
       nextDueAt: item.next_due_at,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
+      completions: completions.map((c: any) => ({
+        id: c.id,
+        maintenanceItemId: c.maintenance_item_id,
+        completedBy: c.completed_by,
+        completedAt: c.completed_at,
+        notes: c.notes,
+        cost: c.cost,
+        serviceProvider: c.service_provider,
+        invoiceUrl: c.invoice_url,
+      })),
     };
 
     return NextResponse.json({ item: mappedItem });
@@ -76,14 +90,46 @@ export async function PATCH(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
+    // Only parents can update maintenance items
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
+      return NextResponse.json(
+        { error: 'Only parents can update maintenance items' },
+        { status: 403 }
+      );
+    }
+
     // Verify item exists
     const existing = await getMaintenanceItem(id);
-    if (!existing || existing.family_id !== familyId) {
+    if (!existing) {
       return NextResponse.json({ error: 'Maintenance item not found' }, { status: 404 });
+    }
+    
+    if (existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Maintenance item not found' }, { status: 403 });
     }
 
     const body = await request.json();
+
+    // Validation
+    const validCategories = ['APPLIANCE', 'HVAC', 'PLUMBING', 'ELECTRICAL', 'EXTERIOR', 'INTERIOR', 'LANDSCAPING', 'VEHICLE', 'OTHER'];
+    if (body.category && !validCategories.includes(body.category)) {
+      return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
+    }
+
     const item = await updateMaintenanceItem(id, body);
+
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: authContext.activeMemberId,
+      action: 'MAINTENANCE_ITEM_UPDATED',
+      result: 'SUCCESS',
+      metadata: {
+        itemId: item.id,
+        name: item.name,
+      }
+    });
 
     // Map to camelCase for frontend
     const mappedItem = {
@@ -129,13 +175,39 @@ export async function DELETE(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
+    // Only parents can delete maintenance items
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
+      return NextResponse.json(
+        { error: 'Only parents can delete maintenance items' },
+        { status: 403 }
+      );
+    }
+
     // Verify item exists
     const existing = await getMaintenanceItem(id);
-    if (!existing || existing.family_id !== familyId) {
+    if (!existing) {
       return NextResponse.json({ error: 'Maintenance item not found' }, { status: 404 });
+    }
+    
+    if (existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Maintenance item not found' }, { status: 403 });
     }
 
     await deleteMaintenanceItem(id);
+
+    // Audit log
+    const supabase = await createClient(); // Need to init supabase if not present
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: authContext.activeMemberId,
+      action: 'MAINTENANCE_ITEM_DELETED',
+      result: 'SUCCESS',
+      metadata: {
+        itemId: id,
+        name: existing.name,
+      },
+    });
 
     return NextResponse.json({
       success: true,

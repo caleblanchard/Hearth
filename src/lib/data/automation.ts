@@ -17,7 +17,9 @@ type RuleExecution = Database['public']['Tables']['rule_executions']['Row']
  */
 export async function getAutomationRules(
   familyId: string,
-  activeOnly = true
+  enabled?: boolean,
+  limit?: number,
+  offset?: number
 ) {
   const supabase = await createClient()
 
@@ -25,15 +27,24 @@ export async function getAutomationRules(
     .from('automation_rules')
     .select(`
       *,
-      created_by_member:family_members(id, name)
+      created_by_member:family_members(id, name),
+      executions:rule_executions(count)
     `)
     .eq('family_id', familyId)
 
-  if (activeOnly) {
-    query = query.eq('is_enabled', true)
+  if (enabled !== undefined) {
+    query = query.eq('is_enabled', enabled)
   }
 
   query = query.order('created_at', { ascending: false })
+
+  if (limit) {
+    query = query.limit(limit)
+  }
+
+  if (offset) {
+    query = query.range(offset, offset + (limit || 10) - 1)
+  }
 
   const { data, error } = await query
 
@@ -44,28 +55,70 @@ export async function getAutomationRules(
 /**
  * Get a single automation rule
  */
-export async function getAutomationRule(ruleId: string) {
+export async function getAutomationRule(
+  ruleId: string,
+  limitExecutions = 10,
+  offsetExecutions = 0,
+  success?: boolean
+) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  // First get the rule
+  const { data: rule, error } = await supabase
     .from('automation_rules')
     .select(`
       *,
-      created_by_member:family_members(id, name),
-      executions:rule_executions(
-        id,
-        executed_at,
-        success,
-        error
-      )
+      created_by_member:family_members(id, name)
     `)
     .eq('id', ruleId)
-    .order('executed_at', { foreignTable: 'executions', ascending: false })
-    .limit(10, { foreignTable: 'executions' })
     .single()
 
   if (error) throw error
-  return data
+
+  // Then get executions with pagination
+  let executionsQuery = supabase
+    .from('rule_executions')
+    .select('id, executed_at, success, error', { count: 'exact' })
+    .eq('rule_id', ruleId)
+    .order('executed_at', { ascending: false })
+    .range(offsetExecutions, offsetExecutions + limitExecutions - 1)
+
+  if (success !== undefined) {
+    executionsQuery = executionsQuery.eq('success', success)
+  }
+
+  const { data: executions, count } = await executionsQuery
+
+  // Get stats
+  const { count: totalCount } = await supabase
+    .from('rule_executions')
+    .select('*', { count: 'exact', head: true })
+    .eq('rule_id', ruleId)
+
+  const { count: successCount } = await supabase
+    .from('rule_executions')
+    .select('*', { count: 'exact', head: true })
+    .eq('rule_id', ruleId)
+    .eq('success', true)
+
+  const { count: failureCount } = await supabase
+    .from('rule_executions')
+    .select('*', { count: 'exact', head: true })
+    .eq('rule_id', ruleId)
+    .eq('success', false)
+
+  if (rule) {
+    (rule as any).executions = executions || [];
+    (rule as any).totalExecutions = count || 0;
+    (rule as any).stats = {
+      totalExecutions: totalCount || 0,
+      successfulExecutions: successCount || 0,
+      failedExecutions: failureCount || 0,
+      successRate: totalCount ? Math.round(((successCount || 0) / totalCount) * 100) : 0
+    };
+  }
+
+  return rule
 }
 
 /**
@@ -149,7 +202,11 @@ export async function deleteAutomationRule(ruleId: string) {
 export async function getRuleExecutions(
   familyId?: string,
   ruleId?: string,
-  limit = 50
+  limit = 50,
+  offset = 0,
+  success?: boolean,
+  startDate?: string,
+  endDate?: string
 ) {
   const supabase = await createClient()
 
@@ -158,7 +215,7 @@ export async function getRuleExecutions(
     .select(`
       *,
       rule:automation_rules!inner(id, name, family_id)
-    `)
+    `, { count: 'exact' })
 
   if (familyId) {
     query = query.eq('rule.family_id', familyId)
@@ -168,14 +225,26 @@ export async function getRuleExecutions(
     query = query.eq('rule_id', ruleId)
   }
 
+  if (success !== undefined) {
+    query = query.eq('success', success)
+  }
+
+  if (startDate) {
+    query = query.gte('executed_at', startDate)
+  }
+
+  if (endDate) {
+    query = query.lte('executed_at', endDate)
+  }
+
   query = query
     .order('executed_at', { ascending: false })
-    .limit(limit)
+    .range(offset, offset + limit - 1)
 
-  const { data, error } = await query
+  const { data, error, count } = await query
 
   if (error) throw error
-  return data || []
+  return { data: data || [], count: count || 0 }
 }
 
 /**
@@ -229,29 +298,13 @@ export async function getRulesByTrigger(
   return data || []
 }
 
+import { dryRunRule } from '@/lib/rules-engine'
+
 /**
  * Test rule execution (dry run)
  */
 export async function testRule(ruleId: string, testData: any) {
-  const supabase = await createClient()
-
-  // Get the rule
-  const { data: rule, error } = await supabase
-    .from('automation_rules')
-    .select('*')
-    .eq('id', ruleId)
-    .single()
-
-  if (error) throw error
-
-  // Here you would implement the rule evaluation logic
-  // For now, just return the rule and test data
-  return {
-    rule,
-    testData,
-    wouldExecute: true,
-    message: 'Rule test not fully implemented yet',
-  }
+  return dryRunRule(ruleId, testData)
 }
 
 /**

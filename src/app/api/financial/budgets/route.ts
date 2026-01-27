@@ -72,12 +72,40 @@ export async function POST(request: NextRequest) {
     // Only parents can create budgets for other members
     const body = await request.json();
     const targetMemberId = body.memberId || memberId;
+
+    if (!body.category) {
+      return NextResponse.json({ error: 'Category is required' }, { status: 400 });
+    }
+
+    if (body.limitAmount === undefined || typeof body.limitAmount !== 'number' || body.limitAmount <= 0) {
+      return NextResponse.json({ error: 'Limit amount must be positive' }, { status: 400 });
+    }
+
+    if (!body.period || !['weekly', 'monthly'].includes(body.period.toLowerCase())) {
+      return NextResponse.json({ error: 'Period must be "weekly" or "monthly"' }, { status: 400 });
+    }
     
     if (targetMemberId !== memberId) {
       const isParent = await isParentInFamily(familyId);
       if (!isParent) {
         return NextResponse.json({ error: 'Parent access required' }, { status: 403 });
       }
+    }
+
+    const supabase = await createClient();
+
+    // Check for existing budget
+    const { data: existingBudget } = await supabase
+      .from('budgets')
+      .select('id')
+      .eq('member_id', targetMemberId)
+      .eq('category', body.category)
+      .eq('period', body.period)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (existingBudget) {
+      return NextResponse.json({ error: 'Budget already exists for this category and period' }, { status: 409 });
     }
 
     // Map request body to match database schema
@@ -96,8 +124,11 @@ export async function POST(request: NextRequest) {
       success: true,
       budget,
       message: 'Budget created successfully',
-    });
-  } catch (error) {
+    }, { status: 201 });
+  } catch (error: any) {
+    if (error.message === 'Member not found in family') {
+      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    }
     logger.error('Create budget error:', error);
     return NextResponse.json({ error: 'Failed to create budget' }, { status: 500 });
   }

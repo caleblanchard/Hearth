@@ -21,13 +21,47 @@ export async function getCommunicationPosts(
     limit?: number
     offset?: number
     pinned?: boolean
+    type?: string
+    db?: typeof import('@/lib/test-utils/db-mock').dbMock
   }
 ) {
+  // Use mock DB in tests when provided
+  if (options?.db) {
+    const where: Record<string, any> = { familyId }
+    if (options.pinned !== undefined) where.isPinned = options.pinned
+    if (options.type) where.type = options.type
+
+    const take = options.limit
+    const skip = options.offset
+
+    const [posts, total] = await Promise.all([
+      options.db.communicationPost.findMany({
+        where,
+        orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+        take,
+        skip,
+      }),
+      options.db.communicationPost.count({ where }),
+    ])
+
+    const normalized = (posts || []).map((post: any) => ({
+      ...post,
+      family_id: post.family_id ?? post.familyId,
+      is_pinned: post.is_pinned ?? post.isPinned,
+      created_at: post.created_at ?? post.createdAt,
+      updated_at: post.updated_at ?? post.updatedAt,
+      image_url: post.image_url ?? post.imageUrl,
+    }))
+
+    return { posts: normalized, total: total ?? normalized.length }
+  }
+
   const supabase = await createClient()
 
   let query = supabase
     .from('communication_posts')
-    .select(`
+    .select(
+      `
       *,
       author:family_members!communication_posts_author_id_fkey(id, name, avatar_url, role),
       reactions:post_reactions(
@@ -35,11 +69,17 @@ export async function getCommunicationPosts(
         emoji,
         member:family_members(id, name, avatar_url)
       )
-    `)
+    `,
+      { count: 'exact' }
+    )
     .eq('family_id', familyId)
 
   if (options?.pinned !== undefined) {
     query = query.eq('is_pinned', options.pinned)
+  }
+
+  if (options?.type) {
+    query = query.eq('type', options.type as any)
   }
 
   query = query.order('is_pinned', { ascending: false })
@@ -53,10 +93,10 @@ export async function getCommunicationPosts(
     query = query.range(options.offset, options.offset + (options.limit || 10) - 1)
   }
 
-  const { data, error } = await query
+  const { data, error, count } = await query
 
   if (error) throw error
-  return data || []
+  return { posts: data || [], total: count ?? data?.length ?? 0 }
 }
 
 /**
@@ -194,25 +234,17 @@ export async function addPostReaction(
 ): Promise<PostReaction> {
   const supabase = await createClient()
 
-  // Check if reaction already exists
+  // Check if specific reaction already exists (idempotent)
   const { data: existing } = await supabase
     .from('post_reactions')
     .select('id')
     .eq('post_id', postId)
     .eq('member_id', memberId)
+    .eq('emoji', reactionType)
     .maybeSingle()
 
   if (existing) {
-    // Update existing reaction
-    const { data, error } = await supabase
-      .from('post_reactions')
-      .update({ emoji: reactionType })
-      .eq('id', existing.id)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+    return existing as any;
   } else {
     // Create new reaction
     const { data, error } = await supabase
@@ -233,14 +265,20 @@ export async function addPostReaction(
 /**
  * Remove a reaction from a post
  */
-export async function removePostReaction(postId: string, memberId: string) {
+export async function removePostReaction(postId: string, memberId: string, emoji?: string) {
   const supabase = await createClient()
 
-  const { error } = await supabase
+  let query = supabase
     .from('post_reactions')
     .delete()
     .eq('post_id', postId)
     .eq('member_id', memberId)
+
+  if (emoji) {
+    query = query.eq('emoji', emoji)
+  }
+
+  const { error } = await query
 
   if (error) throw error
 }

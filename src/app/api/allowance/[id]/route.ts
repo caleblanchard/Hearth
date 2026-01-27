@@ -76,6 +76,10 @@ export async function PUT(
 
     const body = await request.json();
 
+    if (typeof body.amount === 'number' && body.amount < 0) {
+      return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 });
+    }
+
     // Verify schedule exists and belongs to family
     const { data: existing } = await supabase
       .from('allowance_schedules')
@@ -232,10 +236,10 @@ export async function DELETE(
       );
     }
 
-    // Delete schedule
+    // Soft delete schedule (deactivate)
     const { error } = await supabase
       .from('allowance_schedules')
-      .delete()
+      .update({ is_active: false })
       .eq('id', id);
 
     if (error) {

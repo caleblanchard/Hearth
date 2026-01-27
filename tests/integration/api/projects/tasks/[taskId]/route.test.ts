@@ -14,6 +14,8 @@ import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 describe('GET /api/projects/tasks/[taskId]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    dbMock.project.findUnique.mockResolvedValue({ id: 'project-1', familyId: 'family-test-123' } as any);
+    dbMock.project.findFirst.mockResolvedValue({ id: 'project-1', familyId: 'family-test-123' } as any);
   });
 
   describe('Authentication', () => {
@@ -67,6 +69,7 @@ describe('GET /api/projects/tasks/[taskId]', () => {
       };
 
       dbMock.projectTask.findUnique.mockResolvedValue(mockTask as any);
+      dbMock.project.findUnique.mockResolvedValue(mockTask.project as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1');
       const response = await GET(request, { params: Promise.resolve({ taskId: 'task-1' }) });
@@ -102,6 +105,10 @@ describe('GET /api/projects/tasks/[taskId]', () => {
       };
 
       dbMock.projectTask.findUnique.mockResolvedValue(mockTask as any);
+      // Mock the project lookup explicitly to ensure it returns the project with the wrong family ID
+      dbMock.project.findUnique.mockResolvedValue(mockTask.project as any);
+      // Also mock findFirst in case the bridge maps it there
+      dbMock.project.findFirst.mockResolvedValue(mockTask.project as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1');
       const response = await GET(request, { params: Promise.resolve({ taskId: 'task-1' }) });
@@ -129,6 +136,8 @@ describe('GET /api/projects/tasks/[taskId]', () => {
 describe('PATCH /api/projects/tasks/[taskId]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    dbMock.project.findUnique.mockResolvedValue({ id: 'project-1', familyId: 'family-test-123' } as any);
+    dbMock.project.findFirst.mockResolvedValue({ id: 'project-1', familyId: 'family-test-123' } as any);
   });
 
   describe('Authentication', () => {
@@ -269,6 +278,8 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
       };
 
       dbMock.projectTask.findUnique.mockResolvedValue(mockTask as any);
+      dbMock.project.findUnique.mockResolvedValue(mockTask.project as any);
+      dbMock.project.findFirst.mockResolvedValue(mockTask.project as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'PATCH',
@@ -490,6 +501,8 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'PROJECT_TASK_UPDATED',
+          entityType: 'PROJECT_TASK',
+          entityId: 'task-1',
           result: 'SUCCESS',
           metadata: {
             projectId: 'project-1',
@@ -529,6 +542,8 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 describe('DELETE /api/projects/tasks/[taskId]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    dbMock.project.findUnique.mockResolvedValue({ id: 'project-1', familyId: 'family-test-123' } as any);
+    dbMock.project.findFirst.mockResolvedValue({ id: 'project-1', familyId: 'family-test-123' } as any);
   });
 
   describe('Authentication', () => {
@@ -581,6 +596,8 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
       };
 
       dbMock.projectTask.findUnique.mockResolvedValue(mockTask as any);
+      dbMock.project.findUnique.mockResolvedValue(mockTask.project as any);
+      dbMock.project.findFirst.mockResolvedValue(mockTask.project as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1', {
         method: 'DELETE',
@@ -643,6 +660,8 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'PROJECT_TASK_DELETED',
+          entityType: 'PROJECT_TASK',
+          entityId: 'task-1',
           result: 'SUCCESS',
           metadata: {
             projectId: 'project-1',

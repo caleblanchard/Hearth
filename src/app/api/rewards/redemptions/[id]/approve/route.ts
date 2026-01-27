@@ -25,7 +25,7 @@ export async function POST(
     // Only parents can approve redemptions
     const isParent = await isParentInFamily( familyId);
     if (!isParent) {
-      return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { id } = await params;

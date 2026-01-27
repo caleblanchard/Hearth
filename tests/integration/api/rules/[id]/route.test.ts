@@ -434,6 +434,10 @@ describe('PATCH /api/rules/[id]', () => {
 
   it('should return 400 if trigger is invalid object', async () => {
     (dbMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule);
+    (validateRuleConfiguration as jest.Mock).mockReturnValue({
+      valid: false,
+      errors: ['Invalid trigger configuration']
+    });
 
     const request = new NextRequest('http://localhost:3000/api/rules/rule-1', {
       method: 'PATCH',
@@ -443,7 +447,7 @@ describe('PATCH /api/rules/[id]', () => {
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toContain('Trigger');
+    expect(data.error).toMatch(/trigger/i);
   });
 
   it('should return 400 if actions is not an array', async () => {
@@ -478,7 +482,7 @@ describe('PATCH /api/rules/[id]', () => {
     (dbMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule as any);
     validateRuleConfiguration.mockReturnValue({
       valid: false,
-      error: 'Invalid trigger type',
+      errors: ['Invalid trigger type'],
     });
 
     const invalidTrigger = { type: 'invalid_trigger', config: {} };
@@ -497,7 +501,7 @@ describe('PATCH /api/rules/[id]', () => {
     (dbMock.automationRule.findUnique as jest.Mock).mockResolvedValue(mockRule as any);
     validateRuleConfiguration.mockReturnValue({
       valid: false,
-      error: 'Invalid action type',
+      errors: ['Invalid action type'],
     });
 
     const invalidActions = [{ type: 'invalid_action', config: {} }];

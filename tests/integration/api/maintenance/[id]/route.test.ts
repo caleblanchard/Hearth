@@ -69,25 +69,25 @@ describe('/api/maintenance/[id]', () => {
     });
 
     it('should return maintenance item with completions', async () => {
-      const itemWithCompletions = {
-        ...mockMaintenanceItem,
-        completions: [
-          {
-            id: 'completion-1',
-            completedAt: new Date('2025-12-01T00:00:00Z'),
-            completedBy: 'parent-test-123',
-            cost: 25.0,
-            serviceProvider: null,
-            notes: 'Changed filter',
-            member: {
-              id: 'parent-test-123',
-              name: 'Test Parent',
-            },
+      const completions = [
+        {
+          id: 'completion-1',
+          maintenance_item_id: 'item-1',
+          completed_at: '2025-12-01T00:00:00Z',
+          completed_by: 'parent-test-123',
+          cost: 25.0,
+          service_provider: null,
+          notes: 'Changed filter',
+          completed_by_member: {
+            id: 'parent-test-123',
+            name: 'Test Parent',
           },
-        ],
-      };
+        },
+      ];
 
-      dbMock.maintenanceItem.findUnique.mockResolvedValue(itemWithCompletions as any);
+      dbMock.maintenanceItem.findUnique.mockResolvedValue(mockMaintenanceItem as any);
+      // Mock maintenance completions query
+      dbMock.maintenanceCompletion.findMany.mockResolvedValue(completions as any);
 
       const request = new NextRequest('http://localhost:3000/api/maintenance/item-1');
       const response = await GET(request, { params: Promise.resolve({ id: 'item-1' }) });
@@ -100,22 +100,6 @@ describe('/api/maintenance/[id]', () => {
 
       expect(dbMock.maintenanceItem.findUnique).toHaveBeenCalledWith({
         where: { id: 'item-1' },
-        include: {
-          completions: {
-            include: {
-              member: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-            orderBy: {
-              completedAt: 'desc',
-            },
-            take: 10,
-          },
-        },
       });
     });
 

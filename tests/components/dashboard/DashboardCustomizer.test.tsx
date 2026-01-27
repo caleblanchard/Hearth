@@ -234,8 +234,6 @@ describe('DashboardCustomizer', () => {
   });
 
   it('should show confirmation before reset', () => {
-    global.confirm = jest.fn(() => false);
-
     render(
       <DashboardCustomizer
         isOpen={true}
@@ -250,12 +248,12 @@ describe('DashboardCustomizer', () => {
     const resetButton = screen.getByText('Reset to Default');
     fireEvent.click(resetButton);
 
-    expect(global.confirm).toHaveBeenCalled();
+    expect(screen.getByText('Reset Dashboard')).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to reset/)).toBeInTheDocument();
     expect(mockOnReset).not.toHaveBeenCalled();
   });
 
   it('should call onReset when confirmed', async () => {
-    global.confirm = jest.fn(() => true);
     mockOnReset.mockResolvedValue(undefined);
 
     render(
@@ -271,6 +269,9 @@ describe('DashboardCustomizer', () => {
 
     const resetButton = screen.getByText('Reset to Default');
     fireEvent.click(resetButton);
+
+    const confirmButton = screen.getByRole('button', { name: 'Reset' });
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(mockOnReset).toHaveBeenCalledTimes(1);

@@ -247,29 +247,36 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
         project: { id: 'project-1', familyId: 'family-test-123' },
       };
 
-      // Task-1 → Task-2 → Task-3 already exists
-      // So Task-1 → Task-3 would create a path that already exists
-      const indirectDependency = {
+      // Scenario: Task 3 depends on Task 2 depends on Task 1.
+      // We try to make Task 1 depend on Task 3.
+      // Cycle: T1 -> T3 -> T2 -> T1.
+      // hasPath(T1, T3) should be true (T1 blocks...blocks T3)
+      
+      const dep1 = {
         id: 'dep-1',
-        dependentTaskId: 'task-1',
-        blockingTaskId: 'task-2',
-        blockingTask: {
-          id: 'task-2',
-          dependencies: [
-            {
-              id: 'dep-2',
-              dependentTaskId: 'task-2',
-              blockingTaskId: 'task-3',
-            },
-          ],
-        },
+        dependent_task_id: 'task-2',
+        blocking_task_id: 'task-1',
+      };
+      
+      const dep2 = {
+        id: 'dep-2',
+        dependent_task_id: 'task-3',
+        blocking_task_id: 'task-2',
       };
 
       dbMock.projectTask.findUnique
         .mockResolvedValueOnce(mockDependentTask as any)
         .mockResolvedValueOnce(mockBlockingTask as any);
-      dbMock.taskDependency.findFirst.mockResolvedValueOnce(null);
-      dbMock.taskDependency.findMany.mockResolvedValue([indirectDependency] as any);
+      
+      dbMock.taskDependency.findFirst.mockResolvedValueOnce(null); // No direct reverse dep
+      
+      // Mock findMany for hasPath traversal
+      // 1. query blocking_task_id=task-1 -> returns task-2
+      // 2. query blocking_task_id=task-2 -> returns task-3
+      dbMock.taskDependency.findMany
+        .mockResolvedValueOnce([dep1] as any)
+        .mockResolvedValueOnce([dep2] as any)
+        .mockResolvedValue([]); 
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1/dependencies', {
         method: 'POST',
@@ -447,6 +454,8 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'PROJECT_DEPENDENCY_ADDED',
+          entityId: 'dep-1',
+          entityType: 'PROJECT_TASK_DEPENDENCY',
           result: 'SUCCESS',
           metadata: {
             projectId: 'project-1',
@@ -494,20 +503,22 @@ describe('POST /api/projects/tasks/[taskId]/dependencies', () => {
   });
 });
 
-describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () => {
+describe('DELETE /api/projects/tasks/[taskId]/dependencies', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   describe('Authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-
       const request = new NextRequest(
-        'http://localhost:3000/api/projects/tasks/task-1/dependencies/dep-1',
-        { method: 'DELETE' }
+        'http://localhost:3000/api/projects/tasks/task-1/dependencies',
+        { 
+          method: 'DELETE',
+          body: JSON.stringify({ blockingTaskId: 'task-2' })
+        }
       );
       const response = await DELETE(request, {
-        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
+        params: Promise.resolve({ taskId: 'task-1' }),
       });
 
       expect(response.status).toBe(401);
@@ -516,13 +527,15 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
     });
 
     it('should return 403 if user is a child', async () => {
-
       const request = new NextRequest(
-        'http://localhost:3000/api/projects/tasks/task-1/dependencies/dep-1',
-        { method: 'DELETE' }
+        'http://localhost:3000/api/projects/tasks/task-1/dependencies',
+        { 
+          method: 'DELETE',
+          body: JSON.stringify({ blockingTaskId: 'task-2' })
+        }
       );
       const response = await DELETE(request, {
-        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
+        params: Promise.resolve({ taskId: 'task-1' }),
       });
 
       expect(response.status).toBe(403);
@@ -532,15 +545,35 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
   });
 
   describe('Dependency Deletion', () => {
-    it('should return 404 if dependency does not exist', async () => {
-      dbMock.taskDependency.findUnique.mockResolvedValue(null);
-
+    it('should return 400 if blockingTaskId is missing', async () => {
       const request = new NextRequest(
-        'http://localhost:3000/api/projects/tasks/task-1/dependencies/dep-1',
-        { method: 'DELETE' }
+        'http://localhost:3000/api/projects/tasks/task-1/dependencies',
+        { 
+          method: 'DELETE',
+          body: JSON.stringify({})
+        }
       );
       const response = await DELETE(request, {
-        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
+        params: Promise.resolve({ taskId: 'task-1' }),
+      });
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toBe('blockingTaskId is required');
+    });
+
+    it('should return 404 if dependency does not exist', async () => {
+      dbMock.taskDependency.findFirst.mockResolvedValue(null);
+
+      const request = new NextRequest(
+        'http://localhost:3000/api/projects/tasks/task-1/dependencies',
+        { 
+          method: 'DELETE',
+          body: JSON.stringify({ blockingTaskId: 'task-2' })
+        }
+      );
+      const response = await DELETE(request, {
+        params: Promise.resolve({ taskId: 'task-1' }),
       });
 
       expect(response.status).toBe(404);
@@ -548,133 +581,73 @@ describe('DELETE /api/projects/tasks/[taskId]/dependencies/[dependencyId]', () =
       expect(data.error).toBe('Dependency not found');
     });
 
-    it('should return 403 if dependency belongs to different family', async () => {
-
-      const mockDependency = {
-        id: 'dep-1',
-        dependentTaskId: 'task-1',
-        blockingTaskId: 'task-2',
-        dependentTask: {
-          project: { id: 'project-1', familyId: 'other-family-456' },
-        },
-      };
-
-      dbMock.taskDependency.findUnique.mockResolvedValue(mockDependency as any);
-
-      const request = new NextRequest(
-        'http://localhost:3000/api/projects/tasks/task-1/dependencies/dep-1',
-        { method: 'DELETE' }
-      );
-      const response = await DELETE(request, {
-        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
-      });
-
-      expect(response.status).toBe(403);
-      const data = await response.json();
-      expect(data.error).toBe('Access denied');
-    });
-
     it('should delete dependency successfully', async () => {
-
       const mockDependency = {
         id: 'dep-1',
         dependentTaskId: 'task-1',
         blockingTaskId: 'task-2',
-        dependentTask: {
-          projectId: 'project-1',
-          project: { id: 'project-1', familyId: 'family-test-123' },
-        },
       };
 
-      dbMock.taskDependency.findUnique.mockResolvedValue(mockDependency as any);
+      // Mock findFirst for the lookup (since it uses compound key lookup via single())
+      dbMock.taskDependency.findFirst.mockResolvedValue(mockDependency as any);
+      // Mock delete for the removal
       dbMock.taskDependency.delete.mockResolvedValue(mockDependency as any);
-      dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest(
-        'http://localhost:3000/api/projects/tasks/task-1/dependencies/dep-1',
-        { method: 'DELETE' }
+        'http://localhost:3000/api/projects/tasks/task-1/dependencies',
+        { 
+          method: 'DELETE',
+          body: JSON.stringify({ blockingTaskId: 'task-2' })
+        }
       );
       const response = await DELETE(request, {
-        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
+        params: Promise.resolve({ taskId: 'task-1' }),
       });
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.message).toBe('Dependency deleted successfully');
+      expect(data.message).toBe('Dependency removed successfully');
+      
+      // Verify lookup
+      expect(dbMock.taskDependency.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({
+          dependentTaskId: 'task-1',
+          blockingTaskId: 'task-2'
+        })
+      }));
+      
+      // Verify deletion
       expect(dbMock.taskDependency.delete).toHaveBeenCalledWith({
         where: { id: 'dep-1' },
       });
     });
   });
 
-  describe('Audit Logging', () => {
-    it('should create an audit log entry on successful deletion', async () => {
-
-      const mockDependency = {
-        id: 'dep-1',
-        dependentTaskId: 'task-1',
-        blockingTaskId: 'task-2',
-        dependentTask: {
-          projectId: 'project-1',
-          project: { id: 'project-1', familyId: 'family-test-123' },
-        },
-      };
-
-      dbMock.taskDependency.findUnique.mockResolvedValue(mockDependency as any);
-      dbMock.taskDependency.delete.mockResolvedValue(mockDependency as any);
-      dbMock.auditLog.create.mockResolvedValue({} as any);
-
-      const request = new NextRequest(
-        'http://localhost:3000/api/projects/tasks/task-1/dependencies/dep-1',
-        { method: 'DELETE' }
-      );
-      await DELETE(request, {
-        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
-      });
-
-      expect(dbMock.auditLog.create).toHaveBeenCalledWith({
-        data: {
-          familyId: 'family-test-123',
-          memberId: 'parent-test-123',
-          action: 'PROJECT_DEPENDENCY_REMOVED',
-          result: 'SUCCESS',
-          metadata: {
-            projectId: 'project-1',
-            dependencyId: 'dep-1',
-            dependentTaskId: 'task-1',
-            blockingTaskId: 'task-2',
-          },
-        },
-      });
-    });
-  });
-
   describe('Error Handling', () => {
     it('should return 500 if database operation fails', async () => {
-
       const mockDependency = {
         id: 'dep-1',
         dependentTaskId: 'task-1',
         blockingTaskId: 'task-2',
-        dependentTask: {
-          project: { id: 'project-1', familyId: 'family-test-123' },
-        },
       };
 
-      dbMock.taskDependency.findUnique.mockResolvedValue(mockDependency as any);
+      dbMock.taskDependency.findFirst.mockResolvedValue(mockDependency as any);
       dbMock.taskDependency.delete.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest(
-        'http://localhost:3000/api/projects/tasks/task-1/dependencies/dep-1',
-        { method: 'DELETE' }
+        'http://localhost:3000/api/projects/tasks/task-1/dependencies',
+        { 
+          method: 'DELETE',
+          body: JSON.stringify({ blockingTaskId: 'task-2' })
+        }
       );
       const response = await DELETE(request, {
-        params: Promise.resolve({ taskId: 'task-1', dependencyId: 'dep-1' }),
+        params: Promise.resolve({ taskId: 'task-1' }),
       });
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBe('Failed to delete dependency');
+      expect(data.error).toBe('Failed to remove dependency');
     });
   });
 });

@@ -136,6 +136,10 @@ describe('LeftoversList Component', () => {
   });
 
   it('should show expiration countdown', async () => {
+    const now = new Date('2026-01-01T12:00:00Z');
+    jest.useFakeTimers();
+    jest.setSystemTime(now);
+
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => mockLeftoversWithItems,
@@ -146,6 +150,8 @@ describe('LeftoversList Component', () => {
     await waitFor(() => {
       expect(screen.getAllByText(/expires/i).length).toBeGreaterThan(0);
     });
+
+    jest.useRealTimers();
   });
 
   it('should show green indicator for items with 2+ days remaining', async () => {

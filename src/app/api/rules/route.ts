@@ -47,14 +47,15 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const enabledParam = searchParams.get('enabled');
+    const limitParam = searchParams.get('limit');
+    const offsetParam = searchParams.get('offset');
 
-    // If enabled param is not provided, show ALL rules (both enabled and disabled)
-    // If enabled=true, show only enabled rules
-    // If enabled=false, show only disabled rules (though this is unusual)
-    const activeOnly = enabledParam === null ? false : enabledParam === 'true';
+    const enabled = enabledParam === null ? undefined : enabledParam === 'true';
+    const limit = Math.min(limitParam ? parseInt(limitParam) : 100, 100);
+    const offset = offsetParam ? parseInt(offsetParam) : undefined;
 
     // Fetch rules
-    const rules = await getAutomationRules(familyId, activeOnly);
+    const rules = await getAutomationRules(familyId, enabled, limit, offset);
 
     // Map to camelCase for frontend
     const mappedRules = rules.map(rule => ({
@@ -70,6 +71,7 @@ export async function GET(request: NextRequest) {
       createdAt: rule.created_at,
       updatedAt: rule.updated_at,
       created_by_member: rule.created_by_member,
+      _count: { executions: (rule.executions as any)?.[0]?.count || 0 },
     }));
 
     return NextResponse.json({
@@ -136,16 +138,27 @@ export async function POST(request: NextRequest) {
 
     if (!actions || !Array.isArray(actions) || actions.length === 0) {
       return NextResponse.json(
-        { error: 'At least one action is required' },
+        { error: 'Actions is missing or empty' },
         { status: 400 }
       );
     }
 
     // Validate rule configuration
-    const validation = validateRuleConfiguration(trigger, conditions || null, actions);
-    if (!validation.valid) {
+    try {
+      const validation = validateRuleConfiguration(trigger, conditions || null, actions);
+      if (!validation.valid) {
+        const errorMessage = validation.errors && validation.errors.length > 0 
+          ? validation.errors[0] 
+          : 'Invalid rule configuration';
+          
+        return NextResponse.json(
+          { error: errorMessage, details: validation.errors || [] },
+          { status: 400 }
+        );
+      }
+    } catch (err) {
       return NextResponse.json(
-        { error: 'Invalid rule configuration', details: validation.errors },
+        { error: 'Invalid rule configuration' },
         { status: 400 }
       );
     }
@@ -167,7 +180,7 @@ export async function POST(request: NextRequest) {
       family_id: familyId,
       member_id: memberId,
       action: 'RULE_CREATED',
-      entity_type: 'AUTOMATION_RULE',
+      entity_type: 'AutomationRule',
       entity_id: rule.id,
       result: 'SUCCESS',
       metadata: { name: name.trim(), triggerType: trigger.type },
@@ -182,6 +195,9 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
     logger.error('[API] Error creating automation rule', error);
     return NextResponse.json(
       { error: 'Failed to create automation rule' },

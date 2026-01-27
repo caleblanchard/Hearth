@@ -84,6 +84,12 @@ describe('/api/family/guests', () => {
           },
         },
         include: {
+          family: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           invitedBy: {
             select: {
               id: true,
@@ -91,9 +97,6 @@ describe('/api/family/guests', () => {
             },
           },
           sessions: {
-            where: {
-              endedAt: null,
-            },
             orderBy: {
               startedAt: 'desc',
             },
@@ -124,7 +127,7 @@ describe('/api/family/guests', () => {
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBe('Failed to fetch guest invites');
+      expect(data.error).toBe('Failed to get guest invites');
     });
   });
 });

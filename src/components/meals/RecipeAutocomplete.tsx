@@ -19,6 +19,7 @@ interface RecipeAutocompleteProps {
   className?: string;
   autoFocus?: boolean;
   disabled?: boolean;
+  id?: string;
 }
 
 export default function RecipeAutocomplete({
@@ -28,6 +29,7 @@ export default function RecipeAutocomplete({
   className = '',
   autoFocus = false,
   disabled = false,
+  id,
 }: RecipeAutocompleteProps) {
   const [searchQuery, setSearchQuery] = useState(value);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -169,6 +171,7 @@ export default function RecipeAutocomplete({
     <div className="relative">
       <div className="relative">
         <input
+          id={id}
           ref={inputRef}
           type="text"
           value={searchQuery}

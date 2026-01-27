@@ -139,6 +139,12 @@ describe('TemplateBrowser Component', () => {
       expect(global.fetch).toHaveBeenCalledWith('/api/rules/templates?category=rewards');
     });
 
+    // Wait for loading to finish and filters to reappear
+    await waitFor(() => {
+      expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /all categories/i })).toBeInTheDocument();
+    });
+
     // Then click "All Categories"
     const allButton = screen.getByRole('button', { name: /all categories/i });
     fireEvent.click(allButton);

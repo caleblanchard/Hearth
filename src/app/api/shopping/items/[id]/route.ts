@@ -51,6 +51,9 @@ export async function PATCH(
     if (updates.status === 'PURCHASED' && item.status !== 'PURCHASED') {
       updates.purchased_at = new Date().toISOString();
       updates.purchased_by_id = memberId;
+    } else if (updates.status && updates.status !== 'PURCHASED') {
+      updates.purchased_at = null;
+      updates.purchased_by_id = null;
     }
 
     // Update item
@@ -65,7 +68,7 @@ export async function PATCH(
         entity_type: 'SHOPPING_ITEM',
         entity_id: id,
         result: 'SUCCESS',
-        metadata: { oldStatus: item.status, newStatus: updates.status },
+        metadata: { itemName: item.name, oldStatus: item.status, newStatus: updates.status },
       });
     }
 
@@ -136,9 +139,20 @@ export async function DELETE(
       return NextResponse.json({ error: 'Failed to delete item' }, { status: 500 });
     }
 
+    // Log audit
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'SHOPPING_ITEM_DELETED',
+      entity_type: 'SHOPPING_ITEM',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: { itemName: item.name },
+    });
+
     return NextResponse.json({
       success: true,
-      message: 'Item deleted successfully',
+      message: 'Item removed from shopping list',
     });
   } catch (error) {
     logger.error('Delete shopping item error:', error);

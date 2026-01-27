@@ -26,7 +26,8 @@ describe('/api/notifications/[id]', () => {
     const notificationId = 'notification-1'
     const mockNotification = {
       id: notificationId,
-      userId: 'child-1',
+      userId: 'child-test-123',
+      user_id: 'child-test-123',
       isRead: false,
       readAt: null,
     }
@@ -34,7 +35,7 @@ describe('/api/notifications/[id]', () => {
     const mockUpdatedNotification = {
       ...mockNotification,
       isRead: true,
-      readAt: new Date(),
+      readAt: new Date().toISOString(),
     }
 
     it('should return 401 if not authenticated', async () => {
@@ -72,6 +73,7 @@ describe('/api/notifications/[id]', () => {
       dbMock.notification.findUnique.mockResolvedValue({
         ...mockNotification,
         userId: 'different-user',
+        user_id: 'different-user',
       } as any)
 
       const request = new NextRequest('http://localhost/api/notifications/123', {
@@ -105,7 +107,7 @@ describe('/api/notifications/[id]', () => {
         where: { id: notificationId },
         data: {
           isRead: true,
-          readAt: expect.any(Date),
+          readAt: expect.any(String),
         },
       })
     })
@@ -132,7 +134,8 @@ describe('/api/notifications/[id]', () => {
     const notificationId = 'notification-1'
     const mockNotification = {
       id: notificationId,
-      userId: 'child-1',
+      userId: 'child-test-123',
+      user_id: 'child-test-123',
     }
 
     it('should return 401 if not authenticated', async () => {
@@ -170,6 +173,7 @@ describe('/api/notifications/[id]', () => {
       dbMock.notification.findUnique.mockResolvedValue({
         ...mockNotification,
         userId: 'different-user',
+        user_id: 'different-user',
       } as any)
 
       const request = new NextRequest('http://localhost/api/notifications/123', {

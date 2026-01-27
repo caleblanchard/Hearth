@@ -30,9 +30,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const categoryParam = searchParams.get('category');
     const validCategories = ['rewards', 'productivity', 'safety', 'convenience'] as const;
-    const category = categoryParam && validCategories.includes(categoryParam as any)
-      ? (categoryParam as 'rewards' | 'productivity' | 'safety' | 'convenience')
-      : undefined;
+
+    if (categoryParam && !validCategories.includes(categoryParam as any)) {
+      return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
+    }
+
+    const category = categoryParam as 'rewards' | 'productivity' | 'safety' | 'convenience' | undefined;
 
     const templates = category
       ? getTemplatesByCategory(category)

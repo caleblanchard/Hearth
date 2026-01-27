@@ -42,17 +42,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
+    if (!authContext.user.role || authContext.user.role !== 'PARENT') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
+    if (!body.name) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
     const carpool = await createCarpoolGroup({
       family_id: familyId,
-      name: body.name || 'Carpool Group',
+      name: body.name,
     });
 
     return NextResponse.json({
       success: true,
       carpool,
       message: 'Carpool group created successfully',
-    });
+    }, { status: 201 });
   } catch (error) {
     logger.error('Error creating carpool group:', error);
     return NextResponse.json(

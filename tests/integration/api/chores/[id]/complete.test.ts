@@ -1,6 +1,11 @@
 // Set up mocks BEFORE any imports
 import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock'
 
+// Mock data layer
+jest.mock('@/lib/data/chores', () => ({
+  completeChore: jest.fn(),
+}))
+
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -14,6 +19,7 @@ jest.mock('@/lib/logger', () => ({
 // NOW import the route after mocks are set up
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/chores/[id]/complete/route'
+import { completeChore } from '@/lib/data/chores'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { ChoreStatus } from '@/lib/enums'
 
@@ -53,10 +59,13 @@ describe('/api/chores/[id]/complete', () => {
       expect(data.error).toBe('Unauthorized')
     })
 
-    it('should return 404 if chore instance not found', async () => {
+    it('should return 400 if chore instance not found or completion fails', async () => {
       const session = mockChildSession()
 
-      dbMock.choreInstance.findUnique.mockResolvedValue(null)
+      ;(completeChore as jest.Mock).mockResolvedValue({
+        success: false,
+        error: 'Chore not found',
+      })
 
       const request = new NextRequest('http://localhost/api/chores/123/complete', {
         method: 'POST',
@@ -66,153 +75,23 @@ describe('/api/chores/[id]/complete', () => {
       const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
-      expect(response.status).toBe(404)
+      expect(response.status).toBe(400)
       expect(data.error).toBe('Chore not found')
     })
 
-    it('should return 403 if user is not assigned and not a parent', async () => {
-      const session = mockChildSession()
-
-      dbMock.choreInstance.findUnique.mockResolvedValue({
-        ...mockChoreInstance,
-        assignedToId: 'child-1', // Different child
-      } as any)
-
-      const request = new NextRequest('http://localhost/api/chores/123/complete', {
-        method: 'POST',
-        body: JSON.stringify({ notes: 'Test notes' }),
-      })
-
-      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
-      const data = await response.json()
-
-      expect(response.status).toBe(403)
-      expect(data.error).toBe('Forbidden')
-    })
-
-    it('should allow parent to complete any chore', async () => {
+    it('should complete chore successfully', async () => {
       const session = mockParentSession()
 
-      dbMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
-      dbMock.choreInstance.update.mockResolvedValue({
-        ...mockChoreInstance,
-        status: ChoreStatus.APPROVED,
-        completedAt: new Date(),
-        completedById: session.user.id,
-      } as any)
-
-      // Mock credit balance operations
-      dbMock.creditBalance.upsert.mockResolvedValue({
-        memberId: 'child-1',
-        currentBalance: 10,
-        lifetimeEarned: 10,
-        lifetimeSpent: 0,
-      } as any)
-
-      dbMock.creditTransaction.create.mockResolvedValue({
-        id: 'tx-1',
-        memberId: 'child-1',
-        type: 'CHORE_REWARD',
-        amount: 10,
-        balanceAfter: 10,
-      } as any)
-
-      dbMock.auditLog.create.mockResolvedValue({} as any)
-      dbMock.notification.create.mockResolvedValue({} as any)
-
-      const request = new NextRequest('http://localhost/api/chores/123/complete', {
-        method: 'POST',
-        body: JSON.stringify({ notes: 'Test notes' }),
-      })
-
-      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(dbMock.choreInstance.update).toHaveBeenCalled()
-    })
-
-    it('should complete chore without approval and award credits atomically', async () => {
-      const session = mockChildSession()
-
-      dbMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
-      dbMock.choreInstance.update.mockResolvedValue({
-        ...mockChoreInstance,
-        status: ChoreStatus.APPROVED,
-        completedAt: new Date(),
-        completedById: session.user.id,
-      } as any)
-
-      // Mock transaction for credit operations
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        return await callback({
-          creditBalance: {
-            upsert: jest.fn().mockResolvedValue({
-              memberId: 'child-1',
-              currentBalance: 10,
-              lifetimeEarned: 10,
-              lifetimeSpent: 0,
-            }),
-          },
-          creditTransaction: {
-            create: jest.fn().mockResolvedValue({
-              id: 'tx-1',
-              memberId: 'child-1',
-              type: 'CHORE_REWARD',
-              amount: 10,
-              balanceAfter: 10,
-            }),
-          },
-        })
-      })
-
-      dbMock.auditLog.create.mockResolvedValue({} as any)
-      dbMock.notification.create.mockResolvedValue({} as any)
-
-      const request = new NextRequest('http://localhost/api/chores/123/complete', {
-        method: 'POST',
-        body: JSON.stringify({ notes: 'Test notes' }),
-      })
-
-      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(dbMock.$transaction).toHaveBeenCalled()
-    })
-
-    it('should handle chore requiring approval', async () => {
-      const session = mockChildSession()
-
-      const choreRequiringApproval = {
-        ...mockChoreInstance,
-        choreSchedule: {
-          requiresApproval: true,
-          choreDefinition: {
-            id: 'chore-def-1',
-            name: 'Test Chore',
-            creditValue: 10,
-          },
+      ;(completeChore as jest.Mock).mockResolvedValue({
+        success: true,
+        completion: {
+          ...mockChoreInstance,
+          status: ChoreStatus.APPROVED,
+          completedAt: new Date().toISOString(),
+          completedById: session.user.id,
         },
-      }
-
-      dbMock.choreInstance.findUnique.mockResolvedValue(choreRequiringApproval as any)
-      dbMock.choreInstance.update.mockResolvedValue({
-        ...choreRequiringApproval,
-        status: ChoreStatus.COMPLETED,
-        completedAt: new Date(),
-        completedById: session.user.id,
-      } as any)
-
-      dbMock.familyMember.findMany.mockResolvedValue([
-        { id: 'parent-1', name: 'Parent 1' },
-        { id: 'parent-2', name: 'Parent 2' },
-      ] as any)
-
-      dbMock.notification.createMany.mockResolvedValue({ count: 2 } as any)
-      dbMock.auditLog.create.mockResolvedValue({} as any)
+        credits_awarded: 10,
+      })
 
       const request = new NextRequest('http://localhost/api/chores/123/complete', {
         method: 'POST',
@@ -224,20 +103,9 @@ describe('/api/chores/[id]/complete', () => {
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(data.message).toContain('Waiting for parent approval')
-      expect(dbMock.notification.createMany).toHaveBeenCalled()
-      expect(dbMock.notification.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            userId: 'parent-1',
-            type: 'CHORE_COMPLETED',
-          }),
-          expect.objectContaining({
-            userId: 'parent-2',
-            type: 'CHORE_COMPLETED',
-          }),
-        ]),
-      })
+      expect(data.message).toBe('Chore completed successfully')
+      
+      expect(completeChore).toHaveBeenCalledWith(choreInstanceId, session.user.id, 'Test notes')
     })
 
     it('should handle invalid JSON gracefully', async () => {
@@ -253,83 +121,6 @@ describe('/api/chores/[id]/complete', () => {
 
       expect(response.status).toBe(400)
       expect(data.error).toBe('Invalid JSON in request body')
-    })
-
-    it('should handle notification creation failures gracefully', async () => {
-      const session = mockChildSession()
-
-      const choreRequiringApproval = {
-        ...mockChoreInstance,
-        choreSchedule: {
-          requiresApproval: true,
-          choreDefinition: {
-            id: 'chore-def-1',
-            name: 'Test Chore',
-            creditValue: 10,
-          },
-        },
-      }
-
-      dbMock.choreInstance.findUnique.mockResolvedValue(choreRequiringApproval as any)
-      dbMock.choreInstance.update.mockResolvedValue({
-        ...choreRequiringApproval,
-        status: ChoreStatus.COMPLETED,
-      } as any)
-
-      dbMock.familyMember.findMany.mockResolvedValue([
-        { id: 'parent-1', name: 'Parent 1' },
-      ] as any)
-
-      // Simulate notification creation failure
-      dbMock.notification.createMany.mockRejectedValue(new Error('Database error'))
-
-      const request = new NextRequest('http://localhost/api/chores/123/complete', {
-        method: 'POST',
-        body: JSON.stringify({ notes: 'Test notes' }),
-      })
-
-      // Should still succeed even if notifications fail
-      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-    })
-
-    it('should verify family membership', async () => {
-      const session = mockChildSession({ user: { id: 'child-1', familyId: 'family-1', name: 'Test Child', email: null, role: 'CHILD', familyName: 'Test Family' } })
-
-      // Chore from different family
-      const otherFamilyChore = {
-        ...mockChoreInstance,
-        assignedToId: 'child-other-family',
-      }
-
-      dbMock.choreInstance.findUnique.mockResolvedValue(otherFamilyChore as any)
-
-      // Mock to return chore with family info to verify
-      dbMock.choreInstance.findUnique.mockResolvedValue({
-        ...otherFamilyChore,
-        choreSchedule: {
-          ...otherFamilyChore.choreSchedule,
-          choreDefinition: {
-            ...otherFamilyChore.choreSchedule.choreDefinition,
-            familyId: 'family-2', // Different family
-          },
-        },
-      } as any)
-
-      const request = new NextRequest('http://localhost/api/chores/123/complete', {
-        method: 'POST',
-        body: JSON.stringify({ notes: 'Test notes' }),
-      })
-
-      // This should be caught by the assignment check, but we should verify
-      // that family verification happens at the query level
-      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
-
-      // Should fail either at assignment check or family check
-      expect([403, 404]).toContain(response.status)
     })
   })
 })

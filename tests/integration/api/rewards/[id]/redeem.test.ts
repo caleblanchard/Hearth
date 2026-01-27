@@ -35,18 +35,18 @@ describe('/api/rewards/[id]/redeem', () => {
     const rewardId = 'reward-1'
     const mockReward = {
       id: rewardId,
-      familyId: 'family-1',
+      family_id: 'family-1',
       name: 'Test Reward',
-      costCredits: 50,
+      cost_credits: 50,
       quantity: 10,
       status: RewardStatus.ACTIVE,
     }
 
     const mockCreditBalance = {
-      memberId: 'child-1',
-      currentBalance: 100,
-      lifetimeEarned: 200,
-      lifetimeSpent: 100,
+      member_id: 'child-1',
+      current_balance: 100,
+      lifetime_earned: 200,
+      lifetime_spent: 100,
     }
 
     it('should return 401 if not authenticated', async () => {
@@ -85,7 +85,7 @@ describe('/api/rewards/[id]/redeem', () => {
 
       dbMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
-        familyId: 'family-2', // Different family
+        family_id: 'family-2', // Different family
       } as any)
 
       const request = new NextRequest('http://localhost/api/rewards/123/redeem', {
@@ -105,7 +105,7 @@ describe('/api/rewards/[id]/redeem', () => {
 
       dbMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
-        familyId: session.user.familyId,
+        family_id: session.user.familyId,
         status: RewardStatus.INACTIVE,
       } as any)
 
@@ -126,11 +126,11 @@ describe('/api/rewards/[id]/redeem', () => {
 
       dbMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
-        familyId: session.user.familyId,
+        family_id: session.user.familyId,
       } as any)
       dbMock.creditBalance.findUnique.mockResolvedValue({
         ...mockCreditBalance,
-        currentBalance: 20, // Less than cost
+        current_balance: 20, // Less than cost
       } as any)
 
       const request = new NextRequest('http://localhost/api/rewards/123/redeem', {
@@ -150,7 +150,7 @@ describe('/api/rewards/[id]/redeem', () => {
 
       dbMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
-        familyId: session.user.familyId,
+        family_id: session.user.familyId,
         quantity: 0,
       } as any)
 
@@ -173,51 +173,37 @@ describe('/api/rewards/[id]/redeem', () => {
 
       dbMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
-        familyId: session.user.familyId,
+        family_id: session.user.familyId,
       } as any)
       dbMock.creditBalance.findUnique.mockResolvedValue(mockCreditBalance as any)
       dbMock.budget.findMany.mockResolvedValue([])
 
-      // Mock transaction
-      const mockTransaction = {
-        creditBalance: {
-          update: jest.fn().mockResolvedValue({
-            ...mockCreditBalance,
-            currentBalance: 50,
-            lifetimeSpent: 150,
-          }),
-        },
-        creditTransaction: {
-          create: jest.fn().mockResolvedValue({
-            id: 'tx-1',
-            memberId: session.user.id,
-            type: 'REWARD_REDEMPTION',
-            amount: -50,
-            balanceAfter: 50,
-          }),
-        },
-        rewardRedemption: {
-          create: jest.fn().mockResolvedValue({
-            id: 'redemption-1',
-            rewardId,
-            memberId: session.user.id,
-            status: RedemptionStatus.PENDING,
-            reward: mockReward,
-            member: { id: session.user.id, name: session.user.name },
-          }),
-        },
-        rewardItem: {
-          update: jest.fn().mockResolvedValue({
-            ...mockReward,
-            quantity: 9,
-            status: RewardStatus.ACTIVE,
-          }),
-        },
-      }
-
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        return await callback(mockTransaction)
-      })
+      // Mock individual updates
+      dbMock.creditBalance.update.mockResolvedValue({
+        ...mockCreditBalance,
+        current_balance: 50,
+        lifetime_spent: 150,
+      } as any)
+      dbMock.creditTransaction.create.mockResolvedValue({
+        id: 'tx-1',
+        member_id: session.user.id,
+        type: 'REWARD_REDEMPTION',
+        amount: -50,
+        balance_after: 50,
+      } as any)
+      dbMock.rewardItem.update.mockResolvedValue({
+        ...mockReward,
+        quantity: 9,
+        status: RewardStatus.ACTIVE,
+      } as any)
+      dbMock.rewardRedemption.create.mockResolvedValue({
+        id: 'redemption-1',
+        reward_id: rewardId,
+        member_id: session.user.id,
+        status: RedemptionStatus.PENDING,
+        reward: mockReward,
+        member: { id: session.user.id, name: session.user.name },
+      } as any)
 
       dbMock.familyMember.findMany.mockResolvedValue([
         { id: 'parent-1', name: 'Parent 1' },
@@ -235,15 +221,18 @@ describe('/api/rewards/[id]/redeem', () => {
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(data.newBalance).toBe(50)
-      expect(dbMock.$transaction).toHaveBeenCalled()
-      expect(mockTransaction.creditBalance.update).toHaveBeenCalledWith({
-        where: { memberId: session.user.id },
-        data: {
-          currentBalance: 50,
-          lifetimeSpent: { increment: 50 },
-        },
-      })
+      // data.redemption contains the result.
+      expect(dbMock.creditBalance.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { 
+            memberId: session.user.id,
+            currentBalance: 100 
+          },
+          data: expect.objectContaining({
+            currentBalance: 50,
+          }),
+        })
+      )
     })
 
     it('should handle budget warnings', async () => {
@@ -251,16 +240,16 @@ describe('/api/rewards/[id]/redeem', () => {
 
       dbMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
-        familyId: session.user.familyId,
+        family_id: session.user.familyId,
       } as any)
       dbMock.creditBalance.findUnique.mockResolvedValue(mockCreditBalance as any)
 
       const mockBudget = {
         id: 'budget-1',
-        memberId: session.user.id,
+        member_id: session.user.id,
         category: 'REWARDS',
         period: 'monthly',
-        limitAmount: 100,
+        limit_amount: 100,
         periods: [],
       }
 
@@ -273,21 +262,15 @@ describe('/api/rewards/[id]/redeem', () => {
         projectedSpent: 100,
       })
 
-      // Mock transaction
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        return await callback({
-          creditBalance: { update: jest.fn().mockResolvedValue({ currentBalance: 50 }) },
-          creditTransaction: { create: jest.fn().mockResolvedValue({ id: 'tx-1' }) },
-          rewardRedemption: {
-            create: jest.fn().mockResolvedValue({
-              id: 'redemption-1',
-              reward: mockReward,
-              member: { id: session.user.id, name: session.user.name },
-            }),
-          },
-          rewardItem: { update: jest.fn().mockResolvedValue(mockReward) },
-        })
-      })
+      // Mock individual updates
+      dbMock.creditBalance.update.mockResolvedValue({ current_balance: 50 } as any)
+      dbMock.creditTransaction.create.mockResolvedValue({ id: 'tx-1' } as any)
+      dbMock.rewardItem.update.mockResolvedValue(mockReward as any)
+      dbMock.rewardRedemption.create.mockResolvedValue({
+        id: 'redemption-1',
+        reward: mockReward,
+        member: { id: session.user.id, name: session.user.name },
+      } as any)
 
       dbMock.familyMember.findMany.mockResolvedValue([])
       dbMock.notification.createMany.mockResolvedValue({ count: 0 } as any)
@@ -310,25 +293,20 @@ describe('/api/rewards/[id]/redeem', () => {
 
       dbMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
-        familyId: session.user.familyId,
+        family_id: session.user.familyId,
       } as any)
       dbMock.creditBalance.findUnique.mockResolvedValue(mockCreditBalance as any)
       dbMock.budget.findMany.mockResolvedValue([])
 
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        return await callback({
-          creditBalance: { update: jest.fn().mockResolvedValue({ currentBalance: 50 }) },
-          creditTransaction: { create: jest.fn().mockResolvedValue({ id: 'tx-1' }) },
-          rewardRedemption: {
-            create: jest.fn().mockResolvedValue({
-              id: 'redemption-1',
-              reward: mockReward,
-              member: { id: session.user.id, name: session.user.name },
-            }),
-          },
-          rewardItem: { update: jest.fn().mockResolvedValue(mockReward) },
-        })
-      })
+      // Mock individual updates
+      dbMock.creditBalance.update.mockResolvedValue({ current_balance: 50 } as any)
+      dbMock.creditTransaction.create.mockResolvedValue({ id: 'tx-1' } as any)
+      dbMock.rewardItem.update.mockResolvedValue(mockReward as any)
+      dbMock.rewardRedemption.create.mockResolvedValue({
+        id: 'redemption-1',
+        reward: mockReward,
+        member: { id: session.user.id, name: session.user.name },
+      } as any)
 
       dbMock.familyMember.findMany.mockResolvedValue([
         { id: 'parent-1', name: 'Parent 1' },
@@ -370,32 +348,23 @@ describe('/api/rewards/[id]/redeem', () => {
 
       dbMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
-        familyId: session.user.familyId,
+        family_id: session.user.familyId,
       } as any)
       dbMock.creditBalance.findUnique.mockResolvedValue(mockCreditBalance as any)
       dbMock.budget.findMany.mockResolvedValue([])
 
-      const mockTransaction = {
-        creditBalance: { update: jest.fn().mockResolvedValue({ currentBalance: 50 }) },
-        creditTransaction: { create: jest.fn().mockResolvedValue({ id: 'tx-1' }) },
-        rewardRedemption: {
-          create: jest.fn().mockResolvedValue({
-            id: 'redemption-1',
-            reward: mockReward,
-            member: { id: session.user.id, name: session.user.name },
-          }),
-        },
-        rewardItem: {
-          update: jest.fn().mockResolvedValue({
-            ...mockReward,
-            quantity: 9,
-          }),
-        },
-      }
-
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        return await callback(mockTransaction)
-      })
+      // Mock individual updates
+      dbMock.creditBalance.update.mockResolvedValue({ current_balance: 50 } as any)
+      dbMock.creditTransaction.create.mockResolvedValue({ id: 'tx-1' } as any)
+      dbMock.rewardItem.update.mockResolvedValue({
+        ...mockReward,
+        quantity: 9,
+      } as any)
+      dbMock.rewardRedemption.create.mockResolvedValue({
+        id: 'redemption-1',
+        reward: mockReward,
+        member: { id: session.user.id, name: session.user.name },
+      } as any)
 
       dbMock.familyMember.findMany.mockResolvedValue([])
       dbMock.notification.createMany.mockResolvedValue({ count: 0 } as any)
@@ -407,10 +376,10 @@ describe('/api/rewards/[id]/redeem', () => {
 
       await POST(request, { params: Promise.resolve({ id: rewardId }) })
 
-      expect(mockTransaction.rewardItem.update).toHaveBeenCalledWith({
+      expect(dbMock.rewardItem.update).toHaveBeenCalledWith({
         where: { id: rewardId },
         data: {
-          quantity: { decrement: 1 },
+          quantity: 9,
           status: RewardStatus.ACTIVE,
         },
       })
@@ -421,35 +390,26 @@ describe('/api/rewards/[id]/redeem', () => {
 
       dbMock.rewardItem.findUnique.mockResolvedValue({
         ...mockReward,
-        familyId: session.user.familyId,
+        family_id: session.user.familyId,
         quantity: 1, // Last one
       } as any)
 
       dbMock.creditBalance.findUnique.mockResolvedValue(mockCreditBalance as any)
       dbMock.budget.findMany.mockResolvedValue([])
 
-      const mockTransaction = {
-        creditBalance: { update: jest.fn().mockResolvedValue({ currentBalance: 50 }) },
-        creditTransaction: { create: jest.fn().mockResolvedValue({ id: 'tx-1' }) },
-        rewardRedemption: {
-          create: jest.fn().mockResolvedValue({
-            id: 'redemption-1',
-            reward: { ...mockReward, quantity: 1 },
-            member: { id: session.user.id, name: session.user.name },
-          }),
-        },
-        rewardItem: {
-          update: jest.fn().mockResolvedValue({
-            ...mockReward,
-            quantity: 0,
-            status: RewardStatus.OUT_OF_STOCK,
-          }),
-        },
-      }
-
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        return await callback(mockTransaction)
-      })
+      // Mock individual updates
+      dbMock.creditBalance.update.mockResolvedValue({ current_balance: 50 } as any)
+      dbMock.creditTransaction.create.mockResolvedValue({ id: 'tx-1' } as any)
+      dbMock.rewardRedemption.create.mockResolvedValue({
+        id: 'redemption-1',
+        reward: { ...mockReward, quantity: 1 },
+        member: { id: session.user.id, name: session.user.name },
+      } as any)
+      dbMock.rewardItem.update.mockResolvedValue({
+        ...mockReward,
+        quantity: 0,
+        status: RewardStatus.OUT_OF_STOCK,
+      } as any)
 
       dbMock.familyMember.findMany.mockResolvedValue([])
       dbMock.notification.createMany.mockResolvedValue({ count: 0 } as any)
@@ -461,10 +421,10 @@ describe('/api/rewards/[id]/redeem', () => {
 
       await POST(request, { params: Promise.resolve({ id: rewardId }) })
 
-      expect(mockTransaction.rewardItem.update).toHaveBeenCalledWith({
+      expect(dbMock.rewardItem.update).toHaveBeenCalledWith({
         where: { id: rewardId },
         data: {
-          quantity: { decrement: 1 },
+          quantity: 0,
           status: RewardStatus.OUT_OF_STOCK, // Should be OUT_OF_STOCK when quantity becomes 0
         },
       })

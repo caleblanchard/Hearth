@@ -27,15 +27,15 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
     const assignmentId = 'assignment-1'
     const getMockAssignment = (session: any) => ({
       id: assignmentId,
-      choreSchedule: {
+      schedule: {
         id: scheduleId,
-        choreDefinition: {
+        definition: {
           id: 'chore-def-1',
-          familyId: session.user.familyId,
+          family_id: session.user.familyId,
         },
         assignments: [
-          { id: 'assignment-1', isActive: true },
-          { id: 'assignment-2', isActive: true },
+          { id: 'assignment-1', is_active: true },
+          { id: 'assignment-2', is_active: true },
         ],
       },
     })
@@ -74,9 +74,9 @@ describe('/api/chores/schedules/[scheduleId]/assignments/[assignmentId]', () => 
 
       dbMock.choreAssignment.findUnique.mockResolvedValue({
         ...getMockAssignment(session),
-        choreSchedule: {
-          ...getMockAssignment(session).choreSchedule,
-          assignments: [{ id: 'assignment-1', isActive: true }],
+        schedule: {
+          ...getMockAssignment(session).schedule,
+          assignments: [{ id: 'assignment-1', is_active: true }],
         },
       } as any)
 

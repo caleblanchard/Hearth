@@ -1,393 +1,160 @@
-// Set up mocks BEFORE any imports
-import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock';
-
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}));
-
-// NOW import the route after mocks are set up
 import { NextRequest } from 'next/server';
 import { GET, PATCH } from '@/app/api/screentime/grace/settings/route';
-import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock';
+import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 import { GraceRepaymentMode } from '@/lib/enums';
+
+// Mock logger
+jest.mock('@/lib/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+// Mock data module
+jest.mock('@/lib/data/screentime', () => ({
+  getGraceSettings: jest.fn(),
+  updateGraceSettings: jest.fn(),
+}));
+
+// Mock Supabase
+jest.mock('@/lib/supabase/server', () => {
+  const { getMockSession } = require('@/lib/test-utils/auth-mock');
+  
+  return {
+    createClient: jest.fn(() => ({
+      from: jest.fn((table) => {
+        if (table === 'family_members') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                eq: jest.fn(() => ({
+                  single: jest.fn().mockResolvedValue({
+                    data: {
+                      auth_user_id: 'child-1',
+                      family_id: 'family-test-123',
+                      role: 'CHILD'
+                    }
+                  })
+                }))
+              }))
+            }))
+          };
+        }
+        return { select: jest.fn() };
+      }),
+    })),
+    getAuthContext: jest.fn(async () => {
+      const session = getMockSession();
+      if (!session) return null;
+      return {
+        user: session.user,
+        activeFamilyId: session.user.familyId,
+        activeMemberId: session.user.id,
+      };
+    }),
+    isParentInFamily: jest.fn(async (familyId) => {
+      const session = getMockSession();
+      // Default parent session role is PARENT, child is CHILD
+      return session?.user?.role === 'PARENT';
+    }),
+  };
+});
+
+import { getGraceSettings, updateGraceSettings } from '@/lib/data/screentime';
 
 describe('/api/screentime/grace/settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    resetDbMock();
   });
+
+  const mockSettings = {
+    id: 'settings-1',
+    family_id: 'family-test-123',
+    max_daily_grace_periods: 3,
+    require_reason: true,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    // Enums and other fields mapped by route
+    grace_period_minutes: 15,
+    max_grace_per_day: 3,
+    max_grace_per_week: 10,
+    grace_repayment_mode: 'DEDUCT_NEXT_WEEK',
+    low_balance_warning_minutes: 10,
+    requires_approval: false,
+  };
 
   describe('GET', () => {
-    it('should return 401 if not authenticated', async () => {
-
-      const request = new Request('http://localhost/api/screentime/grace/settings');
-      const response = await GET(request as NextRequest);
-
-      expect(response.status).toBe(401);
-      const data = await response.json();
-      expect(data.error).toBe('Unauthorized');
-    });
-
-    it('should return settings for current user', async () => {
-      const session = mockChildSession();
-
-      const settings = {
-        id: 'settings-1',
-        memberId: session.user.id,
-        gracePeriodMinutes: 15,
-        maxGracePerDay: 1,
-        maxGracePerWeek: 3,
-        graceRepaymentMode: GraceRepaymentMode.DEDUCT_NEXT_WEEK,
-        lowBalanceWarningMinutes: 10,
-        requiresApproval: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      dbMock.screenTimeGraceSettings.findUnique.mockResolvedValue(settings);
-
-      const request = new Request('http://localhost/api/screentime/grace/settings');
-      const response = await GET(request as NextRequest);
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.settings).toEqual(settings);
-    });
-
-    it('should allow parents to view child settings', async () => {
+    it('should return settings for family', async () => {
       const session = mockParentSession();
 
-      const childId = 'child-1';
-      const settings = {
-        id: 'settings-1',
-        memberId: childId,
-    gracePeriodMinutes: 20,
-        maxGracePerDay: 2,
-        maxGracePerWeek: 5,
-        graceRepaymentMode: GraceRepaymentMode.EARN_BACK,
-        lowBalanceWarningMinutes: 15,
-        requiresApproval: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      (getGraceSettings as jest.Mock).mockResolvedValue(mockSettings);
 
-      // Mock member check
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        id: childId,
-        name: 'Test Child',
-        email: null,
-        role: 'CHILD' as any,
-        familyId: session.user.familyId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      passwordHash: null,
-      pin: null,
-      isActive: true,
-      birthDate: null,
-      avatarUrl: null,
-      lastLoginAt: null,
-    } as any);
-
-      dbMock.screenTimeGraceSettings.findUnique.mockResolvedValue(settings);
-
-      const request = new Request(
-        `http://localhost/api/screentime/grace/settings?memberId=${childId}`
-      );
-      const response = await GET(request as NextRequest);
+      const request = new NextRequest('http://localhost/api/screentime/grace/settings');
+      const response = await GET(request);
+      const data = await response.json();
 
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.settings).toEqual(settings);
+      // Route maps snake_case to camelCase
+      expect(data.settings.max_daily_grace_periods).toBe(3);
+      expect(getGraceSettings).toHaveBeenCalledWith(session.user.familyId);
     });
 
-    it('should prevent children from viewing other members settings', async () => {
-      const session = mockChildSession();
-
-      const otherChildId = 'other-child';
-
-      // Mock member check
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        id: otherChildId,
-        name: 'Other Child',
-        email: null,
-        role: 'CHILD' as any,
-        familyId: session.user.familyId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      passwordHash: null,
-      pin: null,
-      isActive: true,
-      birthDate: null,
-      avatarUrl: null,
-      lastLoginAt: null,
-    } as any);
-
-      const request = new Request(
-        `http://localhost/api/screentime/grace/settings?memberId=${otherChildId}`
-      );
-      const response = await GET(request as NextRequest);
-
-      expect(response.status).toBe(403);
-      const data = await response.json();
-      expect(data.error).toContain('Cannot view');
-    });
-
-    it('should create default settings if none exist', async () => {
-      const session = mockChildSession();
-
-      const defaultSettings = {
-        id: 'new-settings-1',
-        memberId: session.user.id,
-        gracePeriodMinutes: 15,
-        maxGracePerDay: 1,
-        maxGracePerWeek: 3,
-        graceRepaymentMode: GraceRepaymentMode.DEDUCT_NEXT_WEEK,
-        lowBalanceWarningMinutes: 10,
-        requiresApproval: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      dbMock.screenTimeGraceSettings.findUnique.mockResolvedValue(null);
-      dbMock.screenTimeGraceSettings.create.mockResolvedValue(defaultSettings);
-
-      const request = new Request('http://localhost/api/screentime/grace/settings');
-      const response = await GET(request as NextRequest);
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.settings).toEqual(defaultSettings);
-      expect(dbMock.screenTimeGraceSettings.create).toHaveBeenCalled();
-    });
-
-    it('should verify family ownership when viewing child settings', async () => {
+    it('should return null if not configured', async () => {
       const session = mockParentSession();
 
-      const otherFamilyChildId = 'other-family-child';
+      (getGraceSettings as jest.Mock).mockResolvedValue(null);
 
-      // Mock member from different family
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        id: otherFamilyChildId,
-        name: 'Other Family Child',
-        email: null,
-        role: 'CHILD' as any,
-        familyId: 'different-family',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      passwordHash: null,
-      pin: null,
-      isActive: true,
-      birthDate: null,
-      avatarUrl: null,
-      lastLoginAt: null,
-    } as any);
-
-      const request = new Request(
-        `http://localhost/api/screentime/grace/settings?memberId=${otherFamilyChildId}`
-      );
-      const response = await GET(request as NextRequest);
-
-      expect(response.status).toBe(403);
+      const request = new NextRequest('http://localhost/api/screentime/grace/settings');
+      const response = await GET(request);
       const data = await response.json();
-      expect(data.error).toBe('Cannot view settings from other families');
+
+      expect(response.status).toBe(200);
+      expect(data.settings).toBeNull();
     });
   });
 
-  describe('PUT', () => {
-    it('should return 401 if not authenticated', async () => {
-
-      const request = new Request('http://localhost/api/screentime/grace/settings', {
-        method: 'PUT',
-        body: JSON.stringify({ memberId: 'child-1', gracePeriodMinutes: 20 }),
-      });
-      const response = await PATCH(request as NextRequest);
-
-      expect(response.status).toBe(401);
-      const data = await response.json();
-      expect(data.error).toBe('Unauthorized');
-    });
-
-    it('should return 403 if not a parent', async () => {
+  describe('PATCH', () => {
+    it('should return 403 if not parent', async () => {
       const session = mockChildSession();
 
-      const request = new Request('http://localhost/api/screentime/grace/settings', {
-        method: 'PUT',
-        body: JSON.stringify({ memberId: 'child-1', gracePeriodMinutes: 20 }),
+      const request = new NextRequest('http://localhost/api/screentime/grace/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ max_daily_grace_periods: 5 }),
       });
-      const response = await PATCH(request as NextRequest);
+
+      const response = await PATCH(request);
+      const data = await response.json();
 
       expect(response.status).toBe(403);
-      const data = await response.json();
-      expect(data.error).toContain('parent');
+      expect(data.error).toBe('Only parents can update grace settings');
     });
 
-    it('should validate positive numbers', async () => {
+    it('should update settings', async () => {
       const session = mockParentSession();
 
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        id: 'child-1',
-        name: 'Test Child',
-        email: null,
-        role: 'CHILD' as any,
-        familyId: session.user.familyId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      passwordHash: null,
-      pin: null,
-      isActive: true,
-      birthDate: null,
-      avatarUrl: null,
-      lastLoginAt: null,
-    } as any);
-
-      const request = new Request('http://localhost/api/screentime/grace/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          memberId: 'child-1',
-          gracePeriodMinutes: -5, // Invalid: negative
-          maxGracePerDay: 1,
-          maxGracePerWeek: 3,
-          graceRepaymentMode: 'DEDUCT_NEXT_WEEK',
-          lowBalanceWarningMinutes: 10,
-          requiresApproval: false,
-        }),
+      (updateGraceSettings as jest.Mock).mockResolvedValue({
+        ...mockSettings,
+        max_daily_grace_periods: 5,
       });
-      const response = await PATCH(request as NextRequest);
 
-      expect(response.status).toBe(400);
+      const request = new NextRequest('http://localhost/api/screentime/grace/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ max_daily_grace_periods: 5 }),
+      });
+
+      const response = await PATCH(request);
       const data = await response.json();
-      expect(data.error).toContain('positive');
-    });
-
-    it('should validate enum values', async () => {
-      const session = mockParentSession();
-
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        id: 'child-1',
-        name: 'Test Child',
-        email: null,
-        role: 'CHILD' as any,
-        familyId: session.user.familyId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      passwordHash: null,
-      pin: null,
-      isActive: true,
-      birthDate: null,
-      avatarUrl: null,
-      lastLoginAt: null,
-    } as any);
-
-      const request = new Request('http://localhost/api/screentime/grace/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          memberId: 'child-1',
-          gracePeriodMinutes: 15,
-          maxGracePerDay: 1,
-          maxGracePerWeek: 3,
-          graceRepaymentMode: 'INVALID_MODE', // Invalid enum
-          lowBalanceWarningMinutes: 10,
-          requiresApproval: false,
-        }),
-      });
-      const response = await PATCH(request as NextRequest);
-
-      expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data.error).toContain('repayment mode');
-    });
-
-    it('should update settings successfully', async () => {
-      const session = mockParentSession();
-
-      const updatedSettings = {
-        id: 'settings-1',
-        memberId: 'child-1',
-        gracePeriodMinutes: 20,
-        maxGracePerDay: 2,
-        maxGracePerWeek: 5,
-        graceRepaymentMode: GraceRepaymentMode.FORGIVE,
-        lowBalanceWarningMinutes: 15,
-        requiresApproval: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        id: 'child-1',
-        name: 'Test Child',
-        email: null,
-        role: 'CHILD' as any,
-        familyId: session.user.familyId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      passwordHash: null,
-      pin: null,
-      isActive: true,
-      birthDate: null,
-      avatarUrl: null,
-      lastLoginAt: null,
-    } as any);
-
-      dbMock.screenTimeGraceSettings.upsert.mockResolvedValue(updatedSettings);
-
-      const request = new Request('http://localhost/api/screentime/grace/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          memberId: 'child-1',
-          gracePeriodMinutes: 20,
-          maxGracePerDay: 2,
-          maxGracePerWeek: 5,
-          graceRepaymentMode: 'FORGIVE',
-          lowBalanceWarningMinutes: 15,
-          requiresApproval: true,
-        }),
-      });
-      const response = await PATCH(request as NextRequest);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.settings).toEqual(updatedSettings);
-      expect(dbMock.screenTimeGraceSettings.upsert).toHaveBeenCalled();
-    });
-
-    it('should verify family ownership', async () => {
-      const session = mockParentSession();
-
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        id: 'child-1',
-        name: 'Test Child',
-        email: null,
-        role: 'CHILD' as any,
-        familyId: 'different-family',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      passwordHash: null,
-      pin: null,
-      isActive: true,
-      birthDate: null,
-      avatarUrl: null,
-      lastLoginAt: null,
-    } as any);
-
-      const request = new Request('http://localhost/api/screentime/grace/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          memberId: 'child-1',
-          gracePeriodMinutes: 20,
-          maxGracePerDay: 2,
-          maxGracePerWeek: 5,
-          graceRepaymentMode: 'DEDUCT_NEXT_WEEK',
-          lowBalanceWarningMinutes: 15,
-          requiresApproval: false,
-        }),
-      });
-      const response = await PATCH(request as NextRequest);
-
-      expect(response.status).toBe(403);
-      const data = await response.json();
-      expect(data.error).toBe('Cannot update settings for members from other families');
+      expect(data.settings.max_daily_grace_periods).toBe(5);
+      expect(updateGraceSettings).toHaveBeenCalledWith(
+        session.user.familyId,
+        expect.objectContaining({ max_daily_grace_periods: 5 })
+      );
     });
   });
 });

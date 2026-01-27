@@ -120,7 +120,8 @@ describe('/api/transport/drivers', () => {
           familyId: 'family-test-123',
           name: 'Mom',
           phone: '555-1234',
-          relationship: 'Mom',
+          email: undefined,
+          isActive: true,
         },
       });
     });

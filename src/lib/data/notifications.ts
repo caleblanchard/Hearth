@@ -22,7 +22,7 @@ export async function getNotificationPreferences(memberId: string) {
   const { data, error } = await supabase
     .from('notification_preferences')
     .select('*')
-    .eq('member_id', memberId)
+    .eq('user_id', memberId)
     .maybeSingle()
 
   if (error) throw error
@@ -40,7 +40,7 @@ export async function getOrCreateNotificationPreferences(
   const { data: existing } = await supabase
     .from('notification_preferences')
     .select('*')
-    .eq('member_id', memberId)
+    .eq('user_id', memberId)
     .maybeSingle()
 
   if (existing) return existing
@@ -72,8 +72,7 @@ export async function updateNotificationPreferences(
 
   const { data, error } = await supabase
     .from('notification_preferences')
-    .update(updates)
-    .eq('member_id', memberId)
+    .upsert({ user_id: memberId, ...updates }, { onConflict: 'user_id' })
     .select()
     .single()
 
@@ -93,7 +92,7 @@ export async function isNotificationEnabled(
   const { data, error } = await supabase
     .from('notification_preferences')
     .select('enabled_types, push_enabled')
-    .eq('member_id', memberId)
+    .eq('user_id', memberId)
     .maybeSingle()
 
   if (error) throw error
@@ -117,7 +116,7 @@ export async function getPushSubscriptions(memberId: string) {
   const { data, error } = await supabase
     .from('push_subscriptions')
     .select('*')
-    .eq('member_id', memberId)
+    .eq('user_id', memberId)
     .order('created_at', { ascending: false })
 
   if (error) throw error

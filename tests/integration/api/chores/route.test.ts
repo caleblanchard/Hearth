@@ -17,6 +17,10 @@ import { GET, POST } from '@/app/api/chores/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { Frequency, AssignmentType, Difficulty } from '@/lib/enums'
 
+jest.mock('@/lib/sick-mode', () => ({
+  isMemberInSickMode: jest.fn().mockResolvedValue(false),
+}));
+
 describe('/api/chores', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -42,39 +46,77 @@ describe('/api/chores', () => {
         {
           id: 'chore-1',
           name: 'Test Chore',
-          familyId: session.user.familyId,
-          schedules: [
-            {
-              id: 'schedule-1',
-              frequency: Frequency.WEEKLY,
-              assignments: [
-                {
-                  id: 'assignment-1',
-                  memberId: 'child-1',
-                  member: { id: 'child-1', name: 'Child 1' },
-                },
-              ],
-              _count: { instances: 5 },
-            },
-          ],
+          family_id: 'family-test-123',
+          credit_value: 10,
+          difficulty: 'EASY',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
       ]
 
+      const mockSchedules = [
+        {
+          id: 'schedule-1',
+          chore_definition_id: 'chore-1',
+          frequency: Frequency.WEEKLY,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ]
+
+      const mockAssignments = [
+        {
+          id: 'assignment-1',
+          chore_schedule_id: 'schedule-1',
+          member_id: 'child-1',
+          member: { id: 'child-1', name: 'Child 1' },
+          is_active: true,
+        },
+      ]
+
+      const mockInstances = [
+        { chore_schedule_id: 'schedule-1' },
+        { chore_schedule_id: 'schedule-1' },
+        { chore_schedule_id: 'schedule-1' },
+        { chore_schedule_id: 'schedule-1' },
+        { chore_schedule_id: 'schedule-1' },
+      ]
+
       dbMock.choreDefinition.findMany.mockResolvedValue(mockChores as any)
+      dbMock.choreSchedule.findMany.mockResolvedValue(mockSchedules as any)
+      dbMock.choreAssignment.findMany.mockResolvedValue(mockAssignments as any)
+      dbMock.choreInstance.findMany.mockResolvedValue(mockInstances as any)
 
       const request = new NextRequest('http://localhost/api/chores')
       const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.chores).toEqual(mockChores)
-      expect(dbMock.choreDefinition.findMany).toHaveBeenCalledWith({
-        where: { familyId: session.user.familyId },
-        include: expect.objectContaining({
-          schedules: expect.any(Object),
-        }),
-        orderBy: { name: 'asc' },
+      
+      // Verify structure matches what the API returns (camelCase)
+      expect(data.data[0]).toMatchObject({
+        id: 'chore-1',
+        name: 'Test Chore',
+        creditValue: 10,
+        difficulty: 'EASY',
+        schedules: [
+          expect.objectContaining({
+            id: 'schedule-1',
+            frequency: Frequency.WEEKLY,
+            _count: { instances: 5 },
+            assignments: [
+              expect.objectContaining({
+                id: 'assignment-1',
+                memberId: 'child-1',
+              }),
+            ],
+          }),
+        ],
       })
+      
+      expect(dbMock.choreDefinition.findMany).toHaveBeenCalled()
     })
   })
 
@@ -373,21 +415,20 @@ describe('/api/chores', () => {
         ],
       }
 
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        const mockTx = {
-          choreDefinition: {
-            create: jest.fn().mockResolvedValue({ id: 'chore-1', name: 'New Chore' }),
-            findUnique: jest.fn().mockResolvedValue(mockCreatedChore),
-          },
-          choreSchedule: {
-            create: jest.fn().mockResolvedValue({ id: 'schedule-1' }),
-          },
-          choreAssignment: {
-            createMany: jest.fn().mockResolvedValue({ count: 2 }),
-          },
-        }
-        return await callback(mockTx)
-      })
+      // Mock implementation
+      dbMock.choreDefinition.create.mockResolvedValue({ id: 'chore-1', name: 'New Chore' } as any)
+      dbMock.choreSchedule.create.mockResolvedValue({ id: 'schedule-1' } as any)
+      dbMock.choreAssignment.create.mockResolvedValue({ count: 2 } as any)
+      dbMock.choreAssignment.createMany.mockResolvedValue({ count: 2 } as any)
+      
+      // Mock fetching the complete chore
+      dbMock.choreDefinition.findUnique.mockResolvedValue(mockCreatedChore as any)
+      dbMock.choreSchedule.findMany.mockResolvedValue([{ id: 'schedule-1', choreDefinitionId: 'chore-1' }] as any)
+      dbMock.choreAssignment.findMany.mockResolvedValue([{ id: 'assignment-1', choreScheduleId: 'schedule-1', memberId: 'child-1' }] as any)
+      
+      // Mock ancillary tables
+      dbMock.auditLog.create.mockResolvedValue({} as any)
+      dbMock.choreInstance.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -400,27 +441,27 @@ describe('/api/chores', () => {
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
       expect(data.chore).toBeDefined()
-      expect(dbMock.$transaction).toHaveBeenCalled()
+      
+      expect(dbMock.choreDefinition.create).toHaveBeenCalled()
+      expect(dbMock.choreSchedule.create).toHaveBeenCalled()
+      expect(dbMock.choreAssignment.createMany).toHaveBeenCalled()
     })
 
     it('should trim name and description', async () => {
       const session = mockParentSession()
 
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        const mockTx = {
-          choreDefinition: {
-            create: jest.fn().mockResolvedValue({ id: 'chore-1' }),
-            findUnique: jest.fn().mockResolvedValue({ id: 'chore-1', schedules: [] }),
-          },
-          choreSchedule: {
-            create: jest.fn().mockResolvedValue({ id: 'schedule-1' }),
-          },
-          choreAssignment: {
-            createMany: jest.fn().mockResolvedValue({ count: 2 }),
-          },
-        }
-        return await callback(mockTx)
-      })
+      // Mock implementation
+      dbMock.choreDefinition.create.mockResolvedValue({ id: 'chore-1' } as any)
+      dbMock.choreSchedule.create.mockResolvedValue({ id: 'schedule-1' } as any)
+      dbMock.choreAssignment.create.mockResolvedValue({ count: 2 } as any)
+      dbMock.choreAssignment.createMany.mockResolvedValue({ count: 2 } as any)
+      
+      dbMock.choreDefinition.findUnique.mockResolvedValue({ id: 'chore-1', schedules: [] } as any)
+      dbMock.choreSchedule.findMany.mockResolvedValue([{ id: 'schedule-1', choreDefinitionId: 'chore-1' }] as any)
+      dbMock.choreAssignment.findMany.mockResolvedValue([] as any)
+      
+      dbMock.auditLog.create.mockResolvedValue({} as any)
+      dbMock.choreInstance.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/chores', {
         method: 'POST',
@@ -433,26 +474,7 @@ describe('/api/chores', () => {
 
       await POST(request)
 
-      expect(dbMock.$transaction).toHaveBeenCalled()
-      const txCallback = (dbMock.$transaction as jest.Mock).mock.calls[0][0]
-      const mockTx = {
-        choreDefinition: {
-          create: jest.fn().mockResolvedValue({ id: 'chore-1' }),
-          findUnique: jest.fn().mockResolvedValue({
-            id: 'chore-1',
-            schedules: [],
-          }),
-        },
-        choreSchedule: {
-          create: jest.fn().mockResolvedValue({ id: 'schedule-1' }),
-        },
-        choreAssignment: {
-          createMany: jest.fn().mockResolvedValue({ count: 2 }),
-        },
-      }
-      await txCallback(mockTx)
-
-      expect(mockTx.choreDefinition.create).toHaveBeenCalledWith({
+      expect(dbMock.choreDefinition.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           name: 'Trimmed Name',
           description: 'Trimmed Description',

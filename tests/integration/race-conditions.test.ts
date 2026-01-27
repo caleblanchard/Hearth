@@ -289,53 +289,55 @@ describe('Race Condition Tests - Concurrent Credit Operations', () => {
       }
 
       dbMock.rewardItem.findUnique.mockResolvedValue(mockReward as any)
-      dbMock.creditBalance.findUnique.mockResolvedValue(initialBalance as any)
-      checkBudgetStatus.mockResolvedValue({ status: 'OK' })
-
-      // Mock transaction to check balance atomically
-      let transactionCount = 0
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        transactionCount++
-        const tx = {
-          rewardItem: {
-            findUnique: jest.fn().mockResolvedValue(mockReward as any),
-            update: jest.fn().mockResolvedValue(mockReward as any),
-          },
-          creditBalance: {
-            findUnique: jest.fn().mockResolvedValue({
-              ...initialBalance,
-              currentBalance: 100 - (transactionCount - 1) * 60, // Decrement based on previous transactions
-            } as any),
-            update: jest.fn().mockResolvedValue({
-              ...initialBalance,
-              currentBalance: 100 - transactionCount * 60,
-            } as any),
-          },
-          creditTransaction: {
-            create: jest.fn().mockResolvedValue({} as any),
-          },
-          rewardRedemption: {
-            create: jest.fn().mockResolvedValue({
-              id: `redemption-${transactionCount}`,
-              status: RedemptionStatus.PENDING,
-            } as any),
-          },
-          notification: {
-            create: jest.fn().mockResolvedValue({} as any),
-          },
-        }
-
-        // Check balance atomically
-        const balance = await tx.creditBalance.findUnique({
-          where: { memberId: 'child-1' },
-        })
-
-        if ((balance?.currentBalance || 0) < mockReward.costCredits) {
-          throw new Error('Insufficient credits')
-        }
-
-        return await callback(tx)
+      
+      // Stateful mock for credit balance to simulate race conditions
+      let currentDbBalance = 100
+      
+      dbMock.creditBalance.findUnique.mockImplementation(async () => {
+        return {
+          ...initialBalance,
+          currentBalance: currentDbBalance
+        } as any
       })
+      
+      dbMock.creditBalance.update.mockImplementation(async (args: any) => {
+        // Check optimistic lock (currentBalance in where clause)
+        const expectedBalance = args.where.currentBalance
+        if (expectedBalance !== undefined && expectedBalance !== currentDbBalance) {
+          // Optimistic lock failed - return null to simulate no rows updated
+          // The code expects non-empty array from select()
+          throw new Error('Record to update not found.') // Prisma-like behavior which bridge might catch or pass
+        }
+        
+        // Update balance
+        if (args.data.currentBalance !== undefined) {
+          currentDbBalance = args.data.currentBalance
+        }
+        return { ...initialBalance, currentBalance: currentDbBalance } as any
+      })
+      
+      // Mock updateMany as fallback if bridge uses it
+      dbMock.creditBalance.updateMany.mockImplementation(async (args: any) => {
+        const expectedBalance = args.where.currentBalance
+        if (expectedBalance !== undefined && expectedBalance !== currentDbBalance) {
+           return { count: 0 } as any
+        }
+        if (args.data.currentBalance !== undefined) {
+          currentDbBalance = args.data.currentBalance
+        }
+        return { count: 1 } as any
+      })
+
+      checkBudgetStatus.mockResolvedValue({ status: 'OK' })
+      
+      // Remove complex transaction mock since code uses optimistic locking
+      // But we need to ensure other calls like create transaction succeed
+      dbMock.creditTransaction.create.mockResolvedValue({} as any)
+      dbMock.rewardRedemption.create.mockResolvedValue({
+        id: 'redemption-1',
+        status: RedemptionStatus.PENDING
+      } as any)
+      dbMock.notification.create.mockResolvedValue({} as any)
 
       const request1 = new NextRequest('http://localhost/api/rewards/123/redeem', {
         method: 'POST',

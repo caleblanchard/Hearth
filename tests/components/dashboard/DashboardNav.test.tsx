@@ -4,6 +4,7 @@ import DashboardNav from '@/components/dashboard/DashboardNav'
 import { useMemberContext } from '@/hooks/useMemberContext'
 import { signOut } from '@/hooks/useSupabaseSession'
 import { useRouter, usePathname } from 'next/navigation'
+import { ActiveFamilyContext } from '@/contexts/ActiveFamilyContext'
 
 jest.mock('@/hooks/useMemberContext', () => ({
   useMemberContext: jest.fn(),
@@ -38,6 +39,18 @@ describe('DashboardNav', () => {
     error: null,
   })
 
+  const renderDashboardNav = () => {
+    return render(
+      <ActiveFamilyContext.Provider value={{
+        activeFamilyId: 'family-1',
+        setActiveFamilyId: jest.fn(),
+        loading: false
+      }}>
+        <DashboardNav />
+      </ActiveFamilyContext.Provider>
+    )
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
@@ -48,7 +61,7 @@ describe('DashboardNav', () => {
   it('should render navigation links', () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<DashboardNav />)
+    renderDashboardNav()
 
     expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Chores').length).toBeGreaterThan(0)
@@ -60,7 +73,7 @@ describe('DashboardNav', () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
     ;(usePathname as jest.Mock).mockReturnValue('/dashboard/chores')
 
-    render(<DashboardNav />)
+    renderDashboardNav()
 
     const choresButtons = screen.getAllByText('Chores')
     const activeButton = choresButtons.find(btn => {
@@ -78,7 +91,7 @@ describe('DashboardNav', () => {
   it('should show parent-only navigation items for parents', () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('PARENT'))
 
-    render(<DashboardNav />)
+    renderDashboardNav()
 
     expect(screen.getAllByText('Approvals').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Family').length).toBeGreaterThan(0)
@@ -87,7 +100,7 @@ describe('DashboardNav', () => {
   it('should not show parent-only items for children', () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<DashboardNav />)
+    renderDashboardNav()
 
     expect(screen.queryByText('Approvals')).not.toBeInTheDocument()
     expect(screen.queryByText('Family')).not.toBeInTheDocument()
@@ -96,7 +109,7 @@ describe('DashboardNav', () => {
   it('should navigate when nav item is clicked', () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<DashboardNav />)
+    renderDashboardNav()
 
     const choresButtons = screen.getAllByText('Chores')
     fireEvent.click(choresButtons[0])
@@ -107,7 +120,7 @@ describe('DashboardNav', () => {
   it('should call signOut when sign out button is clicked', () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<DashboardNav />)
+    renderDashboardNav()
 
     const signOutButton = screen.getByText('Sign Out')
     fireEvent.click(signOutButton)
@@ -118,7 +131,7 @@ describe('DashboardNav', () => {
   it('should display user name and role', () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<DashboardNav />)
+    renderDashboardNav()
 
     expect(screen.getByText('Test User')).toBeInTheDocument()
     expect(screen.getByText('CHILD')).toBeInTheDocument()
@@ -127,7 +140,7 @@ describe('DashboardNav', () => {
   it('should navigate to dashboard when logo is clicked', () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<DashboardNav />)
+    renderDashboardNav()
 
     const logo = screen.getByText('Hearth')
     fireEvent.click(logo)

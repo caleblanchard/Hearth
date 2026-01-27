@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     const projects = await getProjects(familyId, status ? { status } : undefined);
 
-    return NextResponse.json({ data: projects, total: projects.length });
+    return NextResponse.json({ projects: projects, total: projects.length });
   } catch (error) {
     logger.error('Error fetching projects', error);
     return NextResponse.json(
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const isParent = await isParentInFamily( familyId);
     if (!isParent) {
       return NextResponse.json(
-        { error: 'Only parents can manage projects' },
+        { error: 'Only parents can create projects' },
         { status: 403 }
       );
     }
@@ -80,27 +80,54 @@ export async function POST(request: NextRequest) {
         { status: bodyResult.status }
       );
     }
-    const { name, description, startDate, endDate, budget } = bodyResult.data;
+    const { name, description, startDate, endDate, dueDate, budget, status } = bodyResult.data;
 
     // Sanitize and validate input
     const sanitizedName = sanitizeString(name);
     if (!sanitizedName || sanitizedName.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Project name is required' },
+        { error: 'Name is required' },
         { status: 400 }
       );
     }
 
     const sanitizedDescription = description ? sanitizeString(description) : null;
+    
+    // Normalize date fields (accept either endDate or dueDate)
+    const effectiveEndDate = endDate || dueDate;
+
+    // Validate dates
+    if (startDate && effectiveEndDate) {
+      const start = new Date(startDate);
+      const end = new Date(effectiveEndDate);
+      if (end <= start) {
+        return NextResponse.json(
+          { error: 'Due date must be after start date' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate status
+    if (status && !VALID_STATUSES.includes(status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+    }
+    const projectStatus = status || 'ACTIVE';
+
+    // Validate budget
+    if (budget !== undefined && budget < 0) {
+        return NextResponse.json({ error: 'Budget must be a positive number' }, { status: 400 });
+    }
 
     const project = await createProject({
       family_id: familyId,
       name: sanitizedName,
       description: sanitizedDescription,
       start_date: startDate ? new Date(startDate).toISOString() : null,
-      due_date: endDate ? new Date(endDate).toISOString() : null,
+      due_date: effectiveEndDate ? new Date(effectiveEndDate).toISOString() : null,
       budget: budget || null,
       created_by_id: memberId,
+      status: projectStatus,
     });
 
     // Audit log
@@ -111,14 +138,18 @@ export async function POST(request: NextRequest) {
       entity_type: 'PROJECT',
       entity_id: project.id,
       result: 'SUCCESS',
-      metadata: { name: sanitizedName },
+      metadata: { 
+        name: sanitizedName,
+        projectId: project.id,
+        status: projectStatus
+      },
     });
 
     return NextResponse.json({
       success: true,
       project,
       message: 'Project created successfully',
-    });
+    }, { status: 201 });
   } catch (error) {
     logger.error('Error creating project', error);
     return NextResponse.json(

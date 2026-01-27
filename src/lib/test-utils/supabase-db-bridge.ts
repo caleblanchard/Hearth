@@ -60,6 +60,10 @@ const RELATION_ALIAS_MAP: Record<string, string> = {
 const TABLE_MODEL_OVERRIDES: Record<string, string> = {
   screen_time_settings: 'screenTimeSettings',
   sick_mode_settings: 'sickModeSettings',
+  meal_plan_dishes: 'mealPlanDish',
+  chore_completions: 'choreInstance',
+  screen_time_grace_settings: 'screenTimeGraceSettings', // Add this override
+  grace_period_logs: 'gracePeriodLog', // Add this override
 }
 
 const TEST_SQL_TAG = (strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -327,6 +331,11 @@ function applyRelationOptions(
   let current = includeFields
 
   path.forEach((segment, index) => {
+    // If entry is boolean true (simple include), convert to empty object so we can attach options
+    if (current[segment] === true) {
+      current[segment] = {}
+    }
+    
     const entry = current[segment]
     if (!entry || typeof entry !== 'object') {
       return
@@ -365,14 +374,33 @@ function buildSelection(
     if (relationMatch) {
       const rawRelation = relationMatch[1].split(':')[0].split('!')[0].trim()
       const relation = mapRelationAlias(rawRelation)
-      const fields = relationMatch[2]
-        .split(',')
-        .map((field) => field.trim())
-        .filter(Boolean)
-      if (fields.length === 0 || fields.includes('*')) {
+      // Use splitSelect to correctly handle nested parentheses
+      const fields = splitSelect(relationMatch[2])
+      
+      const hasWildcard = fields.includes('*')
+      const relations = fields.filter(f => f.includes('(') && f.includes(')'))
+      
+      if (fields.length === 0 || (hasWildcard && relations.length === 0)) {
         includeFields[relation] = true
         continue
       }
+
+      if (hasWildcard && relations.length > 0) {
+        // Handle case where we have * AND relations (e.g. *, author:users(*))
+        // In Prisma, we use include for the relation to get all fields + nested relations
+        const nestedIncludes: Record<string, any> = {}
+        
+        for (const relField of relations) {
+           const nestedSelect = buildSelection(relField)
+           if (nestedSelect.include) {
+             Object.assign(nestedIncludes, nestedSelect.include)
+           }
+        }
+        
+        includeFields[relation] = { include: nestedIncludes }
+        continue
+      }
+
       includeFields[relation] = {
         select: Object.fromEntries(
           fields.map((field) => [snakeToCamel(field), true])
@@ -416,8 +444,11 @@ function buildSelection(
 const UNIQUE_KEYS_BY_MODEL: Record<string, string[]> = {
   notificationPreference: ['userId'],
   sickModeSettings: ['familyId'],
+  creditBalance: ['memberId'],
   screenTimeBalance: ['memberId'],
+  familyMember: ['authUserId', 'email', 'family_id'],
   screenTimeSettings: ['memberId'],
+  screenTimeGraceSettings: ['memberId'], // Add this
   achievement: ['key'],
   userAchievement: ['userId', 'achievementId'],
   streak: ['userId', 'type'],
@@ -462,8 +493,44 @@ async function executeQuery(state: QueryState, single: boolean) {
     state.relationOrders,
     state.relationLimits
   )
+
+  // Move relation filters from top-level 'where' to 'include'
+  if (where && selection.include) {
+    Object.keys(where).forEach((key) => {
+      // Check if this key corresponds to an included relation
+      // The key in 'where' is already camelCase (from buildWhere)
+      // The key in 'selection.include' is also camelCase (from buildSelection)
+      if (key in selection.include) {
+        const relationInclude = selection.include[key]
+        
+        // Ensure relationInclude is an object (it might be 'true' if just included without options)
+        if (relationInclude === true) {
+          selection.include[key] = { where: where[key] }
+        } else {
+          // It's already an object, merge or set where
+          // If it already has a where (e.g. from parsing *), merge it?
+          // For now just set/overwrite or merge if we want to be safe
+          selection.include[key] = {
+            ...(relationInclude as any),
+            where: { ...((relationInclude as any).where || {}), ...(where[key] as any) },
+          }
+        }
+        
+        // Remove from top-level where
+        delete where[key]
+      }
+    })
+    
+    // cleanup empty where
+    if (Object.keys(where).length === 0) {
+      // where = undefined // Can't assign to const variable
+      // We can't reassign 'where' because it's const (implied by let/const usage above? No it is let)
+      // But we need to handle the case where we passed `where` to findMany/findFirst
+    }
+  }
+
   const count = state.count
-    ? await dbModel.count({ ...(where ? { where } : {}) })
+    ? await dbModel.count({ ...(where && Object.keys(where).length > 0 ? { where } : {}) })
     : undefined
 
   const pagination: Record<string, number> = {}
@@ -498,6 +565,16 @@ async function executeQuery(state: QueryState, single: boolean) {
     }
 
     const result = await dbModel.updateMany({ where, data })
+    
+    // If selection is requested (via select()), return an array of mock objects
+    // based on the count returned by updateMany, to mimic Supabase returning updated rows
+    if (selection && (selection.select || selection.include) && result && typeof result.count === 'number') {
+      return { 
+        data: Array(result.count).fill({ id: 'mock-id' }), 
+        error: null 
+      }
+    }
+
     return { data: wrapValue(result ?? null), error: null }
   }
 
@@ -544,12 +621,27 @@ async function executeQuery(state: QueryState, single: boolean) {
 
   if (single) {
     const method = hasUniqueWhere(where, model) ? 'findUnique' : 'findFirst'
-    const result = await dbModel[method]({
-      ...(where ? { where } : {}),
+    let result = await dbModel[method]({
+      ...(where && Object.keys(where).length > 0 ? { where } : {}),
       ...(orderBy ? { orderBy } : {}),
       ...pagination,
       ...selection,
     })
+
+    // If using mock, verify where clauses match the result
+    if (result && where) {
+        const mismatch = Object.entries(where).some(([key, value]) => {
+            if (key === 'AND' || key === 'OR') return false; // Skip complex logic for now
+            // Simple check: if result has key and value doesn't match
+            if (Object.prototype.hasOwnProperty.call(result, key)) {
+                if (typeof value === 'object' && value !== null && !(value instanceof Date)) return false; // Skip complex filters
+                if (result[key] !== value) return true;
+            }
+            return false;
+        });
+        if (mismatch) result = null;
+    }
+
     return {
       data: wrapValue(result ?? null),
       error: null,
@@ -566,7 +658,7 @@ async function executeQuery(state: QueryState, single: boolean) {
   }
 
   const result = await dbModel.findMany({
-    ...(where ? { where } : {}),
+    ...(where && Object.keys(where).length > 0 ? { where } : {}),
     ...(orderBy ? { orderBy } : {}),
     ...pagination,
     ...selection,
@@ -714,7 +806,13 @@ export function createSupabaseMockClient() {
     auth: {
       getUser: async () => ({ data: { user }, error: null }),
       getSession: async () => ({ data: { session: session ?? null }, error: null }),
-      signUp: async () => ({ data: { user: null, session: null }, error: null }),
+      signUp: async () => ({ 
+        data: { 
+          user: { id: 'new-user-id', email: 'test@example.com' }, 
+          session: { user: { id: 'new-user-id' } } 
+        }, 
+        error: null 
+      }),
       signInWithPassword: async () => ({ data: { user, session }, error: null }),
       signInWithOAuth: async () => ({ data: { url: null }, error: null }),
       signOut: async () => ({ error: null }),

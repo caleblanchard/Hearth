@@ -83,8 +83,42 @@ export async function PATCH(
       return NextResponse.json({ error: 'Health event not found' }, { status: 404 });
     }
 
+    const requesterId = authContext.activeMemberId;
+    const requesterRole = (authContext as any).user?.role;
+
+    if (requesterRole === 'CHILD' && existing.member_id !== requesterId) {
+      return NextResponse.json(
+        { error: 'Children can only update their own health events' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
+    const { severity, endedAt, ...rest } = body;
+
+    if (severity !== undefined && (severity < 1 || severity > 10)) {
+      return NextResponse.json(
+        { error: 'Severity must be between 1 and 10' },
+        { status: 400 }
+      );
+    }
+
     const event = await updateHealthEvent(id, body);
+
+    // Audit Log
+    let action = 'HEALTH_EVENT_UPDATED';
+    if (endedAt) {
+      action = 'HEALTH_EVENT_ENDED';
+    }
+
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: requesterId,
+      action: action as any,
+      entity_type: 'HealthEvent',
+      entity_id: id,
+      result: 'SUCCESS',
+    });
 
     return NextResponse.json({
       success: true,

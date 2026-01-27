@@ -54,6 +54,11 @@ describe('/api/financial/savings-goals', () => {
     it('should return goals for child (own goals only)', async () => {
       const session = mockChildSession()
 
+      dbMock.familyMember.findUnique.mockResolvedValueOnce({
+        id: session.user.id,
+        role: 'CHILD',
+      } as any)
+
       dbMock.savingsGoal.findMany.mockResolvedValue(mockGoals as any)
 
       const response = await GET()
@@ -64,16 +69,18 @@ describe('/api/financial/savings-goals', () => {
 
       expect(dbMock.savingsGoal.findMany).toHaveBeenCalledWith({
         where: {
-          member: {
-            familyId: session.user.familyId,
-          },
           memberId: session.user.id,
         },
         include: {
           member: {
             select: {
+              familyId: true,
               id: true,
               name: true,
+              role: true,
+            },
+            where: {
+              familyId: session.user.familyId,
             },
           },
         },
@@ -95,16 +102,16 @@ describe('/api/financial/savings-goals', () => {
       expect(data.goals).toEqual(mockGoals)
 
       expect(dbMock.savingsGoal.findMany).toHaveBeenCalledWith({
-        where: {
-          member: {
-            familyId: session.user.familyId,
-          },
-        },
         include: {
           member: {
             select: {
+              familyId: true,
               id: true,
               name: true,
+              role: true,
+            },
+            where: {
+              familyId: session.user.familyId,
             },
           },
         },
@@ -123,7 +130,7 @@ describe('/api/financial/savings-goals', () => {
       const data = await response.json()
 
       expect(response.status).toBe(500)
-      expect(data.error).toBe('Failed to fetch savings goals')
+      expect(data.error).toBe('Failed to get savings goals')
     })
   })
 
@@ -293,15 +300,8 @@ describe('/api/financial/savings-goals', () => {
           targetAmount: 5000,
           iconName: 'bike',
           color: 'blue',
-          deadline: new Date('2024-12-31'),
-        },
-        include: {
-          member: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+          currentAmount: 0,
+          deadline: '2024-12-31',
         },
       })
     })
@@ -342,17 +342,10 @@ describe('/api/financial/savings-goals', () => {
           name: 'New Bike',
           description: null,
           targetAmount: 5000,
+          currentAmount: 0,
           iconName: 'currency-dollar',
           color: 'blue',
           deadline: null,
-        },
-        include: {
-          member: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
         },
       })
     })

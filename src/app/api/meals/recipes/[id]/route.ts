@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { getRecipe, updateRecipe, deleteRecipe } from '@/lib/data/recipes';
+import { getMember } from '@/lib/data/members';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -111,11 +112,7 @@ export async function PATCH(
     const supabase = await createClient();
 
     // Check if user is a parent
-    const { data: member } = await supabase
-      .from('family_members')
-      .select('role')
-      .eq('id', memberId)
-      .single();
+    const member = await getMember(memberId);
 
     if (!member || member.role !== 'PARENT') {
       return NextResponse.json({ error: 'Only parents can edit recipes' }, { status: 403 });
@@ -128,6 +125,24 @@ export async function PATCH(
     }
 
     const body = await request.json();
+
+    // Validate enum values
+    if (body.difficulty && !['EASY', 'MEDIUM', 'HARD'].includes(body.difficulty)) {
+      return NextResponse.json(
+        { error: 'Invalid difficulty. Must be one of: EASY, MEDIUM, HARD' },
+        { status: 400 }
+      );
+    }
+
+    if (body.category) {
+      const validCategories = ['BREAKFAST', 'LUNCH', 'DINNER', 'DESSERT', 'SNACK', 'SIDE', 'APPETIZER', 'DRINK'];
+      if (!validCategories.includes(body.category)) {
+        return NextResponse.json(
+          { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
+          { status: 400 }
+        );
+      }
+    }
     
     // Convert camelCase to snake_case for database
     const dbUpdates: any = {};
@@ -148,15 +163,13 @@ export async function PATCH(
         : body.instructions;
     }
     if (body.notes !== undefined) dbUpdates.notes = body.notes;
-    
-    const recipe = await updateRecipe(id, dbUpdates);
 
-    // Handle ingredients update if provided
+    // Handle ingredients if provided
     if (body.ingredients !== undefined && Array.isArray(body.ingredients)) {
-      // Delete existing ingredients
+      // First delete existing ingredients
       await supabase.from('recipe_ingredients').delete().eq('recipe_id', id);
-
-      // Insert new ingredients
+      
+      // Then add new ingredients
       if (body.ingredients.length > 0) {
         const ingredientRecords = body.ingredients.map((ing: any, index: number) => ({
           recipe_id: id,
@@ -167,15 +180,52 @@ export async function PATCH(
           sort_order: ing.sortOrder !== undefined ? ing.sortOrder : index,
         }));
 
-        const { error: ingredientsError } = await supabase
-          .from('recipe_ingredients')
-          .insert(ingredientRecords);
+        // Insert new ingredients one by one (since we need to handle sort_order properly)
+        for (const record of ingredientRecords) {
+          const { error: ingredientError } = await supabase
+            .from('recipe_ingredients')
+            .insert(record);
 
-        if (ingredientsError) {
-          logger.error('Error updating ingredients:', ingredientsError);
+          if (ingredientError) {
+            logger.error('Error creating ingredient:', ingredientError);
+          }
         }
       }
     }
+    
+    const { data: recipe, error: updateError } = await supabase
+      .from('recipes')
+      .update(dbUpdates)
+      .eq('id', id)
+      .select(`
+        *,
+        recipe_ingredients(id, name, quantity, unit, notes, sort_order),
+        creator:family_members(id, name, avatar_url)
+      `)
+      .single();
+
+    if (updateError) {
+      logger.error('Error updating recipe:', updateError);
+      return NextResponse.json({ error: 'Failed to update recipe' }, { status: 500 });
+    }
+
+    if (!recipe) {
+      return NextResponse.json({ error: 'Failed to update recipe' }, { status: 500 });
+    }
+
+    // Create audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'RECIPE_UPDATED',
+      entity_type: 'RECIPE',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        recipeId: id,
+        name: recipe.name,
+      },
+    });
 
     // Map response to camelCase
     const mappedRecipe = {
@@ -195,6 +245,14 @@ export async function PATCH(
       notes: recipe.notes,
       createdAt: recipe.created_at,
       updatedAt: recipe.updated_at,
+      ingredients: ((recipe as any).recipe_ingredients || []).map((ing: any) => ({
+        id: ing.id,
+        name: ing.name,
+        quantity: ing.quantity,
+        unit: ing.unit,
+        notes: ing.notes,
+        sortOrder: ing.sort_order,
+      })),
     };
 
     return NextResponse.json({
@@ -230,11 +288,7 @@ export async function DELETE(
     const supabase = await createClient();
 
     // Check if user is a parent
-    const { data: member } = await supabase
-      .from('family_members')
-      .select('role')
-      .eq('id', memberId)
-      .single();
+    const member = await getMember(memberId);
 
     if (!member || member.role !== 'PARENT') {
       return NextResponse.json({ error: 'Only parents can delete recipes' }, { status: 403 });
@@ -247,6 +301,20 @@ export async function DELETE(
     }
 
     await deleteRecipe(id);
+
+    // Create audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'RECIPE_DELETED',
+      entity_type: 'RECIPE',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        recipeId: id,
+        name: existing.name,
+      },
+    });
 
     return NextResponse.json({
       success: true,

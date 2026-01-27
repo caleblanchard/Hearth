@@ -39,7 +39,7 @@ describe('/api/notifications', () => {
       const mockNotifications = [
         {
           id: 'notif-1',
-          userId: 'child-1',
+          userId: 'child-test-123',
           type: 'CHORE_APPROVED',
           title: 'Chore approved',
           message: 'Your chore was approved',
@@ -63,7 +63,7 @@ describe('/api/notifications', () => {
       expect(data.unreadCount).toBe(1)
       expect(data.hasMore).toBe(false)
       expect(dbMock.notification.findMany).toHaveBeenCalledWith({
-        where: { userId: 'child-1' },
+        where: { userId: 'child-test-123' },
         orderBy: { createdAt: 'desc' },
         take: 50,
         skip: 0,
@@ -85,7 +85,7 @@ describe('/api/notifications', () => {
 
       expect(dbMock.notification.findMany).toHaveBeenCalledWith({
         where: {
-          userId: 'child-1',
+          userId: 'child-test-123',
           isRead: false,
         },
         orderBy: { createdAt: 'desc' },
@@ -112,7 +112,7 @@ describe('/api/notifications', () => {
       expect(data.pagination).toBeUndefined() // Response doesn't include pagination object
       expect(data.hasMore).toBe(true)
       expect(dbMock.notification.findMany).toHaveBeenCalledWith({
-        where: { userId: 'child-1' },
+        where: { userId: 'child-test-123' },
         orderBy: { createdAt: 'desc' },
         take: 20,
         skip: 40,
@@ -134,7 +134,7 @@ describe('/api/notifications', () => {
       expect(response.status).toBe(200)
       expect(data.hasMore).toBe(false)
       expect(dbMock.notification.findMany).toHaveBeenCalledWith({
-        where: { userId: 'child-1' },
+        where: { userId: 'child-test-123' },
         orderBy: { createdAt: 'desc' },
         take: 50,
         skip: 0,
@@ -156,7 +156,7 @@ describe('/api/notifications', () => {
       expect(response.status).toBe(200)
       expect(data.unreadCount).toBe(5)
       expect(dbMock.notification.count).toHaveBeenCalledWith({
-        where: { userId: 'child-1', isRead: false },
+        where: { userId: 'child-test-123', isRead: false },
       })
     })
   })

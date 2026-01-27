@@ -26,6 +26,12 @@ export async function GET(
 ) {
   const { id } = await params
   try {
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 100);
+    const offset = parseInt(searchParams.get('offset') || '0');
+    const successParam = searchParams.get('success');
+    const success = successParam === null ? undefined : successParam === 'true';
+
     const authContext = await getAuthContext();
 
     if (!authContext) {
@@ -49,7 +55,7 @@ export async function GET(
     }
 
     // Fetch the rule
-    const rule = await getAutomationRule(id);
+    const rule = await getAutomationRule(id, limit, offset, success);
 
     if (!rule) {
       return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
@@ -57,10 +63,19 @@ export async function GET(
 
     // Verify family ownership
     if (rule.family_id !== familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    return NextResponse.json({ rule });
+    const { executions, totalExecutions, stats, ...ruleData } = rule as any;
+
+    return NextResponse.json({
+      rule: ruleData,
+      executions,
+      limit,
+      offset,
+      totalExecutions,
+      stats
+    });
   } catch (error) {
     logger.error('[API] Error fetching automation rule', error);
     return NextResponse.json(
@@ -103,31 +118,90 @@ export async function PATCH(
       );
     }
 
+    // Parse body first to handle invalid JSON immediately (400)
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+      }
+      throw e;
+    }
+
     // Verify rule exists
     const existing = await getAutomationRule(id);
-    if (!existing || existing.family_id !== familyId) {
+
+    if (!existing) {
       return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
     }
 
-    const body = await request.json();
+    if (existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Explicit validation checks
+    if (body.name !== undefined && (typeof body.name !== 'string' || body.name.trim().length === 0)) {
+      return NextResponse.json({ error: 'Rule name is required' }, { status: 400 });
+    }
+
+    if (body.actions !== undefined) {
+      if (!Array.isArray(body.actions)) {
+        return NextResponse.json({ error: 'Actions must be an array' }, { status: 400 });
+      }
+      if (body.actions.length === 0) {
+        return NextResponse.json({ error: 'At least one action is required' }, { status: 400 });
+      }
+    }
+
+    // Trim string fields
+    if (body.name) body.name = body.name.trim();
+    if (body.description) body.description = body.description.trim();
 
     // If updating trigger/actions/conditions, validate
     if (body.trigger || body.actions || body.conditions) {
-      const validation = validateRuleConfiguration(
-        body.trigger || existing.trigger,
-        body.conditions || existing.conditions || null,
-        body.actions || existing.actions
-      );
+      try {
+        const validation = validateRuleConfiguration(
+          body.trigger || existing.trigger,
+          body.conditions || existing.conditions || null,
+          body.actions || existing.actions
+        );
 
-      if (!validation.valid) {
+        if (!validation.valid) {
+          const errorMessage = validation.errors && validation.errors.length > 0 
+            ? validation.errors[0] 
+            : 'Invalid rule configuration';
+            
+          return NextResponse.json(
+            { error: errorMessage, details: validation.errors || [] },
+            { status: 400 }
+          );
+        }
+      } catch (err) {
+        logger.error('Validation error:', err);
+        // If validation throws, return 400 with message if possible
         return NextResponse.json(
-          { error: 'Invalid rule configuration', details: validation.errors },
+          { error: (err as Error).message || 'Invalid rule configuration' },
           { status: 400 }
         );
       }
     }
 
     const rule = await updateAutomationRule(id, body);
+
+    const supabase = await createClient();
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'RULE_UPDATED',
+      entity_type: 'AutomationRule',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        name: rule.name,
+        triggerType: (rule.trigger as any)?.type
+      }
+    });
 
     return NextResponse.json({
       success: true,
@@ -178,11 +252,30 @@ export async function DELETE(
 
     // Verify rule exists
     const existing = await getAutomationRule(id);
-    if (!existing || existing.family_id !== familyId) {
+
+    if (!existing) {
       return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
     }
 
+    if (existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     await deleteAutomationRule(id);
+
+    const supabase = await createClient();
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'RULE_DELETED',
+      entity_type: 'AutomationRule',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        ruleName: existing.name,
+        triggerType: (existing.trigger as any)?.type
+      }
+    });
 
     return NextResponse.json({
       success: true,
@@ -191,7 +284,7 @@ export async function DELETE(
   } catch (error) {
     logger.error('[API] Error deleting automation rule', error);
     return NextResponse.json(
-      { error: 'Failed to delete automation rule' },
+      { error: 'Failed to delete rule' },
       { status: 500 }
     );
   }

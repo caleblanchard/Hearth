@@ -15,13 +15,13 @@ export async function GET(request: NextRequest) {
     const memberId = authContext?.activeMemberId ?? childAuth?.memberId ?? undefined;
 
     if (!familyId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const targetMemberId = searchParams.get('memberId') || memberId;
+    const targetMemberId = searchParams.get('memberId');
 
-    const schedules = await getTodaysTransportSchedules(familyId);
+    const schedules = await getTodaysTransportSchedules(familyId, targetMemberId || undefined);
 
     return NextResponse.json({ schedules });
   } catch (error) {

@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     // Parse query parameters for filtering
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category') || undefined;
+    const isFavorite = searchParams.get('isFavorite') === 'true';
     const search = searchParams.get('search') || undefined;
     const sortBy = searchParams.get('sortBy') as 'name' | 'rating' | 'created_at' | undefined;
     const sortOrder = searchParams.get('sortOrder') as 'asc' | 'desc' | undefined;
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
     // Use data module
     const recipes = await getRecipes(familyId, {
       category,
+      isFavorite: searchParams.has('isFavorite') ? isFavorite : undefined,
       searchQuery: search,
       sortBy: sortBy || 'name',
       sortOrder: sortOrder || 'asc',
@@ -113,6 +115,7 @@ export async function POST(request: NextRequest) {
       category,
       dietaryTags,
       ingredients,
+      isFavorite,
     } = body;
 
     // Validate required fields
@@ -151,7 +154,7 @@ export async function POST(request: NextRequest) {
         ? JSON.stringify(instructions)
         : instructions || JSON.stringify([]),
       notes: notes?.trim() || null,
-      is_favorite: false,
+      is_favorite: isFavorite ?? false,
       category: category || null,
       dietary_tags: dietaryTags || [],
       created_by: memberId,

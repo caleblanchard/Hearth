@@ -19,7 +19,7 @@ jest.mock('@/lib/logger', () => ({
 // NOW import the route after mocks are set up
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/family/members/route'
-import { mockParentSession } from '@/lib/test-utils/auth-mock'
+import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { Role } from '@/lib/enums'
 import { BCRYPT_ROUNDS } from '@/lib/constants'
 
@@ -46,12 +46,12 @@ describe('/api/family/members', () => {
       const response = await POST(request)
       const data = await response.json()
 
-      expect(response.status).toBe(403)
-      expect(data.error).toBe('Unauthorized - Parent access required')
+      expect(response.status).toBe(401)
+      expect(data.error).toMatch(/Unauthorized/i)
     })
 
     it('should return 403 if not a parent', async () => {
-      const session = mockParentSession()
+      const session = mockChildSession()
 
       const request = new NextRequest('http://localhost/api/family/members', {
         method: 'POST',
@@ -184,7 +184,6 @@ describe('/api/family/members', () => {
           role: Role.PARENT,
           familyId: session.user.familyId,
         }),
-        select: expect.any(Object),
       })
     })
 
@@ -224,7 +223,7 @@ describe('/api/family/members', () => {
 
       expect(response.status).toBe(200)
       expect(data.member).toBeDefined()
-      expect(data.message).toBe('Family member added successfully')
+      expect(data.message).toBe('Family member created successfully')
       expect(hash).toHaveBeenCalledWith('1234', BCRYPT_ROUNDS)
       expect(dbMock.familyMember.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -233,7 +232,6 @@ describe('/api/family/members', () => {
           role: Role.CHILD,
           familyId: session.user.familyId,
         }),
-        select: expect.any(Object),
       })
       // Verify child balances are created
       expect(dbMock.creditBalance.create).toHaveBeenCalled()

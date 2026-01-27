@@ -40,7 +40,8 @@ export async function GET(
 
     // Check family access
     if (project.family_id !== familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      // Return 404 to avoid leaking existence
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     return NextResponse.json({ project });
@@ -80,12 +81,76 @@ export async function PATCH(
 
     // Verify project exists
     const existing = await getProject(id);
-    if (!existing || existing.family_id !== familyId) {
+    if (!existing) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    
+    // Check family access
+    if (existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const project = await updateProject(id, body);
+    
+    // Map camelCase to snake_case and validate
+    const updates: any = {};
+    
+    if (body.name !== undefined) {
+      if (typeof body.name !== 'string' || body.name.trim() === '') {
+        return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
+      }
+      updates.name = body.name.trim();
+    }
+    
+    if (body.description !== undefined) updates.description = body.description;
+    
+    if (body.status !== undefined) {
+      const validStatuses = ['ACTIVE', 'COMPLETED', 'ON_HOLD', 'ARCHIVED', 'PLANNED'];
+      if (!validStatuses.includes(body.status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+      }
+      updates.status = body.status;
+    }
+    
+    if (body.budget !== undefined) {
+      if (typeof body.budget !== 'number' || body.budget < 0) {
+        return NextResponse.json({ error: 'Budget must be a positive number' }, { status: 400 });
+      }
+      updates.budget = body.budget;
+    }
+
+    if (body.startDate !== undefined) updates.start_date = body.startDate;
+    if (body.dueDate !== undefined) updates.due_date = body.dueDate;
+    if (body.notes !== undefined) updates.notes = body.notes;
+    
+    // Date validation
+    const startDate = updates.start_date || existing.start_date;
+    const dueDate = updates.due_date || existing.due_date;
+
+    if (startDate && dueDate) {
+      const start = new Date(startDate);
+      const due = new Date(dueDate);
+      if (due < start) {
+        return NextResponse.json({ error: 'Due date must be after start date' }, { status: 400 });
+      }
+    }
+ 
+    const project = await updateProject(id, updates);
+    
+    // Create audit log
+    const supabase = await createClient();
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      actor_id: memberId,
+      action: 'PROJECT_UPDATED',
+      entity_type: 'PROJECT',
+      entity_id: id,
+      details: {
+        projectId: id,
+        updates: updates,
+      },
+      result: 'SUCCESS',
+    });
 
     return NextResponse.json({
       success: true,
@@ -128,11 +193,30 @@ export async function DELETE(
 
     // Verify project exists
     const existing = await getProject(id);
-    if (!existing || existing.family_id !== familyId) {
+    if (!existing) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    
+    if (existing.family_id !== familyId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     await deleteProject(id);
+    
+    // Create audit log
+    const supabase = await createClient();
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      actor_id: memberId,
+      action: 'PROJECT_DELETED',
+      entity_type: 'PROJECT',
+      entity_id: id,
+      details: {
+        projectId: id,
+        name: existing.name,
+      },
+      result: 'SUCCESS',
+    });
 
     return NextResponse.json({
       success: true,

@@ -111,10 +111,10 @@ describe('/api/pets/[id]/feed', () => {
         data: {
           petId: 'pet-1',
           fedBy: 'parent-test-123',
-          fedAt: now,
-          foodType: null,
-          amount: null,
-          notes: null,
+          fedAt: now.toISOString(),
+          foodType: undefined,
+          amount: undefined,
+          notes: undefined,
         },
       });
 
@@ -123,6 +123,8 @@ describe('/api/pets/[id]/feed', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'PET_FED',
+          entityType: 'PET',
+          entityId: 'pet-1',
           result: 'SUCCESS',
           metadata: {
             petId: 'pet-1',
@@ -176,7 +178,7 @@ describe('/api/pets/[id]/feed', () => {
         data: {
           petId: 'pet-1',
           fedBy: 'parent-test-123',
-          fedAt: now,
+          fedAt: now.toISOString(),
           foodType: 'Dry kibble',
           amount: '2 cups',
           notes: 'Ate everything',

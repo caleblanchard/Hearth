@@ -27,7 +27,7 @@ export async function POST(
     // Verify maintenance item exists and belongs to family
     const { data: item } = await supabase
       .from('maintenance_items')
-      .select('family_id')
+      .select('family_id, name')
       .eq('id', id)
       .single();
 
@@ -43,18 +43,35 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { notes } = body;
+    const { notes, cost, serviceProvider, photoUrls } = body;
 
     // Log completion - all family members can log completions
-    const completion = await completeMaintenanceItem(id, memberId, notes);
+    const completion = await completeMaintenanceItem(id, memberId, notes, {
+      cost,
+      serviceProvider,
+      photoUrls,
+    });
+
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'MAINTENANCE_TASK_COMPLETED',
+      result: 'SUCCESS',
+      metadata: {
+        itemId: id,
+        itemName: item.name,
+        completedBy: memberId,
+      },
+    });
 
     return NextResponse.json({
       success: true,
       completion,
-      message: 'Maintenance completed successfully',
-    });
+      message: 'Maintenance task completed successfully',
+    }, { status: 201 });
   } catch (error) {
     logger.error('Complete maintenance error:', error);
-    return NextResponse.json({ error: 'Failed to complete maintenance' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to log maintenance completion' }, { status: 500 });
   }
 }

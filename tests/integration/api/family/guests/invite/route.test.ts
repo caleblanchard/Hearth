@@ -129,14 +129,12 @@ describe('/api/family/guests/invite', () => {
     expect(dbMock.guestInvite.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         familyId: 'family-test-123',
-        invitedById: 'parent-test-123',
+        createdBy: 'parent-test-123',
         guestName: 'Grandma',
-        guestEmail: null,
         accessLevel: 'VIEW_ONLY',
         inviteCode: expect.any(String),
-        inviteToken: expect.any(String),
-        expiresAt: expect.any(Date),
-        maxUses: 1,
+        token: expect.any(String),
+        expiresAt: expect.any(String),
       }),
     });
 
@@ -145,11 +143,10 @@ describe('/api/family/guests/invite', () => {
         familyId: 'family-test-123',
         memberId: 'parent-test-123',
         action: 'GUEST_INVITE_CREATED',
-        result: 'SUCCESS',
-        metadata: {
-          inviteId: 'invite-1',
-          guestName: 'Grandma',
-          accessLevel: 'VIEW_ONLY',
+        details: {
+          invite_id: 'invite-1',
+          guest_name: 'Grandma',
+          access_level: 'VIEW_ONLY',
         },
       },
     });

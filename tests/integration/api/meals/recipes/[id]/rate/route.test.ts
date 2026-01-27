@@ -26,6 +26,7 @@ describe('/api/meals/recipes/[id]/rate', () => {
   const mockRecipe = {
     id: 'recipe-1',
     familyId: 'family-test-123',
+    family_id: 'family-test-123',
     name: 'Test Recipe',
   };
 
@@ -68,8 +69,10 @@ describe('/api/meals/recipes/[id]/rate', () => {
       const otherFamilyRecipe = {
         ...mockRecipe,
         familyId: 'other-family',
+        family_id: 'other-family',
       };
       dbMock.recipe.findUnique.mockResolvedValue(otherFamilyRecipe as any);
+      dbMock.recipe.findFirst.mockResolvedValue(otherFamilyRecipe as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1/rate', {
         method: 'POST',
@@ -112,7 +115,7 @@ describe('/api/meals/recipes/[id]/rate', () => {
 
     it('should create new rating', async () => {
       dbMock.recipe.findUnique.mockResolvedValue(mockRecipe as any);
-      dbMock.recipeRating.upsert.mockResolvedValue(mockRating as any);
+      dbMock.recipeRating.create.mockResolvedValue(mockRating as any);
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1/rate', {
@@ -128,20 +131,10 @@ describe('/api/meals/recipes/[id]/rate', () => {
       const data = await response.json();
       expect(data.rating.rating).toBe(5);
       expect(data.rating.notes).toBe('Delicious!');
-      expect(data.message).toBe('Rating saved successfully');
+      expect(data.message).toBe('Recipe rated successfully');
 
-      expect(dbMock.recipeRating.upsert).toHaveBeenCalledWith({
-        where: {
-          recipeId_memberId: {
-            recipeId: 'recipe-1',
-            memberId: 'parent-test-123',
-          },
-        },
-        update: {
-          rating: 5,
-          notes: 'Delicious!',
-        },
-        create: {
+      expect(dbMock.recipeRating.create).toHaveBeenCalledWith({
+        data: {
           recipeId: 'recipe-1',
           memberId: 'parent-test-123',
           rating: 5,
@@ -165,13 +158,15 @@ describe('/api/meals/recipes/[id]/rate', () => {
 
     it('should update existing rating', async () => {
       dbMock.recipe.findUnique.mockResolvedValue(mockRecipe as any);
+      // Mock existing rating found
+      dbMock.recipeRating.findFirst.mockResolvedValue({ id: 'rating-1' } as any);
 
       const updatedRating = {
         ...mockRating,
         rating: 3,
         notes: 'Pretty good',
       };
-      dbMock.recipeRating.upsert.mockResolvedValue(updatedRating as any);
+      dbMock.recipeRating.update.mockResolvedValue(updatedRating as any);
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1/rate', {
@@ -196,7 +191,7 @@ describe('/api/meals/recipes/[id]/rate', () => {
         ...mockRating,
         notes: null,
       };
-      dbMock.recipeRating.upsert.mockResolvedValue(ratingWithoutNotes as any);
+      dbMock.recipeRating.create.mockResolvedValue(ratingWithoutNotes as any);
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1/rate', {
@@ -209,18 +204,8 @@ describe('/api/meals/recipes/[id]/rate', () => {
 
       expect(response.status).toBe(200);
 
-      expect(dbMock.recipeRating.upsert).toHaveBeenCalledWith({
-        where: {
-          recipeId_memberId: {
-            recipeId: 'recipe-1',
-            memberId: 'parent-test-123',
-          },
-        },
-        update: {
-          rating: 4,
-          notes: null,
-        },
-        create: {
+      expect(dbMock.recipeRating.create).toHaveBeenCalledWith({
+        data: {
           recipeId: 'recipe-1',
           memberId: 'parent-test-123',
           rating: 4,
@@ -236,7 +221,7 @@ describe('/api/meals/recipes/[id]/rate', () => {
         ...mockRating,
         memberId: 'child-test-123',
       };
-      dbMock.recipeRating.upsert.mockResolvedValue(childRating as any);
+      dbMock.recipeRating.create.mockResolvedValue(childRating as any);
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1/rate', {
@@ -246,21 +231,19 @@ describe('/api/meals/recipes/[id]/rate', () => {
       const response = await POST(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
       expect(response.status).toBe(200);
-      expect(dbMock.recipeRating.upsert).toHaveBeenCalledWith(
+      expect(dbMock.recipeRating.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {
-            recipeId_memberId: {
-              recipeId: 'recipe-1',
-              memberId: 'child-test-123',
-            },
-          },
+          data: expect.objectContaining({
+            recipeId: 'recipe-1',
+            memberId: 'child-test-123',
+          }),
         })
       );
     });
 
     it('should handle database errors gracefully', async () => {
       dbMock.recipe.findUnique.mockResolvedValue(mockRecipe as any);
-      dbMock.recipeRating.upsert.mockRejectedValue(new Error('Database error'));
+      dbMock.recipeRating.create.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1/rate', {
         method: 'POST',
@@ -270,7 +253,7 @@ describe('/api/meals/recipes/[id]/rate', () => {
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBe('Failed to save rating');
+      expect(data.error).toBe('Failed to rate recipe');
     });
   });
 

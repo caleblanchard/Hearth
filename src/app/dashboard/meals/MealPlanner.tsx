@@ -571,8 +571,25 @@ export default function MealPlanner() {
                             </div>
                           ) : entry.customName ? (
                             // Legacy: Show customName if no dishes
-                            <div className="p-2 rounded bg-info/10 dark:bg-info/20 text-sm text-gray-900 dark:text-gray-100">
+                            <div
+                              className="relative p-2 rounded bg-info/10 dark:bg-info/20 text-sm text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-info/20 dark:hover:bg-info/30"
+                              onClick={() => {
+                                setSelectedEntry(entry);
+                                setFormData({
+                                  customName: entry.customName || '',
+                                  notes: entry.notes || '',
+                                });
+                                setShowEditDialog(true);
+                              }}
+                              onMouseEnter={() => setHoveredEntry(entry.id)}
+                              onMouseLeave={() => setHoveredEntry(null)}
+                            >
                               {entry.customName}
+                              {hoveredEntry === entry.id && entry.notes && (
+                                <div className="absolute z-10 left-0 top-full mt-1 p-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg max-w-xs whitespace-normal w-max max-w-[200px]">
+                                  {entry.notes}
+                                </div>
+                              )}
                             </div>
                           ) : null}
                           
@@ -667,9 +684,10 @@ export default function MealPlanner() {
                   htmlFor="meal-name"
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  Dish Name
+                  Meal Name
                 </label>
                 <RecipeAutocomplete
+                  id="meal-name"
                   value={formData.customName}
                   onChange={(name, recipe) => {
                     setFormData({ ...formData, customName: name });

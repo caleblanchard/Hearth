@@ -3,11 +3,16 @@ import '@testing-library/jest-dom'
 import DashboardContent from '@/components/dashboard/DashboardContent'
 import { useSupabaseSession } from '@/hooks/useSupabaseSession'
 import { useGuestSession } from '@/hooks/useGuestSession'
+import { useDashboardLayout } from '@/hooks/useDashboardLayout'
 import { useRouter } from 'next/navigation'
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+}))
+
+jest.mock('@/hooks/useDashboardLayout', () => ({
+  useDashboardLayout: jest.fn(),
 }))
 
 jest.mock('@/hooks/useSupabaseSession', () => ({
@@ -31,6 +36,12 @@ describe('DashboardContent', () => {
     ;(useGuestSession as jest.Mock).mockReturnValue({
       guestSession: null,
       loading: false,
+    })
+    ;(useDashboardLayout as jest.Mock).mockReturnValue({
+      layout: [],
+      availableWidgets: [],
+      saveLayout: jest.fn(),
+      resetLayout: jest.fn(),
     })
   })
 
@@ -262,7 +273,7 @@ describe('DashboardContent', () => {
 
     await waitFor(() => {
       expect(screen.getByText('60 min')).toBeInTheDocument()
-      expect(screen.getByText('60 / 120 min')).toBeInTheDocument()
+      expect(screen.getByText('Balance not configured yet.')).toBeInTheDocument()
     })
   })
 

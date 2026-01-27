@@ -21,10 +21,17 @@ type RoutineCompletion = Database['public']['Tables']['routine_completions']['Ro
 /**
  * Get all routines for a family
  */
-export async function getRoutines(familyId: string) {
+export async function getRoutines(
+  familyId: string,
+  filters?: {
+    type?: string
+    assignedTo?: string | null
+    OR?: Array<Record<string, any>>
+  }
+) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('routines')
     .select(`
       *,
@@ -32,6 +39,40 @@ export async function getRoutines(familyId: string) {
     `)
     .eq('family_id', familyId)
     .eq('is_active', true)
+
+  if (filters?.type) {
+    query = query.eq('type', filters.type)
+  }
+
+  if (filters?.assignedTo !== undefined) {
+    if (filters.assignedTo === null) {
+      query = query.is('assigned_to', null)
+    } else {
+      query = query.eq('assigned_to', filters.assignedTo)
+    }
+  }
+
+  if (filters?.OR) {
+    // Construct OR query string
+    // This is complex with Supabase/PostgREST.
+    // The test expects Prisma-like structure passed to findMany (via mock bridge).
+    // But we are writing Supabase query builder code here.
+    // If we want OR logic for "assigned to me OR null", Supabase uses .or()
+    
+    // Example: .or(`assigned_to.eq.${memberId},assigned_to.is.null`)
+    
+    const orConditions = filters.OR.map(condition => {
+      if (condition.assignedTo) return `assigned_to.eq.${condition.assignedTo}`
+      if (condition.assignedTo === null) return `assigned_to.is.null`
+      return ''
+    }).filter(Boolean).join(',')
+    
+    if (orConditions) {
+      query = query.or(orConditions)
+    }
+  }
+
+  const { data, error } = await query
     .order('name')
     .order('sort_order', { foreignTable: 'items' })
 

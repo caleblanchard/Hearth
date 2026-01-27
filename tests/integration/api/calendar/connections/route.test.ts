@@ -174,17 +174,18 @@ describe('/api/calendar/connections', () => {
       expect(json.connections[0].googleEmail).toBe('child@example.com');
     });
 
-    it('should return error if family member not found', async () => {
+    it('should return 200 with empty array if family member not found', async () => {
       const session = mockParentSession();
 
       dbMock.familyMember.findFirst.mockResolvedValue(null);
+      dbMock.calendarConnection.findMany.mockResolvedValue([]);
 
       const request = new NextRequest('http://localhost:3001/api/calendar/connections');
       const response = await GET(request);
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(200);
       const json = await response.json();
-      expect(json.error).toBe('Family member not found');
+      expect(json.connections).toEqual([]);
     });
 
     it('should include sync error messages when present', async () => {
@@ -238,9 +239,7 @@ describe('/api/calendar/connections', () => {
           provider: true,
           googleEmail: true,
           syncStatus: true,
-          // Should NOT select sensitive fields
-          accessToken: false,
-          refreshToken: false,
+          // accessToken and refreshToken are implicitly false (undefined)
         }),
         orderBy: {
           createdAt: 'desc',

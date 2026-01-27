@@ -27,20 +27,13 @@ describe('/api/rewards', () => {
     const mockRewards = [
       {
         id: 'reward-1',
-        familyId: 'family-1',
+        family_id: 'family-1',
         name: 'Test Reward',
         description: 'A test reward',
         category: 'OTHER',
-        costCredits: 50,
+        cost_credits: 50,
         quantity: 10,
         status: RewardStatus.ACTIVE,
-        createdBy: {
-          id: 'parent-1',
-          name: 'Parent One',
-        },
-        _count: {
-          redemptions: 2,
-        },
       },
     ]
 
@@ -69,29 +62,7 @@ describe('/api/rewards', () => {
           familyId: session.user.familyId,
           status: 'ACTIVE',
         },
-        include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          _count: {
-            select: {
-              redemptions: {
-                where: {
-                  status: {
-                    in: ['PENDING', 'APPROVED'],
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: [
-          { costCredits: 'asc' },
-          { name: 'asc' },
-        ],
+        orderBy: { costCredits: 'asc' },
       })
     })
 
@@ -111,18 +82,14 @@ describe('/api/rewards', () => {
   describe('POST', () => {
     const mockReward = {
       id: 'reward-1',
-      familyId: 'family-1',
+      family_id: 'family-1',
       name: 'New Reward',
       description: 'A new reward',
       category: 'OTHER',
-      costCredits: 100,
+      cost_credits: 100,
       quantity: 5,
       status: RewardStatus.ACTIVE,
-      createdById: 'parent-1',
-      createdBy: {
-        id: 'parent-1',
-        name: 'Parent One',
-      },
+      created_by_id: 'parent-1',
     }
 
     it('should return 401 if not authenticated', async () => {
@@ -249,14 +216,6 @@ describe('/api/rewards', () => {
           status: 'ACTIVE',
           createdById: session.user.id,
         },
-        include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
       })
     })
 
@@ -289,14 +248,6 @@ describe('/api/rewards', () => {
           imageUrl: null,
           status: 'ACTIVE',
           createdById: session.user.id,
-        },
-        include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
         },
       })
     })

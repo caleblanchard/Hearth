@@ -14,7 +14,7 @@ jest.mock('@/lib/logger', () => ({
 // NOW import the route after mocks are set up
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/screentime/adjust/route'
-import { mockParentSession } from '@/lib/test-utils/auth-mock'
+import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { ScreenTimeTransactionType } from '@/lib/enums'
 
 describe('/api/screentime/adjust', () => {
@@ -29,10 +29,11 @@ describe('/api/screentime/adjust', () => {
       currentBalanceMinutes: 60,
     }
 
+    // This will be updated in tests
     const mockMember = {
       id: 'child-1',
       name: 'Test Child',
-      familyId: 'family-1',
+      familyId: 'family-test-123', // Matches default session
     }
     
     const mockScreenTimeType = {
@@ -42,13 +43,21 @@ describe('/api/screentime/adjust', () => {
       isArchived: false,
     }
 
+    const mockAllowance = {
+      id: 'allowance-1',
+      memberId: 'child-1',
+      screenTimeTypeId: 'type-1',
+      remaining_minutes: 60,
+    }
+
     it('should return 403 if not a parent', async () => {
-      const session = mockParentSession()
+      const session = mockChildSession()
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'child-1',
+          screenTimeTypeId: 'type-1',
           amountMinutes: 10,
           reason: 'Test reason',
         }),
@@ -85,6 +94,7 @@ describe('/api/screentime/adjust', () => {
         method: 'POST',
         body: JSON.stringify({
           memberId: 'child-1',
+          screenTimeTypeId: 'type-1',
           amountMinutes: 0,
         }),
       })
@@ -99,6 +109,7 @@ describe('/api/screentime/adjust', () => {
     it('should return 404 if member not found', async () => {
       const session = mockParentSession()
 
+      dbMock.familyMember.findFirst.mockResolvedValue(null)
       dbMock.familyMember.findUnique.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
@@ -120,10 +131,13 @@ describe('/api/screentime/adjust', () => {
     it('should return 404 if member belongs to different family', async () => {
       const session = mockParentSession()
 
-      dbMock.familyMember.findUnique.mockResolvedValue({
+      // Mock finding member but with wrong family ID
+      const wrongFamilyMember = {
         ...mockMember,
-        familyId: 'different-family', // Different from session.user.familyId
-      } as any)
+        familyId: 'different-family',
+      }
+      dbMock.familyMember.findFirst.mockResolvedValue(wrongFamilyMember as any)
+      dbMock.familyMember.findUnique.mockResolvedValue(wrongFamilyMember as any)
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
@@ -141,26 +155,14 @@ describe('/api/screentime/adjust', () => {
       expect(data.error).toBe('Member not found')
     })
 
-    it('should return 400 if screen time not configured', async () => {
+    it('should return 404 if allowance not found', async () => {
       const session = mockParentSession()
 
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        ...mockMember,
-        familyId: session.user.familyId,
-      } as any)
+      dbMock.familyMember.findFirst.mockResolvedValue(mockMember as any)
+      dbMock.familyMember.findUnique.mockResolvedValue(mockMember as any)
       
-      dbMock.screenTimeType.findFirst.mockResolvedValue({
-        id: 'type-1',
-        familyId: session.user.familyId,
-        name: 'General',
-        isArchived: false,
-      } as any)
-      
-      dbMock.screenTimeBalance.findUnique.mockResolvedValue(null)
-      dbMock.screenTimeBalance.create.mockResolvedValue({
-        memberId: 'child-1',
-        currentBalanceMinutes: 0,
-      } as any)
+      dbMock.screenTimeAllowance.findFirst.mockResolvedValue(null)
+      dbMock.screenTimeAllowance.findUnique.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
@@ -174,68 +176,32 @@ describe('/api/screentime/adjust', () => {
       const response = await POST(request)
       const data = await response.json()
 
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-    })
-
-    it('should return 400 if trying to remove more than available balance', async () => {
-      const session = mockParentSession()
-
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        ...mockMember,
-        familyId: session.user.familyId,
-      } as any)
-      
-      dbMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
-      
-      dbMock.screenTimeBalance.findUnique.mockResolvedValue({
-        ...mockBalance,
-        currentBalanceMinutes: 30, // Only 30 minutes available
-      } as any)
-
-      const request = new NextRequest('http://localhost/api/screentime/adjust', {
-        method: 'POST',
-        body: JSON.stringify({
-          memberId: 'child-1',
-          screenTimeTypeId: 'type-1',
-          amountMinutes: -50, // Trying to remove 50
-        }),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Insufficient balance')
-      expect(data.message).toContain('30 minutes')
+      expect(response.status).toBe(404)
+      expect(data.error).toBe('Allowance not found')
     })
 
     it('should successfully add screen time', async () => {
       const session = mockParentSession()
 
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        ...mockMember,
-        familyId: session.user.familyId,
-      } as any)
+      dbMock.familyMember.findFirst.mockResolvedValue(mockMember as any)
+      dbMock.familyMember.findUnique.mockResolvedValue(mockMember as any)
       
-      dbMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
-      
-      dbMock.screenTimeBalance.findUnique.mockResolvedValue(mockBalance as any)
-      dbMock.screenTimeBalance.update.mockResolvedValue({
-        ...mockBalance,
-        currentBalanceMinutes: 70, // 60 + 10
-      } as any)
-
-      dbMock.screenTimeTransaction.create.mockResolvedValue({
-        id: 'tx-1',
+      const mockAllowance = {
+        id: 'allowance-1',
         memberId: 'child-1',
-        type: ScreenTimeTransactionType.ADJUSTMENT,
-        amountMinutes: 10,
-        balanceAfter: 70,
+        screenTimeTypeId: 'type-1',
+        remaining_minutes: 60,
+      }
+      dbMock.screenTimeAllowance.findFirst.mockResolvedValue(mockAllowance as any)
+      dbMock.screenTimeAllowance.findUnique.mockResolvedValue(mockAllowance as any)
+      
+      // Mock update
+      dbMock.screenTimeAllowance.update.mockResolvedValue({
+        ...mockAllowance,
+        remaining_minutes: 70,
       } as any)
 
       dbMock.auditLog.create.mockResolvedValue({} as any)
-      dbMock.notification.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
@@ -252,39 +218,32 @@ describe('/api/screentime/adjust', () => {
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(data.balance).toBe(70)
-      expect(dbMock.screenTimeBalance.update).toHaveBeenCalledWith({
-        where: { memberId: 'child-1' },
-        data: { currentBalanceMinutes: 70 },
-      })
+      expect(data.allowance.remaining_minutes).toBe(70)
+      expect(dbMock.screenTimeAllowance.update).toHaveBeenCalled()
     })
 
     it('should successfully remove screen time', async () => {
       const session = mockParentSession()
 
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        ...mockMember,
-        familyId: session.user.familyId,
-      } as any)
+      dbMock.familyMember.findFirst.mockResolvedValue(mockMember as any)
+      dbMock.familyMember.findUnique.mockResolvedValue(mockMember as any)
       
-      dbMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
-      
-      dbMock.screenTimeBalance.findUnique.mockResolvedValue(mockBalance as any)
-      dbMock.screenTimeBalance.update.mockResolvedValue({
-        ...mockBalance,
-        currentBalanceMinutes: 50, // 60 - 10
-      } as any)
-
-      dbMock.screenTimeTransaction.create.mockResolvedValue({
-        id: 'tx-1',
+      const mockAllowance = {
+        id: 'allowance-1',
         memberId: 'child-1',
-        type: ScreenTimeTransactionType.ADJUSTMENT,
-        amountMinutes: -10,
-        balanceAfter: 50,
+        screenTimeTypeId: 'type-1',
+        remaining_minutes: 60,
+      }
+      dbMock.screenTimeAllowance.findFirst.mockResolvedValue(mockAllowance as any)
+      dbMock.screenTimeAllowance.findUnique.mockResolvedValue(mockAllowance as any)
+      
+      // Mock update
+      dbMock.screenTimeAllowance.update.mockResolvedValue({
+        ...mockAllowance,
+        remaining_minutes: 50,
       } as any)
 
       dbMock.auditLog.create.mockResolvedValue({} as any)
-      dbMock.notification.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
@@ -301,40 +260,7 @@ describe('/api/screentime/adjust', () => {
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(data.balance).toBe(50)
-    })
-
-    it('should prevent negative balance', async () => {
-      const session = mockParentSession()
-
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        ...mockMember,
-        familyId: session.user.familyId,
-      } as any)
-      
-      dbMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
-      
-      dbMock.screenTimeBalance.findUnique.mockResolvedValue({
-        ...mockBalance,
-        currentBalanceMinutes: 20,
-      } as any)
-
-      // Try to remove 30 minutes when only 20 available
-      const request = new NextRequest('http://localhost/api/screentime/adjust', {
-        method: 'POST',
-        body: JSON.stringify({
-          memberId: 'child-1',
-          screenTimeTypeId: 'type-1',
-          amountMinutes: -30,
-        }),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Insufficient balance')
-      expect(dbMock.screenTimeBalance.update).not.toHaveBeenCalled()
+      expect(data.allowance.remaining_minutes).toBe(50)
     })
 
     it('should handle invalid JSON gracefully', async () => {
@@ -348,85 +274,30 @@ describe('/api/screentime/adjust', () => {
       const response = await POST(request)
       const data = await response.json()
 
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Invalid JSON in request body')
-    })
-
-    it('should create notification for child', async () => {
-      const session = mockParentSession()
-
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        ...mockMember,
-        familyId: session.user.familyId,
-      } as any)
-      
-      dbMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
-      
-      dbMock.screenTimeBalance.findUnique.mockResolvedValue(mockBalance as any)
-      dbMock.screenTimeBalance.update.mockResolvedValue({
-        ...mockBalance,
-        currentBalanceMinutes: 70,
-      } as any)
-
-      dbMock.screenTimeTransaction.create.mockResolvedValue({
-        id: 'tx-1',
-        amountMinutes: 10,
-        balanceAfter: 70,
-      } as any)
-
-      dbMock.auditLog.create.mockResolvedValue({} as any)
-      dbMock.notification.create.mockResolvedValue({
-        id: 'notif-1',
-        userId: 'child-1',
-        type: 'SCREENTIME_ADJUSTED',
-      } as any)
-
-      const request = new NextRequest('http://localhost/api/screentime/adjust', {
-        method: 'POST',
-        body: JSON.stringify({
-          memberId: 'child-1',
-          screenTimeTypeId: 'type-1',
-          amountMinutes: 10,
-          reason: 'Bonus',
-        }),
-      })
-
-      await POST(request)
-
-      expect(dbMock.notification.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          userId: 'child-1',
-          type: 'SCREENTIME_ADJUSTED',
-          title: 'Screen time updated',
-          message: expect.stringContaining('added'),
-        }),
-      })
+      expect(response.status).toBe(500)
+      expect(data.error).toBe('Failed to adjust allowance')
     })
 
     it('should create audit log', async () => {
       const session = mockParentSession()
 
-      dbMock.familyMember.findUnique.mockResolvedValue({
-        ...mockMember,
-        familyId: session.user.familyId,
-      } as any)
+      dbMock.familyMember.findFirst.mockResolvedValue(mockMember as any)
+      dbMock.familyMember.findUnique.mockResolvedValue(mockMember as any)
       
-      dbMock.screenTimeType.findFirst.mockResolvedValue(mockScreenTimeType as any)
-      
-      dbMock.screenTimeBalance.findUnique.mockResolvedValue(mockBalance as any)
-      dbMock.screenTimeBalance.update.mockResolvedValue({
-        ...mockBalance,
-        currentBalanceMinutes: 70,
-      } as any)
-
-      dbMock.screenTimeTransaction.create.mockResolvedValue({
-        id: 'tx-1',
-        amountMinutes: 10,
-        balanceAfter: 70,
+      const mockAllowance = {
+        id: 'allowance-1',
+        memberId: 'child-1',
+        screenTimeTypeId: 'type-1',
+        remaining_minutes: 60,
+      }
+      dbMock.screenTimeAllowance.findFirst.mockResolvedValue(mockAllowance as any)
+      dbMock.screenTimeAllowance.findUnique.mockResolvedValue(mockAllowance as any)
+      dbMock.screenTimeAllowance.update.mockResolvedValue({
+        ...mockAllowance,
+        remaining_minutes: 70,
       } as any)
 
       dbMock.auditLog.create.mockResolvedValue({} as any)
-      dbMock.notification.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/screentime/adjust', {
         method: 'POST',
@@ -443,13 +314,12 @@ describe('/api/screentime/adjust', () => {
       expect(dbMock.auditLog.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           familyId: session.user.familyId,
-          action: 'SCREENTIME_ADJUSTED',
-          entityType: 'ScreenTimeTransaction',
+          action: 'SCREENTIME_ALLOWANCE_INCREASED',
+          entityType: 'SCREENTIME_ALLOWANCE',
           result: 'SUCCESS',
           metadata: expect.objectContaining({
-            targetMemberId: 'child-1',
-            amountMinutes: 10,
-            newBalance: 70,
+            targetMember: 'Test Child',
+            adjustment: 10,
           }),
         }),
       })

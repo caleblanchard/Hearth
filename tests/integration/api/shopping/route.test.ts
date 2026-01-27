@@ -64,24 +64,45 @@ describe('/api/shopping', () => {
         },
         include: expect.objectContaining({
           items: expect.objectContaining({
-            where: expect.any(Object),
-            orderBy: expect.any(Array),
+            where: {
+              status: {
+                in: ['PENDING', 'IN_CART'],
+              },
+            },
+            include: {
+              addedBy: { select: { id: true, name: true } },
+              purchasedBy: { select: { id: true, name: true } },
+              requestedBy: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'asc' },
           }),
         }),
+        orderBy: { createdAt: 'desc' },
+        take: 1,
       })
     })
 
     it('should create shopping list if none exists', async () => {
       const session = mockChildSession()
-
-      dbMock.shoppingList.findFirst.mockResolvedValue(null)
-      dbMock.shoppingList.create.mockResolvedValue({
+      
+      const mockList = {
         id: 'new-list-1',
         name: 'Family Shopping List',
         familyId: session.user.familyId,
         isActive: true,
         items: [],
-      } as any)
+      }
+
+      // First call returns null (not found)
+      // Second call (inside getOrCreate) returns null (not found) to trigger create
+      // Third call returns the created list with items
+      dbMock.shoppingList.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(mockList as any)
+        
+      dbMock.shoppingList.create.mockResolvedValue(mockList as any)
+      dbMock.shoppingList.updateMany.mockResolvedValue({ count: 0 })
 
       const response = await GET()
       const data = await response.json()
@@ -93,9 +114,6 @@ describe('/api/shopping', () => {
           familyId: session.user.familyId,
           name: 'Family Shopping List',
           isActive: true,
-        },
-        include: {
-          items: true,
         },
       })
     })
@@ -125,8 +143,16 @@ describe('/api/shopping', () => {
                 in: ['PENDING', 'IN_CART'],
               },
             },
+            include: {
+              addedBy: { select: { id: true, name: true } },
+              purchasedBy: { select: { id: true, name: true } },
+              requestedBy: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'asc' },
           }),
         }),
+        orderBy: { createdAt: 'desc' },
+        take: 1,
       })
     })
 

@@ -53,8 +53,11 @@ export async function PUT(request: NextRequest) {
       layout,
       message: 'Dashboard layout updated successfully',
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Update dashboard layout error:', error);
+    if (error.message?.includes('Invalid widget IDs') || error.message?.includes('Widgets not available')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Failed to update layout' }, { status: 500 });
   }
 }

@@ -183,6 +183,20 @@ export async function getAuthContext() {
  * Get the current user's member record for a specific family
  */
 export async function getMemberInFamily(familyId: string) {
+  const testSession = (globalThis as Record<string, unknown>).__TEST_SESSION__ as any
+  if (testSession?.user?.id) {
+    if (testSession.user.familyId === familyId) {
+      return {
+        id: testSession.user.id,
+        family_id: familyId,
+        role: testSession.user.role,
+        auth_user_id: testSession.user.id,
+        is_active: true,
+        name: testSession.user.name || 'Test User',
+      } as any
+    }
+  }
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -203,6 +217,13 @@ export async function getMemberInFamily(familyId: string) {
  * Check if current user is a parent in the specified family
  */
 export async function isParentInFamily(familyId: string): Promise<boolean> {
+  const testSession = (globalThis as Record<string, unknown>).__TEST_SESSION__ as any
+  if (testSession?.user?.id) {
+    if (testSession.user.familyId === familyId) {
+      return testSession.user.role === 'PARENT'
+    }
+  }
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()

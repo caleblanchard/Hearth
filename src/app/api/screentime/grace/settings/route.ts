@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const settings = await getGraceSettings(memberId);
+    const settings = await getGraceSettings(familyId);
 
     return NextResponse.json({ settings });
   } catch (error) {
@@ -69,39 +69,18 @@ export async function PATCH(request: NextRequest) {
     }
 
     const familyId = authContext.activeFamilyId;
-    const currentMemberId = authContext.activeMemberId;
-
-    if (!familyId || !currentMemberId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    
+    // Enforce parent access for all updates
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
+      return NextResponse.json(
+        { error: 'Only parents can update grace settings' },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
-    const { memberId: targetMemberId } = body;
-    const memberId = targetMemberId || currentMemberId;
-
-    // If updating another member's settings, verify permissions
-    if (memberId !== currentMemberId) {
-      const isParent = await isParentInFamily( familyId);
-      if (!isParent) {
-        return NextResponse.json(
-          { error: 'Cannot update other members settings' },
-          { status: 403 }
-        );
-      }
-
-      // Verify member belongs to family
-      const { data: member } = await supabase
-        .from('family_members')
-        .select('family_id')
-        .eq('id', memberId)
-        .single();
-
-      if (!member || member.family_id !== familyId) {
-        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
-      }
-    }
-
-    const settings = await updateGraceSettings(memberId, body);
+    const settings = await updateGraceSettings(familyId, body);
 
     return NextResponse.json({
       success: true,

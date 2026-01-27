@@ -65,8 +65,34 @@ export async function PATCH(
     let updatedLeftover;
     if (action === 'used') {
       updatedLeftover = await markLeftoverUsed(id);
+      
+      // Create audit log
+      await supabase.from('audit_logs').insert({
+        family_id: familyId,
+        member_id: memberId,
+        action: 'LEFTOVER_MARKED_USED',
+        entity_type: 'LEFTOVER',
+        entity_id: id,
+        result: 'SUCCESS',
+        metadata: {
+          leftoverId: id,
+        },
+      });
     } else {
       updatedLeftover = await markLeftoverTossed(id);
+      
+      // Create audit log
+      await supabase.from('audit_logs').insert({
+        family_id: familyId,
+        member_id: memberId,
+        action: 'LEFTOVER_MARKED_TOSSED',
+        entity_type: 'LEFTOVER',
+        entity_id: id,
+        result: 'SUCCESS',
+        metadata: {
+          leftoverId: id,
+        },
+      });
     }
 
     return NextResponse.json({

@@ -67,7 +67,7 @@ describe('/api/chores/pending-approval', () => {
       const data = await response.json()
 
       expect(response.status).toBe(403)
-      expect(data.error).toBe('Forbidden')
+      expect(data.error).toBe('Forbidden - Parent access required')
     })
 
     it('should return pending chores for parent', async () => {
@@ -80,57 +80,45 @@ describe('/api/chores/pending-approval', () => {
 
       expect(response.status).toBe(200)
       expect(data.chores).toHaveLength(1)
-      expect(data.chores[0]).toEqual({
-        id: 'chore-instance-1',
-        name: 'Test Chore',
-        description: 'Test description',
-        creditValue: 10,
-        difficulty: 'MEDIUM',
-        assignedTo: {
-          id: 'child-1',
-          name: 'Child One',
-          avatarUrl: null,
-        },
-        completedBy: {
-          id: 'child-1',
-          name: 'Child One',
-        },
-        completedAt: mockPendingChores[0].completedAt,
-        notes: 'Completed notes',
-        photoUrl: null,
-      })
+      expect(data.chores[0]).toEqual(mockPendingChores[0])
 
       expect(dbMock.choreInstance.findMany).toHaveBeenCalledWith({
         where: {
           status: 'COMPLETED',
-          choreSchedule: {
-            choreDefinition: {
-              familyId: session.user.familyId,
-            },
-          },
         },
         include: {
-          choreSchedule: {
+          assignment: {
             include: {
-              choreDefinition: true,
+              schedule: {
+                include: {
+                  definition: {
+                    select: {
+                      creditValue: true,
+                      familyId: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+            where: {
+              schedule: {
+                definition: {
+                  familyId: session.user.familyId,
+                },
+              },
             },
           },
-          assignedTo: {
+          member: {
             select: {
               id: true,
               name: true,
               avatarUrl: true,
             },
           },
-          completedBy: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
         },
         orderBy: {
-          completedAt: 'desc',
+          completedAt: 'asc',
         },
       })
     })

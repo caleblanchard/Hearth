@@ -96,20 +96,24 @@ export async function POST(request: NextRequest) {
     await (supabase as any).from('audit_logs').insert({
       family_id: familyId,
       member_id: memberId,
-      action: 'PET_CREATED',
+      action: 'PET_ADDED',
       entity_type: 'PET',
       entity_id: pet.id,
       result: 'SUCCESS',
-      metadata: { name, species },
+      metadata: {
+        petId: pet.id,
+        name,
+        species,
+      },
     });
 
     return NextResponse.json({
       success: true,
       pet,
-      message: 'Pet created successfully',
-    });
+      message: 'Pet added successfully',
+    }, { status: 201 });
   } catch (error) {
     logger.error('Error creating pet:', error);
-    return NextResponse.json({ error: 'Failed to create pet' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to add pet' }, { status: 500 });
   }
 }

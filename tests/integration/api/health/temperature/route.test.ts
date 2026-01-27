@@ -106,6 +106,7 @@ describe('/api/health/temperature', () => {
           temperature: 101.5,
           method: 'ORAL',
           notes: 'Child has fever',
+          recordedAt: expect.any(String),
         },
         include: {
           member: {
@@ -334,6 +335,7 @@ describe('/api/health/temperature', () => {
           temperature: 101.5,
           method: 'ORAL',
           notes: 'Child is feeling hot',
+          recordedAt: expect.any(String),
         },
         include: expect.any(Object),
       });

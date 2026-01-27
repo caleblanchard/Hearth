@@ -246,8 +246,10 @@ export async function POST(request: NextRequest) {
       logger.error('Error completing onboarding', error);
 
       // Handle unique constraint errors
-      if (error.code === '23505') {
-        if (error.message?.includes('email')) {
+      if (error.code === '23505' || 
+          error.message?.toLowerCase().includes('already registered') || 
+          error.message?.toLowerCase().includes('already exists')) {
+        if (error.message?.includes('email') || error.message?.toLowerCase().includes('already registered')) {
           return NextResponse.json(
             { error: 'An account with this email already exists' },
             { status: 400 }

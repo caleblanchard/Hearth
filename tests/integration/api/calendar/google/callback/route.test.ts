@@ -82,6 +82,7 @@ import { GET } from '@/app/api/calendar/google/callback/route';
 describe('/api/calendar/google/callback', () => {
   let mockGetTokensFromCode: jest.Mock;
   let mockGetUserEmail: jest.Mock;
+  let mockGetUserEmailFromToken: jest.Mock;
 
   // Helper to create a properly mocked NextRequest
   function createMockRequest(url: string, cookieValue?: string) {
@@ -123,10 +124,12 @@ describe('/api/calendar/google/callback', () => {
     });
 
     mockGetUserEmail = jest.fn().mockResolvedValue('user@example.com');
+    mockGetUserEmailFromToken = jest.fn().mockResolvedValue('user@example.com');
 
     (GoogleCalendarClient as jest.Mock).mockImplementation(() => ({
       getTokensFromCode: mockGetTokensFromCode,
       getUserEmail: mockGetUserEmail,
+      getUserEmailFromToken: mockGetUserEmailFromToken,
     }));
   });
 
@@ -207,13 +210,13 @@ describe('/api/calendar/google/callback', () => {
       );
 
       // Mock family member lookup
-      dbMock.familyMember.findFirst.mockResolvedValue({
+      dbMock.familyMember.findUnique.mockResolvedValue({
         id: session.user.id,
         familyId: session.user.familyId,
       } as any);
 
       // Mock no existing connection
-      dbMock.calendarConnection.findUnique.mockResolvedValue(null);
+      dbMock.calendarConnection.findFirst.mockResolvedValue(null);
 
       // Mock connection creation
       dbMock.calendarConnection.create.mockResolvedValue({
@@ -235,20 +238,19 @@ describe('/api/calendar/google/callback', () => {
           provider: 'GOOGLE',
           accessToken: 'encrypted:access-token-123',
           refreshToken: 'encrypted:refresh-token-456',
-          tokenExpiresAt: new Date('2026-01-05T00:00:00Z'),
+          tokenExpiresAt: '2026-01-05T00:00:00.000Z',
           googleEmail: 'user@example.com',
-          googleCalendarId: 'primary',
+          isActive: true,
           syncEnabled: true,
-          importFromGoogle: true,
-          exportToGoogle: true,
           syncStatus: 'ACTIVE',
-          nextSyncAt: expect.any(Date),
+          name: 'Google Calendar',
+          nextSyncAt: expect.any(String),
         },
       });
 
       expect(response.status).toBe(302);
       expect(response.headers.get('location')).toContain('/dashboard/settings/calendars');
-      expect(response.headers.get('location')).toContain('success=true');
+      expect(response.headers.get('location')).toContain('success=calendar_connected');
     });
 
     it('should update existing connection if already exists', async () => {
@@ -259,7 +261,7 @@ describe('/api/calendar/google/callback', () => {
         'state-token'
       );
 
-      dbMock.familyMember.findFirst.mockResolvedValue({
+      dbMock.familyMember.findUnique.mockResolvedValue({
         id: session.user.id,
         familyId: session.user.familyId,
       } as any);
@@ -272,7 +274,7 @@ describe('/api/calendar/google/callback', () => {
       dbMock.calendarConnection.delete.mockResolvedValue({} as any);
 
       // Mock existing connection
-      dbMock.calendarConnection.findUnique.mockResolvedValue({
+      dbMock.calendarConnection.findFirst.mockResolvedValue({
         id: 'connection-existing',
         memberId: session.user.id,
         provider: 'GOOGLE',
@@ -290,17 +292,17 @@ describe('/api/calendar/google/callback', () => {
         data: {
           accessToken: 'encrypted:access-token-123',
           refreshToken: 'encrypted:refresh-token-456',
-          tokenExpiresAt: new Date('2026-01-05T00:00:00Z'),
+          tokenExpiresAt: '2026-01-05T00:00:00.000Z',
           googleEmail: 'user@example.com',
           syncEnabled: true,
           syncStatus: 'ACTIVE',
           syncError: null,
-          nextSyncAt: expect.any(Date),
+          updatedAt: expect.any(String),
         },
       });
 
       expect(response.status).toBe(302);
-      expect(response.headers.get('location')).toContain('success=true');
+      expect(response.headers.get('location')).toContain('success=calendar_connected');
     });
 
     it('should handle token exchange errors', async () => {
@@ -311,7 +313,7 @@ describe('/api/calendar/google/callback', () => {
         'state-token'
       );
 
-      dbMock.familyMember.findFirst.mockResolvedValue({
+      dbMock.familyMember.findUnique.mockResolvedValue({
         id: session.user.id,
         familyId: session.user.familyId,
       } as any);
@@ -333,7 +335,7 @@ describe('/api/calendar/google/callback', () => {
         'state-token'
       );
 
-      dbMock.familyMember.findFirst.mockResolvedValue({
+      dbMock.familyMember.findUnique.mockResolvedValue({
         id: session.user.id,
         familyId: session.user.familyId,
       } as any);
@@ -354,27 +356,23 @@ describe('/api/calendar/google/callback', () => {
         'state-token'
       );
 
-      dbMock.familyMember.findFirst.mockResolvedValue({
+      dbMock.familyMember.findUnique.mockResolvedValue({
         id: session.user.id,
         familyId: session.user.familyId,
       } as any);
 
-      dbMock.calendarConnection.findUnique.mockResolvedValue(null);
+      dbMock.calendarConnection.findFirst.mockResolvedValue(null);
 
-      // Need to create temporary connection to get email
-      dbMock.calendarConnection.create
-        .mockResolvedValueOnce({
-          id: 'temp-connection',
-        } as any)
-        .mockResolvedValueOnce({
-          id: 'final-connection',
-        } as any);
+      // Mock connection creation
+      dbMock.calendarConnection.create.mockResolvedValue({
+        id: 'final-connection',
+      } as any);
 
       dbMock.calendarConnection.delete.mockResolvedValue({} as any);
 
       const response = await GET(request);
 
-      expect(mockGetUserEmail).toHaveBeenCalled();
+      expect(mockGetUserEmailFromToken).toHaveBeenCalled();
       expect(response.status).toBe(302);
     });
 
@@ -386,12 +384,12 @@ describe('/api/calendar/google/callback', () => {
         'state-token'
       );
 
-      dbMock.familyMember.findFirst.mockResolvedValue({
+      dbMock.familyMember.findUnique.mockResolvedValue({
         id: session.user.id,
         familyId: session.user.familyId,
       } as any);
 
-      dbMock.calendarConnection.findUnique.mockResolvedValue(null);
+      dbMock.calendarConnection.findFirst.mockResolvedValue(null);
       dbMock.calendarConnection.create.mockResolvedValue({
         id: 'connection-child',
       } as any);
@@ -399,7 +397,7 @@ describe('/api/calendar/google/callback', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(302);
-      expect(response.headers.get('location')).toContain('success=true');
+      expect(response.headers.get('location')).toContain('success=calendar_connected');
     });
 
     it('should clear state cookie after successful connection', async () => {
@@ -410,33 +408,23 @@ describe('/api/calendar/google/callback', () => {
         'state-token'
       );
 
-      dbMock.familyMember.findFirst.mockResolvedValue({
+      dbMock.familyMember.findUnique.mockResolvedValue({
         id: session.user.id,
         familyId: session.user.familyId,
       } as any);
 
-      // Mock temp connection, then final connection
-      dbMock.calendarConnection.create
-        .mockResolvedValueOnce({
-          id: 'temp-connection',
-        } as any)
-        .mockResolvedValueOnce({
-          id: 'final-connection',
-        } as any);
+      // Mock connection creation
+      dbMock.calendarConnection.create.mockResolvedValue({
+        id: 'final-connection',
+      } as any);
 
       dbMock.calendarConnection.delete.mockResolvedValue({} as any);
-      dbMock.calendarConnection.findUnique.mockResolvedValue(null);
+      dbMock.calendarConnection.findFirst.mockResolvedValue(null);
 
       const response = await GET(request);
 
       // Verify the response clears the cookie (mock environment may not set actual header)
-      expect(response.cookies.set).toHaveBeenCalledWith(
-        'google_oauth_state',
-        '',
-        expect.objectContaining({
-          maxAge: 0,
-        })
-      );
+      expect(response.cookies.delete).toHaveBeenCalledWith('google_oauth_state');
     });
 
     it('should set nextSyncAt to current time for immediate first sync', async () => {
@@ -447,21 +435,17 @@ describe('/api/calendar/google/callback', () => {
         'state-token'
       );
 
-      dbMock.familyMember.findFirst.mockResolvedValue({
+      dbMock.familyMember.findUnique.mockResolvedValue({
         id: session.user.id,
         familyId: session.user.familyId,
       } as any);
 
-      dbMock.calendarConnection.findUnique.mockResolvedValue(null);
+      dbMock.calendarConnection.findFirst.mockResolvedValue(null);
 
-      // Mock temp connection, then final connection
-      dbMock.calendarConnection.create
-        .mockResolvedValueOnce({
-          id: 'temp-connection',
-        } as any)
-        .mockResolvedValueOnce({
-          id: 'final-connection',
-        } as any);
+      // Mock connection creation
+      dbMock.calendarConnection.create.mockResolvedValue({
+        id: 'final-connection',
+      } as any);
 
       dbMock.calendarConnection.delete.mockResolvedValue({} as any);
 
@@ -469,19 +453,14 @@ describe('/api/calendar/google/callback', () => {
       const response = await GET(request);
       const afterTime = new Date();
 
-      // Second create call is the final connection (first is temp)
-      const createCall = dbMock.calendarConnection.create.mock.calls[1][0];
+      // Expect create to be called once (final connection)
+      const createCall = dbMock.calendarConnection.create.mock.calls[0][0];
       const nextSyncAt = createCall.data.nextSyncAt;
 
       expect(nextSyncAt).toBeDefined();
-      if (nextSyncAt instanceof Date) {
-        expect(nextSyncAt.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime() - 1000);
-        expect(nextSyncAt.getTime()).toBeLessThanOrEqual(afterTime.getTime() + 1000);
-      } else if (typeof nextSyncAt === 'string') {
-        const syncDate = new Date(nextSyncAt);
-        expect(syncDate.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime() - 1000);
-        expect(syncDate.getTime()).toBeLessThanOrEqual(afterTime.getTime() + 1000);
-      }
+      const syncDate = new Date(nextSyncAt);
+      expect(syncDate.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime() - 1000);
+      expect(syncDate.getTime()).toBeLessThanOrEqual(afterTime.getTime() + 1000);
     });
   });
 });

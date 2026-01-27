@@ -45,7 +45,7 @@ export async function PATCH(
     }
 
     if (rule.family_id !== familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Toggle the rule
@@ -56,7 +56,7 @@ export async function PATCH(
       family_id: familyId,
       member_id: memberId,
       action: updatedRule.is_enabled ? 'RULE_ENABLED' : 'RULE_DISABLED',
-      entity_type: 'RULE',
+      entity_type: 'AutomationRule',
       entity_id: id,
       result: 'SUCCESS',
       metadata: { previousState: rule.is_enabled },

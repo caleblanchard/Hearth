@@ -34,13 +34,35 @@ export async function POST(
     }
     const { notes } = body;
 
+    // Verify reward exists and belongs to family
+    const supabase = await createClient();
+    const { data: rewardCheck } = await supabase
+      .from('reward_items')
+      .select('family_id')
+      .eq('id', rewardId)
+      .single();
+
+    if (!rewardCheck) {
+      return NextResponse.json({ error: 'Reward not found' }, { status: 404 });
+    }
+
+    if (rewardCheck.family_id !== authContext.activeFamilyId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Use RPC function for atomic redemption
     const result = await redeemReward(rewardId, memberId) as any;
 
     if (!result || !result.success) {
+      const errorMsg = result?.error || 'Failed to redeem reward';
+      let status = 400;
+      
+      if (errorMsg === 'Reward not found') status = 404;
+      else if (errorMsg === 'Forbidden') status = 403;
+      
       return NextResponse.json(
-        { error: result?.error || 'Failed to redeem reward' },
-        { status: 400 }
+        { error: errorMsg },
+        { status }
       );
     }
 
@@ -51,6 +73,7 @@ export async function POST(
       budgetWarning: result.budgetWarning,
     });
   } catch (error) {
+    console.log('DEBUG REDEEM ERROR:', error);
     logger.error('Redeem reward error:', error);
     return NextResponse.json(
       { error: 'Failed to redeem reward' },

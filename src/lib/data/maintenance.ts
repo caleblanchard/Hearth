@@ -264,9 +264,22 @@ export async function getMaintenanceItem(itemId: string) {
 export async function completeMaintenanceItem(
   itemId: string,
   completedBy: string,
-  notes?: string
+  notes?: string,
+  extra?: {
+    cost?: number;
+    serviceProvider?: string;
+    photoUrls?: string[];
+  }
 ) {
-  return recordMaintenanceCompletion(itemId, completedBy, notes)
+  return recordMaintenanceCompletion({
+    maintenance_item_id: itemId,
+    completed_by: completedBy,
+    completed_at: new Date().toISOString(),
+    notes: notes || null,
+    cost: extra?.cost || null,
+    service_provider: extra?.serviceProvider || null,
+    photo_urls: extra?.photoUrls || [],
+  })
 }
 
 /**

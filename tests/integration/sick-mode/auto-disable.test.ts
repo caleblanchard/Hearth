@@ -84,7 +84,7 @@ describe('POST /api/cron/sick-mode-auto-disable', () => {
       where: { id: 'sick-1' },
       data: {
         isActive: false,
-        endedAt: expect.any(Date),
+        endedAt: expect.any(String),
       },
     });
 
@@ -94,8 +94,7 @@ describe('POST /api/cron/sick-mode-auto-disable', () => {
         familyId: 'family-1',
         memberId: expect.any(String),
         action: 'SICK_MODE_ENDED',
-        entityType: 'SICK_MODE',
-        entityId: 'sick-1',
+        result: 'SUCCESS',
         metadata: {
           reason: 'Auto-disabled after 24 hours',
           memberName: 'Child 1',
@@ -275,7 +274,7 @@ describe('POST /api/cron/sick-mode-auto-disable', () => {
       where: { id: 'sick-1' },
       data: {
         isActive: false,
-        endedAt: expect.any(Date),
+        endedAt: expect.any(String),
       },
     });
   });

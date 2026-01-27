@@ -57,17 +57,15 @@ describe('/api/allowance', () => {
       expect(response.status).toBe(200)
       expect(data.schedules).toEqual(mockSchedules)
       expect(dbMock.allowanceSchedule.findMany).toHaveBeenCalledWith({
-        where: {
-          member: {
-            familyId: session.user.familyId,
-          },
-        },
         include: {
           member: {
             select: {
               id: true,
               name: true,
               email: true,
+            },
+            where: {
+              familyId: session.user.familyId,
             },
           },
         },
@@ -86,11 +84,13 @@ describe('/api/allowance', () => {
 
       expect(dbMock.allowanceSchedule.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {
-            member: {
-              familyId: 'family-123',
-            },
-          },
+          include: expect.objectContaining({
+            member: expect.objectContaining({
+              where: {
+                familyId: 'family-123',
+              },
+            }),
+          }),
         })
       )
     })
@@ -137,7 +137,7 @@ describe('/api/allowance', () => {
       const data = await response.json()
 
       expect(response.status).toBe(403)
-      expect(data.error).toBe('Forbidden')
+      expect(data.error).toBe('Forbidden - Parent access required')
     })
 
     it('should validate required fields', async () => {
@@ -326,7 +326,7 @@ describe('/api/allowance', () => {
           dayOfMonth: null,
           isActive: true,
           isPaused: false,
-          startDate: expect.any(Date),
+          startDate: expect.any(String),
           endDate: null,
         },
         include: {
@@ -421,8 +421,8 @@ describe('/api/allowance', () => {
       expect(dbMock.allowanceSchedule.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            startDate: new Date(startDate),
-            endDate: new Date(endDate),
+            startDate: new Date(startDate).toISOString(),
+            endDate: new Date(endDate).toISOString(),
           }),
         })
       )

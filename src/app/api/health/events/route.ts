@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
       eventType,
       title,
       description,
+      notes,
       severity,
       startedAt,
     } = body;
@@ -113,6 +114,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
+    // Severity validation
+    if (typeof severity === 'number') {
+      if (severity < 1 || severity > 10) {
+        return NextResponse.json({ error: 'Severity must be between 1 and 10' }, { status: 400 });
+      }
+    }
+
     // Verify member belongs to family
     const { data: member } = await supabase
       .from('family_members')
@@ -125,6 +133,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
+    // Permission check: Children can only create events for themselves
+    if (authContext.user.role === 'CHILD' && targetMemberId !== memberId) {
+      return NextResponse.json(
+        { error: 'Children can only create health events for themselves' },
+        { status: 403 }
+      );
+    }
+
     // Create event
     const severityMap: Record<string, number> = {
       'LOW': 1,
@@ -132,11 +148,19 @@ export async function POST(request: NextRequest) {
       'HIGH': 3,
       'CRITICAL': 4,
     };
+    
+    let severityValue = 2;
+    if (typeof severity === 'number') {
+      severityValue = severity;
+    } else if (severity && typeof severity === 'string') {
+      severityValue = severityMap[severity] || 2;
+    }
+
     const event = await createHealthEvent({
       member_id: targetMemberId,
       event_type: eventType,
-      notes: description?.trim() || title.trim() || null,
-      severity: severity ? severityMap[severity] || 2 : 2,
+      notes: notes?.trim() || description?.trim() || title.trim() || null,
+      severity: severityValue,
       started_at: startedAt ? new Date(startedAt).toISOString() : new Date().toISOString(),
     });
 
@@ -155,7 +179,7 @@ export async function POST(request: NextRequest) {
       success: true,
       event,
       message: 'Health event created successfully',
-    });
+    }, { status: 201 });
   } catch (error) {
     logger.error('Create health event error:', error);
     return NextResponse.json(

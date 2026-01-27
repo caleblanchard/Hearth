@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 /**
@@ -62,6 +62,11 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
+    }
+
     const body = await request.json();
 
     const { data: family, error } = await supabase
@@ -79,7 +84,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({
       success: true,
       family,
-      message: 'Family updated successfully',
+      message: 'Family settings updated successfully',
     });
   } catch (error) {
     logger.error('Error updating family:', error);

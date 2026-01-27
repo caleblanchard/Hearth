@@ -268,7 +268,8 @@ describe('/api/shopping/items', () => {
           familyId: session.user.familyId,
           memberId: session.user.id,
           action: 'SHOPPING_ITEM_ADDED',
-          entityType: 'ShoppingItem',
+          entityType: 'SHOPPING_ITEM',
+          entityId: 'item-1',
           result: 'SUCCESS',
           metadata: expect.objectContaining({
             itemName: 'Milk',

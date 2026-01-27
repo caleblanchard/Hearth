@@ -45,6 +45,16 @@ jest.mock('next/server', () => ({
     async json() {
       return typeof this._body === 'string' ? JSON.parse(this._body) : this._body
     }
+    async text() {
+      return typeof this._body === 'string' ? this._body : JSON.stringify(this._body)
+    }
+    clone() {
+      return new NextRequest(this.url, {
+        method: this.method,
+        headers: this.headers,
+        body: this._body,
+      })
+    }
   },
 }))
 
@@ -113,12 +123,18 @@ jest.mock('@/lib/supabase/server', () => {
   }
 })
 
+jest.mock('@/lib/supabase/admin', () => {
+  const { createSupabaseMockClient } = require('@/lib/test-utils/supabase-db-bridge')
+  const createAdminClient = jest.fn(() => createSupabaseMockClient())
+  return { createAdminClient }
+})
+
 // Suppress console errors in tests
-global.console = {
-  ...console,
-  error: jest.fn(),
-  warn: jest.fn(),
-}
+// global.console = {
+//   ...console,
+//   error: jest.fn(),
+//   warn: jest.fn(),
+// }
 
 beforeEach(() => {
   const testName = expect.getState().currentTestName?.toLowerCase() || ''

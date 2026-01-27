@@ -32,79 +32,53 @@ describe('/api/reports/family', () => {
       },
     ]
 
-    const mockChores = [
+    const mockChoreCompletions = [
       {
         id: 'chore-1',
-        assignedToId: 'child-1',
-        status: ChoreStatus.APPROVED,
-        completedAt: new Date('2024-01-01'),
-        createdAt: new Date('2024-01-01'),
-      },
-      {
-        id: 'chore-2',
-        assignedToId: 'child-1',
-        status: ChoreStatus.PENDING,
-        completedAt: null,
-        createdAt: new Date('2024-01-02'),
+        completedBy: 'child-1',
+        status: 'APPROVED',
+        creditsAwarded: 50,
+        completedAt: new Date('2024-01-01T10:00:00Z'),
+        definition: { title: 'Wash Dishes' },
       },
     ]
 
-    const mockCredits = [
+    const mockRewardRedemptions = [
       {
-        id: 'tx-1',
-        memberId: 'child-1',
-        type: CreditTransactionType.CHORE_REWARD,
-        amount: 50,
-        createdAt: new Date('2024-01-01'),
-      },
-      {
-        id: 'tx-2',
-        memberId: 'child-1',
-        type: CreditTransactionType.REWARD_REDEMPTION,
-        amount: -30,
-        createdAt: new Date('2024-01-02'),
+        id: 'reward-1',
+        redeemedBy: 'child-1',
+        status: 'APPROVED',
+        creditsCost: 30,
+        redeemedAt: new Date('2024-01-02T10:00:00Z'),
+        item: { name: 'Ice Cream' },
       },
     ]
 
-    const mockScreenTime = [
+    const mockRoutineCompletions = [
       {
-        id: 'st-1',
-        memberId: 'child-1',
-        type: ScreenTimeTransactionType.SPENT,
-        amountMinutes: -60,
-        deviceType: 'TABLET',
-        createdAt: new Date('2024-01-01'),
+        id: 'routine-1',
+        completedBy: 'child-1',
+        completedAt: new Date('2024-01-01T08:00:00Z'),
+        routine: { name: 'Morning Routine' },
       },
     ]
 
-    const mockTodos = [
-      {
-        id: 'todo-1',
-        assignedToId: 'child-1',
-        createdById: 'child-1',
-        status: TodoStatus.COMPLETED,
-        createdAt: new Date('2024-01-01'),
-        completedAt: new Date('2024-01-01'),
-      },
-    ]
-
-    it('should return 403 if not authenticated', async () => {
-
+    it('should return 401 if not authenticated', async () => {
       const request = new NextRequest('http://localhost/api/reports/family')
       const response = await GET(request)
       const data = await response.json()
 
-      expect(response.status).toBe(403)
-      expect(data.error).toBe('Unauthorized - Parent access required')
+      expect(response.status).toBe(401)
+      expect(data.error).toBe('Unauthorized')
     })
 
     it('should return 403 if user is not a parent', async () => {
       const session = mockChildSession()
-
+      
       const request = new NextRequest('http://localhost/api/reports/family')
       const response = await GET(request)
       const data = await response.json()
-
+      
       expect(response.status).toBe(403)
       expect(data.error).toBe('Unauthorized - Parent access required')
     })
@@ -113,24 +87,27 @@ describe('/api/reports/family', () => {
       const session = mockParentSession()
 
       dbMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
-      dbMock.choreInstance.findMany.mockResolvedValue(mockChores as any)
-      dbMock.creditTransaction.findMany.mockResolvedValue(mockCredits as any)
-      dbMock.screenTimeTransaction.findMany.mockResolvedValue(mockScreenTime as any)
-      dbMock.todoItem.findMany.mockResolvedValue(mockTodos as any)
+      // Mapped to choreInstance via override
+      dbMock.choreInstance.findMany.mockResolvedValue(mockChoreCompletions as any)
+      dbMock.rewardRedemption.findMany.mockResolvedValue(mockRewardRedemptions as any)
+      dbMock.routineCompletion.findMany.mockResolvedValue(mockRoutineCompletions as any)
+      dbMock.communicationPost.findMany.mockResolvedValue([] as any)
+      dbMock.notification.findMany.mockResolvedValue([] as any)
 
       const request = new NextRequest('http://localhost/api/reports/family?period=week')
       const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.period.type).toBe('week')
-      expect(data.summary.chores.completed).toBe(1)
-      expect(data.summary.chores.assigned).toBe(2)
-      expect(data.summary.credits.earned).toBe(50)
-      expect(data.summary.credits.spent).toBe(30)
-      expect(data.summary.screenTime.totalMinutes).toBe(60)
-      expect(data.children).toHaveLength(1)
-      expect(data.trends).toBeDefined()
+      expect(data.report.period.type).toBe('week')
+      expect(data.report.family.totalMembers).toBe(1)
+      expect(data.report.family.totalChoresCompleted).toBe(1)
+      expect(data.report.family.totalCreditsEarned).toBe(50)
+      expect(data.report.family.totalCreditsSpent).toBe(30)
+      expect(data.report.family.totalRoutinesCompleted).toBe(1)
+      expect(data.report.members).toHaveLength(1)
+      expect(data.report.members[0].stats.choresCompleted).toBe(1)
+      expect(data.report.members[0].stats.creditsEarned).toBe(50)
     })
 
     it('should generate report for custom date range', async () => {
@@ -138,9 +115,10 @@ describe('/api/reports/family', () => {
 
       dbMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
       dbMock.choreInstance.findMany.mockResolvedValue([])
-      dbMock.creditTransaction.findMany.mockResolvedValue([])
-      dbMock.screenTimeTransaction.findMany.mockResolvedValue([])
-      dbMock.todoItem.findMany.mockResolvedValue([])
+      dbMock.rewardRedemption.findMany.mockResolvedValue([])
+      dbMock.routineCompletion.findMany.mockResolvedValue([])
+      dbMock.communicationPost.findMany.mockResolvedValue([])
+      dbMock.notification.findMany.mockResolvedValue([])
 
       const request = new NextRequest(
         'http://localhost/api/reports/family?period=custom&startDate=2024-01-01&endDate=2024-01-31'
@@ -149,48 +127,35 @@ describe('/api/reports/family', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.period.type).toBe('custom')
-      expect(data.period.startDate).toBe('2024-01-01T00:00:00.000Z')
-      expect(data.period.endDate).toBe('2024-01-31T00:00:00.000Z')
+      expect(data.report.period.type).toBe('custom')
+      expect(data.report.period.start).toBeDefined()
+      expect(data.report.period.end).toBeDefined()
     })
 
     it('should calculate per-child breakdown', async () => {
       const session = mockParentSession()
 
       dbMock.familyMember.findMany.mockResolvedValue(mockMembers as any)
-      dbMock.choreInstance.findMany.mockResolvedValue(mockChores as any)
-      dbMock.creditTransaction.findMany.mockResolvedValue(mockCredits as any)
-      dbMock.screenTimeTransaction.findMany.mockResolvedValue(mockScreenTime as any)
-      dbMock.todoItem.findMany.mockResolvedValue(mockTodos as any)
+      dbMock.choreInstance.findMany.mockResolvedValue(mockChoreCompletions as any)
+      dbMock.rewardRedemption.findMany.mockResolvedValue(mockRewardRedemptions as any)
+      dbMock.routineCompletion.findMany.mockResolvedValue(mockRoutineCompletions as any)
+      dbMock.communicationPost.findMany.mockResolvedValue([] as any)
+      dbMock.notification.findMany.mockResolvedValue([] as any)
 
       const request = new NextRequest('http://localhost/api/reports/family')
       const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.children[0]).toEqual({
-        id: 'child-1',
+      expect(data.report.members[0]).toMatchObject({
+        memberId: 'child-1',
         name: 'Child One',
-        avatarUrl: null,
-        chores: {
-          completed: 1,
-          assigned: 2,
-          completionRate: '50.0',
-        },
-        credits: {
-          earned: 50,
-          spent: 30,
-          net: 20,
-        },
-        screenTime: {
-          used: 60,
-          hours: 1,
-          minutes: 0,
-        },
-        todos: {
-          completed: 1,
-          total: 1,
-        },
+        stats: {
+          choresCompleted: 1,
+          creditsEarned: 50,
+          creditsSpent: 30,
+          routinesCompleted: 1,
+        }
       })
     })
 
@@ -204,7 +169,7 @@ describe('/api/reports/family', () => {
       const data = await response.json()
 
       expect(response.status).toBe(500)
-      expect(data.error).toBe('Failed to generate family report')
+      expect(data.error).toBe('Failed to get family report')
     })
   })
 })

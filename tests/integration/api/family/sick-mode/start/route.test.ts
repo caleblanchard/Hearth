@@ -1,10 +1,6 @@
 // Set up mocks BEFORE any imports
 import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock';
-
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}));
+import { mockParentSession, mockChildSession, setMockSession } from '@/lib/test-utils/auth-mock';
 
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/family/sick-mode/start/route';
@@ -13,23 +9,8 @@ describe('/api/family/sick-mode/start', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetDbMock();
+    mockParentSession();
   });
-
-  const mockParentSession = {
-    user: {
-      id: 'parent-test-123',
-      familyId: 'family-test-123',
-      role: 'PARENT' as const,
-    },
-  };
-
-  const mockChildSession = {
-    user: {
-      id: 'child-test-123',
-      familyId: 'family-test-123',
-      role: 'CHILD' as const,
-    },
-  };
 
   const mockSickModeSettings = {
     id: 'settings-1',
@@ -68,6 +49,7 @@ describe('/api/family/sick-mode/start', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
+      setMockSession(null);
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/start', {
         method: 'POST',
         body: JSON.stringify({
@@ -80,6 +62,7 @@ describe('/api/family/sick-mode/start', () => {
     });
 
     it('should return 403 if child tries to start sick mode for another member', async () => {
+      mockChildSession();
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/start', {
         method: 'POST',
         body: JSON.stringify({
@@ -121,22 +104,18 @@ describe('/api/family/sick-mode/start', () => {
         data: {
           familyId: 'family-test-123',
           memberId: 'child-test-123',
-          triggeredBy: 'MANUAL',
-          notes: 'Child is sick',
+          reason: 'Child is sick',
+          startedAt: expect.any(String),
+          startedBy: 'parent-test-123',
           isActive: true,
-        },
-        include: {
-          member: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+          healthEventId: undefined,
+          triggeredBy: 'MANUAL',
         },
       });
     });
 
     it('should allow children to start sick mode for themselves', async () => {
+      mockChildSession();
       dbMock.familyMember.findUnique.mockResolvedValue({
         id: 'child-test-123',
         familyId: 'family-test-123',
@@ -261,11 +240,13 @@ describe('/api/family/sick-mode/start', () => {
         data: {
           familyId: 'family-test-123',
           memberId: 'child-test-123',
+          isActive: true,
+          startedBy: 'parent-test-123',
+          startedAt: expect.any(String),
+          reason: undefined,
           triggeredBy: 'AUTO_FROM_HEALTH_EVENT',
           healthEventId: 'health-event-1',
-          isActive: true,
         },
-        include: expect.any(Object),
       });
     });
 
@@ -321,9 +302,10 @@ describe('/api/family/sick-mode/start', () => {
           entityType: 'SickModeInstance',
           entityId: 'instance-1',
           result: 'SUCCESS',
-          metadata: {
+          details: {
             sickMemberId: 'child-test-123',
             triggeredBy: 'MANUAL',
+            reason: undefined,
           },
         },
       });
@@ -337,7 +319,8 @@ describe('/api/family/sick-mode/start', () => {
       } as any);
       dbMock.sickModeInstance.findFirst.mockResolvedValue(null);
       dbMock.sickModeSettings.findUnique.mockResolvedValue(null);
-      dbMock.sickModeSettings.create.mockResolvedValue(mockSickModeSettings as any);
+      dbMock.sickModeSettings.findFirst.mockResolvedValue(null);
+      dbMock.sickModeSettings.upsert.mockResolvedValue(mockSickModeSettings as any);
       dbMock.sickModeInstance.create.mockResolvedValue(mockSickModeInstance as any);
 
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/start', {
@@ -349,11 +332,7 @@ describe('/api/family/sick-mode/start', () => {
       const response = await POST(request);
 
       expect(response.status).toBe(201);
-      expect(dbMock.sickModeSettings.create).toHaveBeenCalledWith({
-        data: {
-          familyId: 'family-test-123',
-        },
-      });
+      expect(dbMock.sickModeSettings.upsert).toHaveBeenCalled();
     });
   });
 });

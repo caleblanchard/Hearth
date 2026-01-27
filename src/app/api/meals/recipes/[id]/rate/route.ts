@@ -61,6 +61,22 @@ export async function POST(
       notes: notes || null,
     });
 
+    // Audit log
+    const { error: auditError } = await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'RECIPE_RATED',
+      result: 'SUCCESS',
+      metadata: {
+        recipeId: id,
+        rating,
+      },
+    });
+
+    if (auditError) {
+      logger.error('Error creating audit log:', auditError);
+    }
+
     return NextResponse.json({
       success: true,
       rating: ratingRecord,

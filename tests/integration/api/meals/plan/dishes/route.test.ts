@@ -107,6 +107,9 @@ describe('POST /api/meals/plan/dishes', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         },
+        meal_plans: {
+          family_id: 'different-family',
+        },
       } as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/plan/dishes', {
@@ -178,11 +181,14 @@ describe('POST /api/meals/plan/dishes', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+      meal_plans: {
+        family_id: familyId,
+      },
     } as any;
 
     it('should create a dish with custom name', async () => {
       dbMock.mealPlanEntry.findUnique.mockResolvedValue(mockMealEntry);
-      dbMock.mealPlanDish.count.mockResolvedValue(0);
+      dbMock.mealPlanDish.findMany.mockResolvedValue([]);
       dbMock.mealPlanDish.create.mockResolvedValue({
         id: 'dish-1',
         mealEntryId: 'entry-1',
@@ -243,7 +249,7 @@ describe('POST /api/meals/plan/dishes', () => {
 
       dbMock.mealPlanEntry.findUnique.mockResolvedValue(mockMealEntry);
       dbMock.recipe.findUnique.mockResolvedValue(mockRecipe as any);
-      dbMock.mealPlanDish.count.mockResolvedValue(1);
+      dbMock.mealPlanDish.findMany.mockResolvedValue([{ sortOrder: 0 } as any]);
       dbMock.mealPlanDish.create.mockResolvedValue({
         id: 'dish-2',
         mealEntryId: 'entry-1',
@@ -304,7 +310,7 @@ describe('POST /api/meals/plan/dishes', () => {
 
       dbMock.mealPlanEntry.findUnique.mockResolvedValue(mockMealEntry);
       dbMock.recipe.findUnique.mockResolvedValue(mockRecipe as any);
-      dbMock.mealPlanDish.count.mockResolvedValue(0);
+      dbMock.mealPlanDish.findMany.mockResolvedValue([]);
       dbMock.mealPlanDish.create.mockResolvedValue({
         id: 'dish-1',
         mealEntryId: 'entry-1',
@@ -341,7 +347,7 @@ describe('POST /api/meals/plan/dishes', () => {
 
     it('should calculate correct sortOrder based on existing dishes', async () => {
       dbMock.mealPlanEntry.findUnique.mockResolvedValue(mockMealEntry);
-      dbMock.mealPlanDish.count.mockResolvedValue(3);
+      dbMock.mealPlanDish.findMany.mockResolvedValue([{ sortOrder: 2 } as any]);
       dbMock.mealPlanDish.create.mockResolvedValue({
         id: 'dish-4',
         mealEntryId: 'entry-1',
@@ -382,7 +388,7 @@ describe('POST /api/meals/plan/dishes', () => {
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBe('Failed to create dish');
+      expect(data.error).toBe('Database error');
     });
   });
 });

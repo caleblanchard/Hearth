@@ -207,15 +207,18 @@ describe('POST /api/routines/[id]/complete', () => {
       date: today,
     };
 
-    dbMock.routine.findUnique.mockResolvedValue(routine as any);
-    dbMock.familyMember.findFirst.mockResolvedValue({
+    const childMember = {
       id: 'child-123',
       familyId: session.user.familyId,
       name: 'Test Child',
       email: null,
       role: 'CHILD',
       age: 8,
-    } as any);
+    };
+
+    dbMock.routine.findUnique.mockResolvedValue(routine as any);
+    dbMock.familyMember.findFirst.mockResolvedValue(childMember as any);
+    dbMock.familyMember.findUnique.mockResolvedValue(childMember as any);
     dbMock.routineCompletion.create.mockResolvedValue(completion as any);
     dbMock.auditLog.create.mockResolvedValue({} as any);
 

@@ -114,7 +114,7 @@ describe('POST /api/projects/templates', () => {
 
       expect(response.status).toBe(403);
       const data = await response.json();
-      expect(data.error).toBe('Only parents can create projects');
+      expect(data.error).toBe('Only parents can manage projects');
     });
   });
 
@@ -167,8 +167,7 @@ describe('POST /api/projects/templates', () => {
 
       dbMock.project.create.mockResolvedValue(mockProject as any);
       dbMock.project.findUnique.mockResolvedValue(mockCompleteProject as any);
-      dbMock.projectTask.create.mockResolvedValue({} as any);
-      dbMock.taskDependency.create.mockResolvedValue({} as any);
+      dbMock.projectTask.createMany.mockResolvedValue({ count: 5 } as any);
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {
@@ -194,16 +193,14 @@ describe('POST /api/projects/templates', () => {
       };
 
       dbMock.project.create.mockResolvedValue(mockProject as any);
-      dbMock.projectTask.create.mockResolvedValue({} as any);
+      dbMock.projectTask.createMany.mockResolvedValue({ count: 5 } as any);
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {
         method: 'POST',
         body: JSON.stringify({
           templateId: 'birthday-party',
-          customizations: {
-            name: "Sarah's 10th Birthday",
-          },
+          name: "Sarah's 10th Birthday",
         }),
       });
       await POST(request);
@@ -220,16 +217,14 @@ describe('POST /api/projects/templates', () => {
     it('should allow customizing budget', async () => {
 
       dbMock.project.create.mockResolvedValue({} as any);
-      dbMock.projectTask.create.mockResolvedValue({} as any);
+      dbMock.projectTask.createMany.mockResolvedValue({ count: 5 } as any);
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {
         method: 'POST',
         body: JSON.stringify({
           templateId: 'birthday-party',
-          customizations: {
-            budget: 1000,
-          },
+          budget: 1000,
         }),
       });
       await POST(request);
@@ -251,7 +246,7 @@ describe('POST /api/projects/templates', () => {
       };
 
       dbMock.project.create.mockResolvedValue(mockProject as any);
-      dbMock.projectTask.create.mockResolvedValue({} as any);
+      dbMock.projectTask.createMany.mockResolvedValue({ count: 7 } as any); // birthday-party has 7 tasks
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {
@@ -263,31 +258,30 @@ describe('POST /api/projects/templates', () => {
       // Should create project
       expect(dbMock.project.create).toHaveBeenCalledTimes(1);
 
-      // Should create multiple tasks (birthday party template has several tasks)
-      expect(dbMock.projectTask.create).toHaveBeenCalled();
+      // Should create multiple tasks
+      expect(dbMock.projectTask.createMany).toHaveBeenCalled();
     });
 
     it('should set dates based on start date if provided', async () => {
 
       dbMock.project.create.mockResolvedValue({} as any);
-      dbMock.projectTask.create.mockResolvedValue({} as any);
+      dbMock.projectTask.createMany.mockResolvedValue({ count: 5 } as any);
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {
         method: 'POST',
         body: JSON.stringify({
           templateId: 'birthday-party',
-          customizations: {
-            startDate: '2026-03-01',
-          },
+          startDate: '2026-03-01',
         }),
       });
       await POST(request);
 
+      // Note: date expectation simplified as exact match is hard due to timezone
       expect(dbMock.project.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            startDate: expect.any(Date),
+             startDate: expect.stringMatching(/2026-03-01/),
           }),
         })
       );
@@ -304,7 +298,7 @@ describe('POST /api/projects/templates', () => {
       };
 
       dbMock.project.create.mockResolvedValue(mockProject as any);
-      dbMock.projectTask.create.mockResolvedValue({} as any);
+      dbMock.projectTask.createMany.mockResolvedValue({ count: 5 } as any);
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/templates', {
@@ -319,10 +313,13 @@ describe('POST /api/projects/templates', () => {
           memberId: 'parent-test-123',
           action: 'PROJECT_CREATED',
           result: 'SUCCESS',
-          metadata: expect.objectContaining({
+          entityType: 'PROJECT',
+          entityId: 'project-1',
+          metadata: {
             projectId: 'project-1',
             templateId: 'birthday-party',
-          }),
+            name: undefined,
+          },
         },
       });
     });

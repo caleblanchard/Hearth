@@ -76,13 +76,14 @@ describe('/api/rewards/redemptions', () => {
 
       expect(dbMock.rewardRedemption.findMany).toHaveBeenCalledWith({
         where: {
-          reward: {
-            familyId: session.user.familyId,
-          },
           status: 'PENDING',
         },
         include: {
-          reward: true,
+          reward: {
+            where: {
+              familyId: session.user.familyId,
+            },
+          },
           member: {
             select: {
               id: true,

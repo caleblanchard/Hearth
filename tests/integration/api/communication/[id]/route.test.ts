@@ -445,7 +445,7 @@ describe('DELETE /api/communication/[id]', () => {
 
     expect(response.status).toBe(403);
     const data = await response.json();
-    expect(data.error).toContain('permission');
+    expect(data.error).toMatch(/permission|author/i);
   });
 
   it('should create audit log on deletion', async () => {

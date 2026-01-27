@@ -119,7 +119,7 @@ describe('/api/maintenance/[id]/complete', () => {
       data: {
         maintenanceItemId: 'item-1',
         completedBy: 'parent-test-123',
-        completedAt: now,
+        completedAt: now.toISOString(),
         cost: null,
         serviceProvider: null,
         notes: null,
@@ -130,7 +130,8 @@ describe('/api/maintenance/[id]/complete', () => {
     expect(dbMock.maintenanceItem.update).toHaveBeenCalledWith({
       where: { id: 'item-1' },
       data: {
-        lastCompletedAt: now,
+        lastCompletedAt: now.toISOString(),
+        nextDueAt: expect.any(String),
       },
     });
 

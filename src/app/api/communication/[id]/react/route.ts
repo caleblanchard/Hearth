@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
-import { addPostReaction, removePostReaction } from '@/lib/data/communication';
+import { addPostReaction, removePostReaction, getCommunicationPost } from '@/lib/data/communication';
 import { logger } from '@/lib/logger';
 
 export async function POST(
@@ -55,10 +55,12 @@ export async function POST(
     }
 
     const reaction = await addPostReaction(id, memberId, emoji.trim());
+    const updatedPost = await getCommunicationPost(id);
 
     return NextResponse.json({
       success: true,
       reaction,
+      post: updatedPost,
       message: 'Reaction added successfully',
     });
   } catch (error) {
@@ -98,15 +100,36 @@ export async function DELETE(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    // Verify post belongs to user's family
     if (post.family_id !== familyId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    await removePostReaction(id, memberId);
+    // Try to get emoji from body first, then query params
+    let emoji: string | undefined;
+    try {
+      const body = await request.json();
+      emoji = body.emoji;
+    } catch {
+      // Body might be empty or invalid JSON
+    }
+
+    if (!emoji) {
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      emoji = searchParams.get('emoji') || undefined;
+    }
+
+    if (!emoji) {
+      return NextResponse.json({ error: 'Emoji is required' }, { status: 400 });
+    }
+
+    await removePostReaction(id, memberId, emoji);
+    
+    const updatedPost = await getCommunicationPost(id);
 
     return NextResponse.json({
       success: true,
+      post: updatedPost,
       message: 'Reaction removed successfully',
     });
   } catch (error) {

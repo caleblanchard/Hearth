@@ -137,23 +137,17 @@ describe('/api/rewards/[id]', () => {
 
       expect(dbMock.rewardItem.findUnique).toHaveBeenCalledWith({
         where: { id: rewardId },
+        select: { familyId: true },
       })
 
-      expect(dbMock.rewardItem.update).toHaveBeenCalledWith({
-        where: { id: rewardId },
-        data: {
-          name: 'Updated Reward',
-          description: 'Updated description',
-        },
-        include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      })
+      expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'REWARD_UPDATED',
+            entityId: rewardId,
+          }),
+        })
+      )
     })
 
     it('should return 500 on error', async () => {
@@ -255,7 +249,8 @@ describe('/api/rewards/[id]', () => {
         ...mockReward,
         familyId: session.user.familyId,
       } as any)
-      dbMock.rewardItem.delete.mockResolvedValue(mockReward as any)
+      dbMock.rewardItem.update.mockResolvedValue(mockReward as any)
+      dbMock.auditLog.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/rewards/123', {
         method: 'DELETE',
@@ -270,11 +265,22 @@ describe('/api/rewards/[id]', () => {
 
       expect(dbMock.rewardItem.findUnique).toHaveBeenCalledWith({
         where: { id: rewardId },
+        select: { familyId: true },
       })
 
-      expect(dbMock.rewardItem.delete).toHaveBeenCalledWith({
+      expect(dbMock.rewardItem.update).toHaveBeenCalledWith({
         where: { id: rewardId },
+        data: { status: 'INACTIVE' },
       })
+
+      expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'REWARD_DELETED',
+            entityId: rewardId,
+          }),
+        })
+      )
     })
 
     it('should return 500 on error', async () => {
@@ -284,7 +290,7 @@ describe('/api/rewards/[id]', () => {
         ...mockReward,
         familyId: session.user.familyId,
       } as any)
-      dbMock.rewardItem.delete.mockRejectedValue(new Error('Database error'))
+      dbMock.rewardItem.update.mockRejectedValue(new Error('Database error'))
 
       const request = new NextRequest('http://localhost/api/rewards/123', {
         method: 'DELETE',

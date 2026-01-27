@@ -88,8 +88,12 @@ describe('GET /api/rules/executions', () => {
     expect(data.total).toBe(2);
     expect(dbMock.ruleExecution.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          rule: { familyId: 'family-test-123' },
+        include: expect.objectContaining({
+          rule: expect.objectContaining({
+            where: expect.objectContaining({
+              familyId: 'family-test-123',
+            }),
+          }),
         }),
       })
     );
@@ -165,8 +169,8 @@ describe('GET /api/rules/executions', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           executedAt: expect.objectContaining({
-            gte: expect.any(Date),
-            lte: expect.any(Date),
+            gte: '2024-01-01',
+            lte: '2024-01-31',
           }),
         }),
       })

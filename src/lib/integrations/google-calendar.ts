@@ -489,4 +489,19 @@ export class GoogleCalendarClient {
 
     return tokenInfo.email!;
   }
+
+  /**
+   * Get user email from access token
+   *
+   * @param accessToken - Access token
+   * @returns User's email address
+   */
+  async getUserEmailFromToken(accessToken: string): Promise<string> {
+    this.oauth2Client.setCredentials({
+      access_token: accessToken,
+    });
+
+    const tokenInfo = await this.oauth2Client.getTokenInfo(accessToken);
+    return tokenInfo.email!;
+  }
 }

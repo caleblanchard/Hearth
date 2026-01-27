@@ -42,6 +42,7 @@ describe('/api/meals/recipes', () => {
           id: 'parent-test-123',
           name: 'Test User',
         },
+        ratings: [],
         ingredients: [
           {
             id: 'ing-1',
@@ -84,25 +85,14 @@ describe('/api/meals/recipes', () => {
           familyId: 'family-test-123',
         },
         include: {
-          creator: {
+          ratings: {
             select: {
-              id: true,
-              name: true,
-            },
-          },
-          ingredients: {
-            orderBy: {
-              sortOrder: 'asc',
-            },
-          },
-          _count: {
-            select: {
-              ratings: true,
+              rating: true,
             },
           },
         },
         orderBy: {
-          createdAt: 'desc',
+          name: 'asc',
         },
       });
     });
@@ -151,10 +141,20 @@ describe('/api/meals/recipes', () => {
       expect(dbMock.recipe.findMany).toHaveBeenCalledWith({
         where: {
           familyId: 'family-test-123',
-          name: {
-            contains: 'spaghetti',
-            mode: 'insensitive',
-          },
+          OR: [
+            {
+              name: {
+                contains: 'spaghetti',
+                mode: 'insensitive',
+              },
+            },
+            {
+              description: {
+                contains: 'spaghetti',
+                mode: 'insensitive',
+              },
+            },
+          ],
         },
         include: expect.any(Object),
         orderBy: expect.any(Object),
@@ -175,10 +175,20 @@ describe('/api/meals/recipes', () => {
           familyId: 'family-test-123',
           category: 'DINNER',
           isFavorite: true,
-          name: {
-            contains: 'pasta',
-            mode: 'insensitive',
-          },
+          OR: [
+            {
+              name: {
+                contains: 'pasta',
+                mode: 'insensitive',
+              },
+            },
+            {
+              description: {
+                contains: 'pasta',
+                mode: 'insensitive',
+              },
+            },
+          ],
         },
         include: expect.any(Object),
         orderBy: expect.any(Object),
@@ -280,22 +290,6 @@ describe('/api/meals/recipes', () => {
           category: null,
           dietaryTags: [],
           createdBy: 'parent-test-123',
-          ingredients: {
-            create: [],
-          },
-        },
-        include: {
-          ingredients: {
-            orderBy: {
-              sortOrder: 'asc',
-            },
-          },
-          creator: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
         },
       });
 
@@ -304,6 +298,8 @@ describe('/api/meals/recipes', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'RECIPE_CREATED',
+          entityType: 'RECIPE',
+          entityId: 'recipe-1',
           result: 'SUCCESS',
           metadata: {
             recipeId: 'recipe-1',
@@ -405,31 +401,21 @@ describe('/api/meals/recipes', () => {
           category: 'DINNER',
           dietaryTags: ['VEGETARIAN'],
           createdBy: 'parent-test-123',
-          ingredients: {
-            create: [
-              {
-                name: 'Pasta',
-                quantity: 1,
-                unit: 'lb',
-                notes: 'spaghetti',
-                sortOrder: 0,
-              },
-            ],
-          },
         },
-        include: {
-          ingredients: {
-            orderBy: {
-              sortOrder: 'asc',
-            },
+      });
+
+      // Verify ingredients creation
+      expect(dbMock.recipeIngredient.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            recipeId: 'recipe-1',
+            name: 'Pasta',
+            quantity: 1,
+            unit: 'lb',
+            notes: 'spaghetti',
+            sortOrder: 0,
           },
-          creator: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
+        ],
       });
 
       jest.useRealTimers();
@@ -459,17 +445,13 @@ describe('/api/meals/recipes', () => {
       });
       await POST(request);
 
-      expect(dbMock.recipe.create).toHaveBeenCalledWith(
+      expect(dbMock.recipeIngredient.createMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            ingredients: {
-              create: [
-                expect.objectContaining({ name: 'Ingredient 1', sortOrder: 0 }),
-                expect.objectContaining({ name: 'Ingredient 2', sortOrder: 1 }),
-                expect.objectContaining({ name: 'Ingredient 3', sortOrder: 2 }),
-              ],
-            },
-          }),
+          data: [
+            expect.objectContaining({ name: 'Ingredient 1', sortOrder: 0 }),
+            expect.objectContaining({ name: 'Ingredient 2', sortOrder: 1 }),
+            expect.objectContaining({ name: 'Ingredient 3', sortOrder: 2 }),
+          ],
         })
       );
     });

@@ -460,7 +460,7 @@ describe('POST /api/projects/[id]/tasks', () => {
           description: 'Find and book party venue',
           status: 'IN_PROGRESS',
           assigneeId: 'parent-test-123',
-          dueDate: new Date('2026-02-10'),
+          dueDate: '2026-02-10T00:00:00.000Z',
           estimatedHours: 2,
           actualHours: 0.5,
           sortOrder: 2,
@@ -587,6 +587,8 @@ describe('POST /api/projects/[id]/tasks', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'PROJECT_TASK_CREATED',
+          entityId: 'task-1',
+          entityType: 'PROJECT_TASK',
           result: 'SUCCESS',
           metadata: {
             projectId: 'project-1',

@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
     const authContext = await getAuthContext();
 
     if (!authContext) {
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { templateId, name } = body;
+    const { templateId, name, budget, startDate, description } = body;
 
     if (!templateId) {
       return NextResponse.json({ error: 'Template ID is required' }, { status: 400 });
@@ -71,15 +72,36 @@ export async function POST(request: NextRequest) {
     const project = await createProjectFromTemplate(templateId, {
       familyId,
       title: name,
+      budget,
+      startDate,
+      description
+    });
+
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'PROJECT_CREATED',
+      result: 'SUCCESS',
+      entity_type: 'PROJECT',
+      entity_id: project.id,
+      metadata: { 
+        projectId: project.id,
+        templateId,
+        name
+      },
     });
 
     return NextResponse.json({
       success: true,
       project,
       message: 'Project created from template successfully',
-    });
-  } catch (error) {
+    }, { status: 201 });
+  } catch (error: any) {
+    if (error.message === 'Template not found') {
+       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+    }
     logger.error('Error creating project from template:', error);
-    return NextResponse.json({ error: 'Failed to create project' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create project from template' }, { status: 500 });
   }
 }

@@ -290,8 +290,8 @@ describe('GET /api/rules', () => {
     expect(dbMock.automationRule.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         include: expect.objectContaining({
-          _count: expect.objectContaining({
-            select: { executions: true },
+          executions: expect.objectContaining({
+            select: { count: true },
           }),
         }),
       })
@@ -445,6 +445,11 @@ describe('POST /api/rules', () => {
   });
 
   it('should return 400 if trigger is not an object', async () => {
+    (validateRuleConfiguration as jest.Mock).mockReturnValue({
+      valid: false,
+      errors: ['Invalid trigger configuration']
+    });
+
     const session = mockParentSession();
 
     const request = new Request('http://localhost/api/rules', {
@@ -525,9 +530,9 @@ describe('POST /api/rules', () => {
   it('should return 400 if rule configuration is invalid', async () => {
     const session = mockParentSession();
 
-    validateRuleConfiguration.mockReturnValue({
+    (validateRuleConfiguration as jest.Mock).mockReturnValue({
       valid: false,
-      error: 'Invalid trigger configuration',
+      errors: ['Invalid trigger configuration'],
     });
 
     const request = new Request('http://localhost/api/rules', {

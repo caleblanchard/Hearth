@@ -34,10 +34,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (query.length < 2) {
+      return NextResponse.json(
+        { error: 'Search query must be at least 2 characters' },
+        { status: 400 }
+      );
+    }
+
     const results = await searchRecipes(familyId, query);
 
-    // Map to camelCase for frontend
-    const mappedResults = results.map((recipe: any) => ({
+    // Map to camelCase for frontend and limit to top 5
+    const mappedResults = results
+      .slice(0, 5)
+      .map((recipe: any) => ({
       id: recipe.id,
       name: recipe.name,
       description: recipe.description,
@@ -48,10 +57,10 @@ export async function GET(request: NextRequest) {
       cookTimeMinutes: recipe.cook_time_minutes,
       difficulty: recipe.difficulty,
       averageRating: recipe.averageRating,
-      matchScore: recipe.matchScore,
+      score: recipe.matchScore,
     }));
 
-    return NextResponse.json({ results: mappedResults });
+    return NextResponse.json({ recipes: mappedResults });
   } catch (error) {
     logger.error('Recipe search error:', error);
     return NextResponse.json({ error: 'Failed to search recipes' }, { status: 500 });

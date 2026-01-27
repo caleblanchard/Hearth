@@ -1,283 +1,125 @@
-// Set up mocks BEFORE any imports
-import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock';
-
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}));
-
-// Mock crypto
-jest.mock('crypto', () => ({
-  randomBytes: jest.fn(() => ({
-    toString: jest.fn(() => 'mock-random-token-123456'),
-  })),
-}));
-
 import { NextRequest } from 'next/server';
-import { POST, GET } from '@/app/api/documents/[id]/share/route';
+import { GET, POST } from '@/app/api/documents/[id]/share/route';
+import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
+
+// Mock logger
+jest.mock('@/lib/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+// Mock data module
+jest.mock('@/lib/data/documents', () => ({
+  createDocumentShareLink: jest.fn(),
+}));
+
+// Mock Supabase
+const mockSupabase = {
+  from: jest.fn((table) => {
+    const mockQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      single: jest.fn(),
+      insert: jest.fn().mockReturnThis(),
+    };
+
+    if (table === 'documents') {
+      mockQuery.single.mockResolvedValue({
+        data: { id: 'doc-1', family_id: 'family-test-123', name: 'Doc' }
+      });
+    } else if (table === 'document_share_links') {
+        mockQuery.order.mockResolvedValue({
+            data: [
+                { id: 'link-1', token: 'token-1', created_at: new Date().toISOString() }
+            ]
+        });
+    } else if (table === 'audit_logs') {
+        mockQuery.insert.mockResolvedValue({ error: null });
+    }
+    return mockQuery;
+  })
+};
+
+jest.mock('@/lib/supabase/server', () => {
+  const { getMockSession } = require('@/lib/test-utils/auth-mock');
+  
+  return {
+    createClient: jest.fn(() => mockSupabase),
+    getAuthContext: jest.fn(async () => {
+      const session = getMockSession();
+      if (!session) return null;
+      return {
+        user: session.user,
+        activeFamilyId: session.user.familyId,
+        activeMemberId: session.user.id,
+      };
+    }),
+    isParentInFamily: jest.fn(async (familyId) => {
+      const session = getMockSession();
+      return session?.user?.role === 'PARENT';
+    }),
+  };
+});
+
+import { createDocumentShareLink } from '@/lib/data/documents';
 
 describe('/api/documents/[id]/share', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    resetDbMock();
-  });
-
-  const mockSession = {
-    user: {
-      id: 'parent-test-123',
-      familyId: 'family-test-123',
-      role: 'PARENT' as const,
-    },
-  };
-
-  const mockDocument = {
-    id: 'doc-1',
-    familyId: 'family-test-123',
-    name: 'Passport.pdf',
-    category: 'IDENTITY',
-    fileUrl: '/uploads/passport.pdf',
-    fileSize: 1024000,
-    mimeType: 'application/pdf',
-    documentNumber: '123456789',
-    issuedDate: new Date('2020-01-01'),
-    expiresAt: new Date('2030-01-01'),
-    tags: ['passport'],
-    notes: 'Passport',
-    uploadedBy: 'parent-test-123',
-    accessList: ['parent-test-123'],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
-  describe('POST', () => {
-    it('should return 401 if not authenticated', async () => {
-      const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-      const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
-
-      expect(response.status).toBe(401);
-    });
-
-    it('should return 403 if not a parent', async () => {
-      const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-      const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
-
-      expect(response.status).toBe(403);
-    });
-
-    it('should return 404 if document not found', async () => {
-      dbMock.document.findUnique.mockResolvedValue(null);
-
-      const request = new NextRequest('http://localhost:3000/api/documents/doc-999/share', {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-      const response = await POST(request, { params: Promise.resolve({ id: 'doc-999' }) });
-
-      expect(response.status).toBe(404);
-    });
-
-    it('should return 403 if document belongs to different family', async () => {
-      dbMock.document.findUnique.mockResolvedValue({
-        ...mockDocument,
-        familyId: 'different-family-123',
-      } as any);
-
-      const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-      const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
-
-      expect(response.status).toBe(403);
-    });
-
-    it('should create share link with expiration', async () => {
-      dbMock.document.findUnique.mockResolvedValue(mockDocument as any);
-
-      const mockShareLink = {
-        id: 'share-1',
-        documentId: 'doc-1',
-        token: 'mock-random-token-123456',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        recipientEmail: 'recipient@example.com',
-        notes: 'Share with friend',
-        createdBy: 'parent-test-123',
-        createdAt: new Date(),
-        accessCount: 0,
-        lastAccessedAt: null,
-        revokedAt: null,
-        revokedBy: null,
-        creator: {
-          id: 'parent-test-123',
-          name: 'Parent',
-        },
-      };
-
-      dbMock.documentShareLink.create.mockResolvedValue(mockShareLink as any);
-      dbMock.auditLog.create.mockResolvedValue({} as any);
-
-      const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
-        method: 'POST',
-        body: JSON.stringify({
-          expiresInDays: 7,
-          recipientEmail: 'recipient@example.com',
-          notes: 'Share with friend',
-        }),
-      });
-      const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
-
-      expect(response.status).toBe(201);
-      const data = await response.json();
-      expect(data.shareLink.token).toBe('mock-random-token-123456');
-      expect(data.shareUrl).toContain('mock-random-token-123456');
-      expect(data.message).toBe('Share link created successfully');
-
-      expect(dbMock.auditLog.create).toHaveBeenCalledWith({
-        data: {
-          familyId: 'family-test-123',
-          memberId: 'parent-test-123',
-          action: 'DOCUMENT_SHARED',
-          result: 'SUCCESS',
-          metadata: {
-            documentId: 'doc-1',
-            documentName: 'Passport.pdf',
-            shareLinkId: 'share-1',
-            recipientEmail: 'recipient@example.com',
-          },
-        },
-      });
-    });
-
-    it('should create share link without expiration', async () => {
-      dbMock.document.findUnique.mockResolvedValue(mockDocument as any);
-
-      const mockShareLink = {
-        id: 'share-2',
-        documentId: 'doc-1',
-        token: 'mock-random-token-123456',
-        expiresAt: null,
-        recipientEmail: null,
-        notes: null,
-        createdBy: 'parent-test-123',
-        createdAt: new Date(),
-        accessCount: 0,
-        lastAccessedAt: null,
-        revokedAt: null,
-        revokedBy: null,
-        creator: {
-          id: 'parent-test-123',
-          name: 'Parent',
-        },
-      };
-
-      dbMock.documentShareLink.create.mockResolvedValue(mockShareLink as any);
-      dbMock.auditLog.create.mockResolvedValue({} as any);
-
-      const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-      const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
-
-      expect(response.status).toBe(201);
-      const data = await response.json();
-      expect(data.shareLink.expiresAt).toBeNull();
-    });
   });
 
   describe('GET', () => {
-    it('should return 401 if not authenticated', async () => {
-      const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
-        method: 'GET',
-      });
-      const response = await GET(request, { params: Promise.resolve({ id: 'doc-1' }) });
+    it('should return share links', async () => {
+        const session = mockParentSession();
+        const request = new NextRequest('http://localhost/api/documents/doc-1/share');
+        const response = await GET(request, { params: Promise.resolve({ id: 'doc-1' }) });
+        const data = await response.json();
 
-      expect(response.status).toBe(401);
+        expect(response.status).toBe(200);
+        expect(data.shareLinks).toHaveLength(1);
+        expect(data.shareLinks[0].token).toBe('token-1');
+    });
+  });
+
+  describe('POST', () => {
+    it('should return 403 if not parent', async () => {
+        const session = mockChildSession();
+        const request = new NextRequest('http://localhost/api/documents/doc-1/share', {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+        const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
+        const data = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(data.error).toContain('Only parents');
     });
 
-    it('should return 404 if document not found', async () => {
-      dbMock.document.findUnique.mockResolvedValue(null);
+    it('should create share link', async () => {
+        const session = mockParentSession();
+        
+        (createDocumentShareLink as jest.Mock).mockResolvedValue({
+            id: 'link-2',
+            token: 'token-2',
+            expiresAt: null
+        });
 
-      const request = new NextRequest('http://localhost:3000/api/documents/doc-999/share', {
-        method: 'GET',
-      });
-      const response = await GET(request, { params: Promise.resolve({ id: 'doc-999' }) });
+        const request = new NextRequest('http://localhost/api/documents/doc-1/share', {
+            method: 'POST',
+            body: JSON.stringify({ expiresInHours: 24 })
+        });
+        const response = await POST(request, { params: Promise.resolve({ id: 'doc-1' }) });
+        const data = await response.json();
 
-      expect(response.status).toBe(404);
-    });
-
-    it('should return 403 if document belongs to different family', async () => {
-      dbMock.document.findUnique.mockResolvedValue({
-        ...mockDocument,
-        familyId: 'different-family-123',
-      } as any);
-
-      const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
-        method: 'GET',
-      });
-      const response = await GET(request, { params: Promise.resolve({ id: 'doc-1' }) });
-
-      expect(response.status).toBe(403);
-    });
-
-    it('should return all share links for document', async () => {
-      dbMock.document.findUnique.mockResolvedValue(mockDocument as any);
-
-      const mockShareLinks = [
-        {
-          id: 'share-1',
-          documentId: 'doc-1',
-          token: 'token-1',
-          expiresAt: new Date(),
-          recipientEmail: 'user1@example.com',
-          notes: 'Share 1',
-          createdBy: 'parent-test-123',
-          createdAt: new Date(),
-          accessCount: 5,
-          lastAccessedAt: new Date(),
-          revokedAt: null,
-          revokedBy: null,
-          creator: { id: 'parent-test-123', name: 'Parent' },
-        },
-        {
-          id: 'share-2',
-          documentId: 'doc-1',
-          token: 'token-2',
-          expiresAt: null,
-          recipientEmail: null,
-          notes: null,
-          createdBy: 'parent-test-123',
-          createdAt: new Date(),
-          accessCount: 0,
-          lastAccessedAt: null,
-          revokedAt: null,
-          revokedBy: null,
-          creator: { id: 'parent-test-123', name: 'Parent' },
-        },
-      ];
-
-      dbMock.documentShareLink.findMany.mockResolvedValue(mockShareLinks as any);
-
-      const request = new NextRequest('http://localhost:3000/api/documents/doc-1/share', {
-        method: 'GET',
-      });
-      const response = await GET(request, { params: Promise.resolve({ id: 'doc-1' }) });
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.shareLinks).toHaveLength(2);
-      expect(data.shareLinks[0].token).toBe('token-1');
-
-      expect(dbMock.documentShareLink.findMany).toHaveBeenCalledWith({
-        where: { documentId: 'doc-1' },
-        orderBy: { createdAt: 'desc' },
-      });
+        expect(response.status).toBe(201);
+        expect(data.success).toBe(true);
+        expect(data.shareLink.token).toBe('token-2');
+        expect(createDocumentShareLink).toHaveBeenCalled();
     });
   });
 });

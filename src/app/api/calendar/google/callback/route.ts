@@ -36,10 +36,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Validate required parameters
-    if (!code || !state) {
-      logger.warn('Missing code or state parameter');
+    if (!code) {
+      logger.warn('Missing code parameter');
       return NextResponse.redirect(
-        new URL(`${settingsUrl}?error=invalid_callback`, request.url)
+        new URL(`${settingsUrl}?error=missing_code`, request.url)
+      );
+    }
+
+    if (!state) {
+      logger.warn('Missing state parameter');
+      return NextResponse.redirect(
+        new URL(`${settingsUrl}?error=missing_state`, request.url)
       );
     }
 
@@ -64,8 +71,20 @@ export async function GET(request: NextRequest) {
     response.cookies.delete('google_oauth_state');
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Google Calendar callback error:', error);
+    
+    // Check for token exchange errors
+    if (
+      error.message?.includes('Invalid authorization code') || 
+      error.message?.includes('No refresh token') ||
+      error.message?.includes('invalid_grant')
+    ) {
+      return NextResponse.redirect(
+        new URL(`${settingsUrl}?error=token_exchange_failed`, request.url)
+      );
+    }
+
     return NextResponse.redirect(
       new URL(`${settingsUrl}?error=connection_failed`, request.url)
     );

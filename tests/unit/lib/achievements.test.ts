@@ -52,7 +52,7 @@ describe('lib/achievements.ts', () => {
           achievementId: 'ach-1',
           progress: 1,
           isCompleted: true,
-          completedAt: expect.any(Date),
+          completedAt: expect.any(String),
         },
         include: { achievement: true },
       })

@@ -123,14 +123,6 @@ describe('PATCH /api/rules/[id]/toggle', () => {
     expect(dbMock.automationRule.update).toHaveBeenCalledWith({
       where: { id: 'rule-1' },
       data: { isEnabled: false },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
     });
   });
 
@@ -157,14 +149,6 @@ describe('PATCH /api/rules/[id]/toggle', () => {
     expect(dbMock.automationRule.update).toHaveBeenCalledWith({
       where: { id: 'rule-1' },
       data: { isEnabled: true },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
     });
   });
 

@@ -61,8 +61,8 @@ describe('ParentLoginForm', () => {
     })
   })
 
-  it('should show loading state during login', async () => {
-    mockOnLogin.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)))
+  it('should show loading state during login and reset on error', async () => {
+    mockOnLogin.mockImplementation(() => new Promise((_, reject) => setTimeout(() => reject(new Error('Login failed')), 100)))
 
     render(<ParentLoginForm onLogin={mockOnLogin} />)
 
@@ -82,8 +82,8 @@ describe('ParentLoginForm', () => {
     })
   })
 
-  it('should disable form fields during loading', async () => {
-    mockOnLogin.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)))
+  it('should disable form fields during loading and re-enable on error', async () => {
+    mockOnLogin.mockImplementation(() => new Promise((_, reject) => setTimeout(() => reject(new Error('Login failed')), 100)))
 
     render(<ParentLoginForm onLogin={mockOnLogin} />)
 

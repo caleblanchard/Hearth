@@ -94,8 +94,8 @@ describe('/api/transport/today', () => {
 
   it('should return today\'s transport schedules', async () => {
     // Mock Date to return Monday (day 1)
-    const mockDate = new Date('2026-01-05T10:00:00Z'); // Monday
-    jest.spyOn(global, 'Date').mockImplementation(() => mockDate as any);
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-01-05T10:00:00Z')); // Monday
 
     dbMock.transportSchedule.findMany.mockResolvedValue(mockSchedules as any);
 
@@ -117,20 +117,20 @@ describe('/api/transport/today', () => {
         isActive: true,
       },
       include: {
-        member: { select: { id: true, name: true } },
+        member: { select: { id: true, name: true, avatarUrl: true } },
         location: { select: { id: true, name: true, address: true } },
         driver: { select: { id: true, name: true, phone: true, relationship: true } },
         carpool: { select: { id: true, name: true } },
       },
-      orderBy: { time: 'asc' },
+      orderBy: [{ dayOfWeek: 'asc' }, { time: 'asc' }],
     });
 
-    jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
   it('should filter by member ID if provided', async () => {
-    const mockDate = new Date('2026-01-05T10:00:00Z'); // Monday
-    jest.spyOn(global, 'Date').mockImplementation(() => mockDate as any);
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-01-05T10:00:00Z')); // Monday
 
     dbMock.transportSchedule.findMany.mockResolvedValue([mockSchedules[0]] as any);
 
@@ -148,15 +148,15 @@ describe('/api/transport/today', () => {
         isActive: true,
       },
       include: expect.any(Object),
-      orderBy: { time: 'asc' },
+      orderBy: [{ dayOfWeek: 'asc' }, { time: 'asc' }],
     });
 
-    jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
   it('should return empty array if no schedules for today', async () => {
-    const mockDate = new Date('2026-01-05T10:00:00Z'); // Monday
-    jest.spyOn(global, 'Date').mockImplementation(() => mockDate as any);
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-01-05T10:00:00Z')); // Monday
 
     dbMock.transportSchedule.findMany.mockResolvedValue([]);
 
@@ -169,13 +169,13 @@ describe('/api/transport/today', () => {
     const data = await response.json();
     expect(data.schedules).toHaveLength(0);
 
-    jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
   it('should handle different days of week correctly', async () => {
     // Mock Date to return Sunday (day 0)
-    const mockDate = new Date('2026-01-04T10:00:00Z'); // Sunday
-    jest.spyOn(global, 'Date').mockImplementation(() => mockDate as any);
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-01-04T10:00:00Z')); // Sunday
 
     dbMock.transportSchedule.findMany.mockResolvedValue([]);
 
@@ -192,9 +192,9 @@ describe('/api/transport/today', () => {
         isActive: true,
       },
       include: expect.any(Object),
-      orderBy: { time: 'asc' },
+      orderBy: [{ dayOfWeek: 'asc' }, { time: 'asc' }],
     });
 
-    jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 });

@@ -6,6 +6,11 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
+jest.mock('@/lib/kiosk-auth', () => ({
+  authenticateChildSession: jest.fn().mockResolvedValue(null),
+  authenticateDeviceSecret: jest.fn().mockResolvedValue(null),
+}));
+
 // NOW import after mocks are set up
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/maintenance/upcoming/route';
@@ -64,8 +69,7 @@ describe('/api/maintenance/upcoming', () => {
       where: {
         familyId: 'family-test-123',
         nextDueAt: {
-          not: null,
-          lte: thirtyDaysFromNow,
+          lte: '2026-01-31T12:00:00.000Z',
         },
       },
       orderBy: {
@@ -108,8 +112,7 @@ describe('/api/maintenance/upcoming', () => {
       where: {
         familyId: 'family-test-123',
         nextDueAt: {
-          not: null,
-          lte: sevenDaysFromNow,
+          lte: '2026-01-08T12:00:00.000Z',
         },
       },
       orderBy: {
@@ -161,7 +164,7 @@ describe('/api/maintenance/upcoming', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toBe('Failed to fetch upcoming maintenance items');
+    expect(data.error).toBe('Failed to fetch upcoming maintenance');
   });
 
   it('should handle invalid days parameter', async () => {

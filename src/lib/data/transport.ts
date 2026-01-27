@@ -20,17 +20,33 @@ type CarpoolMember = Database['public']['Tables']['carpool_members']['Row']
 /**
  * Get transport schedules for a family
  */
-export async function getTransportSchedules(familyId: string) {
+export async function getTransportSchedules(
+  familyId: string,
+  filters?: { memberId?: string; dayOfWeek?: number }
+) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('transport_schedules')
     .select(`
       *,
-      member:family_members(id, name, avatar_url)
+      member:family_members(id, name, avatar_url),
+      location:transport_locations(id, name, address),
+      driver:transport_drivers(id, name, phone, relationship),
+      carpool:carpool_groups(id, name)
     `)
     .eq('family_id', familyId)
     .eq('is_active', true)
+
+  if (filters?.memberId) {
+    query = query.eq('member_id', filters.memberId)
+  }
+  if (filters?.dayOfWeek !== undefined) {
+    query = query.eq('day_of_week', filters.dayOfWeek)
+  }
+
+  const { data, error } = await query
+    .order('day_of_week')
     .order('time')
 
   if (error) throw error
@@ -48,7 +64,13 @@ export async function createTransportSchedule(
   const { data, error } = await supabase
     .from('transport_schedules')
     .insert(schedule)
-    .select()
+    .select(`
+      *,
+      member:family_members(id, name, avatar_url),
+      location:transport_locations(id, name, address),
+      driver:transport_drivers(id, name, phone),
+      carpool:carpool_groups(id, name)
+    `)
     .single()
 
   if (error) throw error
@@ -68,7 +90,13 @@ export async function updateTransportSchedule(
     .from('transport_schedules')
     .update(updates)
     .eq('id', scheduleId)
-    .select()
+    .select(`
+      *,
+      member:family_members(id, name, avatar_url),
+      location:transport_locations(id, name, address),
+      driver:transport_drivers(id, name, phone),
+      carpool:carpool_groups(id, name)
+    `)
     .single()
 
   if (error) throw error
@@ -285,18 +313,9 @@ export async function getTransportSchedule(scheduleId: string) {
 /**
  * Get today's transport schedules
  */
-export async function getTodaysTransportSchedules(familyId: string) {
-  const supabase = await createClient()
-
-  const today = new Date().toISOString().split('T')[0]
-
-  const { data, error } = await supabase
-    .from('transport_schedules')
-    .select('*')
-    .eq('family_id', familyId)
-    .eq('day_of_week', new Date().getDay())
-    .order('time')
-
-  if (error) throw error
-  return data || []
+export async function getTodaysTransportSchedules(familyId: string, memberId?: string) {
+  return getTransportSchedules(familyId, { 
+    dayOfWeek: new Date().getDay(),
+    memberId 
+  })
 }

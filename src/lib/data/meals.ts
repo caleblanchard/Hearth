@@ -193,7 +193,7 @@ export async function getMealPlanEntry(entryId: string) {
  */
 export async function addDishToMealEntry(
   mealEntryIdOrDish: string | MealPlanDishInsert,
-  dishData?: { recipeId?: string; dishName?: string }
+  dishData?: { recipeId?: string; dishName?: string; familyId?: string }
 ): Promise<MealPlanDish> {
   const supabase = await createClient()
 
@@ -203,7 +203,8 @@ export async function addDishToMealEntry(
   if (typeof mealEntryIdOrDish === 'string' && dishData) {
     // New signature: (mealEntryId, { recipeId, dishName })
     const mealEntryId = mealEntryIdOrDish
-    
+    const familyId = dishData.familyId
+
     // Get current max sort order for this entry
     const { data: existingDishes } = await supabase
       .from('meal_plan_dishes')
@@ -219,6 +220,39 @@ export async function addDishToMealEntry(
       recipe_id: dishData.recipeId || null,
       dish_name: dishData.dishName || null,
       sort_order: nextSortOrder,
+    }
+
+    // Validate meal entry ownership
+    const { data: mealEntry } = await supabase
+      .from('meal_plan_entries')
+      .select('id, meal_plan_id, meal_plans(family_id)')
+      .eq('id', mealEntryId)
+      .single()
+
+    if (!mealEntry) {
+      throw Object.assign(new Error('Meal entry not found'), { status: 404 })
+    }
+    const entryFamilyId = (mealEntry as any).meal_plans?.family_id
+    if (familyId && entryFamilyId && entryFamilyId !== familyId) {
+      throw Object.assign(new Error('Access denied'), { status: 403 })
+    }
+
+    if (dishData.recipeId) {
+      const { data: recipe } = await supabase
+        .from('recipes')
+        .select('id, family_id, name')
+        .eq('id', dishData.recipeId)
+        .single()
+
+      if (!recipe) {
+        throw Object.assign(new Error('Recipe not found'), { status: 404 })
+      }
+      if (familyId && recipe.family_id !== familyId) {
+        throw Object.assign(new Error('Access denied'), { status: 403 })
+      }
+      if (!dishData.dishName) {
+        insertData.dish_name = (recipe as any).name
+      }
     }
   } else {
     // Original signature: (dish)

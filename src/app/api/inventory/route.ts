@@ -164,12 +164,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       item,
-      message: 'Inventory item created successfully',
-    });
+      message: 'Inventory item added successfully',
+    }, { status: 201 });
   } catch (error) {
     logger.error('Error creating inventory item:', error);
     return NextResponse.json(
-      { error: 'Failed to create inventory item' },
+      { error: 'Failed to add inventory item' },
       { status: 500 }
     );
   }

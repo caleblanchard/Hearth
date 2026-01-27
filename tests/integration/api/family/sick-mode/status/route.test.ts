@@ -1,10 +1,6 @@
 // Set up mocks BEFORE any imports
 import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock';
-
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}));
+import { mockParentSession, mockChildSession, setMockSession } from '@/lib/test-utils/auth-mock';
 
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/family/sick-mode/status/route';
@@ -13,9 +9,10 @@ describe('/api/family/sick-mode/status', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetDbMock();
+    mockParentSession();
   });
 
-  const mockParentSession = {
+  const mockParentUser = {
     user: {
       id: 'parent-test-123',
       familyId: 'family-test-123',
@@ -23,7 +20,7 @@ describe('/api/family/sick-mode/status', () => {
     },
   };
 
-  const mockChildSession = {
+  const mockChildUser = {
     user: {
       id: 'child-test-123',
       familyId: 'family-test-123',
@@ -54,6 +51,7 @@ describe('/api/family/sick-mode/status', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
+      setMockSession(null);
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/status', {
         method: 'GET',
       });
@@ -95,6 +93,7 @@ describe('/api/family/sick-mode/status', () => {
     });
 
     it('should allow children to view sick mode status', async () => {
+      mockChildSession();
       dbMock.sickModeInstance.findMany.mockResolvedValue(mockSickModeInstances as any);
 
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/status', {

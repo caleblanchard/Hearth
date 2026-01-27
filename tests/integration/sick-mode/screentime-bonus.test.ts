@@ -63,6 +63,16 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
         periodEnd: new Date(),
       });
 
+      // Mock screenTimeBalance
+      dbMock.screenTimeBalance.findUnique.mockResolvedValue({
+        id: 'balance-1',
+        memberId: 'child-1',
+        currentBalanceMinutes: 60,
+        lifetimeEarned: 1000,
+        lifetimeSpent: 940,
+        updatedAt: new Date(),
+      } as any);
+
       // Mock active sick mode with 30 minute bonus
       dbMock.sickModeInstance.findFirst.mockResolvedValue({
         id: 'sick-1',
@@ -135,6 +145,16 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
         periodEnd: new Date(),
       });
 
+      // Mock screenTimeBalance
+      dbMock.screenTimeBalance.findUnique.mockResolvedValue({
+        id: 'balance-1',
+        memberId: 'child-1',
+        currentBalanceMinutes: 60,
+        lifetimeEarned: 1000,
+        lifetimeSpent: 940,
+        updatedAt: new Date(),
+      } as any);
+
       // No active sick mode
       dbMock.sickModeInstance.findFirst.mockResolvedValue(null);
 
@@ -176,6 +196,16 @@ describe('Screen Time Bonus - Sick Mode Integration', () => {
         periodStart: new Date(),
         periodEnd: new Date(),
       });
+
+      // Mock screenTimeBalance
+      dbMock.screenTimeBalance.findUnique.mockResolvedValue({
+        id: 'balance-1',
+        memberId: 'child-1',
+        currentBalanceMinutes: 60,
+        lifetimeEarned: 1000,
+        lifetimeSpent: 940,
+        updatedAt: new Date(),
+      } as any);
 
       // Active sick mode but no bonus configured
       dbMock.sickModeInstance.findFirst.mockResolvedValue({

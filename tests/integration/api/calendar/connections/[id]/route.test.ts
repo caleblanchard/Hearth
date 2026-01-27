@@ -97,7 +97,7 @@ describe('/api/calendar/connections/[id]', () => {
       expect(json.error).toBe('Connection not found');
     });
 
-    it('should return 403 if connection belongs to different user', async () => {
+    it('should return 404 if connection belongs to different user', async () => {
       const session = mockParentSession();
 
       dbMock.familyMember.findFirst.mockResolvedValue({
@@ -114,9 +114,9 @@ describe('/api/calendar/connections/[id]', () => {
       const request = new NextRequest('http://localhost:3001/api/calendar/connections/connection-other');
       const response = await GET(request, { params: Promise.resolve({ id: 'connection-other' }) });
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(404);
       const json = await response.json();
-      expect(json.error).toBe('Forbidden');
+      expect(json.error).toBe('Connection not found');
     });
   });
 
@@ -174,7 +174,6 @@ describe('/api/calendar/connections/[id]', () => {
           importFromGoogle: false,
           exportToGoogle: false,
         },
-        select: expect.any(Object),
       });
     });
 
@@ -207,7 +206,6 @@ describe('/api/calendar/connections/[id]', () => {
       expect(dbMock.calendarConnection.update).toHaveBeenCalledWith({
         where: { id: 'connection-1' },
         data: { syncEnabled: false },
-        select: expect.any(Object),
       });
     });
 
@@ -236,7 +234,7 @@ describe('/api/calendar/connections/[id]', () => {
       expect(json.error).toContain('Invalid');
     });
 
-    it('should return 403 if connection belongs to different user', async () => {
+    it('should return 404 if connection belongs to different user', async () => {
       const session = mockParentSession();
 
       dbMock.familyMember.findFirst.mockResolvedValue({
@@ -256,7 +254,7 @@ describe('/api/calendar/connections/[id]', () => {
       });
       const response = await PATCH(request, { params: Promise.resolve({ id: 'connection-other' }) });
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(404);
     });
 
     it('should clear sync error when re-enabling sync', async () => {
@@ -358,7 +356,7 @@ describe('/api/calendar/connections/[id]', () => {
       expect(response.status).toBe(404);
     });
 
-    it('should return 403 if connection belongs to different user', async () => {
+    it('should return 404 if connection belongs to different user', async () => {
       const session = mockParentSession();
 
       dbMock.familyMember.findFirst.mockResolvedValue({
@@ -377,7 +375,7 @@ describe('/api/calendar/connections/[id]', () => {
       });
       const response = await DELETE(request, { params: Promise.resolve({ id: 'connection-other' }) });
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(404);
     });
 
     it('should allow child users to delete their own connections', async () => {

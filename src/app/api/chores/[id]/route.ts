@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
-import { getChoreDefinition, updateChoreDefinition, deleteChoreDefinition } from '@/lib/data/chores';
+import { getChoreDefinition, getChoreDefinitionWithDetails, updateChoreDefinition, deleteChoreDefinition } from '@/lib/data/chores';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -28,7 +28,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized - Parent access required' }, { status: 403 });
     }
 
-    const chore = await getChoreDefinition(id);
+    const chore = await getChoreDefinitionWithDetails(id);
 
     if (!chore) {
       return NextResponse.json({ error: 'Chore not found' }, { status: 404 });

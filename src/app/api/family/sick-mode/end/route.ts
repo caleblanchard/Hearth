@@ -31,7 +31,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Instance ID is required' }, { status: 400 });
     }
 
-    const result = await endSickMode(instanceId);
+    const supabase = await createClient();
+    const { data: instance } = await supabase
+      .from('sick_mode_instances')
+      .select('family_id, is_active')
+      .eq('id', instanceId)
+      .maybeSingle();
+
+    if (!instance || instance.family_id !== familyId) {
+      return NextResponse.json({ error: 'Sick mode instance not found' }, { status: 404 });
+    }
+
+    if (!instance.is_active) {
+      return NextResponse.json({ error: 'Sick mode is already ended' }, { status: 409 });
+    }
+
+    const result = await endSickMode(instanceId, memberId);
 
     return NextResponse.json({
       success: true,

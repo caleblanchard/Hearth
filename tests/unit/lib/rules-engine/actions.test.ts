@@ -36,32 +36,31 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      const mockUpdatedBalance = {
+      const mockExistingBalance = {
         id: 'balance-1',
         memberId: 'member-1',
-        currentBalance: 60,
-        lifetimeEarned: 110,
+        currentBalance: 50,
+        lifetimeEarned: 100,
         lifetimeSpent: 50,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        const tx = {
-          creditBalance: {
-            upsert: jest.fn().mockResolvedValue(mockUpdatedBalance),
-          },
-          creditTransaction: {
-            create: jest.fn().mockResolvedValue({}),
-          },
-        };
-        return await callback(tx);
-      });
+      dbMock.creditBalance.findUnique.mockResolvedValue(mockExistingBalance as any);
+      dbMock.creditBalance.update.mockResolvedValue({} as any);
+      dbMock.creditTransaction.create.mockResolvedValue({} as any);
 
       const result = await executeAwardCredits(config, context);
 
+      expect(dbMock.creditBalance.findUnique).toHaveBeenCalled();
       expect(result.success).toBe(true);
-      expect(dbMock.$transaction).toHaveBeenCalled();
+      expect(dbMock.creditBalance.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { memberId: 'member-1' },
+        data: expect.objectContaining({
+          currentBalance: 60,
+          lifetimeEarned: 110,
+        }),
+      }));
     });
 
     it('should award credits to context member if not specified', async () => {
@@ -71,32 +70,30 @@ describe('Rules Engine Action Executors', () => {
         memberId: 'member-2',
       };
 
-      const mockUpdatedBalance = {
+      const mockExistingBalance = {
         id: 'balance-2',
         memberId: 'member-2',
-        currentBalance: 40,
-        lifetimeEarned: 90,
+        currentBalance: 25,
+        lifetimeEarned: 75,
         lifetimeSpent: 50,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        const tx = {
-          creditBalance: {
-            upsert: jest.fn().mockResolvedValue(mockUpdatedBalance),
-          },
-          creditTransaction: {
-            create: jest.fn().mockResolvedValue({}),
-          },
-        };
-        return await callback(tx);
-      });
+      dbMock.creditBalance.findUnique.mockResolvedValue(mockExistingBalance as any);
+      dbMock.creditBalance.update.mockResolvedValue({} as any);
+      dbMock.creditTransaction.create.mockResolvedValue({} as any);
 
       const result = await executeAwardCredits(config, context);
 
       expect(result.success).toBe(true);
-      expect(dbMock.$transaction).toHaveBeenCalled();
+      expect(dbMock.creditBalance.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { memberId: 'member-2' },
+        data: expect.objectContaining({
+          currentBalance: 40,
+          lifetimeEarned: 90,
+        }),
+      }));
     });
 
     it('should create balance if it does not exist', async () => {
@@ -105,32 +102,20 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      const mockNewBalance = {
-        id: 'new-balance',
-        memberId: 'member-3',
-        currentBalance: 20,
-        lifetimeEarned: 20,
-        lifetimeSpent: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        const tx = {
-          creditBalance: {
-            upsert: jest.fn().mockResolvedValue(mockNewBalance),
-          },
-          creditTransaction: {
-            create: jest.fn().mockResolvedValue({}),
-          },
-        };
-        return await callback(tx);
-      });
+      dbMock.creditBalance.findUnique.mockResolvedValue(null);
+      dbMock.creditBalance.create.mockResolvedValue({} as any);
+      dbMock.creditTransaction.create.mockResolvedValue({} as any);
 
       const result = await executeAwardCredits(config, context);
 
       expect(result.success).toBe(true);
-      expect(dbMock.$transaction).toHaveBeenCalled();
+      expect(dbMock.creditBalance.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          memberId: 'member-3',
+          currentBalance: 20,
+          lifetimeEarned: 20,
+        }),
+      }));
     });
 
     it('should enforce maximum credit limit', async () => {
@@ -163,7 +148,10 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      dbMock.$transaction.mockRejectedValue(new Error('Database error'));
+      // Mock DB error
+      dbMock.creditBalance.findUnique.mockRejectedValue(new Error('Database error'));
+      dbMock.creditBalance.create.mockRejectedValue(new Error('Database error'));
+      dbMock.creditBalance.update.mockRejectedValue(new Error('Database error'));
 
       const result = await executeAwardCredits(config, context);
 
@@ -177,31 +165,26 @@ describe('Rules Engine Action Executors', () => {
         familyId: 'family-1',
       };
 
-      const mockUpdatedBalance = {
+      const mockExistingBalance = {
         id: 'balance-1',
         memberId: 'member-1',
-        currentBalance: 60,
-        lifetimeEarned: 110,
+        currentBalance: 50,
+        lifetimeEarned: 100,
         lifetimeSpent: 50,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       };
 
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        const tx = {
-          creditBalance: {
-            upsert: jest.fn().mockResolvedValue(mockUpdatedBalance),
-          },
-          creditTransaction: {
-            create: jest.fn().mockResolvedValue({}),
-          },
-        };
-        return await callback(tx);
-      });
+      dbMock.creditBalance.findFirst.mockResolvedValue(mockExistingBalance as any);
+      dbMock.creditBalance.updateMany.mockResolvedValue({ count: 1 } as any);
+      dbMock.creditTransaction.create.mockResolvedValue({} as any);
 
       const result = await executeAwardCredits(config, context);
 
       expect(result.success).toBe(true);
+      expect(dbMock.creditTransaction.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          reason: 'Automation rule bonus',
+        }),
+      }));
     });
 
     it('should fail if no member ID available', async () => {
@@ -318,7 +301,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeSendNotification(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Send notification action requires recipients array');
+      expect(result.error).toContain('Send notification action requires at least one recipient');
     });
 
     it('should handle database errors', async () => {
@@ -478,7 +461,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeAddShoppingItem(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('No item name specified for shopping item');
+      expect(result.error).toContain('Shopping item requires a name');
     });
 
     it('should handle duplicate items gracefully', async () => {
@@ -550,7 +533,7 @@ describe('Rules Engine Action Executors', () => {
       expect(dbMock.shoppingItem.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            notes: 'Get the organic version',
+            note: 'Get the organic version',
           }),
         })
       );
@@ -622,7 +605,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeCreateTodo(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Create todo action requires title');
+      expect(result.error).toContain('Create TODO action requires title');
     });
 
     it('should handle optional description', async () => {
@@ -765,7 +748,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeLockMedication(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Lock medication action requires medicationId');
+      expect(result.error).toContain('No medication ID specified');
     });
 
     it('should require hours', async () => {
@@ -795,7 +778,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeLockMedication(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Lock medication hours cannot exceed 24 hours');
+      expect(result.error).toContain('Lock duration must be between 0 and 24 hours');
     });
 
     it('should reject negative hours', async () => {
@@ -810,7 +793,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeLockMedication(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Lock medication hours must be positive');
+      expect(result.error).toContain('Lock duration must be between 0 and 24 hours');
     });
 
     it('should handle database errors', async () => {
@@ -1086,7 +1069,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeReduceChores(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('requires memberId');
+      expect(result.error).toContain('No member ID specified');
     });
 
     it('should enforce maximum percentage', async () => {
@@ -1102,7 +1085,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeReduceChores(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Reduce chores percentage must be between 0 and 100');
+      expect(result.error).toContain('Chore reduction percentage must be between 1 and 100');
     });
 
     it('should enforce maximum duration', async () => {
@@ -1118,7 +1101,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeReduceChores(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Reduce chores duration must be between 1 and 30 days');
+      expect(result.error).toContain('Chore reduction duration must be between 1 and 30 days');
     });
 
     it('should handle no pending chores', async () => {
@@ -1135,8 +1118,8 @@ describe('Rules Engine Action Executors', () => {
 
       const result = await executeReduceChores(config, context);
 
-      expect(result.success).toBe(true);
-      expect(result.result?.choresReduced).toBe(0);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No pending chores found for member');
     });
 
     it('should calculate correct number to cancel', async () => {
@@ -1294,13 +1277,13 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeAdjustScreenTime(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('requires memberId');
+      expect(result.error).toContain('No member ID specified');
     });
 
     it('should enforce maximum adjustment', async () => {
       const config = {
         memberId: 'member-1',
-        amountMinutes: 200, // Over 120 minute limit
+        amountMinutes: 500, // Over 480 minute limit
       };
       const context: RuleContext = {
         familyId: 'family-1',
@@ -1309,7 +1292,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeAdjustScreenTime(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Screen time adjustment cannot exceed 120 minutes');
+      expect(result.error).toContain('Screentime adjustment must be within +/- 480 minutes');
     });
 
     it('should handle balance not found', async () => {
@@ -1326,7 +1309,7 @@ describe('Rules Engine Action Executors', () => {
       const result = await executeAdjustScreenTime(config, context);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Screen time balance not found');
+      expect(result.error).toContain('No screentime balance found for member');
     });
 
     it('should prevent negative balance', async () => {

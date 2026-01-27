@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
-import { updateCalendarEvent, deleteCalendarEvent } from '@/lib/data/calendar';
+import { updateCalendarEvent, deleteCalendarEvent, updateEventAssignments } from '@/lib/data/calendar';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
@@ -23,6 +23,9 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
+    
+    // Extract assignments if present
+    const { assignedMemberIds, ...eventUpdates } = body;
 
     // Verify the event belongs to the user's family
     const { data: event } = await supabase
@@ -36,7 +39,12 @@ export async function PATCH(
     }
 
     // Update event
-    const updatedEvent = await updateCalendarEvent(id, body);
+    const updatedEvent = await updateCalendarEvent(id, eventUpdates);
+
+    // Update assignments if provided
+    if (assignedMemberIds && Array.isArray(assignedMemberIds)) {
+      await updateEventAssignments(id, assignedMemberIds);
+    }
 
     return NextResponse.json({
       success: true,

@@ -41,9 +41,14 @@ export async function POST(request: NextRequest) {
 
     // Process each family
     for (const settings of settingsWithAutoDisable) {
-      const hoursThreshold = settings.auto_disable_after_24_hours ? 24 : null;
+      const entry = settings as any;
+      const hoursThreshold = 
+        entry.auto_disable_after_hours ??
+        entry.autoDisableAfterHours ??
+        (entry.auto_disable_after_24_hours ? 24 : null) ??
+        (entry.autoDisableAfter24Hours ? 24 : null);
 
-      if (!hoursThreshold) {
+      if (!hoursThreshold || typeof hoursThreshold !== 'number') {
         continue;
       }
 

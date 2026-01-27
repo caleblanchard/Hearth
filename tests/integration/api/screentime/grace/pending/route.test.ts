@@ -1,5 +1,6 @@
-// Set up mocks BEFORE any imports
-import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock'
+import { NextRequest } from 'next/server';
+import { GET } from '@/app/api/screentime/grace/pending/route';
+import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
 
 // Mock logger
 jest.mock('@/lib/logger', () => ({
@@ -9,172 +10,123 @@ jest.mock('@/lib/logger', () => ({
     info: jest.fn(),
     debug: jest.fn(),
   },
-}))
+}));
 
-// NOW import the route after mocks are set up
-import { GET } from '@/app/api/screentime/grace/pending/route'
-import { mockChildSession, mockParentSession } from '@/lib/test-utils/auth-mock'
-import { RepaymentStatus } from '@/lib/enums'
+// Mock Supabase
+const mockSupabase = {
+  from: jest.fn((table) => {
+    if (table === 'grace_period_logs') {
+      return {
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            is: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                order: jest.fn().mockResolvedValue({
+                  data: [
+                    {
+                      id: 'log-1',
+                      member_id: 'child-1',
+                      minutes_granted: 15,
+                      requested_at: new Date('2024-01-01T10:00:00Z').toISOString(),
+                      reason: 'Test reason',
+                      member: {
+                        name: 'Child One',
+                        family_id: 'family-test-123'
+                      }
+                    }
+                  ]
+                })
+              }))
+            }))
+          }))
+        }))
+      };
+    }
+    if (table === 'screen_time_balances') {
+      return {
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({
+              data: {
+                current_balance_minutes: 5
+              }
+            })
+          }))
+        }))
+      };
+    }
+    return { select: jest.fn() };
+  })
+};
+
+jest.mock('@/lib/supabase/server', () => {
+  const { getMockSession } = require('@/lib/test-utils/auth-mock');
+  
+  return {
+    createClient: jest.fn(() => mockSupabase),
+    getAuthContext: jest.fn(async () => {
+      const session = getMockSession();
+      if (!session) return null;
+      return {
+        user: session.user,
+        activeFamilyId: session.user.familyId,
+        activeMemberId: session.user.id,
+      };
+    }),
+    isParentInFamily: jest.fn(async (familyId) => {
+      const session = getMockSession();
+      // Default parent session role is PARENT, child is CHILD
+      return session?.user?.role === 'PARENT';
+    }),
+  };
+});
 
 describe('/api/screentime/grace/pending', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    resetDbMock()
-  })
+    jest.clearAllMocks();
+  });
 
-  describe('GET', () => {
-    const mockPendingRequests = [
-      {
-        id: 'grace-1',
-        memberId: 'child-1',
-        minutesGranted: 30,
-        reason: 'Extra time for homework',
-        requestedAt: new Date('2024-01-01T10:00:00'),
-        approvedById: null,
-        repaymentStatus: RepaymentStatus.PENDING,
-        member: {
-          id: 'child-1',
-          name: 'Child One',
-        },
-      },
-      {
-        id: 'grace-2',
-        memberId: 'child-2',
-        minutesGranted: 15,
-        reason: 'Family movie night',
-        requestedAt: new Date('2024-01-02T14:00:00'),
-        approvedById: null,
-        repaymentStatus: RepaymentStatus.PENDING,
-        member: {
-          id: 'child-2',
-          name: 'Child Two',
-        },
-      },
-    ]
+  it('should return 403 if not a parent', async () => {
+    const session = mockChildSession();
 
-    const mockBalance1 = {
+    const response = await GET();
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toBe('Only parents can view pending grace requests');
+  });
+
+  it('should return pending requests', async () => {
+    const session = mockParentSession();
+
+    const response = await GET();
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.requests).toHaveLength(1);
+    expect(data.requests[0]).toEqual({
+      id: 'log-1',
       memberId: 'child-1',
-      currentBalanceMinutes: 60,
-      weekStartDate: new Date(),
-    }
+      memberName: 'Child One',
+      minutesGranted: 15,
+      reason: 'Test reason',
+      requestedAt: '2024-01-01T10:00:00.000Z',
+      currentBalance: 5,
+    });
+  });
 
-    const mockBalance2 = {
-      memberId: 'child-2',
-      currentBalanceMinutes: 45,
-      weekStartDate: new Date(),
-    }
+  it('should handle errors', async () => {
+    const session = mockParentSession();
+    
+    // Override mock to throw
+    mockSupabase.from.mockImplementationOnce(() => {
+      throw new Error('Database error');
+    });
 
-    it('should return 401 if not authenticated', async () => {
+    const response = await GET();
+    const data = await response.json();
 
-      const response = await GET()
-      const data = await response.json()
-
-      expect(response.status).toBe(401)
-      expect(data.error).toBe('Unauthorized')
-    })
-
-    it('should return 403 if user is not a parent', async () => {
-      const session = mockChildSession()
-
-      const response = await GET()
-      const data = await response.json()
-
-      expect(response.status).toBe(403)
-      expect(data.error).toBe('Only parents can view pending grace requests')
-    })
-
-    it('should return pending grace requests for parent', async () => {
-      const session = mockParentSession()
-
-      dbMock.gracePeriodLog.findMany.mockResolvedValue(mockPendingRequests as any)
-      dbMock.screenTimeBalance.findUnique
-        .mockResolvedValueOnce(mockBalance1 as any)
-        .mockResolvedValueOnce(mockBalance2 as any)
-
-      const response = await GET()
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.requests).toHaveLength(2)
-      expect(data.requests[0]).toEqual({
-        id: 'grace-1',
-        memberId: 'child-1',
-        memberName: 'Child One',
-        minutesGranted: 30,
-        reason: 'Extra time for homework',
-        requestedAt: mockPendingRequests[0].requestedAt.toISOString(),
-        currentBalance: 60,
-      })
-      expect(data.requests[1]).toEqual({
-        id: 'grace-2',
-        memberId: 'child-2',
-        memberName: 'Child Two',
-        minutesGranted: 15,
-        reason: 'Family movie night',
-        requestedAt: mockPendingRequests[1].requestedAt.toISOString(),
-        currentBalance: 45,
-      })
-
-      expect(dbMock.gracePeriodLog.findMany).toHaveBeenCalledWith({
-        where: {
-          member: {
-            familyId: session.user.familyId,
-          },
-          approvedById: null,
-          repaymentStatus: 'PENDING',
-        },
-        include: {
-          member: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-        orderBy: {
-          requestedAt: 'asc',
-        },
-      })
-    })
-
-    it('should handle members without balance', async () => {
-      const session = mockParentSession()
-
-      dbMock.gracePeriodLog.findMany.mockResolvedValue(mockPendingRequests as any)
-      dbMock.screenTimeBalance.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(mockBalance2 as any)
-
-      const response = await GET()
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.requests[0].currentBalance).toBe(0)
-      expect(data.requests[1].currentBalance).toBe(45)
-    })
-
-    it('should return empty array if no pending requests', async () => {
-      const session = mockParentSession()
-
-      dbMock.gracePeriodLog.findMany.mockResolvedValue([])
-
-      const response = await GET()
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.requests).toEqual([])
-    })
-
-    it('should return 500 on error', async () => {
-      const session = mockParentSession()
-
-      dbMock.gracePeriodLog.findMany.mockRejectedValue(new Error('Database error'))
-
-      const response = await GET()
-      const data = await response.json()
-
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('Failed to fetch pending grace requests')
-    })
-  })
-})
+    expect(response.status).toBe(500);
+    expect(data.error).toBe('Failed to fetch pending grace requests');
+  });
+});

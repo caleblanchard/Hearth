@@ -84,7 +84,7 @@ describe('POST /api/meals/recipes/import', () => {
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toBe('URL is required');
+    expect(data.error).toBe('URL is required and must be a string');
   });
 
   // Test 3: URL validation - invalid type
@@ -99,7 +99,7 @@ describe('POST /api/meals/recipes/import', () => {
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toBe('URL is required');
+    expect(data.error).toBe('URL is required and must be a string');
   });
 
   // Test 4: URL must be valid HTTP/HTTPS
@@ -151,7 +151,7 @@ describe('POST /api/meals/recipes/import', () => {
 
   // Test 7: Returns 404 if URL doesn't contain recipe data
   it('should return 404 if no recipe data found at URL', async () => {
-    extractRecipeFromUrl.mockRejectedValue(new Error('No recipe data found'));
+    extractRecipeFromUrl.mockRejectedValue(new Error('No recipe data found at URL'));
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
       method: 'POST',
@@ -178,7 +178,7 @@ describe('POST /api/meals/recipes/import', () => {
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toBe('Failed to extract recipe');
+    expect(data.error).toBe('Network error');
   });
 
   // Test 9: Extracts name (required field)

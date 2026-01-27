@@ -56,6 +56,20 @@ export async function PATCH(
     // Update reward
     const updatedReward = await updateRewardItem(id, updates);
 
+    // Create audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'REWARD_UPDATED' as any,
+      entity_type: 'REWARD',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        rewardId: id,
+        name: updatedReward.name,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       reward: updatedReward,
@@ -128,6 +142,19 @@ export async function DELETE(
       logger.error('Error deleting reward:', error);
       return NextResponse.json({ error: 'Failed to delete reward' }, { status: 500 });
     }
+
+    // Create audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'REWARD_DELETED' as any,
+      entity_type: 'REWARD',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        rewardId: id,
+      },
+    });
 
     return NextResponse.json({
       success: true,

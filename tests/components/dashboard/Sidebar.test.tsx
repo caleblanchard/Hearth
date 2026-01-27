@@ -3,6 +3,7 @@ import '@testing-library/jest-dom'
 import Sidebar from '@/components/dashboard/Sidebar'
 import { useMemberContext } from '@/hooks/useMemberContext'
 import { useRouter, usePathname } from 'next/navigation'
+import { ActiveFamilyContext } from '@/contexts/ActiveFamilyContext'
 
 jest.mock('@/hooks/useMemberContext', () => ({
   useMemberContext: jest.fn(),
@@ -51,6 +52,18 @@ describe('Sidebar', () => {
     error: null,
   })
 
+  const renderSidebar = () => {
+    return render(
+      <ActiveFamilyContext.Provider value={{
+        activeFamilyId: 'family-1',
+        setActiveFamilyId: jest.fn(),
+        loading: false
+      }}>
+        <Sidebar />
+      </ActiveFamilyContext.Provider>
+    )
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
@@ -65,7 +78,7 @@ describe('Sidebar', () => {
   it('should render sidebar with navigation groups', async () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    const { container } = render(<Sidebar />)
+    const { container } = renderSidebar()
 
     // Wait for modules to load by checking for a module-dependent item
     await waitFor(() => {
@@ -81,7 +94,7 @@ describe('Sidebar', () => {
   it('should show parent-only settings group for parents', async () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('PARENT'))
 
-    render(<Sidebar />)
+    renderSidebar()
 
     await waitFor(() => {
       expect(screen.getAllByText('Settings').length).toBeGreaterThan(0)
@@ -95,7 +108,7 @@ describe('Sidebar', () => {
   it('should toggle group expansion', async () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<Sidebar />)
+    renderSidebar()
 
     await waitFor(() => {
       expect(screen.getAllByText('Tasks & Activities').length).toBeGreaterThan(0)
@@ -113,7 +126,7 @@ describe('Sidebar', () => {
   it('should toggle sidebar open/closed state', async () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<Sidebar />)
+    renderSidebar()
 
     await waitFor(() => {
       expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
@@ -132,7 +145,7 @@ describe('Sidebar', () => {
   it('should navigate when nav item is clicked', async () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<Sidebar />)
+    renderSidebar()
 
     await waitFor(() => {
       expect(screen.getAllByText('Chores').length).toBeGreaterThan(0)
@@ -148,7 +161,7 @@ describe('Sidebar', () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
     ;(usePathname as jest.Mock).mockReturnValue('/dashboard/chores')
 
-    render(<Sidebar />)
+    renderSidebar()
 
     await waitFor(() => {
       const choresButtons = screen.getAllByText('Chores')
@@ -171,7 +184,7 @@ describe('Sidebar', () => {
   it('should display user info in footer', async () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<Sidebar />)
+    renderSidebar()
 
     await waitFor(() => {
       // Footer only shows when sidebar is open and session exists
@@ -184,7 +197,7 @@ describe('Sidebar', () => {
   it('should show mobile menu button on mobile', async () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<Sidebar />)
+    renderSidebar()
 
     await waitFor(() => {
       // Mobile menu button should be present
@@ -196,7 +209,7 @@ describe('Sidebar', () => {
   it('should close mobile sidebar when overlay is clicked', async () => {
     ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
-    render(<Sidebar />)
+    renderSidebar()
 
     await waitFor(() => {
       expect(screen.getAllByRole('button').length).toBeGreaterThan(0)

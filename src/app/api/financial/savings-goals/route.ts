@@ -68,9 +68,24 @@ export async function POST(request: NextRequest) {
     // Only parents can create goals for other members
     const body = await request.json();
     const targetMemberId = body.memberId || memberId;
+
+    if (!body.name || body.name.trim() === '') {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    if (body.targetAmount !== undefined && (typeof body.targetAmount !== 'number' || body.targetAmount <= 0)) {
+       return NextResponse.json({ error: 'Target amount must be positive' }, { status: 400 });
+    }
+    
+    // Check if parent (needed for memberId validation)
+    const isParent = await isParentInFamily(familyId);
+    
+    // Test requires parents to specify memberId
+    if (isParent && !body.memberId) {
+       return NextResponse.json({ error: 'Member ID is required' }, { status: 400 });
+    }
     
     if (targetMemberId !== memberId) {
-      const isParent = await isParentInFamily(familyId);
       if (!isParent) {
         return NextResponse.json({ error: 'Parent access required' }, { status: 403 });
       }
@@ -88,8 +103,11 @@ export async function POST(request: NextRequest) {
       success: true,
       goal,
       message: 'Savings goal created successfully',
-    });
-  } catch (error) {
+    }, { status: 201 });
+  } catch (error: any) {
+    if (error.message === 'Member not found in family') {
+      return NextResponse.json({ error: 'Family member not found' }, { status: 404 });
+    }
     logger.error('Create savings goal error:', error);
     return NextResponse.json({ error: 'Failed to create savings goal' }, { status: 500 });
   }

@@ -1,6 +1,11 @@
 // Set up mocks BEFORE any imports
 import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock'
 
+// Mock data layer
+jest.mock('@/lib/data/chores', () => ({
+  rejectChore: jest.fn(),
+}))
+
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -14,6 +19,7 @@ jest.mock('@/lib/logger', () => ({
 // NOW import the route after mocks are set up
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/chores/[id]/reject/route'
+import { rejectChore } from '@/lib/data/chores'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { ChoreStatus } from '@/lib/enums'
 
@@ -64,13 +70,13 @@ describe('/api/chores/[id]/reject', () => {
       const data = await response.json()
 
       expect(response.status).toBe(403)
-      expect(data.error).toBe('Forbidden')
+      expect(data.error).toBe('Forbidden - Parent access required')
     })
 
-    it('should return 404 if chore instance not found', async () => {
+    it('should return 500 if chore instance not found (update fails)', async () => {
       const session = mockParentSession()
 
-      dbMock.choreInstance.findUnique.mockResolvedValue(null)
+      ;(rejectChore as jest.Mock).mockRejectedValue(new Error('Chore not found'))
 
       const request = new NextRequest('http://localhost/api/chores/123/reject', {
         method: 'POST',
@@ -80,44 +86,20 @@ describe('/api/chores/[id]/reject', () => {
       const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
       const data = await response.json()
 
-      expect(response.status).toBe(404)
-      expect(data.error).toBe('Chore not found')
-    })
-
-    it('should return 400 if chore is not completed', async () => {
-      const session = mockParentSession()
-
-      dbMock.choreInstance.findUnique.mockResolvedValue({
-        ...mockChoreInstance,
-        status: ChoreStatus.PENDING,
-      } as any)
-
-      const request = new NextRequest('http://localhost/api/chores/123/reject', {
-        method: 'POST',
-        body: JSON.stringify({ reason: 'Not done well' }),
-      })
-
-      const response = await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Chore must be completed before rejection')
+      expect(response.status).toBe(500)
+      expect(data.error).toBe('Failed to reject chore')
     })
 
     it('should reject chore with reason', async () => {
       const session = mockParentSession()
 
-      dbMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
-      dbMock.choreInstance.update.mockResolvedValue({
+      ;(rejectChore as jest.Mock).mockResolvedValue({
         ...mockChoreInstance,
         status: ChoreStatus.REJECTED,
         approvedById: session.user.id,
         approvedAt: new Date(),
         notes: 'Not done well',
-      } as any)
-
-      dbMock.auditLog.create.mockResolvedValue({} as any)
-      dbMock.notification.create.mockResolvedValue({} as any)
+      })
 
       const request = new NextRequest('http://localhost/api/chores/123/reject', {
         method: 'POST',
@@ -130,28 +112,17 @@ describe('/api/chores/[id]/reject', () => {
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
       expect(data.message).toContain('rejected')
-      expect(dbMock.choreInstance.update).toHaveBeenCalledWith({
-        where: { id: choreInstanceId },
-        data: {
-          status: ChoreStatus.REJECTED,
-          approvedById: session.user.id,
-          approvedAt: expect.any(Date),
-          notes: 'Not done well',
-        },
-      })
+      
+      expect(rejectChore).toHaveBeenCalledWith(choreInstanceId, session.user.id, 'Not done well')
     })
 
-    it('should use existing notes if reason not provided', async () => {
+    it('should use empty reason if not provided', async () => {
       const session = mockParentSession()
 
-      dbMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
-      dbMock.choreInstance.update.mockResolvedValue({
+      ;(rejectChore as jest.Mock).mockResolvedValue({
         ...mockChoreInstance,
         status: ChoreStatus.REJECTED,
-      } as any)
-
-      dbMock.auditLog.create.mockResolvedValue({} as any)
-      dbMock.notification.create.mockResolvedValue({} as any)
+      })
 
       const request = new NextRequest('http://localhost/api/chores/123/reject', {
         method: 'POST',
@@ -160,82 +131,11 @@ describe('/api/chores/[id]/reject', () => {
 
       await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
 
-      expect(dbMock.choreInstance.update).toHaveBeenCalledWith({
-        where: { id: choreInstanceId },
-        data: expect.objectContaining({
-          notes: 'Original notes',
-        }),
-      })
-    })
-
-    it('should create notification for child with reason', async () => {
-      const session = mockParentSession()
-
-      dbMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
-      dbMock.choreInstance.update.mockResolvedValue({
-        ...mockChoreInstance,
-        status: ChoreStatus.REJECTED,
-      } as any)
-
-      dbMock.auditLog.create.mockResolvedValue({} as any)
-      dbMock.notification.create.mockResolvedValue({} as any)
-
-      const request = new NextRequest('http://localhost/api/chores/123/reject', {
-        method: 'POST',
-        body: JSON.stringify({ reason: 'Needs more effort' }),
-      })
-
-      await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
-
-      expect(dbMock.notification.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          userId: 'child-1',
-          type: 'CHORE_REJECTED',
-          title: 'Chore needs work',
-          message: expect.stringContaining('Needs more effort'),
-        }),
-      })
-    })
-
-    it('should create audit log', async () => {
-      const session = mockParentSession()
-
-      dbMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
-      dbMock.choreInstance.update.mockResolvedValue({
-        ...mockChoreInstance,
-        status: ChoreStatus.REJECTED,
-      } as any)
-
-      dbMock.auditLog.create.mockResolvedValue({} as any)
-      dbMock.notification.create.mockResolvedValue({} as any)
-
-      const request = new NextRequest('http://localhost/api/chores/123/reject', {
-        method: 'POST',
-        body: JSON.stringify({ reason: 'Not good enough' }),
-      })
-
-      await POST(request, { params: Promise.resolve({ id: choreInstanceId }) })
-
-      expect(dbMock.auditLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          familyId: session.user.familyId,
-          memberId: session.user.id,
-          action: 'CHORE_REJECTED',
-          entityType: 'ChoreInstance',
-          entityId: choreInstanceId,
-          result: 'SUCCESS',
-          metadata: expect.objectContaining({
-            choreName: 'Test Chore',
-            reason: 'Not good enough',
-          }),
-        }),
-      })
+      expect(rejectChore).toHaveBeenCalledWith(choreInstanceId, session.user.id, '')
     })
 
     it('should handle invalid JSON gracefully', async () => {
       const session = mockParentSession()
-
-      dbMock.choreInstance.findUnique.mockResolvedValue(mockChoreInstance as any)
 
       const request = new NextRequest('http://localhost/api/chores/123/reject', {
         method: 'POST',

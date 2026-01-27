@@ -76,22 +76,6 @@ describe('/api/pets', () => {
         where: {
           familyId: 'family-test-123',
         },
-        include: {
-          feedings: {
-            orderBy: {
-              fedAt: 'desc',
-            },
-            take: 1,
-            include: {
-              member: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
         orderBy: {
           name: 'asc',
         },
@@ -252,6 +236,8 @@ describe('/api/pets', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'PET_ADDED',
+          entityId: 'pet-1',
+          entityType: 'PET',
           result: 'SUCCESS',
           metadata: {
             petId: 'pet-1',
@@ -310,7 +296,7 @@ describe('/api/pets', () => {
           name: 'Max',
           species: 'DOG',
           breed: 'Golden Retriever',
-          birthday: new Date('2020-03-15'),
+          birthday: '2020-03-15T00:00:00.000Z',
           imageUrl: 'https://example.com/max.jpg',
           notes: 'Loves to play fetch',
         },

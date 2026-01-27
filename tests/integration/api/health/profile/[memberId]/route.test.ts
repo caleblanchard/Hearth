@@ -8,6 +8,14 @@ describe('/api/health/profile/[memberId]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetDbMock();
+    dbMock.familyMember.findFirst.mockResolvedValue({
+      id: 'child-test-123',
+      familyId: 'family-test-123',
+    } as any);
+    dbMock.familyMember.findUnique.mockResolvedValue({
+      id: 'child-test-123',
+      familyId: 'family-test-123',
+    } as any);
   });
 
   const mockParentSession = {
@@ -55,6 +63,7 @@ describe('/api/health/profile/[memberId]', () => {
 
     it('should return medical profile for member', async () => {
       dbMock.medicalProfile.findUnique.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.findFirst.mockResolvedValue(mockMedicalProfile as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/profile/child-test-123', {
         method: 'GET',
@@ -67,7 +76,7 @@ describe('/api/health/profile/[memberId]', () => {
       expect(data.profile.allergies).toEqual(['Peanuts', 'Penicillin']);
       expect(data.profile.weight).toBe(45.5);
 
-      expect(dbMock.medicalProfile.findUnique).toHaveBeenCalledWith({
+      expect(dbMock.medicalProfile.findFirst).toHaveBeenCalledWith({
         where: { memberId: 'child-test-123' },
         include: {
           member: {
@@ -114,6 +123,10 @@ describe('/api/health/profile/[memberId]', () => {
     });
 
     it('should return 404 if member belongs to different family', async () => {
+      dbMock.familyMember.findUnique.mockResolvedValue({
+        id: 'child-test-123',
+        familyId: 'other-family-123',
+      } as any);
       dbMock.medicalProfile.findUnique.mockResolvedValue({
         ...mockMedicalProfile,
         member: {
@@ -134,6 +147,7 @@ describe('/api/health/profile/[memberId]', () => {
 
     it('should allow children to view profiles', async () => {
       dbMock.medicalProfile.findUnique.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.findFirst.mockResolvedValue(mockMedicalProfile as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/profile/child-test-123', {
         method: 'GET',
@@ -179,7 +193,9 @@ describe('/api/health/profile/[memberId]', () => {
         familyId: 'family-test-123',
         name: 'Child',
       } as any);
-      dbMock.medicalProfile.upsert.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.update.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.create.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.findFirst.mockResolvedValue(mockMedicalProfile as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/profile/child-test-123', {
         method: 'PUT',
@@ -198,32 +214,15 @@ describe('/api/health/profile/[memberId]', () => {
       const data = await response.json();
       expect(data.profile.bloodType).toBe('A+');
 
-      expect(dbMock.medicalProfile.upsert).toHaveBeenCalledWith({
-        where: { memberId: 'child-test-123' },
-        create: {
-          memberId: 'child-test-123',
+      expect(dbMock.medicalProfile.update).toHaveBeenCalledWith({
+        where: { id: 'profile-1' },
+        data: {
           bloodType: 'A+',
           allergies: ['Peanuts', 'Penicillin'],
           conditions: ['Asthma'],
           medications: ['Albuterol'],
           weight: 45.5,
           weightUnit: 'lbs',
-        },
-        update: {
-          bloodType: 'A+',
-          allergies: ['Peanuts', 'Penicillin'],
-          conditions: ['Asthma'],
-          medications: ['Albuterol'],
-          weight: 45.5,
-          weightUnit: 'lbs',
-        },
-        include: {
-          member: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
         },
       });
     });
@@ -234,7 +233,9 @@ describe('/api/health/profile/[memberId]', () => {
         familyId: 'family-test-123',
         name: 'Child',
       } as any);
-      dbMock.medicalProfile.upsert.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.update.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.create.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.findFirst.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/health/profile/child-test-123', {
         method: 'PUT',
@@ -246,6 +247,12 @@ describe('/api/health/profile/[memberId]', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
+      expect(dbMock.medicalProfile.create).toHaveBeenCalledWith({
+        data: {
+          memberId: 'child-test-123',
+          bloodType: 'A+',
+        },
+      });
       expect(data.profile).toBeTruthy();
     });
 
@@ -291,7 +298,9 @@ describe('/api/health/profile/[memberId]', () => {
         familyId: 'family-test-123',
         name: 'Child',
       } as any);
-      dbMock.medicalProfile.upsert.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.update.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.create.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.findFirst.mockResolvedValue(mockMedicalProfile as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/profile/child-test-123', {
         method: 'PUT',
@@ -302,16 +311,11 @@ describe('/api/health/profile/[memberId]', () => {
       const response = await PUT(request, { params: Promise.resolve({ memberId: 'child-test-123' }) });
 
       expect(response.status).toBe(200);
-      expect(dbMock.medicalProfile.upsert).toHaveBeenCalledWith({
-        where: { memberId: 'child-test-123' },
-        create: {
-          memberId: 'child-test-123',
+      expect(dbMock.medicalProfile.update).toHaveBeenCalledWith({
+        where: { id: 'profile-1' },
+        data: {
           weight: 50.0,
         },
-        update: {
-          weight: 50.0,
-        },
-        include: expect.any(Object),
       });
     });
 
@@ -321,12 +325,13 @@ describe('/api/health/profile/[memberId]', () => {
         familyId: 'family-test-123',
         name: 'Child',
       } as any);
-      dbMock.medicalProfile.upsert.mockResolvedValue({
+      dbMock.medicalProfile.update.mockResolvedValue({
         ...mockMedicalProfile,
         allergies: [],
         conditions: [],
         medications: [],
       } as any);
+      dbMock.medicalProfile.findFirst.mockResolvedValue(mockMedicalProfile as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/profile/child-test-123', {
         method: 'PUT',
@@ -390,7 +395,9 @@ describe('/api/health/profile/[memberId]', () => {
         familyId: 'family-test-123',
         name: 'Child',
       } as any);
-      dbMock.medicalProfile.upsert.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.update.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.create.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.findFirst.mockResolvedValue(mockMedicalProfile as any);
 
       const validUnits = ['lbs', 'kg'];
 
@@ -414,7 +421,9 @@ describe('/api/health/profile/[memberId]', () => {
         familyId: 'family-test-123',
         name: 'Child',
       } as any);
-      dbMock.medicalProfile.upsert.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.update.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.create.mockResolvedValue(mockMedicalProfile as any);
+      dbMock.medicalProfile.findFirst.mockResolvedValue(mockMedicalProfile as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/profile/child-test-123', {
         method: 'PUT',

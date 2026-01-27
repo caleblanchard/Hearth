@@ -361,6 +361,14 @@ describe('POST /api/routines', () => {
       role: 'CHILD',
       age: 8,
     } as any);
+    dbMock.familyMember.findUnique.mockResolvedValue({
+      id: 'child-123',
+      familyId: session.user.familyId,
+      name: 'Test Child',
+      email: null,
+      role: 'CHILD',
+      age: 8,
+    } as any);
 
     const mockRoutine = {
       id: 'routine-1',
@@ -453,7 +461,7 @@ describe('POST /api/routines', () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error).toContain('name');
+    expect(data.error).toContain('Name');
   });
 
   it('should return 400 if type is invalid', async () => {

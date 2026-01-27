@@ -27,7 +27,7 @@ export async function POST(
     // Verify pet exists and belongs to family
     const { data: pet } = await supabase
       .from('pets')
-      .select('family_id')
+      .select('family_id, name')
       .eq('id', id)
       .single();
 
@@ -40,16 +40,31 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { amount, notes } = body;
+    const { amount, notes, foodType } = body;
 
     // Log feeding
-    const feeding = await recordPetFeeding(id, memberId, amount || undefined, notes || undefined);
+    const feeding = await recordPetFeeding(id, memberId, foodType || undefined, amount || undefined, notes || undefined);
+
+    // Audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'PET_FED',
+      entity_type: 'PET',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        petId: id,
+        petName: pet.name || 'Unknown', // Need to select name
+        fedBy: memberId,
+      },
+    });
 
     return NextResponse.json({
       success: true,
       feeding,
       message: 'Feeding logged successfully',
-    });
+    }, { status: 201 });
   } catch (error) {
     logger.error('Log pet feeding error:', error);
     return NextResponse.json({ error: 'Failed to log feeding' }, { status: 500 });

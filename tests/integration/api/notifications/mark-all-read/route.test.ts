@@ -55,12 +55,12 @@ describe('/api/notifications/mark-all-read', () => {
 
       expect(dbMock.notification.updateMany).toHaveBeenCalledWith({
         where: {
-          userId: 'child-1',
+          userId: 'child-test-123',
           isRead: false,
         },
         data: {
           isRead: true,
-          readAt: expect.any(Date),
+          readAt: expect.any(String),
         },
       })
     })

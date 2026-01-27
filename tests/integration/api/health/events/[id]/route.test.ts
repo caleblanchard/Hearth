@@ -13,12 +13,20 @@ describe('/api/health/events/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetDbMock();
+    dbMock.familyMember.findFirst.mockResolvedValue({
+      id: 'child-test-123',
+      familyId: 'family-test-123', family_id: 'family-test-123',
+    } as any);
+    dbMock.familyMember.findUnique.mockResolvedValue({
+      id: 'child-test-123',
+      familyId: 'family-test-123', family_id: 'family-test-123',
+    } as any);
   });
 
   const mockParentSession = {
     user: {
       id: 'parent-test-123',
-      familyId: 'family-test-123',
+      familyId: 'family-test-123', family_id: 'family-test-123',
       role: 'PARENT' as const,
     },
   };
@@ -26,7 +34,7 @@ describe('/api/health/events/[id]', () => {
   const mockChildSession = {
     user: {
       id: 'child-test-123',
-      familyId: 'family-test-123',
+      familyId: 'family-test-123', family_id: 'family-test-123',
       role: 'CHILD' as const,
     },
   };
@@ -44,7 +52,7 @@ describe('/api/health/events/[id]', () => {
     member: {
       id: 'child-test-123',
       name: 'Child',
-      familyId: 'family-test-123',
+      familyId: 'family-test-123', family_id: 'family-test-123',
     },
     symptoms: [
       {
@@ -82,6 +90,10 @@ describe('/api/health/events/[id]', () => {
 
     it('should return health event details', async () => {
       dbMock.healthEvent.findUnique.mockResolvedValue(mockHealthEvent as any);
+      dbMock.familyMember.findFirst.mockResolvedValue({
+        id: 'child-test-123',
+        familyId: 'family-test-123', family_id: 'family-test-123',
+      } as any);
 
       const request = new NextRequest('http://localhost:3000/api/health/events/event-1', {
         method: 'GET',
@@ -97,25 +109,6 @@ describe('/api/health/events/[id]', () => {
 
       expect(dbMock.healthEvent.findUnique).toHaveBeenCalledWith({
         where: { id: 'event-1' },
-        include: {
-          member: {
-            select: {
-              id: true,
-              name: true,
-              familyId: true,
-            },
-          },
-          symptoms: {
-            orderBy: {
-              recordedAt: 'desc',
-            },
-          },
-          medications: {
-            orderBy: {
-              givenAt: 'desc',
-            },
-          },
-        },
       });
     });
 
@@ -133,11 +126,13 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should return 404 if health event belongs to different family', async () => {
+      dbMock.familyMember.findUnique.mockResolvedValue({ id: 'child-test-123', familyId: 'other-family-123', family_id: 'other-family-123' } as any);
+      dbMock.familyMember.findFirst.mockResolvedValue({ id: 'child-test-123', familyId: 'other-family-123', family_id: 'other-family-123' } as any);
       dbMock.healthEvent.findUnique.mockResolvedValue({
         ...mockHealthEvent,
         member: {
           ...mockHealthEvent.member,
-          familyId: 'other-family-123',
+          familyId: 'other-family-123', family_id: 'other-family-123',
         },
       } as any);
 
@@ -179,13 +174,15 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should return 403 if child tries to update another member\'s event', async () => {
+      dbMock.familyMember.findUnique.mockResolvedValue({ id: 'other-child-123', familyId: 'family-test-123', family_id: 'family-test-123' } as any);
+      dbMock.familyMember.findFirst.mockResolvedValue({ id: 'other-child-123', familyId: 'family-test-123', family_id: 'family-test-123' } as any);
       dbMock.healthEvent.findUnique.mockResolvedValue({
         ...mockHealthEvent,
-        memberId: 'other-child-123',
+        memberId: 'other-child-123', member_id: 'other-child-123',
         member: {
           id: 'other-child-123',
           name: 'Other Child',
-          familyId: 'family-test-123',
+          familyId: 'family-test-123', family_id: 'family-test-123',
         },
       } as any);
 
@@ -229,24 +226,6 @@ describe('/api/health/events/[id]', () => {
           severity: 6,
           notes: 'Fever getting worse',
         },
-        include: {
-          member: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          symptoms: {
-            orderBy: {
-              recordedAt: 'desc',
-            },
-          },
-          medications: {
-            orderBy: {
-              givenAt: 'desc',
-            },
-          },
-        },
       });
     });
 
@@ -287,11 +266,13 @@ describe('/api/health/events/[id]', () => {
     });
 
     it('should return 404 if health event belongs to different family', async () => {
+      dbMock.familyMember.findUnique.mockResolvedValue({ id: 'child-test-123', familyId: 'other-family-123', family_id: 'other-family-123' } as any);
+      dbMock.familyMember.findFirst.mockResolvedValue({ id: 'child-test-123', familyId: 'other-family-123', family_id: 'other-family-123' } as any);
       dbMock.healthEvent.findUnique.mockResolvedValue({
         ...mockHealthEvent,
         member: {
           ...mockHealthEvent.member,
-          familyId: 'other-family-123',
+          familyId: 'other-family-123', family_id: 'other-family-123',
         },
       } as any);
 
@@ -331,9 +312,8 @@ describe('/api/health/events/[id]', () => {
       expect(dbMock.healthEvent.update).toHaveBeenCalledWith({
         where: { id: 'event-1' },
         data: {
-          endedAt,
+          endedAt: endedAt.toISOString(),
         },
-        include: expect.any(Object),
       });
     });
 

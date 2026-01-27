@@ -19,6 +19,11 @@ export async function GET(request: NextRequest) {
 
     const settings = await getSickModeSettings(familyId);
 
+    if (!settings) {
+      const newSettings = await updateSickModeSettings(familyId, {});
+      return NextResponse.json({ settings: newSettings });
+    }
+
     return NextResponse.json({ settings });
   } catch (error) {
     logger.error('Get sick mode settings error:', error);
@@ -47,7 +52,53 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const settings = await updateSickModeSettings(familyId, body);
+
+    // Validation
+    if (typeof body.temperatureThreshold !== 'undefined') {
+      if (typeof body.temperatureThreshold !== 'number' || body.temperatureThreshold <= 0) {
+        return NextResponse.json({ error: 'Temperature threshold must be a positive number' }, { status: 400 });
+      }
+    }
+
+    if (typeof body.screenTimeBonus !== 'undefined') {
+      if (typeof body.screenTimeBonus !== 'number' || body.screenTimeBonus < 0) {
+        return NextResponse.json({ error: 'Screen time bonus must be a non-negative number' }, { status: 400 });
+      }
+    }
+
+    // Map camelCase to snake_case for the data layer if needed, or update data layer to handle it.
+    // health.ts accepts an object and spreads it.
+    // But health.ts expects snake_case keys in the spread?
+    // updateSickModeSettings expects:
+    // pause_chores, pause_screen_time_tracking, screen_time_bonus, etc.
+    // The body probably contains camelCase keys like temperatureThreshold.
+    // We should map them.
+    
+    const dbSettings: any = {};
+    if (typeof body.pauseChores !== 'undefined') dbSettings.pause_chores = body.pauseChores;
+    if (typeof body.pauseScreenTimeTracking !== 'undefined') dbSettings.pause_screen_time_tracking = body.pauseScreenTimeTracking;
+    if (typeof body.screenTimeBonus !== 'undefined') dbSettings.screen_time_bonus = body.screenTimeBonus;
+    if (typeof body.skipMorningRoutine !== 'undefined') dbSettings.skip_morning_routine = body.skipMorningRoutine;
+    if (typeof body.skipBedtimeRoutine !== 'undefined') dbSettings.skip_bedtime_routine = body.skipBedtimeRoutine;
+    if (typeof body.muteNonEssentialNotifs !== 'undefined') dbSettings.mute_non_essential_notifs = body.muteNonEssentialNotifs;
+    if (typeof body.temperatureThreshold !== 'undefined') dbSettings.temperature_threshold = body.temperatureThreshold;
+
+    const currentSettings = await getSickModeSettings(familyId);
+    const settings = await updateSickModeSettings(familyId, dbSettings);
+
+    const supabase = await createClient();
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'SICK_MODE_SETTINGS_UPDATED',
+      entity_type: 'SickModeSettings',
+      entity_id: settings.id,
+      result: 'SUCCESS',
+      details: {
+        previousValue: currentSettings,
+        newValue: settings,
+      },
+    });
 
     return NextResponse.json({
       success: true,

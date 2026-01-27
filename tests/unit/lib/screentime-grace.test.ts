@@ -17,15 +17,15 @@ describe('screentime-grace', () => {
   describe('checkGraceEligibility', () => {
     const mockSettings = {
       id: 'settings-1',
-      memberId: 'member-1',
-      gracePeriodMinutes: 15,
-      maxGracePerDay: 1,
-      maxGracePerWeek: 3,
-      graceRepaymentMode: GraceRepaymentMode.DEDUCT_NEXT_WEEK,
-      lowBalanceWarningMinutes: 10,
-      requiresApproval: false,
-        updatedAt: new Date(),
-      createdAt: new Date(),
+      member_id: 'member-1',
+      grace_period_minutes: 15,
+      max_grace_per_day: 1,
+      max_grace_per_week: 3,
+      grace_repayment_mode: GraceRepaymentMode.DEDUCT_NEXT_WEEK,
+      low_balance_warning_minutes: 10,
+      requires_approval: false,
+      updated_at: new Date(),
+      created_at: new Date(),
     };
 
     it('should return eligible when balance is low and under limits', async () => {
@@ -161,8 +161,8 @@ describe('screentime-grace', () => {
         where: {
           memberId: 'member-1',
           requestedAt: {
-            gte: startDate,
-            lte: endDate,
+            gte: '2025-01-01T00:00:00.000Z',
+            lte: '2025-01-02T00:00:00.000Z',
           },
           repaymentStatus: RepaymentStatus.PENDING,
         },
@@ -187,8 +187,8 @@ describe('screentime-grace', () => {
         where: {
           memberId: 'member-1',
           requestedAt: {
-            gte: startDate,
-            lte: endDate,
+            gte: '2025-01-01T00:00:00.000Z',
+            lte: '2025-01-02T00:00:00.000Z',
           },
           repaymentStatus: RepaymentStatus.DEDUCTED,
         },
@@ -351,7 +351,7 @@ describe('screentime-grace', () => {
         where: { id: 'log-1' },
         data: {
           repaymentStatus: RepaymentStatus.FORGIVEN,
-          repaidAt: expect.any(Date),
+          repaidAt: expect.any(String),
         },
       });
 
@@ -433,7 +433,7 @@ describe('screentime-grace', () => {
         where: { id: 'log-1' },
         data: {
           repaymentStatus: RepaymentStatus.DEDUCTED,
-          repaidAt: expect.any(Date),
+          repaidAt: expect.any(String),
           relatedTransactionId: 'transaction-1',
         },
       });
@@ -506,7 +506,6 @@ describe('screentime-grace', () => {
           graceRepaymentMode: GraceRepaymentMode.DEDUCT_NEXT_WEEK,
           lowBalanceWarningMinutes: 10,
           requiresApproval: false,
-        updatedAt: new Date(),
         },
       });
     });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getDocument, updateDocument, deleteDocument } from '@/lib/data/documents';
 import { logger } from '@/lib/logger';
 
@@ -59,6 +59,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
+    // Only parents can update documents
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Only parents can update documents' }, { status: 403 });
+    }
+
     // Verify document exists
     const existing = await getDocument(id);
     if (!existing || existing.family_id !== familyId) {
@@ -94,6 +100,12 @@ export async function DELETE(
     const familyId = authContext.activeFamilyId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Only parents can delete documents
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Only parents can delete documents' }, { status: 403 });
     }
 
     // Verify document exists

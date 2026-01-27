@@ -239,7 +239,7 @@ describe('/api/maintenance', () => {
           category: 'HVAC',
           frequency: 'Every 3 months',
           season: null,
-          nextDueAt: null,
+          nextDueAt: expect.any(String),
           estimatedCost: null,
           notes: null,
         },
@@ -251,10 +251,12 @@ describe('/api/maintenance', () => {
           memberId: 'parent-test-123',
           action: 'MAINTENANCE_ITEM_CREATED',
           result: 'SUCCESS',
+          entityType: 'MAINTENANCE_ITEM',
+          entityId: 'item-1',
           metadata: {
-            itemId: 'item-1',
             name: 'HVAC Filter Replacement',
             category: 'HVAC',
+            frequency: 'Every 3 months',
           },
         },
       });

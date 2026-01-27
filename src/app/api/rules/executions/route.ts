@@ -30,11 +30,29 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const ruleId = searchParams.get('ruleId') || undefined;
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const limit = Math.max(1, Math.min(parseInt(searchParams.get('limit') || '50', 10), 100));
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10), 0);
+    const successParam = searchParams.get('success');
+    const success = successParam === null ? undefined : successParam === 'true';
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
 
-    const executions = await getRuleExecutions(familyId, ruleId, limit);
+    const { data: executions, count } = await getRuleExecutions(
+      familyId, 
+      ruleId, 
+      limit, 
+      offset, 
+      success,
+      startDate, 
+      endDate
+    );
 
-    return NextResponse.json({ executions });
+    return NextResponse.json({
+      executions,
+      total: count,
+      limit,
+      offset,
+    });
   } catch (error) {
     logger.error('Fetch rule executions error:', error);
     return NextResponse.json({ error: 'Failed to fetch executions' }, { status: 500 });

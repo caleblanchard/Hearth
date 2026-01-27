@@ -46,6 +46,19 @@ export async function PATCH(
     const body = await request.json();
     const { content, title, imageUrl, isPinned } = body;
 
+    // Check permissions
+    const { role } = authContext.memberships.find(m => m.id === memberId) || {};
+
+    // Pinning updates - only parent can do this
+    if (isPinned !== undefined) {
+      if (role !== 'PARENT') {
+        return NextResponse.json(
+          { error: 'Only parents can pin posts' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Content/title updates - only author can do this
     if (content !== undefined || title !== undefined || imageUrl !== undefined) {
       if (post.author_id !== memberId) {
@@ -57,6 +70,27 @@ export async function PATCH(
     }
 
     const updatedPost = await updateCommunicationPost(id, body);
+
+    // Create audit log
+    if (isPinned !== undefined) {
+      await supabase.from('audit_logs').insert({
+        family_id: familyId,
+        actor_id: memberId,
+        action: isPinned ? 'POST_PINNED' : 'POST_UNPINNED',
+        target_id: id,
+        target_type: 'COMMUNICATION_POST',
+        details: { title: updatedPost.title }
+      });
+    } else {
+      await supabase.from('audit_logs').insert({
+        family_id: familyId,
+        actor_id: memberId,
+        action: 'POST_UPDATED',
+        target_id: id,
+        target_type: 'COMMUNICATION_POST',
+        details: { changes: Object.keys(body) }
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -105,8 +139,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Only author can delete
-    if (post.author_id !== memberId) {
+    const { role } = authContext.memberships.find(m => m.id === memberId) || {};
+
+    // Only author or parent can delete
+    if (post.author_id !== memberId && role !== 'PARENT') {
       return NextResponse.json(
         { error: 'Only the author can delete this post' },
         { status: 403 }
@@ -114,6 +150,16 @@ export async function DELETE(
     }
 
     await deleteCommunicationPost(id);
+
+    // Create audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      actor_id: memberId,
+      action: 'POST_DELETED',
+      target_id: id,
+      target_type: 'COMMUNICATION_POST',
+      details: { title: 'Deleted Post' } // Note: post details lost after delete unless we fetch before
+    });
 
     return NextResponse.json({
       success: true,

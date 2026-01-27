@@ -90,7 +90,7 @@ describe('/api/transport/schedules', () => {
       expect(dbMock.transportSchedule.findMany).toHaveBeenCalledWith({
         where: { familyId: 'family-test-123', isActive: true },
         include: {
-          member: { select: { id: true, name: true } },
+          member: { select: { id: true, name: true, avatarUrl: true } },
           location: { select: { id: true, name: true, address: true } },
           driver: { select: { id: true, name: true, phone: true, relationship: true } },
           carpool: { select: { id: true, name: true } },
@@ -270,6 +270,7 @@ describe('/api/transport/schedules', () => {
           driverId: 'driver-1',
           carpoolId: null,
           notes: 'Be ready by 7:55',
+          isActive: true,
         },
         include: expect.any(Object),
       });
@@ -279,6 +280,8 @@ describe('/api/transport/schedules', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'TRANSPORT_SCHEDULE_CREATED',
+          entityId: 'schedule-1',
+          entityType: 'TRANSPORT_SCHEDULE',
           result: 'SUCCESS',
           metadata: {
             scheduleId: 'schedule-1',

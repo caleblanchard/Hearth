@@ -68,6 +68,16 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid quiet hours end format (use HH:MM)' }, { status: 400 });
     }
 
+    if (typeof body.leftover_expiring_hours === 'number' && body.leftover_expiring_hours < 0) {
+      return NextResponse.json({ error: 'leftover_expiring_hours must be positive' }, { status: 400 });
+    }
+    if (typeof body.document_expiring_days === 'number' && body.document_expiring_days < 0) {
+      return NextResponse.json({ error: 'document_expiring_days must be positive' }, { status: 400 });
+    }
+    if (typeof body.carpool_reminder_minutes === 'number' && body.carpool_reminder_minutes < 0) {
+      return NextResponse.json({ error: 'carpool_reminder_minutes must be positive' }, { status: 400 });
+    }
+
     const preferences = await updateNotificationPreferences(userId, body);
 
     return NextResponse.json({

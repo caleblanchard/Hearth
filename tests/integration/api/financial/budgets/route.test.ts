@@ -37,6 +37,10 @@ describe('/api/financial/budgets', () => {
     it('should return budgets for authenticated user', async () => {
       const session = mockChildSession()
 
+      dbMock.familyMember.findUnique.mockResolvedValue({
+        role: 'CHILD',
+      } as any)
+
       const mockBudgets = [
         {
           id: 'budget-1',
@@ -63,27 +67,38 @@ describe('/api/financial/budgets', () => {
       expect(data.budgets).toEqual(mockBudgets)
       expect(dbMock.budget.findMany).toHaveBeenCalledWith({
         where: {
-          member: {
-            familyId: session.user.familyId,
-          },
           memberId: session.user.id,
           isActive: true,
         },
         include: {
           member: {
             select: {
+              familyId: true,
               id: true,
               name: true,
+              role: true,
+            },
+            where: {
+              familyId: session.user.familyId,
             },
           },
           periods: {
             orderBy: {
               periodStart: 'desc',
             },
-            take: 1,
+            select: {
+               id: true,
+               periodKey: true,
+               periodStart: true,
+               periodEnd: true,
+               spent: true,
+               createdAt: true,
+            }
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: {
+          createdAt: 'desc',
+        },
       })
     })
 
@@ -263,14 +278,6 @@ describe('/api/financial/budgets', () => {
           period: 'monthly',
           resetDay: 0,
           isActive: true,
-        },
-        include: {
-          member: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
         },
       })
     })

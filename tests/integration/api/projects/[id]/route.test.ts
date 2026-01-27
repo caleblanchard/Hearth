@@ -92,6 +92,7 @@ describe('GET /api/projects/[id]', () => {
         include: {
           creator: {
             select: {
+              avatarUrl: true,
               id: true,
               name: true,
             },
@@ -100,14 +101,9 @@ describe('GET /api/projects/[id]', () => {
             include: {
               assignee: {
                 select: {
+                  avatarUrl: true,
                   id: true,
                   name: true,
-                },
-              },
-              _count: {
-                select: {
-                  dependencies: true,
-                  dependents: true,
                 },
               },
             },
@@ -130,7 +126,7 @@ describe('GET /api/projects/[id]', () => {
       expect(data.error).toBe('Project not found');
     });
 
-    it('should return 403 if project belongs to different family', async () => {
+    it('should return 404 if project belongs to different family', async () => {
 
       const mockProject = {
         id: 'project-1',
@@ -146,9 +142,9 @@ describe('GET /api/projects/[id]', () => {
         { params: Promise.resolve({ id: 'project-1' }) }
       );
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(404);
       const data = await response.json();
-      expect(data.error).toBe('Access denied');
+      expect(data.error).toBe('Project not found');
     });
   });
 
@@ -201,7 +197,7 @@ describe('PATCH /api/projects/[id]', () => {
 
       expect(response.status).toBe(403);
       const data = await response.json();
-      expect(data.error).toBe('Only parents can update projects');
+      expect(data.error).toBe('Only parents can manage projects');
     });
   });
 
@@ -222,7 +218,7 @@ describe('PATCH /api/projects/[id]', () => {
       expect(data.error).toBe('Project not found');
     });
 
-    it('should return 403 if project belongs to different family', async () => {
+    it('should return 404 if project belongs to different family', async () => {
 
       const mockProject = {
         id: 'project-1',
@@ -239,9 +235,9 @@ describe('PATCH /api/projects/[id]', () => {
         { params: Promise.resolve({ id: 'project-1' }) }
       );
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(404);
       const data = await response.json();
-      expect(data.error).toBe('Access denied');
+      expect(data.error).toBe('Project not found');
     });
 
     it('should return 400 if name is empty string', async () => {
@@ -401,8 +397,8 @@ describe('PATCH /api/projects/[id]', () => {
           name: 'Updated Name',
           description: 'Updated description',
           status: 'ON_HOLD',
-          startDate: new Date('2026-03-01'),
-          dueDate: new Date('2026-03-15'),
+          startDate: '2026-03-01',
+          dueDate: '2026-03-15',
           budget: 1000,
           notes: 'Updated notes',
         },
@@ -462,10 +458,12 @@ describe('PATCH /api/projects/[id]', () => {
       expect(dbMock.auditLog.create).toHaveBeenCalledWith({
         data: {
           familyId: 'family-test-123',
-          memberId: 'parent-test-123',
+          actorId: 'parent-test-123',
           action: 'PROJECT_UPDATED',
           result: 'SUCCESS',
-          metadata: {
+          entityType: 'PROJECT',
+          entityId: 'project-1',
+          details: {
             projectId: 'project-1',
             updates: { status: 'COMPLETED' },
           },
@@ -531,7 +529,7 @@ describe('DELETE /api/projects/[id]', () => {
 
       expect(response.status).toBe(403);
       const data = await response.json();
-      expect(data.error).toBe('Only parents can delete projects');
+      expect(data.error).toBe('Only parents can manage projects');
     });
   });
 
@@ -578,7 +576,7 @@ describe('DELETE /api/projects/[id]', () => {
       expect(data.error).toBe('Project not found');
     });
 
-    it('should return 403 if project belongs to different family', async () => {
+    it('should return 404 if project belongs to different family', async () => {
 
       const mockProject = {
         id: 'project-1',
@@ -594,9 +592,9 @@ describe('DELETE /api/projects/[id]', () => {
         { params: Promise.resolve({ id: 'project-1' }) }
       );
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(404);
       const data = await response.json();
-      expect(data.error).toBe('Access denied');
+      expect(data.error).toBe('Project not found');
     });
   });
 
@@ -623,10 +621,12 @@ describe('DELETE /api/projects/[id]', () => {
       expect(dbMock.auditLog.create).toHaveBeenCalledWith({
         data: {
           familyId: 'family-test-123',
-          memberId: 'parent-test-123',
+          actorId: 'parent-test-123',
           action: 'PROJECT_DELETED',
           result: 'SUCCESS',
-          metadata: {
+          entityType: 'PROJECT',
+          entityId: 'project-1',
+          details: {
             projectId: 'project-1',
             name: 'Test Project',
           },

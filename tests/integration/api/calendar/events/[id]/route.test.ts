@@ -33,7 +33,7 @@ describe('/api/calendar/events/[id]', () => {
       location: 'Original location',
       isAllDay: false,
       color: '#3b82f6',
-      familyId: 'family-1',
+      familyId: 'family-test-123',
     }
 
     it('should return 401 if not authenticated', async () => {
@@ -127,19 +127,9 @@ describe('/api/calendar/events/[id]', () => {
       const session = mockParentSession()
 
       dbMock.calendarEvent.findUnique.mockResolvedValue(mockEvent as any)
-
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        const mockTx = {
-          calendarEvent: {
-            update: jest.fn().mockResolvedValue(mockEvent),
-          },
-          calendarEventAssignment: {
-            deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
-            createMany: jest.fn().mockResolvedValue({ count: 2 }),
-          },
-        }
-        return await callback(mockTx)
-      })
+      dbMock.calendarEvent.update.mockResolvedValue(mockEvent as any)
+      dbMock.calendarEventAssignment.deleteMany.mockResolvedValue({ count: 1 } as any)
+      dbMock.calendarEventAssignment.createMany.mockResolvedValue({ count: 2 } as any)
 
       const request = new NextRequest('http://localhost/api/calendar/events/123', {
         method: 'PATCH',
@@ -150,22 +140,10 @@ describe('/api/calendar/events/[id]', () => {
 
       await PATCH(request, { params: Promise.resolve({ id: eventId }) })
 
-      const txCallback = (dbMock.$transaction as jest.Mock).mock.calls[0][0]
-      const mockTx = {
-        calendarEvent: {
-          update: jest.fn().mockResolvedValue(mockEvent),
-        },
-        calendarEventAssignment: {
-          deleteMany: jest.fn(),
-          createMany: jest.fn(),
-        },
-      }
-      await txCallback(mockTx)
-
-      expect(mockTx.calendarEventAssignment.deleteMany).toHaveBeenCalledWith({
+      expect(dbMock.calendarEventAssignment.deleteMany).toHaveBeenCalledWith({
         where: { eventId },
       })
-      expect(mockTx.calendarEventAssignment.createMany).toHaveBeenCalledWith({
+      expect(dbMock.calendarEventAssignment.createMany).toHaveBeenCalledWith({
         data: [
           { eventId, memberId: 'child-1' },
           { eventId, memberId: 'child-2' },
@@ -178,7 +156,7 @@ describe('/api/calendar/events/[id]', () => {
     const eventId = 'event-1'
     const mockEvent = {
       id: eventId,
-      familyId: 'family-1',
+      familyId: 'family-test-123',
     }
 
     it('should return 401 if not authenticated', async () => {

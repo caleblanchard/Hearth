@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -34,20 +35,26 @@ export async function POST(request: NextRequest) {
 
     if (!recipeId && !dishName) {
       return NextResponse.json(
-        { error: 'Either recipeId or dishName is required' },
+        { error: 'Either dishName or recipeId is required' },
         { status: 400 }
       );
     }
 
-    const dish = await addDishToMealEntry(mealEntryId, { recipeId, dishName });
+    const dish = await addDishToMealEntry(mealEntryId, {
+      recipeId,
+      dishName,
+      familyId,
+    });
 
     return NextResponse.json({
       success: true,
       dish,
       message: 'Dish added to meal successfully',
-    });
-  } catch (error) {
+    }, { status: 201 });
+  } catch (error: any) {
     logger.error('Add dish error:', error);
-    return NextResponse.json({ error: 'Failed to add dish' }, { status: 500 });
+    const status = error.status || 500;
+    const message = error.message || 'Failed to create dish';
+    return NextResponse.json({ error: message }, { status });
   }
 }

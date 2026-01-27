@@ -180,6 +180,28 @@ export async function assignMembersToEvent(
 }
 
 /**
+ * Update event assignments (replace existing)
+ */
+export async function updateEventAssignments(
+  eventId: string,
+  memberIds: string[]
+) {
+  const supabase = await createClient()
+
+  // Delete existing assignments
+  const { error: deleteError } = await supabase
+    .from('calendar_event_assignments')
+    .delete()
+    .eq('event_id', eventId)
+
+  if (deleteError) throw deleteError
+
+  if (memberIds.length > 0) {
+    await assignMembersToEvent(eventId, memberIds)
+  }
+}
+
+/**
  * Remove member assignment from event
  */
 export async function removeMemberFromEvent(
@@ -460,7 +482,7 @@ export async function getCalendarConnections(memberId: string) {
 
   const { data, error } = await supabase
     .from('calendar_connections')
-    .select('*')
+    .select('id, provider, google_email, sync_status, sync_enabled, created_at, updated_at, member_id, family_id, sync_token, is_active')
     .eq('member_id', memberId)
     .order('created_at', { ascending: false })
 
@@ -692,25 +714,70 @@ export async function handleGoogleCalendarCallback(
   code: string
 ) {
   const supabase = await createClient()
+  const { GoogleCalendarClient } = await import('@/lib/integrations/google-calendar')
+  const { encryptToken } = await import('@/lib/token-encryption')
 
-  // In a real implementation, this would:
-  // 1. Exchange code for tokens
-  // 2. Get user's calendar info
-  // 3. Create calendar connection
+  const client = new GoogleCalendarClient()
+  const tokens = await client.getTokensFromCode(code)
+  const email = await client.getUserEmailFromToken(tokens.accessToken)
 
-  // For now, create a placeholder connection
+  const encryptedAccessToken = encryptToken(tokens.accessToken)
+  const encryptedRefreshToken = encryptToken(tokens.refreshToken)
+
+  // Check if connection exists
+  const { data: existing } = await supabase
+    .from('calendar_connections')
+    .select('id')
+    .eq('member_id', memberId)
+    .eq('provider', 'GOOGLE')
+    .maybeSingle()
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from('calendar_connections')
+      .update({
+        google_email: email,
+        access_token: encryptedAccessToken,
+        refresh_token: encryptedRefreshToken,
+        token_expires_at: tokens.expiresAt.toISOString(),
+        sync_status: 'ACTIVE',
+        sync_error: null,
+        sync_enabled: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  // Get family_id
+  const { data: member } = await supabase
+    .from('family_members')
+    .select('family_id')
+    .eq('id', memberId)
+    .single()
+
+  if (!member) throw new Error('Member not found')
+
   const { data, error } = await supabase
     .from('calendar_connections')
     .insert({
       member_id: memberId,
+      family_id: member.family_id,
       provider: 'GOOGLE',
-      provider_account_id: 'placeholder',
-      access_token: 'encrypted_token',
-      refresh_token: 'encrypted_refresh_token',
-      token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+      google_email: email,
+      access_token: encryptedAccessToken,
+      refresh_token: encryptedRefreshToken,
+      token_expires_at: tokens.expiresAt.toISOString(),
       is_active: true,
       sync_enabled: true,
+      sync_status: 'ACTIVE',
       name: 'Google Calendar',
+      // Set next sync to now
+      next_sync_at: new Date().toISOString(),
     })
     .select()
     .single()

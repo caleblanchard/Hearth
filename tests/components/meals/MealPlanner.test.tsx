@@ -15,8 +15,45 @@ global.fetch = jest.fn();
 
 describe('MealPlanner Component', () => {
   beforeEach(() => {
+    // Mock Date to return fixed time
+    const fixedDate = new Date('2026-01-07T12:00:00Z');
+    const OriginalDate = Date;
+    
+    // We need to keep the original prototype for instanceof checks
+    // and to avoid infinite recursion
+    jest.spyOn(global, 'Date').mockImplementation((...args) => {
+      if (args.length) {
+        return new OriginalDate(...args as [any]);
+      }
+      return fixedDate;
+    });
+    
+    // Copy static methods
+    Object.setPrototypeOf(global.Date, OriginalDate);
+
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockClear();
+    
+    // Default mock implementation handling both endpoints
+    (global.fetch as jest.Mock).mockImplementation(async (url) => {
+      if (url.includes('family-data')) {
+        return { 
+          ok: true, 
+          json: async () => ({
+            weekStartDay: 'MONDAY',
+            timezone: 'America/New_York'
+          }) 
+        };
+      }
+      return {
+        ok: true,
+        json: async () => mockEmptyMealPlan,
+      };
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   const mockEmptyMealPlan = {
@@ -64,7 +101,7 @@ describe('MealPlanner Component', () => {
   });
 
   it('should load and display meal plan for current week on mount', async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
+    (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => mockMealPlanWithEntries,
     });
@@ -93,7 +130,7 @@ describe('MealPlanner Component', () => {
   });
 
   it('should display meal entries in calendar grid', async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
+    (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => mockMealPlanWithEntries,
     });
@@ -123,18 +160,24 @@ describe('MealPlanner Component', () => {
   it('should navigate to previous week', async () => {
     const user = userEvent.setup();
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
+    (global.fetch as jest.Mock).mockImplementation(async (url) => {
+      if (url.includes('family-data')) return { ok: true, json: async () => ({}) };
+      
+      if (url.includes('week=2025-12-29')) {
+        return {
+          ok: true,
+          json: async () => ({
+            mealPlan: null,
+            weekStart: '2025-12-29',
+          }),
+        };
+      }
+      
+      return {
         ok: true,
         json: async () => mockEmptyMealPlan,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          mealPlan: null,
-          weekStart: '2025-12-29',
-        }),
-      });
+      };
+    });
 
     render(<MealPlanner />);
 
@@ -142,29 +185,37 @@ describe('MealPlanner Component', () => {
       expect(screen.getByText(/Week of/i)).toBeInTheDocument();
     });
 
+    (global.fetch as jest.Mock).mockClear();
+
     const prevButton = screen.getByRole('button', { name: /previous week/i });
     await user.click(prevButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
   });
 
   it('should navigate to next week', async () => {
     const user = userEvent.setup();
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
+    (global.fetch as jest.Mock).mockImplementation(async (url) => {
+      if (url.includes('family-data')) return { ok: true, json: async () => ({}) };
+      
+      if (url.includes('week=2026-01-12')) {
+        return {
+          ok: true,
+          json: async () => ({
+            mealPlan: null,
+            weekStart: '2026-01-12',
+          }),
+        };
+      }
+      
+      return {
         ok: true,
         json: async () => mockEmptyMealPlan,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          mealPlan: null,
-          weekStart: '2026-01-12',
-        }),
-      });
+      };
+    });
 
     render(<MealPlanner />);
 
@@ -172,21 +223,18 @@ describe('MealPlanner Component', () => {
       expect(screen.getByText(/Week of/i)).toBeInTheDocument();
     });
 
+    (global.fetch as jest.Mock).mockClear();
+
     const nextButton = screen.getByRole('button', { name: /next week/i });
     await user.click(nextButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
   });
 
   it('should open add meal dialog when clicking add button', async () => {
     const user = userEvent.setup();
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockEmptyMealPlan,
-    });
 
     render(<MealPlanner />);
 
@@ -204,26 +252,28 @@ describe('MealPlanner Component', () => {
   it('should create new meal entry', async () => {
     const user = userEvent.setup();
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
+    (global.fetch as jest.Mock).mockImplementation(async (url, options) => {
+      if (url.includes('family-data')) {
+        return { ok: true, json: async () => ({}) };
+      }
+      if (options?.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({
+            entry: {
+              id: 'entry-1',
+              customName: 'Tacos',
+              mealType: 'DINNER',
+              date: new Date('2026-01-06'),
+            },
+          }),
+        };
+      }
+      return {
         ok: true,
         json: async () => mockEmptyMealPlan,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          entry: {
-            id: 'entry-1',
-            customName: 'Tacos',
-            mealType: 'DINNER',
-            date: new Date('2026-01-06'),
-          },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockEmptyMealPlan,
-      });
+      };
+    });
 
     render(<MealPlanner />);
 
@@ -234,7 +284,7 @@ describe('MealPlanner Component', () => {
     const addButtons = screen.getAllByRole('button', { name: /add meal/i });
     await user.click(addButtons[0]);
 
-    const nameInput = screen.getByLabelText(/meal name/i);
+    const nameInput = await screen.findByLabelText(/meal name/i);
     await user.type(nameInput, 'Tacos');
 
     const saveButton = screen.getByRole('button', { name: /save/i });
@@ -254,9 +304,12 @@ describe('MealPlanner Component', () => {
   it('should show meal notes when hovering over entry', async () => {
     const user = userEvent.setup();
 
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockMealPlanWithEntries,
+    (global.fetch as jest.Mock).mockImplementation(async (url) => {
+      if (url.includes('family-data')) return { ok: true, json: async () => ({}) };
+      return {
+        ok: true,
+        json: async () => mockMealPlanWithEntries,
+      };
     });
 
     render(<MealPlanner />);
@@ -276,25 +329,27 @@ describe('MealPlanner Component', () => {
   it('should edit meal entry', async () => {
     const user = userEvent.setup();
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
+    (global.fetch as jest.Mock).mockImplementation(async (url, options) => {
+      if (url.includes('family-data')) {
+        return { ok: true, json: async () => ({}) };
+      }
+      if (options?.method === 'PATCH') {
+        return {
+          ok: true,
+          json: async () => ({
+            entry: {
+              id: 'entry-1',
+              customName: 'Waffles',
+              notes: 'With strawberries',
+            },
+          }),
+        };
+      }
+      return {
         ok: true,
         json: async () => mockMealPlanWithEntries,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          entry: {
-            id: 'entry-1',
-            customName: 'Waffles',
-            notes: 'With strawberries',
-          },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockMealPlanWithEntries,
-      });
+      };
+    });
 
     render(<MealPlanner />);
 
@@ -305,7 +360,7 @@ describe('MealPlanner Component', () => {
     const pancakesEntry = screen.getByText('Pancakes');
     await user.click(pancakesEntry);
 
-    const nameInput = screen.getByDisplayValue('Pancakes');
+    const nameInput = await screen.findByDisplayValue('Pancakes');
     await user.clear(nameInput);
     await user.type(nameInput, 'Waffles');
 
@@ -325,19 +380,18 @@ describe('MealPlanner Component', () => {
   it('should delete meal entry', async () => {
     const user = userEvent.setup();
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
+    (global.fetch as jest.Mock).mockImplementation(async (url, options) => {
+      if (url.includes('family-data')) {
+        return { ok: true, json: async () => ({}) };
+      }
+      if (options?.method === 'DELETE') {
+        return { ok: true, json: async () => ({ message: 'Deleted' }) };
+      }
+      return {
         ok: true,
         json: async () => mockMealPlanWithEntries,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ message: 'Deleted' }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockEmptyMealPlan,
-      });
+      };
+    });
 
     render(<MealPlanner />);
 
@@ -348,7 +402,7 @@ describe('MealPlanner Component', () => {
     const pancakesEntry = screen.getByText('Pancakes');
     await user.click(pancakesEntry);
 
-    const deleteButton = screen.getByRole('button', { name: /delete/i });
+    const deleteButton = await screen.findByRole('button', { name: /delete/i });
     await user.click(deleteButton);
 
     // Confirm deletion
@@ -398,7 +452,7 @@ describe('MealPlanner Component', () => {
   });
 
   it('should handle API errors gracefully', async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
+    (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 500,
     });

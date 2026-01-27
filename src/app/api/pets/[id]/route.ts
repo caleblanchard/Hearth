@@ -82,12 +82,41 @@ export async function PATCH(
 
     // Verify pet exists
     const existing = await getPet(id);
-    if (!existing || existing.family_id !== familyId) {
+    if (!existing) {
       return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
+    }
+    
+    if (existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const body = await request.json();
+    const { species } = body;
+
+    // Validate species if provided
+    if (species && !VALID_SPECIES.includes(species)) {
+      return NextResponse.json(
+        { error: `Invalid species. Must be one of: ${VALID_SPECIES.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
     const pet = await updatePet(id, body);
+
+    // Audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'PET_UPDATED',
+      entity_type: 'PET',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        petId: id,
+        name: pet.name,
+        changes: Object.keys(body),
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -106,6 +135,7 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
+    const supabase = await createClient();
     const authContext = await getAuthContext();
 
     if (!authContext) {
@@ -130,11 +160,29 @@ export async function DELETE(
 
     // Verify pet exists
     const existing = await getPet(id);
-    if (!existing || existing.family_id !== familyId) {
+    if (!existing) {
       return NextResponse.json({ error: 'Pet not found' }, { status: 404 });
     }
 
+    if (existing.family_id !== familyId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     await deletePet(id);
+
+    // Audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'PET_DELETED',
+      entity_type: 'PET',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        petId: id,
+        name: existing.name,
+      },
+    });
 
     return NextResponse.json({
       success: true,

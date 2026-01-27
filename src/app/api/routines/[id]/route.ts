@@ -51,6 +51,7 @@ export async function PATCH(
 ) {
   const { id } = await params
   try {
+    const supabase = await createClient();
     const authContext = await getAuthContext();
 
     if (!authContext) {
@@ -58,7 +59,9 @@ export async function PATCH(
     }
 
     const familyId = authContext.activeFamilyId;
-    if (!familyId) {
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
@@ -68,8 +71,55 @@ export async function PATCH(
       return NextResponse.json({ error: 'Routine not found' }, { status: 404 });
     }
 
+    // Check permissions - only parents can update routines
+    const role = authContext.user?.role;
+    if (role !== 'PARENT') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
-    const routine = await updateRoutine(id, body);
+    const { steps, ...updates } = body;
+
+    const routine = await updateRoutine(id, updates);
+
+    if (steps && Array.isArray(steps)) {
+      // Replace steps
+      // 1. Delete existing
+      await supabase.from('routine_steps').delete().eq('routine_id', id);
+
+      // 2. Insert new
+      const itemsPayload = steps.map((step: any, index: number) => ({
+        routine_id: id,
+        name: step.name,
+        icon: step.icon,
+        estimated_minutes: step.estimatedMinutes,
+        sort_order: typeof step.sortOrder === 'number' ? step.sortOrder : index,
+      }));
+
+      if (itemsPayload.length > 0) {
+        await supabase.from('routine_steps').insert(itemsPayload);
+      }
+      
+      (routine as any).steps = itemsPayload.map((item: any) => ({
+        ...item,
+        sortOrder: item.sort_order,
+        estimatedMinutes: item.estimated_minutes,
+      }));
+    }
+
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'ROUTINE_UPDATED',
+      entity_type: 'ROUTINE',
+      entity_id: routine.id,
+      result: 'SUCCESS',
+      metadata: {
+        name: routine.name,
+        type: routine.type,
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -91,6 +141,7 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
+    const supabase = await createClient();
     const authContext = await getAuthContext();
 
     if (!authContext) {
@@ -98,7 +149,9 @@ export async function DELETE(
     }
 
     const familyId = authContext.activeFamilyId;
-    if (!familyId) {
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
@@ -108,7 +161,27 @@ export async function DELETE(
       return NextResponse.json({ error: 'Routine not found' }, { status: 404 });
     }
 
+    // Check permissions - only parents can delete routines
+    const role = authContext.user?.role;
+    if (role !== 'PARENT') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     await deleteRoutine(id);
+
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'ROUTINE_DELETED',
+      entity_type: 'ROUTINE',
+      entity_id: id,
+      result: 'SUCCESS',
+      metadata: {
+        name: existing.name,
+        type: existing.type,
+      },
+    });
 
     return NextResponse.json({
       success: true,

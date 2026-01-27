@@ -24,7 +24,16 @@ export async function getMedicalProfile(memberId: string) {
 
   const { data, error } = await supabase
     .from('medical_profiles')
-    .select('*')
+    .select(
+      `
+      *,
+      member:family_members(
+        id,
+        name,
+        family_id
+      )
+    `
+    )
     .eq('member_id', memberId)
     .maybeSingle()
 
@@ -95,7 +104,9 @@ export async function getHealthEvents(
     .from('health_events')
     .select(`
       *,
-      member:family_members!health_events_member_id_fkey(id, name, family_id)
+      member:family_members!health_events_member_id_fkey(id, name, family_id),
+      symptoms:health_event_symptoms(*),
+      medications:health_event_medications(*)
     `)
 
   // Filter by family through the member relation
@@ -111,7 +122,10 @@ export async function getHealthEvents(
     query = query.is('ended_at', null)
   }
 
-  query = query.order('started_at', { ascending: false })
+  query = query
+    .order('started_at', { ascending: false })
+    .order('recorded_at', { foreignTable: 'symptoms', ascending: false })
+    .order('given_at', { foreignTable: 'medications', ascending: false })
 
   const { data, error } = await query
 
@@ -385,7 +399,9 @@ export async function getTemperatureReadings(memberId: string, days = 7) {
 export async function startSickMode(
   memberId: string,
   startedBy: string,
-  reason?: string
+  reason?: string,
+  healthEventId?: string,
+  triggeredBy: string = 'MANUAL'
 ) {
   const supabase = await createClient()
 
@@ -405,6 +421,8 @@ export async function startSickMode(
       family_id: member.family_id,
       started_by: startedBy,
       reason,
+      health_event_id: healthEventId,
+      triggered_by: triggeredBy,
       is_active: true,
       started_at: new Date().toISOString(),
     })
@@ -412,26 +430,69 @@ export async function startSickMode(
     .single()
 
   if (error) throw error
+  
+  // Create audit log
+  await supabase.from('audit_logs').insert({
+    family_id: member.family_id,
+    member_id: startedBy,
+    action: 'SICK_MODE_STARTED',
+    entity_type: 'SickModeInstance',
+    entity_id: data.id,
+    result: 'SUCCESS',
+    details: {
+      sickMemberId: memberId,
+      triggeredBy,
+      reason
+    }
+  })
+
   return data
 }
 
 /**
  * End sick mode instance
  */
-export async function endSickMode(instanceId: string) {
+export async function endSickMode(instanceId: string, endedBy?: string) {
   const supabase = await createClient()
+
+  const { data: current } = await supabase
+    .from('sick_mode_instances')
+    .select('family_id, member_id')
+    .eq('id', instanceId)
+    .single()
+
+  const updates: any = {
+    is_active: false,
+    ended_at: new Date().toISOString(),
+  }
+
+  if (endedBy) {
+    updates.ended_by = endedBy
+  }
 
   const { data, error } = await supabase
     .from('sick_mode_instances')
-    .update({
-      is_active: false,
-      ended_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq('id', instanceId)
     .select()
     .single()
 
   if (error) throw error
+
+  if (endedBy && current) {
+    await supabase.from('audit_logs').insert({
+      family_id: current.family_id,
+      member_id: endedBy,
+      action: 'SICK_MODE_ENDED',
+      entity_type: 'SickModeInstance',
+      entity_id: instanceId,
+      result: 'SUCCESS',
+      details: {
+        sickMemberId: current.member_id
+      }
+    })
+  }
+
   return { instance: data }
 }
 

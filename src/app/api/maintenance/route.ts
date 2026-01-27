@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
       success: true,
       item,
       message: 'Maintenance item created successfully',
-    });
+    }, { status: 201 });
   } catch (error) {
     logger.error('Error creating maintenance item:', error);
     return NextResponse.json(

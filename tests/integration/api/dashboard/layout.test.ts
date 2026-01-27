@@ -27,6 +27,21 @@ describe('/api/dashboard/layout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetDbMock();
+    
+    // Mock family member lookup for enabled modules check
+    dbMock.familyMember.findUnique.mockResolvedValue({
+      id: 'member-1',
+      family_id: 'family-1',
+      auth_user_id: 'user-1'
+    } as any);
+    dbMock.familyMember.findFirst.mockResolvedValue({
+      id: 'member-1',
+      family_id: 'family-1',
+      auth_user_id: 'user-1'
+    } as any);
+    
+    // Default: no layout exists (needed for getDashboardLayout as maybeSingle uses findFirst via bridge)
+    dbMock.dashboardLayout.findFirst.mockResolvedValue(null);
   });
 
   describe('GET', () => {
@@ -57,9 +72,9 @@ describe('/api/dashboard/layout', () => {
 
       // Mock enabled modules
       dbMock.moduleConfiguration.findMany.mockResolvedValue([
-        { moduleId: ModuleId.CHORES, isEnabled: true } as any,
-        { moduleId: ModuleId.SCREEN_TIME, isEnabled: true } as any,
-        { moduleId: ModuleId.CREDITS, isEnabled: true } as any,
+        { module_id: ModuleId.CHORES, is_enabled: true, family_id: 'family-1' } as any,
+        { module_id: ModuleId.SCREEN_TIME, is_enabled: true, family_id: 'family-1' } as any,
+        { module_id: ModuleId.CREDITS, is_enabled: true, family_id: 'family-1' } as any,
       ]);
 
       const request = new NextRequest('http://localhost/api/dashboard/layout');
@@ -70,7 +85,7 @@ describe('/api/dashboard/layout', () => {
       expect(data.layout).toBeDefined();
       expect(data.layout.widgets).toBeInstanceOf(Array);
       expect(data.layout.widgets.length).toBeGreaterThan(0);
-      expect(data.availableWidgets).toBeInstanceOf(Array);
+      expect(data.layout.availableWidgets).toBeInstanceOf(Array);
 
       // Verify default widgets are enabled and ordered
       const choreWidget = data.layout.widgets.find((w: any) => w.id === 'chores');
@@ -121,14 +136,24 @@ describe('/api/dashboard/layout', () => {
         id: 'layout-1',
         memberId: 'parent-1',
         layout: savedLayout,
+        widgets: savedLayout.widgets, // Mock the widgets column which exists in DB
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+      // Also mock findFirst because bridge maps maybeSingle to findFirst (since no unique constraint configured)
+      dbMock.dashboardLayout.findFirst.mockResolvedValue({
+        id: 'layout-1',
+        memberId: 'parent-1',
+        layout: savedLayout,
+        widgets: savedLayout.widgets, // Mock the widgets column which exists in DB
         createdAt: new Date(),
         updatedAt: new Date(),
       } as any);
 
       dbMock.moduleConfiguration.findMany.mockResolvedValue([
-        { moduleId: ModuleId.CHORES, isEnabled: true } as any,
-        { moduleId: ModuleId.CALENDAR, isEnabled: true } as any,
-        { moduleId: ModuleId.TODOS, isEnabled: true } as any,
+        { module_id: ModuleId.CHORES, is_enabled: true, family_id: 'family-1' } as any,
+        { module_id: ModuleId.CALENDAR, is_enabled: true, family_id: 'family-1' } as any,
+        { module_id: ModuleId.TODOS, is_enabled: true, family_id: 'family-1' } as any,
       ]);
 
       const request = new NextRequest('http://localhost/api/dashboard/layout');
@@ -173,7 +198,7 @@ describe('/api/dashboard/layout', () => {
 
       // Shopping module is disabled
       dbMock.moduleConfiguration.findMany.mockResolvedValue([
-        { moduleId: ModuleId.CHORES, isEnabled: true } as any,
+        { module_id: ModuleId.CHORES, is_enabled: true, family_id: 'family-1' } as any,
       ]);
 
       const request = new NextRequest('http://localhost/api/dashboard/layout');
@@ -222,11 +247,11 @@ describe('/api/dashboard/layout', () => {
 
       dbMock.dashboardLayout.findUnique.mockResolvedValue(null);
       dbMock.moduleConfiguration.findMany.mockResolvedValue([
-        { moduleId: ModuleId.CHORES, isEnabled: true } as any,
-        { moduleId: ModuleId.SCREEN_TIME, isEnabled: true } as any,
+        { module_id: ModuleId.CHORES, is_enabled: true, family_id: 'family-1' } as any,
+        { module_id: ModuleId.SCREEN_TIME, is_enabled: true, family_id: 'family-1' } as any,
       ]);
 
-      dbMock.dashboardLayout.create.mockResolvedValue({
+      dbMock.dashboardLayout.upsert.mockResolvedValue({
         id: 'layout-1',
         memberId: 'child-1',
         layout: newLayout,
@@ -243,12 +268,18 @@ describe('/api/dashboard/layout', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(dbMock.dashboardLayout.create).toHaveBeenCalledWith({
-        data: {
+      expect(dbMock.dashboardLayout.upsert).toHaveBeenCalledWith(expect.objectContaining({
+        where: { memberId: 'child-1' },
+        create: expect.objectContaining({
           memberId: 'child-1',
           layout: newLayout,
-        },
-      });
+          widgets: newLayout.widgets,
+        }),
+        update: expect.objectContaining({
+          layout: newLayout,
+          widgets: newLayout.widgets,
+        }),
+      }));
     });
 
     it('should update existing layout for user', async () => {
@@ -282,11 +313,11 @@ describe('/api/dashboard/layout', () => {
 
       dbMock.dashboardLayout.findUnique.mockResolvedValue(existingLayout as any);
       dbMock.moduleConfiguration.findMany.mockResolvedValue([
-        { moduleId: ModuleId.CHORES, isEnabled: true } as any,
-        { moduleId: ModuleId.CALENDAR, isEnabled: true } as any,
+        { module_id: ModuleId.CHORES, is_enabled: true, family_id: 'family-1' } as any,
+        { module_id: ModuleId.CALENDAR, is_enabled: true, family_id: 'family-1' } as any,
       ]);
 
-      dbMock.dashboardLayout.update.mockResolvedValue({
+      dbMock.dashboardLayout.upsert.mockResolvedValue({
         ...existingLayout,
         layout: updatedLayout,
       } as any);
@@ -300,10 +331,16 @@ describe('/api/dashboard/layout', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(dbMock.dashboardLayout.update).toHaveBeenCalledWith({
+      expect(dbMock.dashboardLayout.upsert).toHaveBeenCalledWith(expect.objectContaining({
         where: { memberId: 'parent-1' },
-        data: { layout: updatedLayout },
-      });
+        create: expect.objectContaining({
+          memberId: 'parent-1',
+          layout: updatedLayout,
+        }),
+        update: expect.objectContaining({
+          layout: updatedLayout,
+        }),
+      }));
     });
 
     it('should reject invalid widget IDs', async () => {
@@ -319,7 +356,7 @@ describe('/api/dashboard/layout', () => {
       });
 
       dbMock.moduleConfiguration.findMany.mockResolvedValue([
-        { moduleId: ModuleId.CHORES, isEnabled: true } as any,
+        { module_id: ModuleId.CHORES, is_enabled: true, family_id: 'family-1' } as any,
       ]);
 
       const invalidLayout = {
@@ -353,7 +390,7 @@ describe('/api/dashboard/layout', () => {
 
       // Only CHORES is enabled
       dbMock.moduleConfiguration.findMany.mockResolvedValue([
-        { moduleId: ModuleId.CHORES, isEnabled: true } as any,
+        { module_id: ModuleId.CHORES, is_enabled: true, family_id: 'family-1' } as any,
       ]);
 
       const layoutWithDisabledModule = {
@@ -400,17 +437,14 @@ describe('/api/dashboard/layout', () => {
         },
       });
 
-      dbMock.dashboardLayout.delete.mockResolvedValue({
-        id: 'layout-1',
-        memberId: 'child-1',
-        layout: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as any);
+      dbMock.dashboardLayout.deleteMany.mockResolvedValue({ count: 1 } as any);
+      // Mock findFirst/Unique for getDashboardLayout call inside reset
+      dbMock.dashboardLayout.findUnique.mockResolvedValue(null);
+      dbMock.dashboardLayout.findFirst.mockResolvedValue(null);
 
       dbMock.moduleConfiguration.findMany.mockResolvedValue([
-        { moduleId: ModuleId.CHORES, isEnabled: true } as any,
-        { moduleId: ModuleId.SCREEN_TIME, isEnabled: true } as any,
+        { module_id: ModuleId.CHORES, is_enabled: true, family_id: 'family-1' } as any,
+        { module_id: ModuleId.SCREEN_TIME, is_enabled: true, family_id: 'family-1' } as any,
       ]);
 
       const request = new NextRequest('http://localhost/api/dashboard/layout/reset', {
@@ -423,7 +457,7 @@ describe('/api/dashboard/layout', () => {
       expect(data.success).toBe(true);
       expect(data.layout).toBeDefined();
       expect(data.layout.widgets).toBeInstanceOf(Array);
-      expect(dbMock.dashboardLayout.delete).toHaveBeenCalledWith({
+      expect(dbMock.dashboardLayout.deleteMany).toHaveBeenCalledWith({
         where: { memberId: 'child-1' },
       });
     });
@@ -444,7 +478,7 @@ describe('/api/dashboard/layout', () => {
       dbMock.dashboardLayout.delete.mockRejectedValue(new Error('Not found'));
 
       dbMock.moduleConfiguration.findMany.mockResolvedValue([
-        { moduleId: ModuleId.CHORES, isEnabled: true } as any,
+        { module_id: ModuleId.CHORES, is_enabled: true, family_id: 'family-1' } as any,
       ]);
 
       const request = new NextRequest('http://localhost/api/dashboard/layout/reset', {

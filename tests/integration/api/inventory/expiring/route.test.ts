@@ -85,7 +85,7 @@ describe('/api/inventory/expiring', () => {
         familyId: 'family-test-123',
         expiresAt: {
           not: null,
-          lte: sevenDaysFromNow,
+          lte: sevenDaysFromNow.toISOString(),
         },
       },
       orderBy: {
@@ -140,7 +140,7 @@ describe('/api/inventory/expiring', () => {
         familyId: 'family-test-123',
         expiresAt: {
           not: null,
-          lte: threeDaysFromNow,
+          lte: threeDaysFromNow.toISOString(),
         },
       },
       orderBy: {

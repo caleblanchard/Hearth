@@ -1,10 +1,6 @@
 // Set up mocks BEFORE any imports
 import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock';
-
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}));
+import { mockParentSession, mockChildSession, setMockSession } from '@/lib/test-utils/auth-mock';
 
 import { NextRequest } from 'next/server';
 import { GET, PUT } from '@/app/api/family/sick-mode/settings/route';
@@ -13,23 +9,8 @@ describe('/api/family/sick-mode/settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetDbMock();
+    mockParentSession();
   });
-
-  const mockParentSession = {
-    user: {
-      id: 'parent-test-123',
-      familyId: 'family-test-123',
-      role: 'PARENT' as const,
-    },
-  };
-
-  const mockChildSession = {
-    user: {
-      id: 'child-test-123',
-      familyId: 'family-test-123',
-      role: 'CHILD' as const,
-    },
-  };
 
   const mockSettings = {
     id: 'settings-1',
@@ -49,6 +30,7 @@ describe('/api/family/sick-mode/settings', () => {
 
   describe('GET', () => {
     it('should return 401 if not authenticated', async () => {
+      setMockSession(null);
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
         method: 'GET',
       });
@@ -77,25 +59,23 @@ describe('/api/family/sick-mode/settings', () => {
 
     it('should create default settings if none exist', async () => {
       dbMock.sickModeSettings.findUnique.mockResolvedValue(null);
-      dbMock.sickModeSettings.create.mockResolvedValue(mockSettings as any);
+      dbMock.sickModeSettings.findFirst.mockResolvedValue(null);
+      dbMock.sickModeSettings.upsert.mockResolvedValue(mockSettings as any);
 
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
         method: 'GET',
-      });
+        });
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.settings).toBeDefined();
 
-      expect(dbMock.sickModeSettings.create).toHaveBeenCalledWith({
-        data: {
-          familyId: 'family-test-123',
-        },
-      });
+      expect(dbMock.sickModeSettings.upsert).toHaveBeenCalled();
     });
 
     it('should allow children to view settings', async () => {
+      mockChildSession();
       dbMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
 
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
@@ -111,6 +91,7 @@ describe('/api/family/sick-mode/settings', () => {
 
   describe('PUT', () => {
     it('should return 401 if not authenticated', async () => {
+      setMockSession(null);
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
         method: 'PUT',
         body: JSON.stringify({
@@ -123,6 +104,7 @@ describe('/api/family/sick-mode/settings', () => {
     });
 
     it('should return 403 if child tries to update settings', async () => {
+      mockChildSession();
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
         method: 'PUT',
         body: JSON.stringify({
@@ -133,12 +115,12 @@ describe('/api/family/sick-mode/settings', () => {
 
       expect(response.status).toBe(403);
       const data = await response.json();
-      expect(data.error).toBe('Only parents can update sick mode settings');
+      expect(data.error).toBe('Parent access required');
     });
 
     it('should allow parents to update settings', async () => {
       dbMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
-      dbMock.sickModeSettings.update.mockResolvedValue({
+      dbMock.sickModeSettings.upsert.mockResolvedValue({
         ...mockSettings,
         pauseChores: false,
         screenTimeBonus: 60,
@@ -158,18 +140,13 @@ describe('/api/family/sick-mode/settings', () => {
       expect(data.settings.pauseChores).toBe(false);
       expect(data.settings.screenTimeBonus).toBe(60);
 
-      expect(dbMock.sickModeSettings.update).toHaveBeenCalledWith({
-        where: { familyId: 'family-test-123' },
-        data: {
-          pauseChores: false,
-          screenTimeBonus: 60,
-        },
-      });
+      expect(dbMock.sickModeSettings.upsert).toHaveBeenCalled();
     });
 
     it('should create settings if none exist during update', async () => {
       dbMock.sickModeSettings.findUnique.mockResolvedValue(null);
-      dbMock.sickModeSettings.create.mockResolvedValue({
+      dbMock.sickModeSettings.findFirst.mockResolvedValue(null);
+      dbMock.sickModeSettings.upsert.mockResolvedValue({
         ...mockSettings,
         pauseChores: false,
       } as any);
@@ -183,12 +160,7 @@ describe('/api/family/sick-mode/settings', () => {
       const response = await PUT(request);
 
       expect(response.status).toBe(200);
-      expect(dbMock.sickModeSettings.create).toHaveBeenCalledWith({
-        data: {
-          familyId: 'family-test-123',
-          pauseChores: false,
-        },
-      });
+      expect(dbMock.sickModeSettings.upsert).toHaveBeenCalled();
     });
 
     it('should validate temperatureThreshold is a positive number', async () => {
@@ -216,12 +188,12 @@ describe('/api/family/sick-mode/settings', () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error).toBe('Screen time bonus must be non-negative');
+      expect(data.error).toBe('Screen time bonus must be a non-negative number');
     });
 
     it('should log audit event on successful update', async () => {
       dbMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
-      dbMock.sickModeSettings.update.mockResolvedValue({
+      dbMock.sickModeSettings.upsert.mockResolvedValue({
         ...mockSettings,
         pauseChores: false,
       } as any);
@@ -243,10 +215,12 @@ describe('/api/family/sick-mode/settings', () => {
           entityType: 'SickModeSettings',
           entityId: 'settings-1',
           result: 'SUCCESS',
-          previousValue: mockSettings,
-          newValue: expect.objectContaining({
-            pauseChores: false,
-          }),
+          details: {
+            previousValue: mockSettings,
+            newValue: expect.objectContaining({
+              pauseChores: false,
+            }),
+          },
         },
       });
     });

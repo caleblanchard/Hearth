@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getTransportDrivers, createTransportDriver } from '@/lib/data/transport';
 import { logger } from '@/lib/logger';
 
@@ -42,14 +42,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    }
+
     const body = await request.json();
+    if (!body.name) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
     const driver = await createTransportDriver(familyId, body);
 
     return NextResponse.json({
       success: true,
       driver,
       message: 'Driver created successfully',
-    });
+    }, { status: 201 });
   } catch (error) {
     logger.error('Error creating transport driver:', error);
     return NextResponse.json(

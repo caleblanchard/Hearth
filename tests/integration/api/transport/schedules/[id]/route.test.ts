@@ -185,6 +185,8 @@ describe('/api/transport/schedules/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'TRANSPORT_SCHEDULE_UPDATED',
+          entityId: 'schedule-1',
+          entityType: 'TRANSPORT_SCHEDULE',
           result: 'SUCCESS',
           metadata: {
             scheduleId: 'schedule-1',
@@ -275,6 +277,8 @@ describe('/api/transport/schedules/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'TRANSPORT_SCHEDULE_DELETED',
+          entityId: 'schedule-1',
+          entityType: 'TRANSPORT_SCHEDULE',
           result: 'SUCCESS',
           metadata: {
             scheduleId: 'schedule-1',

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse and validate date
-    const weekDate = new Date(weekParam + 'T00:00:00'); // Parse as local date
+    const weekDate = new Date(weekParam);
     if (isNaN(weekDate.getTime())) {
       return NextResponse.json(
         { error: 'Invalid date format' },
@@ -45,9 +45,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use the week parameter directly as the week start
-    // The frontend already calculates the correct week start based on family settings
-    const weekStart = weekParam;
+    // Normalize to Monday (UTC)
+    const d = new Date(weekDate);
+    const day = d.getUTCDay();
+    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+    d.setUTCDate(diff);
+    const weekStart = d.toISOString().split('T')[0];
 
     // Use data module
     const mealPlan = await getMealPlanWithEntries(familyId, weekStart);

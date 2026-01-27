@@ -32,11 +32,13 @@ export async function getGuestInvites(familyId: string) {
     .select(`
       *,
       family:families(id, name),
-      invited_by:family_members!guest_invites_invited_by_id_fkey(id, name)
+      invited_by:family_members!guest_invites_invited_by_id_fkey(id, name),
+      sessions:guest_sessions(*)
     `)
     .eq('family_id', familyId)
     .in('status', ['PENDING', 'ACTIVE'])
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .order('started_at', { foreignTable: 'sessions', ascending: false });
 
   if (error) {
     throw error;
@@ -130,11 +132,12 @@ export async function revokeGuestInvite(inviteId: string) {
     .single();
 
   // Mark as revoked
+  const now = new Date().toISOString();
   const { data: updated, error } = await supabase
     .from('guest_invites')
     .update({
       status: 'REVOKED',
-      revoked_at: new Date().toISOString(),
+      revoked_at: now,
     })
     .eq('id', inviteId)
     .select()
@@ -143,6 +146,13 @@ export async function revokeGuestInvite(inviteId: string) {
   if (error) {
     throw error;
   }
+
+  // End active sessions
+  await supabase
+    .from('guest_sessions')
+    .update({ ended_at: now })
+    .eq('guest_invite_id', inviteId)
+    .is('ended_at', null);
 
   // Create audit log
   if (invite) {

@@ -164,7 +164,7 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
 
     expect(dbMock.leftover.update).toHaveBeenCalledWith({
       where: { id: 'leftover-123' },
-      data: { usedAt: now },
+      data: { usedAt: '2026-01-01T12:00:00.000Z' },
     });
 
     jest.useRealTimers();
@@ -208,7 +208,7 @@ describe('PATCH /api/meals/leftovers/[id]', () => {
 
     expect(dbMock.leftover.update).toHaveBeenCalledWith({
       where: { id: 'leftover-123' },
-      data: { tossedAt: now },
+      data: { tossedAt: '2026-01-01T12:00:00.000Z' },
     });
 
     jest.useRealTimers();

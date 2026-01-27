@@ -29,13 +29,30 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // Validation
+    if (!body.guestName || !body.accessLevel) {
+      return NextResponse.json(
+        { error: 'Guest name, access level, and duration are required' }, 
+        { status: 400 }
+      );
+    }
+
+    const validAccessLevels = ['VIEW_ONLY', 'LIMITED', 'CAREGIVER'];
+    if (!validAccessLevels.includes(body.accessLevel)) {
+      return NextResponse.json(
+        { error: 'Invalid access level' }, 
+        { status: 400 }
+      );
+    }
+
     const invite = await createGuestInvite(familyId, memberId, body);
 
     return NextResponse.json({
       success: true,
       invite,
       message: 'Guest invite created successfully',
-    });
+    }, { status: 201 });
   } catch (error) {
     logger.error('Create guest invite error:', error);
     return NextResponse.json({ error: 'Failed to create guest invite' }, { status: 500 });

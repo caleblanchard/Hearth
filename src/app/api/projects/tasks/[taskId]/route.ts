@@ -46,14 +46,20 @@ export async function GET(
       .eq('id', task.project_id)
       .single();
 
+    if (!project) {
+        console.log('Project not found for task:', task.project_id);
+    } else if (project.family_id !== familyId) {
+        console.log('Family mismatch:', project.family_id, familyId);
+    }
+
     if (!project || project.family_id !== familyId) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     return NextResponse.json({ task });
   } catch (error) {
     logger.error('Get project task error:', error);
-    return NextResponse.json({ error: 'Failed to get task' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
   }
 }
 
@@ -100,11 +106,53 @@ export async function PATCH(
       .single();
 
     if (!project || project.family_id !== familyId) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const body = await request.json();
+    const { name, status, estimatedHours, actualHours } = body;
+
+    // Validation
+    if (name !== undefined && name.trim() === '') {
+      return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
+    }
+    
+    // Trim name if provided
+    if (name) {
+      body.name = name.trim();
+    }
+
+    if (status !== undefined) {
+      const validStatuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED', 'CANCELLED'];
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+      }
+    }
+
+    if (estimatedHours !== undefined && estimatedHours < 0) {
+      return NextResponse.json({ error: 'Estimated hours must be a positive number' }, { status: 400 });
+    }
+
+    if (actualHours !== undefined && actualHours < 0) {
+      return NextResponse.json({ error: 'Actual hours must be a positive number' }, { status: 400 });
+    }
+
     const task = await updateProjectTask(taskId, body);
+
+    // Audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'PROJECT_TASK_UPDATED',
+      entity_type: 'PROJECT_TASK',
+      entity_id: taskId,
+      result: 'SUCCESS',
+      metadata: {
+        projectId: existing.project_id,
+        taskId: taskId,
+        updates: body,
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -160,10 +208,25 @@ export async function DELETE(
       .single();
 
     if (!project || project.family_id !== familyId) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     await deleteProjectTask(taskId);
+
+    // Audit log
+    await (supabase as any).from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'PROJECT_TASK_DELETED',
+      entity_type: 'PROJECT_TASK',
+      entity_id: taskId,
+      result: 'SUCCESS',
+      metadata: {
+        projectId: existing.project_id,
+        taskId: taskId,
+        name: existing.name,
+      },
+    });
 
     return NextResponse.json({
       success: true,

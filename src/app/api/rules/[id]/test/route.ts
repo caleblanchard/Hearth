@@ -32,10 +32,53 @@ export async function POST(
       );
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
     const { context } = body;
 
-    const result = await testAutomationRule(id, context || {});
+    if (!context) {
+      return NextResponse.json({ error: 'Missing context' }, { status: 400 });
+    }
+
+    const supabase = await createClient();
+    const { data: rule } = await supabase
+      .from('automation_rules')
+      .select('family_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!rule) {
+      return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
+    }
+
+    if (rule.family_id !== familyId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const testContext = {
+      ...context,
+      familyId,
+    };
+
+    const result = await testAutomationRule(id, testContext);
+
+    // Create audit log
+    await supabase.from('audit_logs').insert({
+      family_id: familyId,
+      member_id: memberId,
+      action: 'RULE_TEST_RUN',
+      entity_type: 'AutomationRule',
+      entity_id: id,
+      result: 'SUCCESS',
+      details: {
+        context: testContext
+      }
+    });
 
     return NextResponse.json({
       success: true,

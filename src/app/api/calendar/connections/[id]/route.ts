@@ -57,6 +57,19 @@ export async function PATCH(
     }
 
     const body = await request.json();
+
+    // Validate body
+    const allowedFields = ['syncEnabled', 'importFromGoogle', 'exportToGoogle', 'isActive', 'name'];
+    const invalidFields = Object.keys(body).filter(key => !allowedFields.includes(key));
+    
+    if (invalidFields.length > 0) {
+      return NextResponse.json({ error: `Invalid fields: ${invalidFields.join(', ')}` }, { status: 400 });
+    }
+
+    if (body.syncEnabled) {
+      body.syncError = null;
+    }
+
     const connection = await updateCalendarConnection(id, body);
 
     return NextResponse.json({

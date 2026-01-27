@@ -103,11 +103,15 @@ describe('GET /api/projects', () => {
             select: {
               id: true,
               name: true,
+              avatarUrl: true,
             },
           },
-          _count: {
+          tasks: {
             select: {
-              tasks: true,
+              id: true,
+              name: true,
+              status: true,
+              dueDate: true,
             },
           },
         },
@@ -147,11 +151,15 @@ describe('GET /api/projects', () => {
             select: {
               id: true,
               name: true,
+              avatarUrl: true,
             },
           },
-          _count: {
+          tasks: {
             select: {
-              tasks: true,
+              id: true,
+              name: true,
+              status: true,
+              dueDate: true,
             },
           },
         },
@@ -362,7 +370,6 @@ describe('POST /api/projects', () => {
           startDate: null,
           dueDate: null,
           budget: null,
-          notes: null,
           createdById: 'parent-test-123',
         },
       });
@@ -502,6 +509,8 @@ describe('POST /api/projects', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'PROJECT_CREATED',
+          entityId: 'project-1',
+          entityType: 'PROJECT',
           result: 'SUCCESS',
           metadata: {
             projectId: 'project-1',

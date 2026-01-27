@@ -29,6 +29,7 @@ describe('/api/family/members/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     resetDbMock()
+    require("@/lib/supabase/server").isParentInFamily.mockResolvedValue(true)
   })
 
   describe('PATCH', () => {
@@ -43,6 +44,7 @@ describe('/api/family/members/[id]', () => {
     }
 
     it('should return 403 if not a parent', async () => {
+      require("@/lib/supabase/server").isParentInFamily.mockResolvedValue(false)
       const session = mockParentSession()
 
       const request = new NextRequest('http://localhost/api/family/members/123', {
@@ -95,17 +97,12 @@ describe('/api/family/members/[id]', () => {
     })
 
     it('should return 400 if trying to deactivate self', async () => {
-      const session = mockParentSession()
-      // Set session user ID to match memberId
-      const sessionWithMatchingId = {
-        ...session,
-        user: { ...session.user, id: memberId },
-      }
+      const session = mockParentSession({ user: { id: memberId } })
 
       dbMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
         id: memberId,
-        familyId: sessionWithMatchingId.user.familyId,
+        familyId: session.user.familyId,
       } as any)
 
       const request = new NextRequest('http://localhost/api/family/members/123', {
@@ -127,12 +124,12 @@ describe('/api/family/members/[id]', () => {
         .mockResolvedValueOnce({
           ...mockMember,
           familyId: session.user.familyId,
-        } as any) // First call for member lookup
+        } as any)
         .mockResolvedValueOnce({
           id: 'other-member',
           email: 'existing@test.com',
           familyId: session.user.familyId,
-        } as any) // Second call for email check
+        } as any)
 
       const request = new NextRequest('http://localhost/api/family/members/123', {
         method: 'PATCH',
@@ -170,8 +167,7 @@ describe('/api/family/members/[id]', () => {
       expect(data.member.name).toBe('Updated Name')
       expect(dbMock.familyMember.update).toHaveBeenCalledWith({
         where: { id: memberId },
-        data: { name: 'Updated Name' },
-        select: expect.any(Object),
+        data: expect.objectContaining({ name: 'Updated Name' }),
       })
     })
 
@@ -204,8 +200,7 @@ describe('/api/family/members/[id]', () => {
       expect(hash).toHaveBeenCalledWith('newpassword123', BCRYPT_ROUNDS)
       expect(dbMock.familyMember.update).toHaveBeenCalledWith({
         where: { id: memberId },
-        data: { passwordHash: 'new-hashed-password' },
-        select: expect.any(Object),
+        data: expect.objectContaining({ passwordHash: 'new-hashed-password' }),
       })
     })
 
@@ -235,13 +230,17 @@ describe('/api/family/members/[id]', () => {
       expect(hash).toHaveBeenCalledWith('5678', BCRYPT_ROUNDS)
       expect(dbMock.familyMember.update).toHaveBeenCalledWith({
         where: { id: memberId },
-        data: { pin: 'new-hashed-pin' },
-        select: expect.any(Object),
+        data: expect.objectContaining({ pin: 'new-hashed-pin' }),
       })
     })
 
     it('should handle invalid JSON gracefully', async () => {
       const session = mockParentSession()
+
+      dbMock.familyMember.findUnique.mockResolvedValue({
+        ...mockMember,
+        familyId: session.user.familyId,
+      } as any)
 
       const request = new NextRequest('http://localhost/api/family/members/123', {
         method: 'PATCH',
@@ -268,6 +267,7 @@ describe('/api/family/members/[id]', () => {
     }
 
     it('should return 403 if not a parent', async () => {
+      require("@/lib/supabase/server").isParentInFamily.mockResolvedValue(false)
       const session = mockParentSession()
 
       const request = new NextRequest('http://localhost/api/family/members/123', {
@@ -298,17 +298,12 @@ describe('/api/family/members/[id]', () => {
     })
 
     it('should return 400 if trying to delete self', async () => {
-      const session = mockParentSession()
-      // Set session user ID to match memberId
-      const sessionWithMatchingId = {
-        ...session,
-        user: { ...session.user, id: memberId },
-      }
+      const session = mockParentSession({ user: { id: memberId } })
 
       dbMock.familyMember.findUnique.mockResolvedValue({
         ...mockMember,
         id: memberId,
-        familyId: sessionWithMatchingId.user.familyId,
+        familyId: session.user.familyId,
       } as any)
 
       const request = new NextRequest('http://localhost/api/family/members/123', {
@@ -368,7 +363,7 @@ describe('/api/family/members/[id]', () => {
       expect(data.message).toBe('Family member deactivated successfully')
       expect(dbMock.familyMember.update).toHaveBeenCalledWith({
         where: { id: memberId },
-        data: { isActive: false },
+        data: expect.objectContaining({ isActive: false }),
       })
     })
 

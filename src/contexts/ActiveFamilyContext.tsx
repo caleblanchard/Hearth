@@ -9,7 +9,7 @@ interface ActiveFamilyContextType {
   loading: boolean;
 }
 
-const ActiveFamilyContext = createContext<ActiveFamilyContextType | undefined>(undefined);
+export const ActiveFamilyContext = createContext<ActiveFamilyContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'hearth_active_family_id';
 

@@ -27,39 +27,39 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
     const redemptionId = 'redemption-1'
     const mockRedemption = {
       id: redemptionId,
-      memberId: 'child-1',
-      rewardId: 'reward-1',
+      member_id: 'child-1',
+      reward_id: 'reward-1',
       status: RedemptionStatus.PENDING,
       reward: {
         id: 'reward-1',
-        familyId: 'family-1',
+        family_id: 'family-test-123',
         name: 'Test Reward',
-        costCredits: 50,
+        cost_credits: 50,
         quantity: 10,
       },
       member: {
         id: 'child-1',
         name: 'Child One',
       },
-      creditTransaction: {
+      credit_transaction: {
         id: 'tx-1',
         amount: 50,
       },
     }
 
     const mockCreditBalance = {
-      memberId: 'child-1',
-      currentBalance: 100,
-      lifetimeEarned: 200,
-      lifetimeSpent: 50,
+      member_id: 'child-1',
+      current_balance: 100,
+      lifetime_earned: 200,
+      lifetime_spent: 50,
     }
 
     const mockRejectedRedemption = {
       ...mockRedemption,
       status: RedemptionStatus.REJECTED,
-      rejectedAt: new Date(),
-      rejectedById: 'parent-1',
-      rejectionReason: 'Test reason',
+      rejected_at: new Date(),
+      rejected_by_id: 'parent-1',
+      rejection_reason: 'Test reason',
     }
 
     it('should return 401 if not authenticated', async () => {
@@ -115,7 +115,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         ...mockRedemption,
         reward: {
           ...mockRedemption.reward,
-          familyId: 'different-family',
+          family_id: 'different-family',
         },
       } as any)
 
@@ -138,7 +138,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         ...mockRedemption,
         reward: {
           ...mockRedemption.reward,
-          familyId: session.user.familyId,
+          family_id: session.user.familyId,
         },
         status: RedemptionStatus.APPROVED,
       } as any)
@@ -162,33 +162,19 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         ...mockRedemption,
         reward: {
           ...mockRedemption.reward,
-          familyId: session.user.familyId,
+          family_id: session.user.familyId,
         },
       } as any)
       dbMock.creditBalance.findUnique.mockResolvedValue(mockCreditBalance as any)
+      dbMock.familyMember.findUnique.mockResolvedValue({ id: 'parent-1' } as any)
 
-      // Mock transaction
-      const mockTransaction = jest.fn(async (callback: any) => {
-        return await callback({
-          rewardRedemption: {
-            update: jest.fn().mockResolvedValue(mockRejectedRedemption as any),
-          },
-          creditBalance: {
-            findUnique: jest.fn().mockResolvedValue(mockCreditBalance as any),
-            update: jest.fn().mockResolvedValue({
-              ...mockCreditBalance,
-              currentBalance: 150,
-            } as any),
-          },
-          creditTransaction: {
-            create: jest.fn().mockResolvedValue({} as any),
-          },
-          rewardItem: {
-            update: jest.fn().mockResolvedValue({} as any),
-          },
-        })
-      })
-      dbMock.$transaction = mockTransaction as any
+      // Mock individual updates
+      dbMock.creditBalance.update.mockResolvedValue({
+        ...mockCreditBalance,
+        current_balance: 150,
+      } as any)
+      dbMock.creditTransaction.create.mockResolvedValue({} as any)
+      dbMock.rewardRedemption.update.mockResolvedValue(mockRejectedRedemption as any)
       dbMock.notification.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/rewards/redemptions/123/reject', {
@@ -202,13 +188,15 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
       expect(data.redemption).toEqual(mockRejectedRedemption)
-      expect(data.message).toContain('Rejected')
-      expect(data.message).toContain('Credits have been refunded')
+      expect(data.message).toBe('Redemption rejected successfully')
 
-      expect(dbMock.$transaction).toHaveBeenCalled()
+      expect(dbMock.rewardRedemption.update).toHaveBeenCalled()
+      expect(dbMock.creditBalance.update).toHaveBeenCalled()
+      expect(dbMock.creditTransaction.create).toHaveBeenCalled()
+      
       expect(dbMock.notification.create).toHaveBeenCalledWith({
         data: {
-          userId: mockRedemption.memberId,
+          userId: mockRedemption.member_id,
           type: 'REWARD_REJECTED',
           title: 'Reward declined',
           message: expect.stringContaining('was not approved'),
@@ -216,7 +204,7 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
           metadata: {
             redemptionId,
             rewardName: mockRedemption.reward.name,
-            creditsRefunded: mockRedemption.reward.costCredits,
+            creditsRefunded: mockRedemption.reward.cost_credits,
             rejectionReason: 'Test reason',
             rejectedBy: session.user.name,
           },
@@ -231,32 +219,19 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         ...mockRedemption,
         reward: {
           ...mockRedemption.reward,
-          familyId: session.user.familyId,
+          family_id: session.user.familyId,
         },
       } as any)
       dbMock.creditBalance.findUnique.mockResolvedValue(mockCreditBalance as any)
+      dbMock.familyMember.findUnique.mockResolvedValue({ id: 'parent-1' } as any)
 
-      const mockTransaction = jest.fn(async (callback: any) => {
-        return await callback({
-          rewardRedemption: {
-            update: jest.fn().mockResolvedValue({
-              ...mockRejectedRedemption,
-              rejectionReason: 'No reason provided',
-            } as any),
-          },
-          creditBalance: {
-            findUnique: jest.fn().mockResolvedValue(mockCreditBalance as any),
-            update: jest.fn().mockResolvedValue({} as any),
-          },
-          creditTransaction: {
-            create: jest.fn().mockResolvedValue({} as any),
-          },
-          rewardItem: {
-            update: jest.fn().mockResolvedValue({} as any),
-          },
-        })
-      })
-      dbMock.$transaction = mockTransaction as any
+      // Mock individual updates
+      dbMock.rewardRedemption.update.mockResolvedValue({
+        ...mockRejectedRedemption,
+        rejection_reason: 'No reason provided',
+      } as any)
+      dbMock.creditBalance.update.mockResolvedValue({} as any)
+      dbMock.creditTransaction.create.mockResolvedValue({} as any)
       dbMock.notification.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/rewards/redemptions/123/reject', {
@@ -286,40 +261,16 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         ...mockRedemption,
         reward: {
           ...mockRedemption.reward,
-          familyId: session.user.familyId,
+          family_id: session.user.familyId,
         },
       } as any)
       dbMock.creditBalance.findUnique.mockResolvedValue(mockCreditBalance as any)
+      dbMock.familyMember.findUnique.mockResolvedValue({ id: 'parent-1' } as any)
 
-      const mockTransaction = jest.fn(async (callback: any) => {
-        const tx = {
-          rewardRedemption: {
-            update: jest.fn().mockResolvedValue(mockRejectedRedemption as any),
-          },
-          creditBalance: {
-            findUnique: jest.fn().mockResolvedValue(mockCreditBalance as any),
-            update: jest.fn().mockResolvedValue({} as any),
-          },
-          creditTransaction: {
-            create: jest.fn().mockResolvedValue({} as any),
-          },
-          rewardItem: {
-            update: jest.fn().mockResolvedValue({} as any),
-          },
-        }
-        const result = await callback(tx)
-        expect(tx.rewardItem.update).toHaveBeenCalledWith({
-          where: { id: mockRedemption.reward.id },
-          data: {
-            quantity: {
-              increment: 1,
-            },
-            status: 'ACTIVE',
-          },
-        })
-        return result
-      })
-      dbMock.$transaction = mockTransaction as any
+      dbMock.rewardRedemption.update.mockResolvedValue(mockRejectedRedemption as any)
+      dbMock.creditBalance.update.mockResolvedValue({} as any)
+      dbMock.creditTransaction.create.mockResolvedValue({} as any)
+      dbMock.rewardItem.update.mockResolvedValue({} as any)
       dbMock.notification.create.mockResolvedValue({} as any)
 
       const request = new NextRequest('http://localhost/api/rewards/redemptions/123/reject', {
@@ -330,6 +281,14 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
       const response = await POST(request, { params: Promise.resolve({ id: redemptionId }) })
 
       expect(response.status).toBe(200)
+
+      expect(dbMock.rewardItem.update).toHaveBeenCalledWith({
+        where: { id: mockRedemption.reward.id },
+        data: {
+          quantity: 11,
+          status: 'ACTIVE',
+        },
+      })
     })
 
     it('should return 500 on error', async () => {
@@ -339,10 +298,10 @@ describe('/api/rewards/redemptions/[id]/reject', () => {
         ...mockRedemption,
         reward: {
           ...mockRedemption.reward,
-          familyId: session.user.familyId,
+          family_id: session.user.familyId,
         },
       } as any)
-      dbMock.$transaction.mockRejectedValue(new Error('Database error'))
+      dbMock.rewardRedemption.update.mockRejectedValue(new Error('Database error'))
 
       const request = new NextRequest('http://localhost/api/rewards/redemptions/123/reject', {
         method: 'POST',

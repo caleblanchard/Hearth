@@ -391,7 +391,7 @@ function CalendarSettingsContent() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6 text-gray-900 dark:text-gray-100">
       <h1 className="text-3xl font-bold mb-6">Calendar Settings</h1>
 
       {/* Success/Error Messages */}
@@ -399,8 +399,8 @@ function CalendarSettingsContent() {
         <div
           className={`mb-6 p-4 rounded-lg ${
             message.type === 'success'
-              ? 'bg-green-50 text-green-800 border border-green-200'
-              : 'bg-red-50 text-red-800 border border-red-200'
+              ? 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/40 dark:text-green-200 dark:border-green-800'
+              : 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/40 dark:text-red-200 dark:border-red-800'
           }`}
         >
           <p>{message.text}</p>
@@ -414,9 +414,9 @@ function CalendarSettingsContent() {
       )}
 
       {/* Google Calendar Section */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <div className="bg-white dark:bg-slate-900/60 shadow rounded-lg p-6 mb-6 border border-gray-200 dark:border-slate-800">
         <h2 className="text-2xl font-semibold mb-4">Google Calendar</h2>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-gray-300 mb-4">
           Connect your Google Calendar to automatically sync events between your calendars.
         </p>
 
@@ -463,24 +463,24 @@ function CalendarSettingsContent() {
           <h3 className="text-lg font-medium mb-4">Connected Calendars</h3>
 
           {loading ? (
-            <p className="text-gray-500 text-sm">Loading...</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Loading...</p>
           ) : connections.length === 0 ? (
-            <p className="text-gray-500 text-sm">No calendars connected yet.</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">No calendars connected yet.</p>
           ) : (
             <div className="space-y-4">
               {connections.map((connection) => (
-                <div key={connection.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={connection.id} className="border border-gray-200 dark:border-slate-800 rounded-lg p-4 bg-white dark:bg-slate-900/40">
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium">{connection.googleEmail}</span>
                         {getStatusBadge(connection)}
                       </div>
-                      <div className="text-sm text-gray-600">
+                       <div className="text-sm text-gray-600 dark:text-gray-300">
                         Last synced: {formatLastSync(connection.lastSyncAt)}
                       </div>
                       {connection.syncError && (
-                        <div className="text-sm text-red-600 mt-1">
+                         <div className="text-sm text-red-600 dark:text-red-300 mt-1">
                           Error: {connection.syncError}
                         </div>
                       )}
@@ -489,23 +489,23 @@ function CalendarSettingsContent() {
 
                   <div className="space-y-2">
                     {/* Sync Enable/Disable */}
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={connection.syncEnabled}
-                        onChange={(e) => handleToggleSync(connection.id, e.target.checked)}
-                        className="rounded"
-                      />
-                      <span>Enable sync</span>
-                    </label>
+                     <label className="flex items-center gap-2 text-sm">
+                       <input
+                         type="checkbox"
+                         checked={connection.syncEnabled}
+                         onChange={(e) => handleToggleSync(connection.id, e.target.checked)}
+                         className="rounded"
+                       />
+                       <span>Enable sync</span>
+                     </label>
 
-                    {/* Import from Google */}
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={connection.importFromGoogle}
-                        onChange={(e) => handleToggleImport(connection.id, e.target.checked)}
-                        disabled={!connection.syncEnabled}
+                     {/* Import from Google */}
+                     <label className="flex items-center gap-2 text-sm">
+                       <input
+                         type="checkbox"
+                         checked={connection.importFromGoogle}
+                         onChange={(e) => handleToggleImport(connection.id, e.target.checked)}
+                         disabled={!connection.syncEnabled}
                         className="rounded disabled:opacity-50"
                       />
                       <span className={!connection.syncEnabled ? 'text-gray-400' : ''}>
@@ -514,12 +514,12 @@ function CalendarSettingsContent() {
                     </label>
 
                     {/* Export to Google */}
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={connection.exportToGoogle}
-                        onChange={(e) => handleToggleExport(connection.id, e.target.checked)}
-                        disabled={!connection.syncEnabled}
+                     <label className="flex items-center gap-2 text-sm">
+                       <input
+                         type="checkbox"
+                         checked={connection.exportToGoogle}
+                         onChange={(e) => handleToggleExport(connection.id, e.target.checked)}
+                         disabled={!connection.syncEnabled}
                         className="rounded disabled:opacity-50"
                       />
                       <span className={!connection.syncEnabled ? 'text-gray-400' : ''}>
@@ -542,11 +542,11 @@ function CalendarSettingsContent() {
       </div>
 
       {/* External Calendar Subscriptions Section */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white dark:bg-slate-900/60 shadow rounded-lg p-6 border border-gray-200 dark:border-slate-800">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-semibold mb-2">External Calendar Subscriptions</h2>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300">
               Subscribe to external calendars using iCal/ICS/webcal URLs (read-only).
               Supports school calendars, sports schedules, and other public calendars.
             </p>
@@ -664,22 +664,22 @@ function CalendarSettingsContent() {
         {/* Subscriptions List */}
         <div className="mt-6">
           {loading ? (
-            <p className="text-gray-500 text-sm">Loading...</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Loading...</p>
           ) : subscriptions.length === 0 ? (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-              <p className="text-gray-500 text-sm">No calendar subscriptions yet.</p>
-              <p className="text-gray-400 text-xs mt-1">Add a subscription to get started.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {subscriptions.map((subscription) => (
-                <div key={subscription.id} className="border border-gray-200 rounded-lg p-4">
-                  {editingSubscription?.id === subscription.id ? (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Calendar Name
-                        </label>
+            <div className="bg-gray-50 dark:bg-slate-900/40 border border-gray-200 dark:border-slate-800 rounded-lg p-4 text-center">
+              <p className="text-gray-500 dark:text-gray-400 text-sm">No calendar subscriptions yet.</p>
+              <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Add a subscription to get started.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {subscriptions.map((subscription) => (
+              <div key={subscription.id} className="border border-gray-200 dark:border-slate-800 rounded-lg p-4 bg-white dark:bg-slate-900/40">
+                {editingSubscription?.id === subscription.id ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                        Calendar Name
+                      </label>
                         <input
                           type="text"
                           value={editingSubscription.name}
@@ -688,9 +688,9 @@ function CalendarSettingsContent() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Description
-                        </label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                        Description
+                      </label>
                         <input
                           type="text"
                           value={editingSubscription.description || ''}
@@ -700,9 +700,9 @@ function CalendarSettingsContent() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Color
-                          </label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                        Color
+                      </label>
                           <input
                             type="color"
                             value={editingSubscription.color}
@@ -711,9 +711,9 @@ function CalendarSettingsContent() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Refresh Interval (minutes)
-                          </label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                        Refresh Interval (minutes)
+                      </label>
                           <input
                             type="number"
                             value={editingSubscription.refreshInterval}
@@ -764,14 +764,14 @@ function CalendarSettingsContent() {
                               className="w-4 h-4 rounded"
                               style={{ backgroundColor: subscription.color }}
                             />
-                            <span className="font-medium">{subscription.name}</span>
-                            {getSubscriptionStatusBadge(subscription)}
-                          </div>
-                          {subscription.description && (
-                            <p className="text-sm text-gray-600 mb-1">{subscription.description}</p>
-                          )}
-                          <p className="text-xs text-gray-500 mb-1 break-all">{subscription.url}</p>
-                          <div className="text-sm text-gray-600">
+                           <span className="font-medium">{subscription.name}</span>
+                           {getSubscriptionStatusBadge(subscription)}
+                         </div>
+                         {subscription.description && (
+                           <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">{subscription.description}</p>
+                         )}
+                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 break-all">{subscription.url}</p>
+                         <div className="text-sm text-gray-600 dark:text-gray-300">
                             Last synced: {formatLastSync(subscription.lastSuccessfulSyncAt)}
                             {subscription.nextSyncAt && (
                               <span className="ml-4">
@@ -780,7 +780,7 @@ function CalendarSettingsContent() {
                             )}
                           </div>
                           {subscription.syncError && (
-                            <div className="text-sm text-red-600 mt-1">
+                           <div className="text-sm text-red-600 dark:text-red-300 mt-1">
                               Error: {subscription.syncError}
                             </div>
                           )}

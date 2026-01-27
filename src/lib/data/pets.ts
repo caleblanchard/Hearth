@@ -121,6 +121,7 @@ export async function updatePet(
 export async function recordPetFeeding(
   petId: string,
   fedBy: string,
+  foodType?: string,
   amount?: string,
   notes?: string
 ): Promise<PetFeeding> {
@@ -132,6 +133,7 @@ export async function recordPetFeeding(
       pet_id: petId,
       fed_by: fedBy,
       fed_at: new Date().toISOString(),
+      food_type: foodType,
       amount,
       notes,
     })
@@ -429,6 +431,7 @@ export async function deletePet(petId: string) {
     .from('pets')
     .delete()
     .eq('id', petId)
+    .select()
 
   if (error) throw error
 }

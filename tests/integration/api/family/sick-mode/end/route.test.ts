@@ -1,10 +1,6 @@
 // Set up mocks BEFORE any imports
 import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock';
-
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}));
+import { mockParentSession, mockChildSession, setMockSession } from '@/lib/test-utils/auth-mock';
 
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/family/sick-mode/end/route';
@@ -13,15 +9,8 @@ describe('/api/family/sick-mode/end', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetDbMock();
+    mockParentSession();
   });
-
-  const mockParentSession = {
-    user: {
-      id: 'parent-test-123',
-      familyId: 'family-test-123',
-      role: 'PARENT' as const,
-    },
-  };
 
   const mockSickModeInstance = {
     id: 'instance-1',
@@ -44,6 +33,7 @@ describe('/api/family/sick-mode/end', () => {
 
   describe('POST', () => {
     it('should return 401 if not authenticated', async () => {
+      setMockSession(null);
       const request = new NextRequest('http://localhost:3000/api/family/sick-mode/end', {
         method: 'POST',
         body: JSON.stringify({
@@ -60,7 +50,7 @@ describe('/api/family/sick-mode/end', () => {
       dbMock.sickModeInstance.update.mockResolvedValue({
         ...mockSickModeInstance,
         endedAt: new Date(),
-        endedById: 'parent-test-123',
+        endedBy: 'parent-test-123',
         isActive: false,
       } as any);
 
@@ -75,22 +65,14 @@ describe('/api/family/sick-mode/end', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.instance.isActive).toBe(false);
-      expect(data.instance.endedById).toBe('parent-test-123');
+      expect(data.instance.endedBy).toBe('parent-test-123');
 
       expect(dbMock.sickModeInstance.update).toHaveBeenCalledWith({
         where: { id: 'instance-1' },
         data: {
-          endedAt: expect.any(Date),
-          endedById: 'parent-test-123',
+          endedAt: expect.any(String),
+          endedBy: 'parent-test-123',
           isActive: false,
-        },
-        include: {
-          member: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
         },
       });
     });
@@ -167,7 +149,7 @@ describe('/api/family/sick-mode/end', () => {
       dbMock.sickModeInstance.update.mockResolvedValue({
         ...mockSickModeInstance,
         endedAt: new Date(),
-        endedById: 'parent-test-123',
+        endedBy: 'parent-test-123',
         isActive: false,
       } as any);
 
@@ -188,7 +170,7 @@ describe('/api/family/sick-mode/end', () => {
           entityType: 'SickModeInstance',
           entityId: 'instance-1',
           result: 'SUCCESS',
-          metadata: {
+          details: {
             sickMemberId: 'child-test-123',
           },
         },

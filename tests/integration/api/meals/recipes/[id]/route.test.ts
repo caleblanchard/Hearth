@@ -15,27 +15,43 @@ describe('/api/meals/recipes/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetDbMock();
+    
+    // Mock family member check for permissions
+    dbMock.familyMember.findUnique.mockResolvedValue({
+      id: 'parent-test-123',
+      role: 'PARENT',
+    } as any);
   });
 
   const mockRecipe = {
     id: 'recipe-1',
     familyId: 'family-test-123',
+    family_id: 'family-test-123',
     name: 'Spaghetti Carbonara',
     description: 'Classic Italian pasta',
     prepTimeMinutes: 10,
+    prep_time_minutes: 10,
     cookTimeMinutes: 20,
+    cook_time_minutes: 20,
     servings: 4,
     difficulty: 'MEDIUM',
     imageUrl: null,
+    image_url: null,
     sourceUrl: null,
+    source_url: null,
     instructions: JSON.stringify(['Boil pasta', 'Mix eggs']),
     notes: null,
     isFavorite: true,
+    is_favorite: true,
     category: 'DINNER',
     dietaryTags: ['VEGETARIAN'],
+    dietary_tags: ['VEGETARIAN'],
     createdBy: 'parent-test-123',
+    created_by: 'parent-test-123',
     createdAt: new Date('2026-01-01T12:00:00Z'),
+    created_at: new Date('2026-01-01T12:00:00Z'),
     updatedAt: new Date('2026-01-01T12:00:00Z'),
+    updated_at: new Date('2026-01-01T12:00:00Z'),
     creator: {
       id: 'parent-test-123',
       name: 'Test User',
@@ -51,7 +67,31 @@ describe('/api/meals/recipes/[id]', () => {
         sortOrder: 0,
       },
     ],
+    recipeIngredients: [
+      {
+        id: 'ing-1',
+        recipeId: 'recipe-1',
+        name: 'Pasta',
+        quantity: 1,
+        unit: 'lb',
+        notes: null,
+        sortOrder: 0,
+      },
+    ],
+    recipe_ingredients: [
+      {
+        id: 'ing-1',
+        recipe_id: 'recipe-1',
+        name: 'Pasta',
+        quantity: 1,
+        unit: 'lb',
+        notes: null,
+        sort_order: 0,
+      },
+    ],
     ratings: [],
+    ratingsCount: 0,
+    averageRating: 0,
   };
 
   describe('GET /api/meals/recipes/[id]', () => {
@@ -81,21 +121,29 @@ describe('/api/meals/recipes/[id]', () => {
             select: {
               id: true,
               name: true,
+              avatarUrl: true,
             },
           },
-          ingredients: {
+          recipeIngredients: {
             orderBy: {
               sortOrder: 'asc',
             },
+            select: {
+              id: true,
+              name: true,
+              quantity: true,
+              unit: true,
+              notes: true,
+              sortOrder: true,
+            },
           },
           ratings: {
-            include: {
-              member: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
+            select: {
+              id: true,
+              rating: true,
+              notes: true,
+              createdAt: true,
+              'member:familyMembers(id, name, avatarUrl)': true,
             },
           },
         },
@@ -117,8 +165,10 @@ describe('/api/meals/recipes/[id]', () => {
       const otherFamilyRecipe = {
         ...mockRecipe,
         familyId: 'other-family',
+        family_id: 'other-family',
       };
       dbMock.recipe.findUnique.mockResolvedValue(otherFamilyRecipe as any);
+      dbMock.recipe.findFirst.mockResolvedValue(otherFamilyRecipe as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1');
       const response = await GET(request, { params: Promise.resolve({ id: 'recipe-1' }) });
@@ -153,12 +203,14 @@ describe('/api/meals/recipes/[id]', () => {
       expect(response.status).toBe(404);
     });
 
-    it('should return 403 if recipe belongs to different family', async () => {
+    it('should return 404 if recipe belongs to different family (SECURITY)', async () => {
       const otherFamilyRecipe = {
         ...mockRecipe,
         familyId: 'other-family',
+        family_id: 'other-family',
       };
       dbMock.recipe.findUnique.mockResolvedValue(otherFamilyRecipe as any);
+      dbMock.recipe.findFirst.mockResolvedValue(otherFamilyRecipe as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1', {
         method: 'PATCH',
@@ -166,7 +218,8 @@ describe('/api/meals/recipes/[id]', () => {
       });
       const response = await PATCH(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
-      expect(response.status).toBe(403);
+      // Code returns 404 for security (to hide existence)
+      expect(response.status).toBe(404);
     });
 
     it('should update recipe basic fields', async () => {
@@ -204,15 +257,21 @@ describe('/api/meals/recipes/[id]', () => {
           isFavorite: false,
         },
         include: {
-          ingredients: {
-            orderBy: {
-              sortOrder: 'asc',
+          recipeIngredients: {
+            select: {
+              id: true,
+              name: true,
+              quantity: true,
+              unit: true,
+              notes: true,
+              sortOrder: true,
             },
           },
           creator: {
             select: {
               id: true,
               name: true,
+              avatarUrl: true,
             },
           },
         },
@@ -224,6 +283,8 @@ describe('/api/meals/recipes/[id]', () => {
           memberId: 'parent-test-123',
           action: 'RECIPE_UPDATED',
           result: 'SUCCESS',
+          entityType: 'RECIPE',
+          entityId: 'recipe-1',
           metadata: {
             recipeId: 'recipe-1',
             name: 'Updated Carbonara',
@@ -234,26 +295,32 @@ describe('/api/meals/recipes/[id]', () => {
 
     it('should update recipe with new ingredients', async () => {
       dbMock.recipe.findUnique.mockResolvedValue(mockRecipe as any);
-      dbMock.$transaction.mockImplementation(async (callback: any) => {
-        return await callback(dbMock);
-      });
 
       const updatedRecipe = {
         ...mockRecipe,
-        ingredients: [
+        recipe_ingredients: [
           {
             id: 'ing-new-1',
-            recipeId: 'recipe-1',
+            recipe_id: 'recipe-1',
             name: 'New Ingredient',
             quantity: 2,
             unit: 'cups',
             notes: null,
-            sortOrder: 0,
+            sort_order: 0,
           },
         ],
       };
 
       dbMock.recipeIngredient.deleteMany.mockResolvedValue({ count: 1 } as any);
+      dbMock.recipeIngredient.create.mockResolvedValue({
+        id: 'ing-new-1',
+        recipe_id: 'recipe-1',
+        name: 'New Ingredient',
+        quantity: 2,
+        unit: 'cups',
+        notes: null,
+        sort_order: 0,
+      } as any);
       dbMock.recipe.update.mockResolvedValue(updatedRecipe as any);
       dbMock.auditLog.create.mockResolvedValue({} as any);
 
@@ -280,22 +347,22 @@ describe('/api/meals/recipes/[id]', () => {
         where: { recipeId: 'recipe-1' },
       });
 
-      // Verify new ingredients were added with sortOrder
+      // Verify new ingredient was created
+      expect(dbMock.recipeIngredient.create).toHaveBeenCalledWith({
+        data: {
+          recipeId: 'recipe-1',
+          name: 'New Ingredient',
+          quantity: 2,
+          unit: 'cups',
+          notes: null,
+          sortOrder: 0,
+        },
+      });
+
+      // Verify recipe was updated
       expect(dbMock.recipe.update).toHaveBeenCalledWith({
         where: { id: 'recipe-1' },
-        data: {
-          ingredients: {
-            create: [
-              {
-                name: 'New Ingredient',
-                quantity: 2,
-                unit: 'cups',
-                notes: null,
-                sortOrder: 0,
-              },
-            ],
-          },
-        },
+        data: {},
         include: expect.any(Object),
       });
     });
@@ -383,19 +450,21 @@ describe('/api/meals/recipes/[id]', () => {
       expect(response.status).toBe(404);
     });
 
-    it('should return 403 if recipe belongs to different family', async () => {
+    it('should return 404 if recipe belongs to different family (SECURITY)', async () => {
       const otherFamilyRecipe = {
         ...mockRecipe,
         familyId: 'other-family',
+        family_id: 'other-family',
       };
       dbMock.recipe.findUnique.mockResolvedValue(otherFamilyRecipe as any);
+      dbMock.recipe.findFirst.mockResolvedValue(otherFamilyRecipe as any);
 
       const request = new NextRequest('http://localhost:3000/api/meals/recipes/recipe-1', {
         method: 'DELETE',
       });
       const response = await DELETE(request, { params: Promise.resolve({ id: 'recipe-1' }) });
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(404);
     });
 
     it('should delete recipe successfully', async () => {
@@ -422,6 +491,8 @@ describe('/api/meals/recipes/[id]', () => {
           memberId: 'parent-test-123',
           action: 'RECIPE_DELETED',
           result: 'SUCCESS',
+          entityType: 'RECIPE',
+          entityId: 'recipe-1',
           metadata: {
             recipeId: 'recipe-1',
             name: 'Spaghetti Carbonara',

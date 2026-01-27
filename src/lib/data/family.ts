@@ -16,6 +16,7 @@ export async function updateFamilyMember(
     birth_date?: string | null
     is_active?: boolean
     pin?: string | null
+    password_hash?: string
   }
 ) {
   const supabase = await createClient()

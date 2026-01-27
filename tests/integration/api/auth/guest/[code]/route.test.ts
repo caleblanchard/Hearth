@@ -20,7 +20,7 @@ describe('/api/auth/guest/[code]', () => {
     accessLevel: 'VIEW_ONLY',
     inviteCode: '123456',
     inviteToken: 'token-abc123',
-    expiresAt: new Date('2026-01-10T00:00:00Z'),
+    expiresAt: new Date('2027-01-10T00:00:00Z'),
     maxUses: 1,
     useCount: 0,
     status: 'PENDING',
@@ -30,7 +30,7 @@ describe('/api/auth/guest/[code]', () => {
   };
 
   it('should return 404 if invite code not found', async () => {
-    dbMock.guestInvite.findUnique.mockResolvedValue(null);
+    dbMock.guestInvite.findFirst.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/auth/guest/999999', {
       method: 'POST',
@@ -49,7 +49,7 @@ describe('/api/auth/guest/[code]', () => {
       expiresAt: new Date('2025-12-01T00:00:00Z'), // Expired
     };
 
-    dbMock.guestInvite.findUnique.mockResolvedValue(expiredInvite as any);
+    dbMock.guestInvite.findFirst.mockResolvedValue(expiredInvite as any);
 
     const request = new NextRequest('http://localhost:3000/api/auth/guest/123456', {
       method: 'POST',
@@ -69,7 +69,7 @@ describe('/api/auth/guest/[code]', () => {
       revokedAt: new Date('2025-12-15T00:00:00Z'),
     };
 
-    dbMock.guestInvite.findUnique.mockResolvedValue(revokedInvite as any);
+    dbMock.guestInvite.findFirst.mockResolvedValue(revokedInvite as any);
 
     const request = new NextRequest('http://localhost:3000/api/auth/guest/123456', {
       method: 'POST',
@@ -89,7 +89,7 @@ describe('/api/auth/guest/[code]', () => {
       useCount: 1,
     };
 
-    dbMock.guestInvite.findUnique.mockResolvedValue(maxedInvite as any);
+    dbMock.guestInvite.findFirst.mockResolvedValue(maxedInvite as any);
 
     const request = new NextRequest('http://localhost:3000/api/auth/guest/123456', {
       method: 'POST',
@@ -127,7 +127,7 @@ describe('/api/auth/guest/[code]', () => {
       lastAccessedAt: now,
     };
 
-    dbMock.guestInvite.findUnique.mockResolvedValue(mockGuestInvite as any);
+    dbMock.guestInvite.findFirst.mockResolvedValue(mockGuestInvite as any);
     dbMock.guestSession.create.mockResolvedValue(mockSession as any);
     dbMock.guestInvite.update.mockResolvedValue(updatedInvite as any);
     dbMock.auditLog.create.mockResolvedValue({} as any);
@@ -163,8 +163,8 @@ describe('/api/auth/guest/[code]', () => {
       where: { id: 'invite-1' },
       data: {
         status: 'ACTIVE',
-        useCount: { increment: 1 },
-        lastAccessedAt: now,
+        useCount: mockGuestInvite.useCount + 1,
+        lastAccessedAt: now.toISOString(),
       },
     });
 
@@ -174,7 +174,7 @@ describe('/api/auth/guest/[code]', () => {
         memberId: null,
         action: 'GUEST_SESSION_STARTED',
         result: 'SUCCESS',
-        metadata: {
+        details: {
           inviteId: 'invite-1',
           guestName: 'Grandma',
           accessLevel: 'VIEW_ONLY',
@@ -186,7 +186,7 @@ describe('/api/auth/guest/[code]', () => {
   });
 
   it('should handle database errors gracefully', async () => {
-    dbMock.guestInvite.findUnique.mockResolvedValue(mockGuestInvite as any);
+    dbMock.guestInvite.findFirst.mockResolvedValue(mockGuestInvite as any);
     dbMock.guestSession.create.mockRejectedValue(new Error('Database error'));
 
     const request = new NextRequest('http://localhost:3000/api/auth/guest/123456', {
