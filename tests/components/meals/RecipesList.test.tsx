@@ -37,4 +37,34 @@ describe('RecipesList', () => {
       );
     });
   });
+
+  it('renders recipe with image', async () => {
+    const mockRecipe = {
+      id: '1',
+      name: 'Test Pasta',
+      description: 'Delicious pasta',
+      prepTimeMinutes: 10,
+      cookTimeMinutes: 20,
+      servings: 4,
+      difficulty: 'EASY',
+      category: 'DINNER',
+      dietaryTags: [],
+      isFavorite: false,
+      imageUrl: 'http://example.com/pasta.jpg',
+      creator: { id: '1', name: 'Chef' },
+      ingredients: [],
+      _count: { ratings: 0 },
+    };
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ recipes: [mockRecipe] }),
+    });
+
+    render(<RecipesList />);
+
+    const image = await screen.findByRole('img', { name: /test pasta/i });
+    expect(image).toBeInTheDocument();
+    expect(image).toHaveAttribute('src', 'http://example.com/pasta.jpg');
+  });
 });

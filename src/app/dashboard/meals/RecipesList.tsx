@@ -29,6 +29,7 @@ interface Recipe {
   category: string | null;
   dietaryTags: string[];
   isFavorite: boolean;
+  imageUrl: string | null;
   creator: Creator;
   ingredients: Ingredient[];
   _count: {
@@ -213,6 +214,20 @@ export default function RecipesList() {
               className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => router.push(`/dashboard/meals/recipes/${recipe.id}`)}
             >
+              {/* Recipe Image */}
+              {recipe.imageUrl && (
+                <div className="relative w-[calc(100%+2rem)] -mx-4 -mt-4 mb-4 h-48 overflow-hidden rounded-t-lg">
+                  <img
+                    src={recipe.imageUrl}
+                    alt={recipe.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+
               {/* Header with favorite button */}
               <div className="flex items-start justify-between mb-2">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex-1">
