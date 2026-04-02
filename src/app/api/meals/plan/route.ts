@@ -45,12 +45,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Normalize to Monday (UTC)
-    const d = new Date(weekDate);
-    const day = d.getUTCDay();
-    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-    d.setUTCDate(diff);
-    const weekStart = d.toISOString().split('T')[0];
+    // Use the provided date as-is — the client computes the correct week start
+    // based on the family's weekStartDay setting (Sunday or Monday).
+    const weekStart = weekParam;
 
     // Use data module
     const mealPlan = await getMealPlanWithEntries(familyId, weekStart);

@@ -62,7 +62,7 @@ describe('GET /api/meals/plan', () => {
 
     dbMock.mealPlan.findFirst.mockResolvedValue(null);
 
-    // Tuesday 2026-01-06 should normalize to Monday 2026-01-05
+    // The client sends the week start it computed — the API uses it directly
     const request = new Request('http://localhost/api/meals/plan?week=2026-01-06', {
       method: 'GET',
     }) as NextRequest;
@@ -72,7 +72,7 @@ describe('GET /api/meals/plan', () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.mealPlan).toBeNull();
-    expect(data.weekStart).toBe('2026-01-05'); // Monday of that week
+    expect(data.weekStart).toBe('2026-01-06'); // Returned as-is from the client
   });
 
   it('should return meal plan with entries for the week', async () => {
@@ -134,12 +134,12 @@ describe('GET /api/meals/plan', () => {
     expect(data.mealPlan.meals[0].customName).toBe('Pancakes');
   });
 
-  it('should normalize week start to Monday', async () => {
+  it('should return the provided week start date as-is', async () => {
     const session = mockParentSession();
 
     dbMock.mealPlan.findFirst.mockResolvedValue(null);
 
-    // Wednesday 2026-01-07, should normalize to Monday 2026-01-05
+    // API no longer normalizes — client always sends the correct week start
     const request = new Request('http://localhost/api/meals/plan?week=2026-01-07', {
       method: 'GET',
     }) as NextRequest;
@@ -148,13 +148,12 @@ describe('GET /api/meals/plan', () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    // Should return Monday of that week
-    expect(data.weekStart).toBe('2026-01-05');
+    expect(data.weekStart).toBe('2026-01-07');
 
     expect(dbMock.mealPlan.findFirst).toHaveBeenCalledWith({
       where: {
         familyId: session.user.familyId,
-        weekStart: '2026-01-05',
+        weekStart: '2026-01-07',
       },
       include: {
         entries: {

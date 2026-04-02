@@ -192,7 +192,7 @@ export default function MealPlanner() {
   useEffect(() => {
     if (weekStart && weekStartDay) {
       // Recalculate week start with new setting
-      const currentDate = new Date(weekStart);
+      const currentDate = new Date(weekStart + 'T00:00:00'); // Parse as local date to get correct day-of-week
       const weekStartDate = getWeekStart(currentDate, weekStartDay);
       const weekStr = formatDate(weekStartDate);
       if (weekStr !== weekStart) {
@@ -217,7 +217,7 @@ export default function MealPlanner() {
     return (
       mealPlan.meals.find(
         (meal) =>
-          formatDate(new Date(meal.date)) === targetDate &&
+          formatDate(new Date(String(meal.date).split('T')[0] + 'T00:00:00')) === targetDate &&
           meal.mealType === mealType.toUpperCase()
       ) || null
     );
