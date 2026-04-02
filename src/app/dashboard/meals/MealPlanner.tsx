@@ -521,7 +521,10 @@ export default function MealPlanner() {
                                 .map((dish, dishIndex) => (
                                   <div
                                     key={dish.id}
-                                    className="group relative p-2 rounded bg-info/10 dark:bg-info/20 hover:bg-info/20 dark:hover:bg-info/30 text-left"
+                                    className={`group relative p-2 rounded bg-info/10 dark:bg-info/20 hover:bg-info/20 dark:hover:bg-info/30 text-left${dish.recipeId ? ' cursor-pointer' : ''}`}
+                                    onClick={() => dish.recipeId && router.push(`/dashboard/meals/recipes/${dish.recipeId}`)}
+                                    role={dish.recipeId ? 'link' : undefined}
+                                    aria-label={dish.recipeId ? `View recipe: ${dish.dishName}` : undefined}
                                   >
                                     <div className="flex items-start gap-2">
                                       <div className="flex-1 min-w-0">
