@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { Modal } from '@/components/ui/Modal';
 import {
   ArrowLeftIcon,
   PlusIcon,
@@ -57,8 +58,9 @@ export default function NewRecipePage() {
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
-  const [showImport, setShowImport] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
+  const [importError, setImportError] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -83,12 +85,12 @@ export default function NewRecipePage() {
   // ── Import handler ─────────────────────────────────────────────────────────
   const handleImportFromUrl = async () => {
     if (!importUrl.trim()) {
-      setError('Please enter a URL');
+      setImportError('Please enter a URL');
       return;
     }
 
     setImporting(true);
-    setError('');
+    setImportError('');
 
     try {
       const res = await fetch('/api/meals/recipes/import', {
@@ -158,9 +160,10 @@ export default function NewRecipePage() {
         }))
       );
 
-      setShowImport(false);
+      setImportModalOpen(false);
+      setImportUrl('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import recipe');
+      setImportError(err instanceof Error ? err.message : 'Failed to import recipe');
     } finally {
       setImporting(false);
     }
@@ -504,7 +507,7 @@ export default function NewRecipePage() {
               Create New Recipe
             </h1>
             <button
-              onClick={() => setShowImport(!showImport)}
+              onClick={() => { setImportUrl(''); setImportError(''); setImportModalOpen(true); }}
               className="flex items-center gap-2 px-4 py-2 text-sm bg-info/10 hover:bg-info/20 text-info rounded-lg transition-colors"
             >
               <ArrowDownTrayIcon className="h-5 w-5" />
@@ -513,34 +516,69 @@ export default function NewRecipePage() {
           </div>
         </div>
 
-        {/* Import Section */}
-        {showImport && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Import Recipe from URL
-            </h2>
-            <div className="flex gap-3">
+        {/* Import Modal */}
+        <Modal
+          isOpen={importModalOpen}
+          onClose={() => { setImportModalOpen(false); setImportError(''); }}
+          title="Import Recipe from URL"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="import-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Recipe URL
+              </label>
               <input
+                id="import-url"
                 type="url"
                 value={importUrl}
                 onChange={e => setImportUrl(e.target.value)}
-                placeholder="Enter recipe URL (e.g., AllRecipes, Food Network)"
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                onKeyDown={e => e.key === 'Enter' && handleImportFromUrl()}
+                placeholder="https://example.com/my-recipe"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-info"
                 disabled={importing}
+                autoFocus
               />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Supports most major recipe websites (AllRecipes, Food Network, NYT Cooking, and more)
+              </p>
+            </div>
+            {importError && (
+              <p className="text-sm text-red-600 dark:text-red-400">{importError}</p>
+            )}
+            <div className="flex gap-3 justify-end pt-2">
               <button
+                type="button"
+                onClick={() => { setImportModalOpen(false); setImportError(''); }}
+                disabled={importing}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-medium rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
                 onClick={handleImportFromUrl}
                 disabled={importing || !importUrl.trim()}
-                className="px-6 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {importing ? 'Importing...' : 'Import'}
+                {importing ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    Import
+                  </>
+                )}
               </button>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Supports most major recipe websites with Schema.org data
-            </p>
           </div>
-        )}
+        </Modal>
 
         {/* Error Message */}
         {error && (

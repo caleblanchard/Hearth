@@ -54,13 +54,13 @@ describe('NewRecipeForm Component', () => {
   });
 
   // Test 2: Shows URL import section
-  it('should show import from URL section when toggled', () => {
+  it('should open import modal when Import from URL is clicked', () => {
     render(<NewRecipePage />);
 
     const importButton = screen.getByText(/import from url/i);
     fireEvent.click(importButton);
 
-    expect(screen.getByPlaceholderText(/enter recipe url/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('https://example.com/my-recipe')).toBeInTheDocument();
   });
 
   // Test 3: Name input is required
@@ -319,7 +319,7 @@ describe('NewRecipeForm Component', () => {
     const toggleButton = screen.getByText(/import from url/i);
     fireEvent.click(toggleButton);
 
-    const urlInput = screen.getByPlaceholderText(/enter recipe url/i);
+    const urlInput = screen.getByPlaceholderText('https://example.com/my-recipe');
     fireEvent.change(urlInput, { target: { value: 'https://example.com/recipe' } });
 
     const importButton = screen.getByRole('button', { name: /^import$/i });
@@ -355,7 +355,7 @@ describe('NewRecipeForm Component', () => {
     const toggleButton = screen.getByText(/import from url/i);
     fireEvent.click(toggleButton);
 
-    const urlInput = screen.getByPlaceholderText(/enter recipe url/i);
+    const urlInput = screen.getByPlaceholderText('https://example.com/my-recipe');
     fireEvent.change(urlInput, { target: { value: 'https://example.com/recipe' } });
 
     const importButton = screen.getByRole('button', { name: /^import$/i });
@@ -394,7 +394,7 @@ describe('NewRecipeForm Component', () => {
     const toggleButton = screen.getByText(/import from url/i);
     fireEvent.click(toggleButton);
 
-    const urlInput = screen.getByPlaceholderText(/enter recipe url/i);
+    const urlInput = screen.getByPlaceholderText('https://example.com/my-recipe');
     fireEvent.change(urlInput, { target: { value: 'https://example.com/recipe' } });
 
     const importButton = screen.getByRole('button', { name: /^import$/i });
@@ -422,7 +422,7 @@ describe('NewRecipeForm Component', () => {
     const toggleButton = screen.getByText(/import from url/i);
     fireEvent.click(toggleButton);
 
-    const urlInput = screen.getByPlaceholderText(/enter recipe url/i);
+    const urlInput = screen.getByPlaceholderText('https://example.com/my-recipe');
     fireEvent.change(urlInput, { target: { value: 'https://example.com/recipe' } });
 
     const importButton = screen.getByRole('button', { name: /^import$/i });
@@ -443,7 +443,7 @@ describe('NewRecipeForm Component', () => {
     const toggleButton = screen.getByText(/import from url/i);
     fireEvent.click(toggleButton);
 
-    const urlInput = screen.getByPlaceholderText(/enter recipe url/i);
+    const urlInput = screen.getByPlaceholderText('https://example.com/my-recipe');
     fireEvent.change(urlInput, { target: { value: 'https://example.com/not-a-recipe' } });
 
     const importButton = screen.getByRole('button', { name: /^import$/i });
@@ -481,7 +481,7 @@ describe('NewRecipeForm Component', () => {
     const toggleButton = screen.getByText(/import from url/i);
     fireEvent.click(toggleButton);
 
-    const urlInput = screen.getByPlaceholderText(/enter recipe url/i);
+    const urlInput = screen.getByPlaceholderText('https://example.com/my-recipe');
     fireEvent.change(urlInput, { target: { value: 'https://example.com/recipe' } });
 
     const importButton = screen.getByRole('button', { name: /^import$/i });
@@ -607,7 +607,7 @@ describe('NewRecipeForm Component', () => {
     const toggleButton = screen.getByText(/import from url/i);
     fireEvent.click(toggleButton);
 
-    const urlInput = screen.getByPlaceholderText(/enter recipe url/i);
+    const urlInput = screen.getByPlaceholderText('https://example.com/my-recipe');
     fireEvent.change(urlInput, { target: { value: 'https://example.com/recipe' } });
 
     const importButton = screen.getByRole('button', { name: /^import$/i });
@@ -645,7 +645,7 @@ describe('NewRecipeForm Component', () => {
     const toggleButton = screen.getByText(/import from url/i);
     fireEvent.click(toggleButton);
 
-    const urlInput = screen.getByPlaceholderText(/enter recipe url/i);
+    const urlInput = screen.getByPlaceholderText('https://example.com/my-recipe');
     fireEvent.change(urlInput, { target: { value: 'https://example.com/recipe' } });
 
     const importButton = screen.getByRole('button', { name: /^import$/i });

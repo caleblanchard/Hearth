@@ -140,6 +140,103 @@ function extractDietaryTags(keywords?: string | string[], description?: string):
 }
 
 /**
+ * Strip HTML tags and decode common HTML entities from a string.
+ */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#32;/g, ' ')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .trim();
+}
+
+/**
+ * Parse WPRM ingredient amount string into a number.
+ * Handles Unicode fractions (½, ¼, etc.) and range values (e.g. "2-3" → 2).
+ */
+function parseWprmAmount(amtStr: string): number | undefined {
+  const normalized = amtStr
+    .replace(/½/g, '1/2').replace(/¼/g, '1/4').replace(/¾/g, '3/4')
+    .replace(/⅓/g, '1/3').replace(/⅔/g, '2/3').replace(/⅛/g, '1/8')
+    .replace(/⅜/g, '3/8').replace(/⅝/g, '5/8').replace(/⅞/g, '7/8');
+  const rangeMatch = normalized.match(/^([\d./]+)/);
+  if (!rangeMatch) return undefined;
+  const numStr = rangeMatch[1];
+  if (numStr.includes('/')) {
+    const [num, denom] = numStr.split('/').map(Number);
+    const result = num / denom;
+    return isNaN(result) ? undefined : result;
+  }
+  const result = parseFloat(numStr);
+  return isNaN(result) ? undefined : result;
+}
+
+/**
+ * Extract individual ingredients from a snippet of WPRM HTML belonging to one group.
+ */
+function extractWprmIngredientsFromHtml(html: string): ExtractedIngredient[] {
+  const ingredients: ExtractedIngredient[] = [];
+  const ingRegex = /wprm-recipe-ingredient"[^>]*>(.*?)<\/li>/gs;
+  let match;
+  while ((match = ingRegex.exec(html)) !== null) {
+    const ingHtml = match[1];
+    const amtMatch = /ingredient-amount[^>]*>([^<]*)/i.exec(ingHtml);
+    const unitMatch = /ingredient-unit[^>]*>([^<]*)/i.exec(ingHtml);
+    const nameMatch = /ingredient-name[^>]*>(.*?)<\/span>/is.exec(ingHtml);
+    if (!nameMatch) continue;
+    const name = stripHtml(nameMatch[1]);
+    if (!name) continue;
+    const amtStr = amtMatch ? amtMatch[1].trim() : '';
+    const unitStr = unitMatch ? stripHtml(unitMatch[1]) : '';
+    ingredients.push({
+      name,
+      quantity: amtStr ? parseWprmAmount(amtStr) : undefined,
+      unit: unitStr || undefined,
+    });
+  }
+  return ingredients;
+}
+
+/**
+ * Try to extract ingredient sections from WP Recipe Maker (WPRM) HTML.
+ * Returns null if no WPRM group structure is found.
+ */
+function extractWprmIngredientSections(html: string): {
+  ingredientSections: ExtractedIngredientSection[];
+  ungroupedIngredients: ExtractedIngredient[];
+} | null {
+  if (!html.includes('wprm-recipe-ingredient-group-name')) return null;
+
+  const ingredientSections: ExtractedIngredientSection[] = [];
+
+  // Find all group header positions and names
+  const headerRegex = /wprm-recipe-ingredient-group-name[^>]*>([^<]+)<\/[^>]+>/g;
+  const headers: Array<{ name: string; endIndex: number }> = [];
+  let hm;
+  while ((hm = headerRegex.exec(html)) !== null) {
+    headers.push({ name: hm[1].trim(), endIndex: hm.index + hm[0].length });
+  }
+
+  if (headers.length === 0) return null;
+
+  for (let i = 0; i < headers.length; i++) {
+    const start = headers[i].endIndex;
+    const end = i + 1 < headers.length ? headers[i + 1].endIndex - headers[i + 1].name.length - 50 : html.length;
+    const groupHtml = html.slice(start, end);
+    const ingredients = extractWprmIngredientsFromHtml(groupHtml);
+    if (ingredients.length > 0) {
+      ingredientSections.push({ name: headers[i].name, ingredients });
+    }
+  }
+
+  return ingredientSections.length > 0 ? { ingredientSections, ungroupedIngredients: [] } : null;
+}
+
+/**
  * Returns true if a raw ingredient string looks like a section header rather
  * than an actual ingredient. Heuristics:
  *  - ends with ":"
@@ -395,10 +492,19 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractedRecipe
     servings = yieldMatch ? parseInt(yieldMatch[1], 10) : undefined;
   }
 
-  // Extract ingredients
+  // Extract ingredients — try JSON-LD first, fall back to WPRM HTML parsing
   const ingredientsList = recipeData.recipeIngredient || [];
   const rawIngredients = Array.isArray(ingredientsList) ? ingredientsList : [ingredientsList];
-  const { ingredientSections, ungroupedIngredients } = extractIngredientSections(rawIngredients);
+  let { ingredientSections, ungroupedIngredients } = extractIngredientSections(rawIngredients);
+
+  // If JSON-LD gave no named sections, try WPRM HTML (and similar recipe plugins)
+  if (ingredientSections.length === 0) {
+    const wprmResult = extractWprmIngredientSections(html);
+    if (wprmResult) {
+      ingredientSections = wprmResult.ingredientSections;
+      ungroupedIngredients = wprmResult.ungroupedIngredients;
+    }
+  }
 
   // Extract instructions
   const { instructionSections, ungroupedSteps } = extractInstructionSections(recipeData.recipeInstructions);
