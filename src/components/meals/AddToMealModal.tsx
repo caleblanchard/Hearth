@@ -39,6 +39,29 @@ export default function AddToMealModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('MONDAY');
+
+  // Fetch family settings to get the correct week start day
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch('/api/family-data')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.family?.settings?.weekStartDay) {
+          setWeekStartDay(data.family.settings.weekStartDay);
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
+
+  // Compute the week start date for a given date using the family's setting
+  const getWeekStart = (dateStr: string): string => {
+    const d = new Date(dateStr + 'T00:00:00');
+    const day = d.getDay();
+    const diff = weekStartDay === 'SUNDAY' ? day : (day === 0 ? 6 : day - 1);
+    d.setDate(d.getDate() - diff);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
 
   // Auto-select meal type based on current time
   useEffect(() => {
@@ -68,9 +91,7 @@ export default function AddToMealModal({
 
     async function fetchExistingMeals() {
       try {
-        const date = new Date(selectedDate);
-        const weekStart = getMonday(date);
-        const weekStr = weekStart.toISOString().split('T')[0];
+        const weekStr = getWeekStart(selectedDate);
 
         const response = await fetch(`/api/meals/plan?week=${weekStr}`);
         if (response.ok) {
@@ -78,7 +99,7 @@ export default function AddToMealModal({
           if (data.mealPlan) {
             const mealsOnDate = data.mealPlan.meals.filter(
               (meal: any) =>
-                new Date(meal.date).toISOString().split('T')[0] === selectedDate
+                String(meal.date).split('T')[0] === selectedDate
             );
             setExistingMeals(
               mealsOnDate.map((meal: any) => ({
@@ -96,16 +117,8 @@ export default function AddToMealModal({
     }
 
     fetchExistingMeals();
-  }, [selectedDate]);
-
-  const getMonday = (date: Date): Date => {
-    const d = new Date(date);
-    d.setUTCHours(0, 0, 0, 0);
-    const day = d.getUTCDay();
-    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-    d.setUTCDate(diff);
-    return d;
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, weekStartDay]);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -127,13 +140,15 @@ export default function AddToMealModal({
           throw new Error('Failed to add dish to meal');
         }
       } else {
-        // Create new meal
+        // Create new meal — pass weekStart so the API stores it under the
+        // same key the meal planner uses for this family's week setting.
         const response = await fetch('/api/meals/plan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             date: selectedDate,
             mealType: selectedMealType,
+            weekStart: getWeekStart(selectedDate),
             dishes: [{ recipeId }],
           }),
         });

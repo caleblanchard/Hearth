@@ -216,9 +216,14 @@ export default function MealPlanner() {
     const targetDate = getDateForDay(dayIndex);
     return (
       mealPlan.meals.find(
-        (meal) =>
-          formatDate(new Date(String(meal.date).split('T')[0] + 'T00:00:00')) === targetDate &&
-          meal.mealType === mealType.toUpperCase()
+        (meal) => {
+          // meal.date is a string from JSON responses, or a Date from test mocks/legacy code
+          const raw = meal.date as unknown;
+          const mealDateStr = typeof raw === 'string'
+            ? raw.split('T')[0]
+            : formatDate(raw as Date);
+          return mealDateStr === targetDate && meal.mealType === mealType.toUpperCase();
+        }
       ) || null
     );
   };
