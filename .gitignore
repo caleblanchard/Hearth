@@ -59,6 +59,7 @@ next-env.d.ts
 /backups
 *.sql
 !prisma/migrations/**/*.sql
+!supabase/migrations/**/*.sql
 *.sql.gz
 
 # Uploads

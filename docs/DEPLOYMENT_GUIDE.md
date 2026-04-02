@@ -35,11 +35,11 @@ Hearth supports **two deployment modes** using the **same codebase and same auth
 
 1. In your Supabase Dashboard, go to **SQL Editor**
 2. Run migrations in order:
-   - Copy contents of `supabase/migrations/00001_initial_schema.sql` → Click "RUN"
-   - Copy contents of `supabase/migrations/00002_module_tables.sql` → Click "RUN"
-   - Copy contents of `supabase/migrations/00003_rls_functions.sql` → Click "RUN"
-   - Copy contents of `supabase/migrations/00004_rls_policies.sql` → Click "RUN"
-   - Copy contents of `supabase/migrations/00005_additional_indexes.sql` → Click "RUN"
+   - Copy contents of `supabase/migrations/20250101000001_initial_schema.sql` → Click "RUN"
+   - Copy contents of `supabase/migrations/20250101000002_module_tables.sql` → Click "RUN"
+   - Copy contents of `supabase/migrations/20250101000003_rls_functions.sql` → Click "RUN"
+   - Copy contents of `supabase/migrations/20250101000004_rls_policies.sql` → Click "RUN"
+   - Copy contents of `supabase/migrations/20250101000005_additional_indexes.sql` → Click "RUN"
 
 ### Step 3: Get Supabase Credentials
 

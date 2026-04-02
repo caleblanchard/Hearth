@@ -82,11 +82,11 @@ Check that all migrations were applied:
 supabase migration list
 
 # You should see (all applied):
-# ✓ 00001_initial_schema
-# ✓ 00002_module_tables
-# ✓ 00003_rls_functions
-# ✓ 00004_rls_policies
-# ✓ 00005_additional_indexes
+# ✓ 20250101000001_initial_schema
+# ✓ 20250101000002_module_tables
+# ✓ 20250101000003_rls_functions
+# ✓ 20250101000004_rls_policies
+# ✓ 20250101000005_additional_indexes
 ```
 
 ### If Migrations Not Applied

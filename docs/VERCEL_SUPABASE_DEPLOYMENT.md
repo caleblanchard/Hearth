@@ -142,7 +142,7 @@ You need to run each migration file in order. The migration files are located in
 
 #### Migration 1: Initial Schema
 
-1. Open `supabase/migrations/00001_initial_schema.sql` from your repository
+1. Open `supabase/migrations/20250101000001_initial_schema.sql` from your repository
 2. Copy the **entire contents** of the file
 3. Paste into the SQL Editor in Supabase
 4. Click **"Run"** (or press `Cmd/Ctrl + Enter`)
@@ -150,35 +150,35 @@ You need to run each migration file in order. The migration files are located in
 
 #### Migration 2: Module Tables
 
-1. Open `supabase/migrations/00002_module_tables.sql`
+1. Open `supabase/migrations/20250101000002_module_tables.sql`
 2. Copy and paste contents into SQL Editor
 3. Click **"Run"**
 4. Verify success
 
 #### Migration 3: RLS Functions
 
-1. Open `supabase/migrations/00003_rls_functions.sql`
+1. Open `supabase/migrations/20250101000003_rls_functions.sql`
 2. Copy and paste contents into SQL Editor
 3. Click **"Run"**
 4. Verify success
 
 #### Migration 4: RLS Policies
 
-1. Open `supabase/migrations/00004_rls_policies.sql`
+1. Open `supabase/migrations/20250101000004_rls_policies.sql`
 2. Copy and paste contents into SQL Editor
 3. Click **"Run"**
 4. Verify success
 
 #### Migration 5: Indexes
 
-1. Open `supabase/migrations/00005_additional_indexes.sql`
+1. Open `supabase/migrations/20250101000005_additional_indexes.sql`
 2. Copy and paste contents into SQL Editor
 3. Click **"Run"**
 4. Verify success
 
 #### Migration 6: Family Members RLS Fix
 
-1. Open `supabase/migrations/00006_fix_family_members_rls.sql`
+1. Open `supabase/migrations/20250101000006_fix_family_members_rls.sql`
 2. Copy and paste contents into SQL Editor
 3. Click **"Run"**
 4. Verify success
