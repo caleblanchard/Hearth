@@ -250,7 +250,7 @@ export async function updateRewardItem(
 export async function redeemReward(rewardId: string, memberId: string) {
   const supabase = await createClient()
 
-  const { data: rpcResult, error } = await supabase.rpc('redeem_reward', {
+  const { data: rpcData, error } = await supabase.rpc('redeem_reward', {
     p_reward_id: rewardId,
     p_member_id: memberId,
   })
@@ -264,6 +264,15 @@ export async function redeemReward(rewardId: string, memberId: string) {
     if (msg.includes('concurrent modification')) return { success: false, error: 'Transaction failed due to concurrent modification. Please try again.' }
     return { success: false, error: 'Failed to redeem reward' }
   }
+
+  // Cast from the opaque Json return type to the shape returned by the RPC function
+  const rpcResult = rpcData as {
+    redemption_id: string
+    transaction_id: string
+    credits_deducted: number
+    new_balance: number
+    redemption: Record<string, unknown> | null
+  } | null
 
   const redemption = rpcResult?.redemption ?? null
 
@@ -307,7 +316,7 @@ export async function redeemReward(rewardId: string, memberId: string) {
           }
         : null
 
-      const status = checkBudgetStatus(budget, period, rpcResult.credits_deducted)
+      const status = checkBudgetStatus(budget, period, rpcResult?.credits_deducted ?? 0)
       if (status && (status.status === 'warning' || status.status === 'exceeded')) {
         budgetWarning = {
           message:
