@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { date, mealType, customName, notes, recipeId, dishes } = body;
+    const { date, mealType, customName, notes, recipeId, dishes, weekStart: clientWeekStart } = body;
 
     // Validate required fields
     if (!date) {
@@ -150,16 +150,24 @@ export async function POST(request: NextRequest) {
     }
     mealDate.setUTCHours(0, 0, 0, 0);
 
-    // Get start of week
-    const weekStart = new Date(mealDate);
-    const day = weekStart.getUTCDay();
-    const diff = weekStart.getUTCDate() - day + (day === 0 ? -6 : 1);
-    weekStart.setUTCDate(diff);
+    // Use the client-provided weekStart when present (ensures GET/POST use
+    // the same key regardless of Sunday vs Monday family setting).
+    // Fall back to Monday normalization if not supplied.
+    let weekStartStr: string;
+    if (clientWeekStart && /^\d{4}-\d{2}-\d{2}$/.test(clientWeekStart)) {
+      weekStartStr = clientWeekStart;
+    } else {
+      const ws = new Date(mealDate);
+      const day = ws.getUTCDay();
+      const diff = ws.getUTCDate() - day + (day === 0 ? -6 : 1);
+      ws.setUTCDate(diff);
+      weekStartStr = ws.toISOString().split('T')[0];
+    }
 
     // Create meal plan for the week
     const mealPlan = await getOrCreateMealPlan(
       familyId,
-      weekStart.toISOString().split('T')[0]
+      weekStartStr
     );
 
     // Create meal entry

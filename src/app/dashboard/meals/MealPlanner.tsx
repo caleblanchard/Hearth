@@ -252,6 +252,7 @@ export default function MealPlanner() {
         body: JSON.stringify({
           date: selectedDate,
           mealType: selectedMealType,
+          weekStart: weekStart,
           notes: formData.notes || null,
           dishes: formData.customName.trim()
             ? [
