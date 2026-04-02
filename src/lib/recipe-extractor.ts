@@ -246,7 +246,7 @@ function extractWprmIngredientSections(html: string): {
   const headers: Array<{ name: string; endIndex: number }> = [];
   let hm;
   while ((hm = headerRegex.exec(html)) !== null) {
-    headers.push({ name: hm[1].trim(), endIndex: hm.index + hm[0].length });
+    headers.push({ name: stripHtml(hm[1]).trim(), endIndex: hm.index + hm[0].length });
   }
 
   if (headers.length === 0) return null;
@@ -306,17 +306,17 @@ function extractIngredientSections(rawIngredients: any[]): {
   if (hasStructuredSections) {
     for (const item of rawIngredients) {
       if (typeof item === 'object' && item['@type'] === 'HowToSection') {
-        const sectionName = item.name || item.itemListElement?.[0]?.name || 'Ingredients';
+        const sectionName = stripHtml(item.name || item.itemListElement?.[0]?.name || 'Ingredients');
         const rawItems: any[] = item.itemListElement || item.step || [];
         const ingredients = rawItems
-          .map((step: any) => parseIngredientText(typeof step === 'string' ? step : (step.text || step.name || '')))
+          .map((step: any) => parseIngredientText(stripHtml(typeof step === 'string' ? step : (step.text || step.name || ''))))
           .filter(ing => ing.name);
         if (ingredients.length > 0) {
           ingredientSections.push({ name: sectionName.replace(/:$/, '').trim(), ingredients });
         }
       } else {
         // Ungrouped item within a mostly-structured list
-        const ing = parseIngredientText(typeof item === 'string' ? item : (item.text || item.name || ''));
+        const ing = parseIngredientText(stripHtml(typeof item === 'string' ? item : (item.text || item.name || '')));
         if (ing.name) ungroupedIngredients.push(ing);
       }
     }
@@ -328,7 +328,7 @@ function extractIngredientSections(rawIngredients: any[]): {
   let hasAnySection = false;
 
   for (const item of rawIngredients) {
-    const text = typeof item === 'string' ? item : (item.text || item.name || '');
+    const text = stripHtml(typeof item === 'string' ? item : (item.text || item.name || ''));
     if (!text.trim()) continue;
 
     if (isIngredientSectionHeader(text)) {
@@ -355,9 +355,9 @@ function extractIngredientSections(rawIngredients: any[]): {
  * Extract a single HowToStep text value.
  */
 function extractStepText(item: any): string {
-  if (typeof item === 'string') return item.trim();
-  if (item.text) return item.text.trim();
-  if (item.name) return item.name.trim();
+  if (typeof item === 'string') return stripHtml(item);
+  if (item.text) return stripHtml(item.text);
+  if (item.name) return stripHtml(item.name);
   return '';
 }
 
@@ -388,7 +388,7 @@ function extractInstructionSections(instructionData: any): {
 
   for (const item of instructionData) {
     if (typeof item === 'object' && item['@type'] === 'HowToSection') {
-      const sectionName = (item.name || '').replace(/:$/, '').trim() || 'Instructions';
+      const sectionName = stripHtml(item.name || '').replace(/:$/, '').trim() || 'Instructions';
       const rawSteps: any[] = item.itemListElement || item.step || [];
       const steps = rawSteps.map(extractStepText).filter(Boolean);
       if (steps.length > 0) {
