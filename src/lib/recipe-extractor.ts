@@ -25,6 +25,7 @@ export interface ExtractedInstructionSection {
 export interface ExtractedRecipe {
   name: string;
   description?: string;
+  notes?: string;
   prepTimeMinutes?: number;
   cookTimeMinutes?: number;
   servings?: number;
@@ -173,6 +174,33 @@ function parseWprmAmount(amtStr: string): number | undefined {
   }
   const result = parseFloat(numStr);
   return isNaN(result) ? undefined : result;
+}
+
+/**
+ * Extract recipe notes from WP Recipe Maker (WPRM) HTML.
+ * Looks for .wprm-recipe-notes-container and collects text from block-level
+ * children (paragraphs and list items), joining them with newlines.
+ */
+function extractWprmNotes(html: string): string | undefined {
+  const containerMatch = /class="[^"]*wprm-recipe-notes-container[^"]*"[^>]*>([\s\S]*?)<\/div>/i.exec(html);
+  if (!containerMatch) return undefined;
+
+  const notesHtml = containerMatch[1];
+
+  // Collect text from <p> and <li> elements
+  const items: string[] = [];
+  const blockRegex = /<(?:p|li)[^>]*>([\s\S]*?)<\/(?:p|li)>/gi;
+  let m;
+  while ((m = blockRegex.exec(notesHtml)) !== null) {
+    const text = stripHtml(m[1]).trim();
+    if (text) items.push(text);
+  }
+
+  if (items.length > 0) return items.join('\n');
+
+  // Fallback: strip all HTML and return plain text
+  const plain = stripHtml(notesHtml).trim();
+  return plain || undefined;
 }
 
 /**
@@ -478,6 +506,18 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractedRecipe
 
   const description = recipeData.description || undefined;
 
+  // Extract notes — WPRM outputs a non-standard `notes` property in JSON-LD;
+  // fall back to parsing the WPRM HTML notes container.
+  let notes: string | undefined;
+  if (recipeData.notes) {
+    notes = typeof recipeData.notes === 'string'
+      ? stripHtml(recipeData.notes).trim() || undefined
+      : undefined;
+  }
+  if (!notes) {
+    notes = extractWprmNotes(html);
+  }
+
   // Parse durations
   const prepTimeMinutes = recipeData.prepTime ? parseDuration(recipeData.prepTime) : undefined;
   const cookTimeMinutes = recipeData.cookTime || recipeData.totalTime
@@ -536,6 +576,7 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractedRecipe
   return {
     name,
     description,
+    notes,
     prepTimeMinutes,
     cookTimeMinutes,
     servings,

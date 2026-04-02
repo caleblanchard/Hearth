@@ -691,4 +691,66 @@ describe('NewRecipeForm Component', () => {
       expect(body).toHaveProperty('ungroupedSteps');
     });
   });
+
+  // Test 35: Renders notes textarea
+  it('should render a notes textarea', () => {
+    render(<NewRecipePage />);
+    expect(screen.getByLabelText(/^notes$/i)).toBeInTheDocument();
+  });
+
+  // Test 36: Import pre-fills notes field when recipe has notes
+  it('should pre-fill notes field with imported recipe notes', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        recipe: {
+          name: 'Pasta Carbonara',
+          notes: 'Use freshly grated Parmesan.\nDo not reheat leftovers.',
+          ingredientSections: [],
+          ungroupedIngredients: [],
+          instructionSections: [],
+          ungroupedSteps: [],
+        },
+      }),
+    });
+
+    render(<NewRecipePage />);
+
+    const toggleButton = screen.getByText(/import from url/i);
+    fireEvent.click(toggleButton);
+
+    const urlInput = screen.getByPlaceholderText('https://example.com/my-recipe');
+    fireEvent.change(urlInput, { target: { value: 'https://example.com/carbonara' } });
+
+    const importButton = screen.getByRole('button', { name: /^import$/i });
+    fireEvent.click(importButton);
+
+    await waitFor(() => {
+      const notesInput = screen.getByLabelText(/^notes$/i) as HTMLTextAreaElement;
+      expect(notesInput.value).toBe('Use freshly grated Parmesan.\nDo not reheat leftovers.');
+    });
+  });
+
+  // Test 37: Notes value is included in POST payload
+  it('should include notes in the save payload when notes are entered', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ recipe: { id: 'new-recipe-123' } }),
+    });
+
+    render(<NewRecipePage />);
+
+    fireEvent.change(screen.getByLabelText(/recipe name/i), { target: { value: 'Test Recipe' } });
+    fireEvent.change(screen.getByLabelText(/^notes$/i), { target: { value: 'Some tips here.' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /save recipe/i }));
+
+    await waitFor(() => {
+      const calls = (global.fetch as jest.Mock).mock.calls;
+      const saveCall = calls.find((c: any[]) => c[0] === '/api/meals/recipes');
+      expect(saveCall).toBeDefined();
+      const body = JSON.parse(saveCall[1].body);
+      expect(body.notes).toBe('Some tips here.');
+    });
+  });
 });

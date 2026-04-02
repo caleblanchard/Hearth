@@ -65,6 +65,7 @@ export default function NewRecipePage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    notes: '',
     category: '',
     difficulty: 'MEDIUM',
     prepTimeMinutes: '',
@@ -109,6 +110,7 @@ export default function NewRecipePage() {
       setFormData({
         name: recipe.name || '',
         description: recipe.description || '',
+        notes: recipe.notes || '',
         category: recipe.category || '',
         difficulty: recipe.difficulty || 'MEDIUM',
         prepTimeMinutes: recipe.prepTimeMinutes?.toString() || '',
@@ -188,6 +190,7 @@ export default function NewRecipePage() {
         body: JSON.stringify({
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
+          notes: formData.notes.trim() || undefined,
           category: formData.category || undefined,
           difficulty: formData.difficulty,
           prepTimeMinutes: formData.prepTimeMinutes ? parseInt(formData.prepTimeMinutes) : undefined,
@@ -620,6 +623,20 @@ export default function NewRecipePage() {
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Brief description of the recipe"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Notes
+                </label>
+                <textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Tips, substitutions, storage instructions, etc."
                 />
               </div>
 

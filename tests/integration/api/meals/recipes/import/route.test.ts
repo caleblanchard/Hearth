@@ -487,4 +487,40 @@ describe('POST /api/meals/recipes/import', () => {
     expect(data.recipe.ingredientSections).toEqual([]);
     expect(data.recipe.instructionSections).toEqual([]);
   });
+
+  // Test 25: Returns notes when present in extracted recipe data
+  it('should include notes in response when recipe has notes', async () => {
+    const recipeWithNotes = {
+      ...mockRecipe,
+      notes: 'Use real Parmigiano Reggiano for best results.\nDo not reheat leftovers.',
+    };
+    extractRecipeFromUrl.mockResolvedValue(recipeWithNotes);
+
+    const request = new NextRequest('http://localhost/api/meals/recipes/import', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://example.com/recipe' }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.recipe.notes).toBe('Use real Parmigiano Reggiano for best results.\nDo not reheat leftovers.');
+  });
+
+  // Test 26: Notes is absent when recipe has no notes
+  it('should not include notes when recipe has no notes', async () => {
+    extractRecipeFromUrl.mockResolvedValue(mockRecipe);
+
+    const request = new NextRequest('http://localhost/api/meals/recipes/import', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://example.com/recipe' }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.recipe.notes).toBeUndefined();
+  });
 });
