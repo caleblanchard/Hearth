@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ConfirmModal } from '@/components/ui/Modal';
 
 interface Creator {
   id: string;
@@ -57,6 +58,8 @@ export default function RecipesList() {
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isParent, setIsParent] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; recipeId?: string; recipeName?: string }>({ isOpen: false });
 
   const loadRecipes = async () => {
     setLoading(true);
@@ -96,6 +99,21 @@ export default function RecipesList() {
     loadRecipes();
   }, [categoryFilter, favoritesOnly, searchQuery]);
 
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const res = await fetch('/api/user/role');
+        if (res.ok) {
+          const data = await res.json();
+          setIsParent(data.role === 'PARENT');
+        }
+      } catch {
+        setIsParent(false);
+      }
+    };
+    fetchUserRole();
+  }, []);
+
   const toggleFavorite = async (id: string, currentStatus: boolean) => {
     try {
       const response = await fetch(`/api/meals/recipes/${id}`, {
@@ -113,6 +131,21 @@ export default function RecipesList() {
       loadRecipes();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update recipe');
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.recipeId) return;
+    try {
+      const response = await fetch(`/api/meals/recipes/${deleteModal.recipeId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete recipe');
+      setDeleteModal({ isOpen: false });
+      loadRecipes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete recipe');
+      setDeleteModal({ isOpen: false });
     }
   };
 
@@ -243,6 +276,32 @@ export default function RecipesList() {
                 >
                   {recipe.isFavorite ? '⭐' : '☆'}
                 </button>
+                {isParent && (
+                  <div className="flex items-center gap-1 ml-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/dashboard/meals/recipes/${recipe.id}/edit`);
+                      }}
+                      className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      aria-label={`Edit ${recipe.name}`}
+                      title="Edit Recipe"
+                    >
+                      <PencilIcon className="h-4 w-4 text-gray-400 hover:text-ember-700" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteModal({ isOpen: true, recipeId: recipe.id, recipeName: recipe.name });
+                      }}
+                      className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      aria-label={`Delete ${recipe.name}`}
+                      title="Delete Recipe"
+                    >
+                      <TrashIcon className="h-4 w-4 text-gray-400 hover:text-red-500" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Description */}
@@ -302,6 +361,17 @@ export default function RecipesList() {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Recipe"
+        message={`Are you sure you want to delete "${deleteModal.recipeName}"?`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="red"
+      />
     </div>
   );
 }

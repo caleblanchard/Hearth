@@ -64,5 +64,12 @@ next-env.d.ts
 # Uploads
 /uploads
 
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+tests/e2e/.auth/
+
 # Claude IDE settings
 .claude/

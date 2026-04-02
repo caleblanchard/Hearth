@@ -64,6 +64,8 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
+  const [acceptingInvite, setAcceptingInvite] = useState<string | null>(null);
 
   // Form data
   const [familyName, setFamilyName] = useState('');
@@ -84,7 +86,7 @@ export default function OnboardingPage() {
   const [lookingUp, setLookingUp] = useState(false);
   const [geocodeResults, setGeocodeResults] = useState<any[]>([]);
 
-  // Check auth status
+  // Check auth status and pending invitations
   useEffect(() => {
     async function checkAuthStatus() {
       if (sessionLoading) return;
@@ -92,6 +94,24 @@ export default function OnboardingPage() {
       if (!user) {
         router.push('/auth/signup');
         return;
+      }
+
+      // Check for pending invitations
+      try {
+        const supabase = createClient();
+        if (user.email) {
+          const { data: invites } = await supabase
+            .from('family_members')
+            .select('id, family_id, name, invite_token, families:families(id, name)')
+            .eq('email', user.email.toLowerCase())
+            .eq('invite_status' as any, 'PENDING');
+          
+          if (invites && invites.length > 0) {
+            setPendingInvitations(invites);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking invitations:', err);
       }
 
       // Allow users to create additional families
@@ -108,6 +128,33 @@ export default function OnboardingPage() {
         ? prev.filter(id => id !== moduleId)
         : [...prev, moduleId]
     );
+  };
+
+  const handleAcceptInvite = async (invite: any) => {
+    if (!invite.invite_token) return;
+    setAcceptingInvite(invite.id);
+    setError('');
+    try {
+      const response = await fetch('/api/family/members/invite/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inviteToken: invite.invite_token }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Failed to accept invitation');
+        setAcceptingInvite(null);
+        return;
+      }
+      // Store active family and redirect to dashboard
+      if (data.familyId && user?.id) {
+        localStorage.setItem(`hearth_active_family_id_${user.id}`, data.familyId);
+      }
+      window.location.href = '/dashboard?welcome=true';
+    } catch (err) {
+      setError('Failed to accept invitation');
+      setAcceptingInvite(null);
+    }
   };
 
   const handleGeocodeLookup = async () => {
@@ -288,6 +335,47 @@ export default function OnboardingPage() {
           {error && (
             <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
               <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            </div>
+          )}
+
+          {/* Pending Invitations Banner */}
+          {pendingInvitations.length > 0 && step === 'family' && (
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                🎉 You have pending family invitations!
+              </h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                You&apos;ve been invited to join the following families. Accept an invitation or create a new family below.
+              </p>
+              <div className="space-y-2">
+                {pendingInvitations.map((invite: any) => (
+                  <div
+                    key={invite.id}
+                    className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-md border border-blue-100 dark:border-blue-700"
+                  >
+                    <div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {(invite.families as any)?.name || 'A Family'}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                        as {invite.name}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleAcceptInvite(invite)}
+                      disabled={acceptingInvite === invite.id}
+                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    >
+                      {acceptingInvite === invite.id ? 'Accepting...' : 'Accept'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  Or scroll down to create your own new family instead.
+                </p>
+              </div>
             </div>
           )}
 

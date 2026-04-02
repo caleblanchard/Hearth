@@ -85,7 +85,8 @@ export async function POST(request: Request) {
     }
 
     // Link the auth user to the family member record and mark as active
-    const { error: updateError } = await (adminClient
+    // Use invite_status = 'PENDING' in the WHERE clause for atomic CAS operation
+    const { data: updatedRows, error: updateError } = await (adminClient
       .from('family_members')
       .update({
         auth_user_id: user.id,
@@ -93,13 +94,23 @@ export async function POST(request: Request) {
         invite_token: null, // Clear the token after use
         last_login_at: new Date().toISOString(),
       } as any)
-      .eq('id', pendingMember.id) as any);
+      .eq('id', pendingMember.id)
+      .eq('invite_status' as any, 'PENDING')
+      .select('id') as any);
 
     if (updateError) {
       logger.error('Error linking auth user to family member:', updateError);
       return NextResponse.json(
         { error: 'Failed to complete invitation' },
         { status: 500 }
+      );
+    }
+
+    // If no rows were updated, the invite was already accepted by another request
+    if (!updatedRows || (updatedRows as any[]).length === 0) {
+      return NextResponse.json(
+        { error: 'This invitation has already been accepted.' },
+        { status: 409 }
       );
     }
 

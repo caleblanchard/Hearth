@@ -29,12 +29,13 @@ export function FamilySwitcher() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get all families user belongs to
+      // Get all families user belongs to (only ACTIVE memberships)
       const { data: memberships } = await supabase
         .from('family_members')
         .select(`
           id,
           family_id,
+          invite_status,
           families:families(id, name)
         `)
         .eq('auth_user_id', user.id)
@@ -42,6 +43,7 @@ export function FamilySwitcher() {
 
       if (memberships) {
         const familyList = memberships
+          .filter(m => !m.invite_status || m.invite_status === 'ACTIVE')
           .map(m => m.families)
           .filter(Boolean) as Family[];
         
@@ -66,6 +68,21 @@ export function FamilySwitcher() {
 
   if (loading) {
     return null;
+  }
+
+  // Handle empty family list gracefully
+  if (families.length === 0) {
+    return (
+      <a
+        href="/onboarding"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors text-sm font-medium text-orange-700 dark:text-orange-400"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        Create a Family
+      </a>
+    );
   }
 
   const currentFamily = families.find(f => f.id === activeFamilyId) || families[0];

@@ -58,13 +58,50 @@ export async function GET(
         name: (recipe as any).creator.name,
         avatarUrl: (recipe as any).creator.avatar_url,
       } : null,
-      ingredients: ((recipe as any).recipe_ingredients || []).map((ing: any) => ({
+      ingredients: ((recipe as any).ingredients || []).map((ing: any) => ({
         id: ing.id,
         name: ing.name,
         quantity: ing.quantity,
         unit: ing.unit,
         notes: ing.notes,
         sortOrder: ing.sort_order,
+        sectionId: ing.section_id || null,
+      })),
+      ingredientSections: ((recipe as any).ingredientSections || []).map((sec: any) => ({
+        id: sec.id,
+        name: sec.name,
+        sortOrder: sec.sort_order,
+        ingredients: (sec.recipe_ingredients || []).map((ing: any) => ({
+          id: ing.id,
+          name: ing.name,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          notes: ing.notes,
+          sortOrder: ing.sort_order,
+        })),
+      })),
+      ungroupedIngredients: ((recipe as any).ungroupedIngredients || []).map((ing: any) => ({
+        id: ing.id,
+        name: ing.name,
+        quantity: ing.quantity,
+        unit: ing.unit,
+        notes: ing.notes,
+        sortOrder: ing.sort_order,
+      })),
+      instructionSections: ((recipe as any).instructionSections || []).map((sec: any) => ({
+        id: sec.id,
+        name: sec.name,
+        sortOrder: sec.sort_order,
+        steps: (sec.recipe_instruction_steps || []).map((step: any) => ({
+          id: step.id,
+          text: step.text,
+          sortOrder: step.sort_order,
+        })),
+      })),
+      ungroupedSteps: ((recipe as any).ungroupedSteps || []).map((step: any) => ({
+        id: step.id,
+        text: step.text,
+        sortOrder: step.sort_order,
       })),
       _count: {
         ratings: recipe.ratingsCount || 0,
@@ -192,6 +229,112 @@ export async function PATCH(
         }
       }
     }
+
+    // Handle ingredient sections if provided
+    const hasIngredientSectionData =
+      body.ingredientSections !== undefined || body.ungroupedIngredients !== undefined;
+
+    if (hasIngredientSectionData) {
+      // Delete existing sections (ON DELETE SET NULL clears section_id on ingredients)
+      await supabase.from('ingredient_sections').delete().eq('recipe_id', id);
+      // Delete all existing ingredients
+      await supabase.from('recipe_ingredients').delete().eq('recipe_id', id);
+
+      const ingredientSections = body.ingredientSections || [];
+      for (let sectionIdx = 0; sectionIdx < ingredientSections.length; sectionIdx++) {
+        const section = ingredientSections[sectionIdx];
+        const { data: createdSection, error: sectionError } = await supabase
+          .from('ingredient_sections')
+          .insert({ recipe_id: id, name: section.name, sort_order: sectionIdx })
+          .select('id')
+          .single();
+
+        if (sectionError || !createdSection) {
+          logger.error('Error creating ingredient section on patch:', sectionError);
+          continue;
+        }
+
+        const sectionIngredients = (section.ingredients || []).map((ing: any, ingIdx: number) => ({
+          recipe_id: id,
+          section_id: createdSection.id,
+          name: ing.name || '',
+          quantity: ing.quantity || null,
+          unit: ing.unit || null,
+          notes: ing.notes || null,
+          sort_order: ingIdx,
+        }));
+
+        if (sectionIngredients.length > 0) {
+          const { error: ingError } = await supabase.from('recipe_ingredients').insert(sectionIngredients);
+          if (ingError) logger.error('Error creating section ingredients on patch:', ingError);
+        }
+      }
+
+      const ungroupedIngredients = body.ungroupedIngredients || [];
+      if (ungroupedIngredients.length > 0) {
+        const ungroupedRecords = ungroupedIngredients.map((ing: any, idx: number) => ({
+          recipe_id: id,
+          section_id: null,
+          name: ing.name || '',
+          quantity: ing.quantity || null,
+          unit: ing.unit || null,
+          notes: ing.notes || null,
+          sort_order: idx,
+        }));
+        const { error: ungroupedError } = await supabase.from('recipe_ingredients').insert(ungroupedRecords);
+        if (ungroupedError) logger.error('Error creating ungrouped ingredients on patch:', ungroupedError);
+      }
+    }
+
+    // Handle instruction sections if provided
+    const hasInstructionSectionData =
+      body.instructionSections !== undefined || body.ungroupedSteps !== undefined;
+
+    if (hasInstructionSectionData) {
+      // Delete existing instruction sections (ON DELETE SET NULL clears section_id on steps)
+      await supabase.from('instruction_sections').delete().eq('recipe_id', id);
+      // Delete all existing steps
+      await supabase.from('recipe_instruction_steps').delete().eq('recipe_id', id);
+
+      const instructionSections = body.instructionSections || [];
+      for (let sectionIdx = 0; sectionIdx < instructionSections.length; sectionIdx++) {
+        const section = instructionSections[sectionIdx];
+        const { data: createdSection, error: sectionError } = await supabase
+          .from('instruction_sections')
+          .insert({ recipe_id: id, name: section.name, sort_order: sectionIdx })
+          .select('id')
+          .single();
+
+        if (sectionError || !createdSection) {
+          logger.error('Error creating instruction section on patch:', sectionError);
+          continue;
+        }
+
+        const sectionSteps = (section.steps || []).map((text: string, stepIdx: number) => ({
+          recipe_id: id,
+          section_id: createdSection.id,
+          text,
+          sort_order: stepIdx,
+        }));
+
+        if (sectionSteps.length > 0) {
+          const { error: stepsError } = await supabase.from('recipe_instruction_steps').insert(sectionSteps);
+          if (stepsError) logger.error('Error creating section steps on patch:', stepsError);
+        }
+      }
+
+      const ungroupedSteps = body.ungroupedSteps || [];
+      if (ungroupedSteps.length > 0) {
+        const ungroupedStepRecords = ungroupedSteps.map((text: string, idx: number) => ({
+          recipe_id: id,
+          section_id: null,
+          text,
+          sort_order: idx,
+        }));
+        const { error: stepsError } = await supabase.from('recipe_instruction_steps').insert(ungroupedStepRecords);
+        if (stepsError) logger.error('Error creating ungrouped steps on patch:', stepsError);
+      }
+    }
     
     const { data: recipe, error: updateError } = await supabase
       .from('recipes')
@@ -199,7 +342,10 @@ export async function PATCH(
       .eq('id', id)
       .select(`
         *,
-        recipe_ingredients(id, name, quantity, unit, notes, sort_order),
+        recipe_ingredients(id, name, quantity, unit, notes, sort_order, section_id),
+        ingredient_sections(id, name, sort_order, recipe_ingredients(id, name, quantity, unit, notes, sort_order)),
+        recipe_instruction_steps(id, text, sort_order, section_id),
+        instruction_sections(id, name, sort_order, recipe_instruction_steps(id, text, sort_order)),
         creator:family_members(id, name, avatar_url)
       `)
       .single();
@@ -252,7 +398,48 @@ export async function PATCH(
         unit: ing.unit,
         notes: ing.notes,
         sortOrder: ing.sort_order,
+        sectionId: ing.section_id || null,
       })),
+      ingredientSections: ((recipe as any).ingredient_sections || []).map((sec: any) => ({
+        id: sec.id,
+        name: sec.name,
+        sortOrder: sec.sort_order,
+        ingredients: (sec.recipe_ingredients || []).map((ing: any) => ({
+          id: ing.id,
+          name: ing.name,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          notes: ing.notes,
+          sortOrder: ing.sort_order,
+        })),
+      })),
+      ungroupedIngredients: ((recipe as any).recipe_ingredients || [])
+        .filter((ing: any) => !ing.section_id)
+        .map((ing: any) => ({
+          id: ing.id,
+          name: ing.name,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          notes: ing.notes,
+          sortOrder: ing.sort_order,
+        })),
+      instructionSections: ((recipe as any).instruction_sections || []).map((sec: any) => ({
+        id: sec.id,
+        name: sec.name,
+        sortOrder: sec.sort_order,
+        steps: (sec.recipe_instruction_steps || []).map((step: any) => ({
+          id: step.id,
+          text: step.text,
+          sortOrder: step.sort_order,
+        })),
+      })),
+      ungroupedSteps: ((recipe as any).recipe_instruction_steps || [])
+        .filter((step: any) => !step.section_id)
+        .map((step: any) => ({
+          id: step.id,
+          text: step.text,
+          sortOrder: step.sort_order,
+        })),
     };
 
     return NextResponse.json({

@@ -111,7 +111,7 @@ describe('NewRecipeForm Component', () => {
   it('should allow adding new ingredients', () => {
     render(<NewRecipePage />);
 
-    const addIngredientButton = screen.getByRole('button', { name: /add ingredient/i });
+    const addIngredientButton = screen.getByRole('button', { name: /^add ingredient$/i });
     fireEvent.click(addIngredientButton);
 
     const ingredientInputs = screen.getAllByPlaceholderText(/ingredient name/i);
@@ -122,7 +122,7 @@ describe('NewRecipeForm Component', () => {
   it('should allow removing ingredients', () => {
     render(<NewRecipePage />);
 
-    const addIngredientButton = screen.getByRole('button', { name: /add ingredient/i });
+    const addIngredientButton = screen.getByRole('button', { name: /^add ingredient$/i });
     fireEvent.click(addIngredientButton);
 
     const removeButtons = screen.getAllByRole('button', { name: /remove ingredient/i });
@@ -306,8 +306,10 @@ describe('NewRecipeForm Component', () => {
       json: async () => ({
         recipe: {
           name: 'Imported Recipe',
-          ingredients: [],
-          instructions: [],
+          ingredientSections: [],
+          ungroupedIngredients: [],
+          instructionSections: [],
+          ungroupedSteps: [],
         },
       }),
     });
@@ -340,8 +342,10 @@ describe('NewRecipeForm Component', () => {
       json: async () => ({
         recipe: {
           name: 'Imported Recipe',
-          ingredients: [],
-          instructions: [],
+          ingredientSections: [],
+          ungroupedIngredients: [],
+          instructionSections: [],
+          ungroupedSteps: [],
         },
       }),
     });
@@ -377,8 +381,10 @@ describe('NewRecipeForm Component', () => {
           servings: 8,
           category: 'DESSERT',
           difficulty: 'MEDIUM',
-          ingredients: [{ name: 'flour', quantity: 2, unit: 'cups' }],
-          instructions: ['Mix ingredients', 'Bake'],
+          ingredientSections: [],
+          ungroupedIngredients: [{ name: 'flour', quantity: 2, unit: 'cups' }],
+          instructionSections: [],
+          ungroupedSteps: ['Mix ingredients', 'Bake'],
         },
       }),
     });
@@ -406,7 +412,7 @@ describe('NewRecipeForm Component', () => {
       () => new Promise(resolve => setTimeout(() => resolve({
         ok: true,
         json: async () => ({
-          recipe: { name: 'Test', ingredients: [], instructions: [] },
+          recipe: { name: 'Test', ingredientSections: [], ungroupedIngredients: [], instructionSections: [], ungroupedSteps: [] },
         }),
       }), 100))
     );
@@ -457,8 +463,10 @@ describe('NewRecipeForm Component', () => {
           recipe: {
             name: 'Imported Recipe',
             servings: 4,
-            ingredients: [],
-            instructions: [],
+            ingredientSections: [],
+            ungroupedIngredients: [],
+            instructionSections: [],
+            ungroupedSteps: [],
           },
         }),
       })
@@ -497,6 +505,190 @@ describe('NewRecipeForm Component', () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/dashboard/meals/recipes/saved-recipe-123');
+    });
+  });
+
+  // Test 26: Shows "Add ingredient group" button
+  it('should show Add ingredient group button in ingredients section', () => {
+    render(<NewRecipePage />);
+    expect(screen.getByRole('button', { name: /add ingredient group/i })).toBeInTheDocument();
+  });
+
+  // Test 27: Can add a named ingredient section
+  it('should create a new ingredient section when Add ingredient group is clicked', async () => {
+    render(<NewRecipePage />);
+
+    const addGroupBtn = screen.getByRole('button', { name: /add ingredient group/i });
+    fireEvent.click(addGroupBtn);
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/section name/i)).toBeInTheDocument();
+    });
+  });
+
+  // Test 28: Can add ingredients inside a section
+  it('should be able to add ingredients inside a named section', async () => {
+    render(<NewRecipePage />);
+
+    const addGroupBtn = screen.getByRole('button', { name: /add ingredient group/i });
+    fireEvent.click(addGroupBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /add ingredient to section/i })).toBeInTheDocument();
+    });
+  });
+
+  // Test 29: Can remove a section (moves ingredients to ungrouped)
+  it('should remove ingredient section when remove section button is clicked', async () => {
+    render(<NewRecipePage />);
+
+    const addGroupBtn = screen.getByRole('button', { name: /add ingredient group/i });
+    fireEvent.click(addGroupBtn);
+
+    await waitFor(() => {
+      const removeBtn = screen.getByRole('button', { name: /remove section/i });
+      fireEvent.click(removeBtn);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(/section name/i)).not.toBeInTheDocument();
+    });
+  });
+
+  // Test 30: Shows "Add instruction group" button
+  it('should show Add instruction group button in instructions section', () => {
+    render(<NewRecipePage />);
+    expect(screen.getByRole('button', { name: /add instruction group/i })).toBeInTheDocument();
+  });
+
+  // Test 31: Can add a named instruction section
+  it('should create a new instruction section when Add instruction group is clicked', async () => {
+    render(<NewRecipePage />);
+
+    const addGroupBtn = screen.getByRole('button', { name: /add instruction group/i });
+    fireEvent.click(addGroupBtn);
+
+    await waitFor(() => {
+      expect(screen.getAllByPlaceholderText(/section name/i)).toHaveLength(1);
+    });
+  });
+
+  // Test 32: Import populates ingredient sections when recipe has them
+  it('should populate ingredient sections from imported recipe data', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        recipe: {
+          name: 'Turkey Rice Bowls',
+          servings: 4,
+          ingredientSections: [
+            {
+              name: 'Ground Turkey Mixture',
+              ingredients: [
+                { name: 'ground turkey', quantity: 1, unit: 'lb' },
+              ],
+            },
+            {
+              name: 'Bang Bang Sauce',
+              ingredients: [
+                { name: 'mayonnaise', quantity: 0.5, unit: 'cup' },
+              ],
+            },
+          ],
+          ungroupedIngredients: [],
+          instructionSections: [],
+          ungroupedSteps: [],
+        },
+      }),
+    });
+
+    render(<NewRecipePage />);
+
+    const toggleButton = screen.getByText(/import from url/i);
+    fireEvent.click(toggleButton);
+
+    const urlInput = screen.getByPlaceholderText(/enter recipe url/i);
+    fireEvent.change(urlInput, { target: { value: 'https://example.com/recipe' } });
+
+    const importButton = screen.getByRole('button', { name: /^import$/i });
+    fireEvent.click(importButton);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Ground Turkey Mixture')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Bang Bang Sauce')).toBeInTheDocument();
+    });
+  });
+
+  // Test 33: Import populates instruction sections when recipe has them
+  it('should populate instruction sections from imported recipe data', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        recipe: {
+          name: 'Turkey Rice Bowls',
+          servings: 4,
+          ingredientSections: [],
+          ungroupedIngredients: [],
+          instructionSections: [
+            {
+              name: 'Prep Bang Bang Sauce',
+              steps: ['Combine mayo and sriracha', 'Whisk well'],
+            },
+          ],
+          ungroupedSteps: [],
+        },
+      }),
+    });
+
+    render(<NewRecipePage />);
+
+    const toggleButton = screen.getByText(/import from url/i);
+    fireEvent.click(toggleButton);
+
+    const urlInput = screen.getByPlaceholderText(/enter recipe url/i);
+    fireEvent.change(urlInput, { target: { value: 'https://example.com/recipe' } });
+
+    const importButton = screen.getByRole('button', { name: /^import$/i });
+    fireEvent.click(importButton);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Prep Bang Bang Sauce')).toBeInTheDocument();
+    });
+  });
+
+  // Test 34: Submits ingredientSections and instructionSections in payload
+  it('should include ingredientSections and instructionSections in submit payload', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ recipe: { id: 'new-recipe-1' } }),
+    });
+
+    render(<NewRecipePage />);
+
+    // Set recipe name
+    const nameInput = screen.getByLabelText(/recipe name/i);
+    fireEvent.change(nameInput, { target: { value: 'Test Sections Recipe' } });
+
+    // Add an ingredient group
+    const addIngGroupBtn = screen.getByRole('button', { name: /add ingredient group/i });
+    fireEvent.click(addIngGroupBtn);
+
+    const sectionNameInput = screen.getByPlaceholderText(/section name/i);
+    fireEvent.change(sectionNameInput, { target: { value: 'For the Sauce' } });
+
+    // Submit
+    const submitButton = screen.getByRole('button', { name: /save recipe/i });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      const calls = (global.fetch as jest.Mock).mock.calls;
+      const saveCall = calls.find((c: any[]) => c[0] === '/api/meals/recipes');
+      expect(saveCall).toBeDefined();
+      const body = JSON.parse(saveCall[1].body);
+      expect(body).toHaveProperty('ingredientSections');
+      expect(body).toHaveProperty('ungroupedIngredients');
+      expect(body).toHaveProperty('instructionSections');
+      expect(body).toHaveProperty('ungroupedSteps');
     });
   });
 });

@@ -1847,6 +1847,64 @@ export type Database = {
           },
         ]
       }
+      ingredient_sections: {
+        Row: {
+          id: string
+          name: string
+          recipe_id: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          name: string
+          recipe_id: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          recipe_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_sections_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instruction_sections: {
+        Row: {
+          id: string
+          name: string
+          recipe_id: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          name: string
+          recipe_id: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          recipe_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instruction_sections_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           barcode: string | null
@@ -3294,6 +3352,7 @@ export type Database = {
           notes: string | null
           quantity: number | null
           recipe_id: string
+          section_id: string | null
           sort_order: number
           unit: string | null
         }
@@ -3303,6 +3362,7 @@ export type Database = {
           notes?: string | null
           quantity?: number | null
           recipe_id: string
+          section_id?: string | null
           sort_order?: number
           unit?: string | null
         }
@@ -3312,6 +3372,7 @@ export type Database = {
           notes?: string | null
           quantity?: number | null
           recipe_id?: string
+          section_id?: string | null
           sort_order?: number
           unit?: string | null
         }
@@ -3321,6 +3382,52 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_instruction_steps: {
+        Row: {
+          id: string
+          recipe_id: string
+          section_id: string | null
+          sort_order: number
+          text: string
+        }
+        Insert: {
+          id?: string
+          recipe_id: string
+          section_id?: string | null
+          sort_order?: number
+          text: string
+        }
+        Update: {
+          id?: string
+          recipe_id?: string
+          section_id?: string | null
+          sort_order?: number
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_instruction_steps_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_instruction_steps_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "instruction_sections"
             referencedColumns: ["id"]
           },
         ]

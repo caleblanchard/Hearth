@@ -3,7 +3,24 @@
  *
  * Extracts recipe data from URLs using Schema.org/JSON-LD microdata.
  * Supports the Recipe schema: https://schema.org/Recipe
+ * Handles HowToSection for both ingredient and instruction grouping.
  */
+
+export interface ExtractedIngredient {
+  name: string;
+  quantity?: number;
+  unit?: string;
+}
+
+export interface ExtractedIngredientSection {
+  name: string;
+  ingredients: ExtractedIngredient[];
+}
+
+export interface ExtractedInstructionSection {
+  name: string;
+  steps: string[];
+}
 
 export interface ExtractedRecipe {
   name: string;
@@ -15,12 +32,14 @@ export interface ExtractedRecipe {
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
   imageUrl?: string;
   sourceUrl: string;
-  ingredients: Array<{
-    name: string;
-    quantity?: number;
-    unit?: string;
-  }>;
-  instructions: string[];
+  /** Named ingredient groups extracted from the recipe */
+  ingredientSections: ExtractedIngredientSection[];
+  /** Ingredients not belonging to any named section */
+  ungroupedIngredients: ExtractedIngredient[];
+  /** Named instruction groups extracted from the recipe */
+  instructionSections: ExtractedInstructionSection[];
+  /** Steps not belonging to any named section */
+  ungroupedSteps: string[];
   dietaryTags?: string[];
 }
 
@@ -121,9 +140,148 @@ function extractDietaryTags(keywords?: string | string[], description?: string):
 }
 
 /**
- * Normalize ingredient text to extract quantity and unit
+ * Returns true if a raw ingredient string looks like a section header rather
+ * than an actual ingredient. Heuristics:
+ *  - ends with ":"
+ *  - no leading digit/fraction AND short AND title-cased or all-caps
  */
-function parseIngredient(ingredientText: string): { name: string; quantity?: number; unit?: string } {
+function isIngredientSectionHeader(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (trimmed.endsWith(':')) return true;
+  // Short (≤ 60 chars), no leading quantity, mostly capitalised words
+  if (trimmed.length <= 60 && !/^\d/.test(trimmed)) {
+    const words = trimmed.split(/\s+/);
+    const capitalisedWords = words.filter(w => /^[A-Z]/.test(w));
+    return words.length >= 1 && capitalisedWords.length / words.length >= 0.6;
+  }
+  return false;
+}
+
+/**
+ * Extract ingredient sections + ungrouped ingredients from Schema.org data.
+ *
+ * Handles three formats:
+ *  1. Array of HowToSection objects (each with name + itemListElement)
+ *  2. Flat array of strings — inline section headers detected via heuristic
+ *  3. Mixed arrays
+ */
+function extractIngredientSections(rawIngredients: any[]): {
+  ingredientSections: ExtractedIngredientSection[];
+  ungroupedIngredients: ExtractedIngredient[];
+} {
+  const ingredientSections: ExtractedIngredientSection[] = [];
+  const ungroupedIngredients: ExtractedIngredient[] = [];
+
+  // Detect if any entry is a HowToSection
+  const hasStructuredSections = rawIngredients.some(
+    (item: any) => typeof item === 'object' && item['@type'] === 'HowToSection'
+  );
+
+  if (hasStructuredSections) {
+    for (const item of rawIngredients) {
+      if (typeof item === 'object' && item['@type'] === 'HowToSection') {
+        const sectionName = item.name || item.itemListElement?.[0]?.name || 'Ingredients';
+        const rawItems: any[] = item.itemListElement || item.step || [];
+        const ingredients = rawItems
+          .map((step: any) => parseIngredientText(typeof step === 'string' ? step : (step.text || step.name || '')))
+          .filter(ing => ing.name);
+        if (ingredients.length > 0) {
+          ingredientSections.push({ name: sectionName.replace(/:$/, '').trim(), ingredients });
+        }
+      } else {
+        // Ungrouped item within a mostly-structured list
+        const ing = parseIngredientText(typeof item === 'string' ? item : (item.text || item.name || ''));
+        if (ing.name) ungroupedIngredients.push(ing);
+      }
+    }
+    return { ingredientSections, ungroupedIngredients };
+  }
+
+  // Flat array — detect inline section headers
+  let currentSection: ExtractedIngredientSection | null = null;
+  let hasAnySection = false;
+
+  for (const item of rawIngredients) {
+    const text = typeof item === 'string' ? item : (item.text || item.name || '');
+    if (!text.trim()) continue;
+
+    if (isIngredientSectionHeader(text)) {
+      currentSection = { name: text.trim().replace(/:$/, '').trim(), ingredients: [] };
+      ingredientSections.push(currentSection);
+      hasAnySection = true;
+    } else {
+      const ing = parseIngredientText(text);
+      if (ing.name) {
+        if (currentSection) {
+          currentSection.ingredients.push(ing);
+        } else {
+          ungroupedIngredients.push(ing);
+        }
+      }
+    }
+  }
+
+  // If no sections found, all ingredients are ungrouped (already in ungroupedIngredients)
+  return { ingredientSections, ungroupedIngredients };
+}
+
+/**
+ * Extract a single HowToStep text value.
+ */
+function extractStepText(item: any): string {
+  if (typeof item === 'string') return item.trim();
+  if (item.text) return item.text.trim();
+  if (item.name) return item.name.trim();
+  return '';
+}
+
+/**
+ * Extract instruction sections + ungrouped steps from Schema.org data.
+ *
+ * Handles three formats:
+ *  1. Array of HowToSection objects (each with name + itemListElement/step)
+ *  2. Flat array of HowToStep objects or strings
+ *  3. Single string (split on periods/newlines)
+ */
+function extractInstructionSections(instructionData: any): {
+  instructionSections: ExtractedInstructionSection[];
+  ungroupedSteps: string[];
+} {
+  const instructionSections: ExtractedInstructionSection[] = [];
+  const ungroupedSteps: string[] = [];
+
+  if (!instructionData) return { instructionSections, ungroupedSteps };
+
+  if (typeof instructionData === 'string') {
+    const steps = instructionData.split(/\.\s+|\n/).map(s => s.trim()).filter(Boolean);
+    ungroupedSteps.push(...steps);
+    return { instructionSections, ungroupedSteps };
+  }
+
+  if (!Array.isArray(instructionData)) return { instructionSections, ungroupedSteps };
+
+  for (const item of instructionData) {
+    if (typeof item === 'object' && item['@type'] === 'HowToSection') {
+      const sectionName = (item.name || '').replace(/:$/, '').trim() || 'Instructions';
+      const rawSteps: any[] = item.itemListElement || item.step || [];
+      const steps = rawSteps.map(extractStepText).filter(Boolean);
+      if (steps.length > 0) {
+        instructionSections.push({ name: sectionName, steps });
+      }
+    } else {
+      const text = extractStepText(item);
+      if (text) ungroupedSteps.push(text);
+    }
+  }
+
+  return { instructionSections, ungroupedSteps };
+}
+
+/**
+ * Parse a single ingredient string into { name, quantity?, unit? }.
+ */
+function parseIngredientText(ingredientText: string): ExtractedIngredient {
   if (!ingredientText || typeof ingredientText !== 'string') {
     return { name: '' };
   }
@@ -239,25 +397,11 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractedRecipe
 
   // Extract ingredients
   const ingredientsList = recipeData.recipeIngredient || [];
-  const ingredients = (Array.isArray(ingredientsList) ? ingredientsList : [ingredientsList])
-    .map(parseIngredient)
-    .filter(ing => ing.name);
+  const rawIngredients = Array.isArray(ingredientsList) ? ingredientsList : [ingredientsList];
+  const { ingredientSections, ungroupedIngredients } = extractIngredientSections(rawIngredients);
 
   // Extract instructions
-  const instructionData = recipeData.recipeInstructions || [];
-  let instructions: string[] = [];
-
-  if (Array.isArray(instructionData)) {
-    instructions = instructionData.map((item: any) => {
-      if (typeof item === 'string') return item;
-      if (item.text) return item.text;
-      if (item['@type'] === 'HowToStep' && item.text) return item.text;
-      return '';
-    }).filter((text: string) => text.trim());
-  } else if (typeof instructionData === 'string') {
-    // Split by periods or newlines if it's a single string
-    instructions = instructionData.split(/\.\s+|\n/).filter((s: string) => s.trim());
-  }
+  const { instructionSections, ungroupedSteps } = extractInstructionSections(recipeData.recipeInstructions);
 
   // Get image URL
   const imageData = recipeData.image;
@@ -293,8 +437,10 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractedRecipe
     difficulty,
     imageUrl,
     sourceUrl: url,
-    ingredients,
-    instructions,
+    ingredientSections,
+    ungroupedIngredients,
+    instructionSections,
+    ungroupedSteps,
     dietaryTags: dietaryTags.length > 0 ? dietaryTags : undefined,
   };
 }

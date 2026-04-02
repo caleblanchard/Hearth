@@ -27,6 +27,26 @@ interface Ingredient {
   sortOrder: number;
 }
 
+interface IngredientSection {
+  id: string;
+  name: string;
+  sortOrder: number;
+  ingredients: Ingredient[];
+}
+
+interface InstructionStep {
+  id: string;
+  text: string;
+  sortOrder: number;
+}
+
+interface InstructionSection {
+  id: string;
+  name: string;
+  sortOrder: number;
+  steps: InstructionStep[];
+}
+
 interface Recipe {
   id: string;
   name: string;
@@ -42,7 +62,13 @@ interface Recipe {
   notes?: string;
   isFavorite: boolean;
   dietaryTags: string[];
+  // Legacy flat fields
   ingredients: Ingredient[];
+  // New section fields
+  ingredientSections?: IngredientSection[];
+  ungroupedIngredients?: Ingredient[];
+  instructionSections?: InstructionSection[];
+  ungroupedSteps?: InstructionStep[];
   averageRating?: number;
   userRating?: number;
   creator: {
@@ -239,16 +265,26 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  let instructions: string[] = [];
-  try {
-    if (recipe.instructions) {
-      const parsed = JSON.parse(recipe.instructions);
-      // Handle both array and double-stringified cases
-      instructions = Array.isArray(parsed) ? parsed : (typeof parsed === 'string' ? JSON.parse(parsed) : []);
+  // Compute ingredients to display: prefer section-based data, fall back to flat
+  const hasIngredientSections =
+    (recipe.ingredientSections && recipe.ingredientSections.length > 0) ||
+    (recipe.ungroupedIngredients && recipe.ungroupedIngredients.length > 0);
+
+  // Compute instructions to display: prefer step-based data, fall back to JSON TEXT
+  const hasInstructionSections =
+    (recipe.instructionSections && recipe.instructionSections.length > 0) ||
+    (recipe.ungroupedSteps && recipe.ungroupedSteps.length > 0);
+
+  let legacyInstructions: string[] = [];
+  if (!hasInstructionSections) {
+    try {
+      if (recipe.instructions) {
+        const parsed = JSON.parse(recipe.instructions);
+        legacyInstructions = Array.isArray(parsed) ? parsed : (typeof parsed === 'string' ? JSON.parse(parsed) : []);
+      }
+    } catch {
+      legacyInstructions = [];
     }
-  } catch (error) {
-    console.error('Error parsing instructions:', error);
-    instructions = [];
   }
 
   return (
@@ -439,37 +475,135 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
             {/* Ingredients */}
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Ingredients</h2>
-              <ul className="space-y-2">
-                {recipe.ingredients?.map((ingredient) => (
-                  <li key={ingredient.id} className="flex items-start gap-3">
-                    <span className="text-ember-700 mt-1">•</span>
-                    <span className="text-gray-700 dark:text-gray-300">
-                      {ingredient.quantity && ingredient.unit && (
-                        <strong>{ingredient.quantity} {ingredient.unit}</strong>
-                      )}{' '}
-                      {ingredient.name}
-                      {ingredient.notes && (
-                        <span className="text-gray-500 dark:text-gray-400 italic"> ({ingredient.notes})</span>
+
+              {hasIngredientSections ? (
+                <div className="space-y-6">
+                  {/* Named sections */}
+                  {recipe.ingredientSections?.map(section => (
+                    <div key={section.id}>
+                      <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-2 border-b border-gray-100 dark:border-gray-700 pb-1">
+                        {section.name}
+                      </h3>
+                      <ul className="space-y-2">
+                        {section.ingredients.map(ingredient => (
+                          <li key={ingredient.id} className="flex items-start gap-3">
+                            <span className="text-ember-700 mt-1">•</span>
+                            <span className="text-gray-700 dark:text-gray-300">
+                              {ingredient.quantity && ingredient.unit && (
+                                <strong>{ingredient.quantity} {ingredient.unit}</strong>
+                              )}{' '}
+                              {ingredient.name}
+                              {ingredient.notes && (
+                                <span className="text-gray-500 dark:text-gray-400 italic"> ({ingredient.notes})</span>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                  {/* Ungrouped */}
+                  {recipe.ungroupedIngredients && recipe.ungroupedIngredients.length > 0 && (
+                    <div>
+                      {recipe.ingredientSections && recipe.ingredientSections.length > 0 && (
+                        <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-2 border-b border-gray-100 dark:border-gray-700 pb-1">
+                          Other
+                        </h3>
                       )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                      <ul className="space-y-2">
+                        {recipe.ungroupedIngredients.map(ingredient => (
+                          <li key={ingredient.id} className="flex items-start gap-3">
+                            <span className="text-ember-700 mt-1">•</span>
+                            <span className="text-gray-700 dark:text-gray-300">
+                              {ingredient.quantity && ingredient.unit && (
+                                <strong>{ingredient.quantity} {ingredient.unit}</strong>
+                              )}{' '}
+                              {ingredient.name}
+                              {ingredient.notes && (
+                                <span className="text-gray-500 dark:text-gray-400 italic"> ({ingredient.notes})</span>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {recipe.ingredients?.map(ingredient => (
+                    <li key={ingredient.id} className="flex items-start gap-3">
+                      <span className="text-ember-700 mt-1">•</span>
+                      <span className="text-gray-700 dark:text-gray-300">
+                        {ingredient.quantity && ingredient.unit && (
+                          <strong>{ingredient.quantity} {ingredient.unit}</strong>
+                        )}{' '}
+                        {ingredient.name}
+                        {ingredient.notes && (
+                          <span className="text-gray-500 dark:text-gray-400 italic"> ({ingredient.notes})</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Instructions */}
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Instructions</h2>
-              <ol className="space-y-4">
-                {instructions.map((step: string, index: number) => (
-                  <li key={index} className="flex gap-4">
-                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-ember-700 text-white flex items-center justify-center font-semibold">
-                      {index + 1}
-                    </span>
-                    <p className="text-gray-700 dark:text-gray-300 pt-1">{step}</p>
-                  </li>
-                ))}
-              </ol>
+
+              {hasInstructionSections ? (
+                <div className="space-y-6">
+                  {recipe.instructionSections?.map(section => (
+                    <div key={section.id}>
+                      <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-3 border-b border-gray-100 dark:border-gray-700 pb-1">
+                        {section.name}
+                      </h3>
+                      <ol className="space-y-3">
+                        {section.steps.map((step, i) => (
+                          <li key={step.id} className="flex gap-4">
+                            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-ember-700 text-white flex items-center justify-center text-sm font-semibold">
+                              {i + 1}
+                            </span>
+                            <p className="text-gray-700 dark:text-gray-300 pt-0.5">{step.text}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ))}
+                  {recipe.ungroupedSteps && recipe.ungroupedSteps.length > 0 && (
+                    <div>
+                      {recipe.instructionSections && recipe.instructionSections.length > 0 && (
+                        <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-3 border-b border-gray-100 dark:border-gray-700 pb-1">
+                          Other Steps
+                        </h3>
+                      )}
+                      <ol className="space-y-3">
+                        {recipe.ungroupedSteps.map((step, i) => (
+                          <li key={step.id} className="flex gap-4">
+                            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-ember-700 text-white flex items-center justify-center text-sm font-semibold">
+                              {i + 1}
+                            </span>
+                            <p className="text-gray-700 dark:text-gray-300 pt-0.5">{step.text}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <ol className="space-y-4">
+                  {legacyInstructions.map((step: string, index: number) => (
+                    <li key={index} className="flex gap-4">
+                      <span className="flex-shrink-0 w-8 h-8 rounded-full bg-ember-700 text-white flex items-center justify-center font-semibold">
+                        {index + 1}
+                      </span>
+                      <p className="text-gray-700 dark:text-gray-300 pt-1">{step}</p>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
 
             {/* Notes */}

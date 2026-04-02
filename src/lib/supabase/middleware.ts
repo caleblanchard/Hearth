@@ -92,6 +92,23 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/signin', request.url))
   }
 
+  // For authenticated users accessing the dashboard, verify they have a family
+  if (user && request.nextUrl.pathname.startsWith('/dashboard')) {
+    const serviceClient = await createServiceClient()
+    const { data: membership } = await serviceClient
+      .from('family_members')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .eq('is_active', true)
+      .eq('invite_status' as any, 'ACTIVE')
+      .limit(1)
+
+    if (!membership || membership.length === 0) {
+      // User has no active family — redirect to onboarding
+      return NextResponse.redirect(new URL('/onboarding', request.url))
+    }
+  }
+
   // Redirect authenticated users (including kiosk child) away from auth pages
   if ((user || kioskChild) && request.nextUrl.pathname.startsWith('/auth/signin')) {
     return NextResponse.redirect(new URL('/dashboard', request.url))

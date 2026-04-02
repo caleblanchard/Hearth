@@ -92,7 +92,10 @@ export async function getRecipe(recipeId: string) {
     .select(`
       *,
       creator:family_members!recipes_created_by_fkey(id, name, avatar_url),
-      recipe_ingredients(id, name, quantity, unit, notes, sort_order),
+      recipe_ingredients(id, name, quantity, unit, notes, sort_order, section_id),
+      ingredient_sections(id, name, sort_order, recipe_ingredients(id, name, quantity, unit, notes, sort_order)),
+      recipe_instruction_steps(id, text, sort_order, section_id),
+      instruction_sections(id, name, sort_order, recipe_instruction_steps(id, text, sort_order)),
       ratings:recipe_ratings(
         id,
         rating,
@@ -103,6 +106,9 @@ export async function getRecipe(recipeId: string) {
     `)
     .eq('id', recipeId)
     .order('sort_order', { foreignTable: 'recipe_ingredients', ascending: true })
+    .order('sort_order', { foreignTable: 'ingredient_sections', ascending: true })
+    .order('sort_order', { foreignTable: 'recipe_instruction_steps', ascending: true })
+    .order('sort_order', { foreignTable: 'instruction_sections', ascending: true })
     .maybeSingle()
 
   if (error) throw error
@@ -113,9 +119,16 @@ export async function getRecipe(recipeId: string) {
     ? data.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / data.ratings.length
     : 0
 
+  const allIngredients: any[] = data.recipe_ingredients || []
+  const allSteps: any[] = data.recipe_instruction_steps || []
+
   return {
     ...data,
-    ingredients: data.recipe_ingredients || [],
+    ingredients: allIngredients,
+    ingredientSections: data.ingredient_sections || [],
+    ungroupedIngredients: allIngredients.filter((i: any) => !i.section_id),
+    instructionSections: data.instruction_sections || [],
+    ungroupedSteps: allSteps.filter((s: any) => !s.section_id),
     averageRating,
     ratingsCount: data.ratings?.length || 0,
   }

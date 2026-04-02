@@ -46,7 +46,12 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/auth/signin?error=invalid_token&message=${encodeURIComponent(error.message)}`)
     }
 
-    // For other types (signup confirmation, recovery), redirect to next
+    // For signup confirmation, redirect to signin with success message
+    if (type === 'signup') {
+      return NextResponse.redirect(`${origin}/auth/signin?confirmed=true`)
+    }
+
+    // For other types (recovery, email_change), redirect to next
     return NextResponse.redirect(`${origin}${next}`)
   }
 

@@ -12,6 +12,10 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:chromium": "npx playwright test --project=chromium",
     "type-check": "tsc --noEmit",
     "db:seed": "tsx scripts/seed.ts"
   },
@@ -36,6 +40,8 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
+    "@playwright/test": "^1.58.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",

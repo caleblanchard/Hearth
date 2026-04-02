@@ -224,40 +224,42 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Apply different rate limits based on endpoint type
-  let limiter = apiRateLimiter;
-  
-  if (pathname.startsWith('/api/auth')) {
-    limiter = authRateLimiter;
-  } else if (pathname.startsWith('/api/cron')) {
-    limiter = cronRateLimiter;
-  }
+  // Apply rate limits only to API routes (not page navigations)
+  if (pathname.startsWith('/api/')) {
+    let limiter = apiRateLimiter;
+    
+    if (pathname.startsWith('/api/auth')) {
+      limiter = authRateLimiter;
+    } else if (pathname.startsWith('/api/cron')) {
+      limiter = cronRateLimiter;
+    }
 
-  const identifier = getClientIdentifier(request);
-  const result = await limiter.check(identifier);
+    const identifier = getClientIdentifier(request);
+    const result = await limiter.check(identifier);
 
-  if (!result.allowed) {
-    return NextResponse.json(
-      {
-        error: 'Too many requests',
-        message: 'Rate limit exceeded. Please try again later.',
-      },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': String(Math.ceil((result.resetTime - Date.now()) / 1000)),
-          'X-RateLimit-Limit': String(limiter.maxRequests),
-          'X-RateLimit-Remaining': String(result.remaining),
-          'X-RateLimit-Reset': String(result.resetTime),
+    if (!result.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Too many requests',
+          message: 'Rate limit exceeded. Please try again later.',
         },
-      }
-    );
-  }
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil((result.resetTime - Date.now()) / 1000)),
+            'X-RateLimit-Limit': String(limiter.maxRequests),
+            'X-RateLimit-Remaining': String(result.remaining),
+            'X-RateLimit-Reset': String(result.resetTime),
+          },
+        }
+      );
+    }
 
-  // Add rate limit headers to response
-  response.headers.set('X-RateLimit-Limit', String(limiter.maxRequests));
-  response.headers.set('X-RateLimit-Remaining', String(result.remaining));
-  response.headers.set('X-RateLimit-Reset', String(result.resetTime));
+    // Add rate limit headers to response
+    response.headers.set('X-RateLimit-Limit', String(limiter.maxRequests));
+    response.headers.set('X-RateLimit-Remaining', String(result.remaining));
+    response.headers.set('X-RateLimit-Reset', String(result.resetTime));
+  }
 
   return response;
 }

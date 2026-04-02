@@ -16,9 +16,10 @@ export async function GET() {
     }
 
     // For kiosk child sessions, role is already in authContext.user.role
-    if (authContext.user?.role) {
+    const userRole = authContext.user?.role;
+    if (userRole && (userRole === 'PARENT' || userRole === 'CHILD')) {
       return NextResponse.json({
-        role: authContext.user.role,
+        role: userRole,
         memberId,
         familyId: authContext.activeFamilyId,
       });

@@ -41,11 +41,13 @@ describe('POST /api/meals/recipes/import', () => {
     difficulty: 'EASY' as const,
     imageUrl: 'https://example.com/cookies.jpg',
     sourceUrl: 'https://example.com/recipe/cookies',
-    ingredients: [
+    ingredientSections: [],
+    ungroupedIngredients: [
       { name: 'flour', quantity: 2, unit: 'cups' },
       { name: 'chocolate chips', quantity: 1, unit: 'cup' },
     ],
-    instructions: [
+    instructionSections: [],
+    ungroupedSteps: [
       'Preheat oven to 375°F',
       'Mix dry ingredients',
       'Bake for 12 minutes',
@@ -256,8 +258,8 @@ describe('POST /api/meals/recipes/import', () => {
     expect(data.recipe.servings).toBe(24);
   });
 
-  // Test 14: Extracts ingredients array
-  it('should extract ingredients list', async () => {
+  // Test 14: Extracts ungrouped ingredients
+  it('should extract ungrouped ingredients list when no sections present', async () => {
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -268,16 +270,17 @@ describe('POST /api/meals/recipes/import', () => {
     const response = await POST(request);
     const data = await response.json();
 
-    expect(data.recipe.ingredients).toHaveLength(2);
-    expect(data.recipe.ingredients[0]).toMatchObject({
+    expect(data.recipe.ungroupedIngredients).toHaveLength(2);
+    expect(data.recipe.ungroupedIngredients[0]).toMatchObject({
       name: 'flour',
       quantity: 2,
       unit: 'cups',
     });
+    expect(data.recipe.ingredientSections).toHaveLength(0);
   });
 
-  // Test 15: Extracts instructions (recipeInstructions)
-  it('should extract cooking instructions', async () => {
+  // Test 15: Extracts ungrouped steps when no instruction sections present
+  it('should extract ungrouped steps when no instruction sections present', async () => {
     extractRecipeFromUrl.mockResolvedValue(mockRecipe);
 
     const request = new NextRequest('http://localhost/api/meals/recipes/import', {
@@ -288,8 +291,9 @@ describe('POST /api/meals/recipes/import', () => {
     const response = await POST(request);
     const data = await response.json();
 
-    expect(data.recipe.instructions).toHaveLength(3);
-    expect(data.recipe.instructions[0]).toBe('Preheat oven to 375°F');
+    expect(data.recipe.ungroupedSteps).toHaveLength(3);
+    expect(data.recipe.ungroupedSteps[0]).toBe('Preheat oven to 375°F');
+    expect(data.recipe.instructionSections).toHaveLength(0);
   });
 
   // Test 16: Extracts imageUrl
@@ -365,5 +369,122 @@ describe('POST /api/meals/recipes/import', () => {
     const data = await response.json();
 
     expect(data.recipe.dietaryTags).toContain('VEGETARIAN');
+  });
+
+  // Test 21: Returns ingredient sections from HowToSection Schema.org data
+  it('should return ingredient sections when recipe has grouped ingredients', async () => {
+    const sectionedRecipe = {
+      ...mockRecipe,
+      ingredientSections: [
+        {
+          name: 'Ground Turkey Mixture',
+          ingredients: [
+            { name: 'ground turkey', quantity: 1, unit: 'lb' },
+            { name: 'sesame oil', quantity: 1, unit: 'tbsp' },
+          ],
+        },
+        {
+          name: 'Bang Bang Sauce',
+          ingredients: [
+            { name: 'mayonnaise', quantity: 0.5, unit: 'cup' },
+            { name: 'sriracha', quantity: 1, unit: 'tbsp' },
+          ],
+        },
+      ],
+      ungroupedIngredients: [],
+    };
+    extractRecipeFromUrl.mockResolvedValue(sectionedRecipe);
+
+    const request = new NextRequest('http://localhost/api/meals/recipes/import', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://example.com/recipe' }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(data.recipe.ingredientSections).toHaveLength(2);
+    expect(data.recipe.ingredientSections[0].name).toBe('Ground Turkey Mixture');
+    expect(data.recipe.ingredientSections[0].ingredients).toHaveLength(2);
+    expect(data.recipe.ingredientSections[1].name).toBe('Bang Bang Sauce');
+    expect(data.recipe.ungroupedIngredients).toHaveLength(0);
+  });
+
+  // Test 22: Returns instruction sections from HowToSection Schema.org data
+  it('should return instruction sections when recipe has grouped instructions', async () => {
+    const sectionedRecipe = {
+      ...mockRecipe,
+      instructionSections: [
+        {
+          name: 'Prep Bang Bang Sauce',
+          steps: ['Combine mayo and sriracha', 'Whisk well and chill'],
+        },
+        {
+          name: 'Cook Turkey',
+          steps: ['Brown turkey in skillet', 'Add seasonings and simmer'],
+        },
+      ],
+      ungroupedSteps: [],
+    };
+    extractRecipeFromUrl.mockResolvedValue(sectionedRecipe);
+
+    const request = new NextRequest('http://localhost/api/meals/recipes/import', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://example.com/recipe' }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(data.recipe.instructionSections).toHaveLength(2);
+    expect(data.recipe.instructionSections[0].name).toBe('Prep Bang Bang Sauce');
+    expect(data.recipe.instructionSections[0].steps).toHaveLength(2);
+    expect(data.recipe.instructionSections[1].name).toBe('Cook Turkey');
+    expect(data.recipe.ungroupedSteps).toHaveLength(0);
+  });
+
+  // Test 23: Returns mixed grouped and ungrouped ingredients
+  it('should return both sections and ungrouped ingredients when mixed', async () => {
+    const mixedRecipe = {
+      ...mockRecipe,
+      ingredientSections: [
+        {
+          name: 'Bang Bang Sauce',
+          ingredients: [{ name: 'mayonnaise', quantity: 0.5, unit: 'cup' }],
+        },
+      ],
+      ungroupedIngredients: [
+        { name: 'rice', quantity: 2, unit: 'cups' },
+      ],
+    };
+    extractRecipeFromUrl.mockResolvedValue(mixedRecipe);
+
+    const request = new NextRequest('http://localhost/api/meals/recipes/import', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://example.com/recipe' }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(data.recipe.ingredientSections).toHaveLength(1);
+    expect(data.recipe.ungroupedIngredients).toHaveLength(1);
+    expect(data.recipe.ungroupedIngredients[0].name).toBe('rice');
+  });
+
+  // Test 24: Returns empty arrays for sections when recipe has no grouping
+  it('should return empty section arrays when recipe has no ingredient or instruction groups', async () => {
+    extractRecipeFromUrl.mockResolvedValue(mockRecipe);
+
+    const request = new NextRequest('http://localhost/api/meals/recipes/import', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://example.com/recipe' }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(data.recipe.ingredientSections).toEqual([]);
+    expect(data.recipe.instructionSections).toEqual([]);
   });
 });

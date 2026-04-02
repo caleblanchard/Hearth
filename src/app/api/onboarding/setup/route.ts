@@ -17,10 +17,9 @@ type ModuleId = 'CHORES' | 'SCREEN_TIME' | 'CREDITS' | 'SHOPPING' | 'CALENDAR' |
  * 2. First admin/parent user
  * 3. Module configurations
  * 4. Optional sample data
- * 5. Mark system as onboarded
  *
- * This endpoint is public (no authentication required) but can only
- * be called once during initial setup.
+ * This endpoint is public (no authentication required) and can be called
+ * by any new user to create their first family (SaaS multi-tenant).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -39,20 +38,6 @@ export async function POST(request: NextRequest) {
     } = body;
 
     const supabase = await createClient();
-
-    // Check if onboarding is already complete
-    const { data: existingConfig } = await supabase
-      .from('system_config')
-      .select('onboarding_complete')
-      .eq('id', 'system')
-      .maybeSingle();
-
-    if (existingConfig?.onboarding_complete) {
-      return NextResponse.json(
-        { error: 'Onboarding already complete' },
-        { status: 400 }
-      );
-    }
 
     // Validate required fields
     if (!familyName || !familyName.trim()) {
@@ -186,18 +171,6 @@ export async function POST(request: NextRequest) {
           // Don't fail the entire setup if sample data fails
         }
       }
-
-      // Mark onboarding as complete using admin client
-      const { data: systemConfig } = await adminClient
-        .from('system_config')
-        .upsert({
-          id: 'system',
-          onboarding_complete: true,
-          setup_completed_at: new Date().toISOString(),
-          setup_completed_by: admin.id,
-        })
-        .select()
-        .single();
 
       // Log successful onboarding
       logger.info('Onboarding completed', {

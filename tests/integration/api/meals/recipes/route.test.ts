@@ -499,5 +499,115 @@ describe('/api/meals/recipes', () => {
       const data = await response.json();
       expect(data.error).toBe('Failed to create recipe');
     });
+
+    it('should create recipe with ingredient sections', async () => {
+      const mockCreatedRecipe = {
+        id: 'recipe-1',
+        familyId: 'family-test-123',
+        name: 'Turkey Rice Bowls',
+        instructions: JSON.stringify([]),
+        ingredients: [],
+      };
+      const mockSection = { id: 'section-1' };
+
+      dbMock.recipe.create.mockResolvedValue(mockCreatedRecipe as any);
+      dbMock.ingredientSection.create.mockResolvedValue(mockSection as any);
+      dbMock.recipeIngredient.createMany.mockResolvedValue({ count: 2 } as any);
+      dbMock.auditLog.create.mockResolvedValue({} as any);
+
+      const request = new NextRequest('http://localhost:3000/api/meals/recipes', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Turkey Rice Bowls',
+          ingredientSections: [
+            {
+              name: 'Ground Turkey Mixture',
+              ingredients: [
+                { name: 'ground turkey', quantity: 1, unit: 'lb' },
+                { name: 'sesame oil', quantity: 1, unit: 'tbsp' },
+              ],
+            },
+          ],
+          ungroupedIngredients: [],
+          instructionSections: [],
+          ungroupedSteps: [],
+        }),
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+      expect(dbMock.ingredientSection.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ name: 'Ground Turkey Mixture', sortOrder: 0 }),
+        select: expect.any(Object),
+      });
+    });
+
+    it('should create recipe with instruction sections', async () => {
+      const mockCreatedRecipe = {
+        id: 'recipe-1',
+        familyId: 'family-test-123',
+        name: 'Turkey Rice Bowls',
+        instructions: JSON.stringify([]),
+        ingredients: [],
+      };
+      const mockSection = { id: 'section-1' };
+
+      dbMock.recipe.create.mockResolvedValue(mockCreatedRecipe as any);
+      dbMock.instructionSection.create.mockResolvedValue(mockSection as any);
+      dbMock.recipeInstructionStep.createMany.mockResolvedValue({ count: 2 } as any);
+      dbMock.auditLog.create.mockResolvedValue({} as any);
+
+      const request = new NextRequest('http://localhost:3000/api/meals/recipes', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Turkey Rice Bowls',
+          ingredientSections: [],
+          ungroupedIngredients: [],
+          instructionSections: [
+            {
+              name: 'Prep Bang Bang Sauce',
+              steps: ['Combine mayo and sriracha', 'Whisk well and chill'],
+            },
+          ],
+          ungroupedSteps: [],
+        }),
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+      expect(dbMock.instructionSection.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ name: 'Prep Bang Bang Sauce', sortOrder: 0 }),
+        select: expect.any(Object),
+      });
+    });
+
+    it('should create recipe with ungrouped ingredients and steps', async () => {
+      const mockCreatedRecipe = {
+        id: 'recipe-1',
+        familyId: 'family-test-123',
+        name: 'Simple Recipe',
+        instructions: JSON.stringify([]),
+        ingredients: [],
+      };
+
+      dbMock.recipe.create.mockResolvedValue(mockCreatedRecipe as any);
+      dbMock.recipeIngredient.createMany.mockResolvedValue({ count: 1 } as any);
+      dbMock.recipeInstructionStep.createMany.mockResolvedValue({ count: 2 } as any);
+      dbMock.auditLog.create.mockResolvedValue({} as any);
+
+      const request = new NextRequest('http://localhost:3000/api/meals/recipes', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Simple Recipe',
+          ingredientSections: [],
+          ungroupedIngredients: [{ name: 'flour', quantity: 2, unit: 'cups' }],
+          instructionSections: [],
+          ungroupedSteps: ['Mix ingredients', 'Bake 30 minutes'],
+        }),
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+    });
   });
 });

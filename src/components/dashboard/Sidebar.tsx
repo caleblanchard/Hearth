@@ -261,9 +261,9 @@ export default function Sidebar() {
               alt="Hearth" 
               className="h-8 w-8"
             />
-            <h1 className="text-2xl font-bold text-ember-700 dark:text-ember-500">
+            <span className="text-2xl font-bold text-ember-700 dark:text-ember-500">
               Hearth
-            </h1>
+            </span>
           </div>
         ) : (
           <img 
@@ -274,12 +274,14 @@ export default function Sidebar() {
         )}
         <button
           onClick={() => setIsOpen(!isOpen)}
+          aria-label="Toggle sidebar"
           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors hidden md:block"
         >
           <Bars3Icon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
         </button>
         <button
           onClick={() => setIsMobileOpen(false)}
+          aria-label="Close sidebar"
           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors md:hidden"
         >
           <XMarkIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
