@@ -797,6 +797,82 @@ function createQueryBuilder(table: string) {
   return builder
 }
 
+async function dispatchRedeemReward(params: Record<string, unknown>) {
+  const rewardId = params.p_reward_id as string
+  const memberId = params.p_member_id as string
+
+  // 1. Fetch reward (simulates SELECT ... FOR UPDATE)
+  const reward = await (dbMock as Record<string, any>).rewardItem.findUnique({ where: { id: rewardId } })
+  if (!reward) return { data: null, error: { message: 'Reward not found' } }
+  if (reward.status !== 'ACTIVE') return { data: null, error: { message: 'Reward is not available' } }
+  const quantity: number | null | undefined = reward.quantity
+  if (quantity !== null && quantity !== undefined && quantity <= 0) {
+    return { data: null, error: { message: 'Reward is out of stock' } }
+  }
+
+  // 2. Fetch balance (simulates SELECT ... FOR UPDATE)
+  const balance = await (dbMock as Record<string, any>).creditBalance.findUnique({ where: { memberId } })
+  const currentBalance: number = balance?.current_balance ?? balance?.currentBalance ?? 0
+  const costCredits: number = reward.cost_credits ?? reward.costCredits ?? 0
+
+  if (!balance || currentBalance < costCredits) {
+    return { data: null, error: { message: 'Insufficient credits' } }
+  }
+
+  // 3. Deduct credits (with optimistic-lock simulation so existing test assertions pass)
+  const newBalance = currentBalance - costCredits
+  const lifetimeSpent = (balance.lifetime_spent ?? balance.lifetimeSpent ?? 0) + costCredits
+  let updatedBalance: unknown
+  try {
+    updatedBalance = await (dbMock as Record<string, any>).creditBalance.update({
+      where: { memberId, currentBalance },
+      data: { currentBalance: newBalance, lifetimeSpent },
+    })
+  } catch {
+    return { data: null, error: { message: 'Transaction failed due to concurrent modification. Please try again.' } }
+  }
+  if (!updatedBalance) {
+    return { data: null, error: { message: 'Transaction failed due to concurrent modification. Please try again.' } }
+  }
+
+  // 4. Record the credit transaction
+  const tx = await (dbMock as Record<string, any>).creditTransaction.create({
+    data: {
+      memberId,
+      type: 'REWARD_REDEMPTION',
+      amount: -costCredits,
+      balanceAfter: newBalance,
+      reason: `Redeemed: ${reward.name}`,
+      category: 'REWARDS',
+    },
+  })
+
+  // 5. Decrement limited-quantity stock
+  if (quantity !== null && quantity !== undefined) {
+    const newQty = quantity - 1
+    await (dbMock as Record<string, any>).rewardItem.update({
+      where: { id: rewardId },
+      data: { quantity: newQty, status: newQty <= 0 ? 'OUT_OF_STOCK' : 'ACTIVE' },
+    })
+  }
+
+  // 6. Create redemption record
+  const redemption = await (dbMock as Record<string, any>).rewardRedemption.create({
+    data: { rewardId, memberId, creditTransactionId: tx?.id, status: 'PENDING' },
+  })
+
+  return {
+    data: {
+      redemption_id: redemption?.id,
+      transaction_id: tx?.id,
+      credits_deducted: costCredits,
+      new_balance: newBalance,
+      redemption,
+    },
+    error: null,
+  }
+}
+
 export function createSupabaseMockClient() {
   const session = getMockSession()
   const user = session?.user ? { id: session.user.id } : null
@@ -834,7 +910,12 @@ export function createSupabaseMockClient() {
         copy: async () => ({ data: null, error: null }),
       }),
     },
-    rpc: async () => ({ data: null, error: null }),
+    rpc: async (fn: string, params?: Record<string, unknown>) => {
+      if (fn === 'redeem_reward') {
+        return dispatchRedeemReward(params || {})
+      }
+      return { data: null, error: null }
+    },
     channel: () => ({
       on: () => ({ subscribe: () => ({}) }),
       subscribe: () => ({}),
