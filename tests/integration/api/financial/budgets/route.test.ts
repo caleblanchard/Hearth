@@ -1,0 +1,300 @@
+// Set up mocks BEFORE any imports
+import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock'
+
+// Mock logger
+jest.mock('@/lib/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}))
+
+// NOW import the route after mocks are set up
+import { NextRequest } from 'next/server'
+import { GET, POST } from '@/app/api/financial/budgets/route'
+import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
+import { SpendingCategory } from '@/lib/enums'
+
+describe('/api/financial/budgets', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    resetDbMock()
+  })
+
+  describe('GET', () => {
+    it('should return 401 if not authenticated', async () => {
+
+      const request = new NextRequest('http://localhost/api/financial/budgets')
+      const response = await GET()
+      const data = await response.json()
+
+      expect(response.status).toBe(401)
+      expect(data.error).toBe('Unauthorized')
+    })
+
+    it('should return budgets for authenticated user', async () => {
+      const session = mockChildSession()
+
+      dbMock.familyMember.findUnique.mockResolvedValue({
+        role: 'CHILD',
+      } as any)
+
+      const mockBudgets = [
+        {
+          id: 'budget-1',
+          memberId: session.user.id,
+          category: SpendingCategory.REWARDS,
+          limitAmount: 1000,
+          period: 'monthly',
+          isActive: true,
+          periods: [],
+          member: {
+            id: session.user.id,
+            name: session.user.name,
+          },
+        },
+      ]
+
+      dbMock.budget.findMany.mockResolvedValue(mockBudgets as any)
+
+      const request = new NextRequest('http://localhost/api/financial/budgets')
+      const response = await GET()
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.budgets).toEqual(mockBudgets)
+      expect(dbMock.budget.findMany).toHaveBeenCalledWith({
+        where: {
+          memberId: session.user.id,
+          isActive: true,
+        },
+        include: {
+          member: {
+            select: {
+              familyId: true,
+              id: true,
+              name: true,
+              role: true,
+            },
+            where: {
+              familyId: session.user.familyId,
+            },
+          },
+          periods: {
+            orderBy: {
+              periodStart: 'desc',
+            },
+            select: {
+               id: true,
+               periodKey: true,
+               periodStart: true,
+               periodEnd: true,
+               spent: true,
+               createdAt: true,
+            }
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
+    })
+
+  })
+
+  describe('POST', () => {
+    it('should return 401 if not authenticated', async () => {
+
+      const request = new NextRequest('http://localhost/api/financial/budgets', {
+        method: 'POST',
+        body: JSON.stringify({
+          category: 'REWARDS',
+          limitAmount: 1000,
+          period: 'monthly',
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(401)
+      expect(data.error).toBe('Unauthorized')
+    })
+
+    it('should return 400 if category is missing', async () => {
+      const session = mockParentSession()
+
+      const request = new NextRequest('http://localhost/api/financial/budgets', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: 'child-1',
+          limitAmount: 1000,
+          period: 'monthly',
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Category is required')
+    })
+
+    it('should return 400 if limitAmount is missing', async () => {
+      const session = mockParentSession()
+
+      const request = new NextRequest('http://localhost/api/financial/budgets', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: 'child-1',
+          category: 'REWARDS',
+          period: 'monthly',
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Limit amount must be positive')
+    })
+
+    it('should return 400 if limitAmount is negative', async () => {
+      const session = mockParentSession()
+
+      const request = new NextRequest('http://localhost/api/financial/budgets', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: 'child-1',
+          category: 'REWARDS',
+          limitAmount: -100,
+          period: 'monthly',
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Limit amount must be positive')
+    })
+
+    it('should return 400 if period is missing', async () => {
+      const session = mockParentSession()
+
+      const request = new NextRequest('http://localhost/api/financial/budgets', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: 'child-1',
+          category: 'REWARDS',
+          limitAmount: 1000,
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Period must be "weekly" or "monthly"')
+    })
+
+    it('should return 400 if budget already exists for category and period', async () => {
+      const session = mockParentSession()
+
+      dbMock.familyMember.findUnique.mockResolvedValue({
+        id: 'child-1',
+        familyId: session.user.familyId,
+      } as any)
+      dbMock.budget.findFirst.mockResolvedValue({
+        id: 'existing-budget',
+        memberId: 'child-1',
+        category: SpendingCategory.REWARDS,
+        period: 'monthly',
+      } as any)
+
+      const request = new NextRequest('http://localhost/api/financial/budgets', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: 'child-1',
+          category: 'REWARDS',
+          limitAmount: 1000,
+          period: 'monthly',
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(409)
+      expect(data.error).toContain('already exists')
+    })
+
+    it('should create budget successfully', async () => {
+      const session = mockParentSession()
+
+      dbMock.familyMember.findUnique.mockResolvedValue({
+        id: 'child-1',
+        familyId: session.user.familyId,
+      } as any)
+      dbMock.budget.findFirst.mockResolvedValue(null) // No existing budget
+      dbMock.budget.create.mockResolvedValue({
+        id: 'new-budget-1',
+        memberId: 'child-1',
+        category: SpendingCategory.REWARDS,
+        limitAmount: 1000,
+        period: 'monthly',
+        resetDay: 0,
+        isActive: true,
+        createdAt: new Date(),
+        member: {
+          id: 'child-1',
+          name: 'Child One',
+        },
+      } as any)
+
+      const request = new NextRequest('http://localhost/api/financial/budgets', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: 'child-1',
+          category: 'REWARDS',
+          limitAmount: 1000,
+          period: 'monthly',
+          resetDay: 0,
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(201)
+      expect(data.budget).toBeDefined()
+      expect(dbMock.budget.create).toHaveBeenCalledWith({
+        data: {
+          memberId: 'child-1',
+          category: SpendingCategory.REWARDS,
+          limitAmount: 1000,
+          period: 'monthly',
+          resetDay: 0,
+          isActive: true,
+        },
+      })
+    })
+
+    it('should handle invalid JSON gracefully', async () => {
+      const session = mockParentSession()
+
+      const request = new NextRequest('http://localhost/api/financial/budgets', {
+        method: 'POST',
+        body: 'invalid json{',
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(500)
+      expect(data.error).toBe('Failed to create budget')
+    })
+  })
+})

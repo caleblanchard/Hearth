@@ -57,7 +57,7 @@ All API endpoints validate JSON input to prevent:
 ## Environment Variables
 
 Critical secrets are stored in environment variables:
-- `NEXTAUTH_SECRET`: Required for session encryption
+- `TOKEN_ENCRYPTION_SECRET`: Required for OAuth token encryption
 - `CRON_SECRET`: Required for cron endpoint authentication
 - `DATABASE_URL`: Database connection string
 

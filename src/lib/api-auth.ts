@@ -1,0 +1,216 @@
+/**
+ * API Authentication Helpers
+ * 
+ * Provides unified authentication checking for API routes that support
+ * both Supabase Auth sessions and guest sessions
+ */
+
+import { getAuthContext } from './supabase/server';
+import { authenticateDeviceSecret, authenticateChildSession } from './kiosk-auth';
+import { validateGuestSession, type GuestSessionInfo, hasGuestAccess, canGuestWrite } from './guest-session';
+import { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+
+export interface AuthResult {
+  authenticated: boolean;
+  isGuest: boolean;
+  user?: {
+    id: string;
+    role: string;
+    familyId: string;
+    name: string;
+  };
+  guest?: GuestSessionInfo;
+  error?: string;
+}
+
+/**
+ * Authenticate request - checks both Supabase Auth and guest sessions
+ */
+export async function authenticateRequest(
+  request: NextRequest
+): Promise<AuthResult> {
+  // First try Supabase Auth session
+  const authContext = await getAuthContext();
+  if (authContext?.user && authContext.memberships.length > 0) {
+    const member =
+      authContext.memberships.find((m) => m.id === authContext.activeMemberId) ??
+      authContext.memberships[0];
+    return {
+      authenticated: true,
+      isGuest: false,
+      user: {
+        id: member.id,
+        role: member.role || 'CHILD',
+        familyId: member.family_id,
+        name: member.name || 'Unknown',
+      },
+    };
+  }
+  if (authContext?.user && authContext.memberships.length > 0) {
+    const member = authContext.memberships[0];
+    return {
+      authenticated: true,
+      isGuest: false,
+      user: {
+        id: member.id,
+        role: member.role || 'CHILD',
+        familyId: member.family_id,
+        name: member.name || 'Unknown',
+      },
+    };
+  }
+
+  // Then try kiosk child session (full user)
+  const childSession = await authenticateChildSession();
+  if (!authContext && childSession) {
+    return {
+      authenticated: true,
+      isGuest: false,
+      user: {
+        id: childSession.memberId,
+        role: 'CHILD',
+        familyId: childSession.familyId,
+        name: 'Kiosk User',
+      },
+    };
+  }
+
+  // Then try kiosk device secret (family-scoped read-only)
+  const deviceAuth = await authenticateDeviceSecret();
+  if (!authContext && deviceAuth) {
+    return {
+      authenticated: true,
+      isGuest: false,
+      user: {
+        id: deviceAuth.deviceSecretId,
+        role: 'CHILD',
+        familyId: deviceAuth.familyId,
+        name: 'Kiosk Device',
+      },
+    };
+  }
+
+  // Then try guest session
+  const guestSessionToken = request.headers.get('x-guest-session-token');
+  if (guestSessionToken) {
+    const guestSession = await validateGuestSession(guestSessionToken);
+    if (guestSession) {
+      return {
+        authenticated: true,
+        isGuest: true,
+        guest: guestSession,
+      };
+    }
+  }
+
+  return {
+    authenticated: false,
+    isGuest: false,
+    error: 'Unauthorized',
+  };
+}
+
+/**
+ * Require authentication - returns error response if not authenticated
+ */
+export async function requireAuth(
+  request: NextRequest
+): Promise<AuthResult | NextResponse> {
+  const authResult = await authenticateRequest(request);
+  
+  if (!authResult.authenticated) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+
+  return authResult;
+}
+
+/**
+ * Require parent role - only parents can access
+ */
+export async function requireParent(
+  request: NextRequest
+): Promise<AuthResult | NextResponse> {
+  const authResult = await requireAuth(request);
+  
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
+  if (authResult.isGuest) {
+    return NextResponse.json(
+      { error: 'Guest access not allowed for this endpoint' },
+      { status: 403 }
+    );
+  }
+
+  if (authResult.user?.role !== 'PARENT') {
+    return NextResponse.json(
+      { error: 'Only parents can access this endpoint' },
+      { status: 403 }
+    );
+  }
+
+  return authResult;
+}
+
+/**
+ * Require write access - guests with VIEW_ONLY cannot write
+ */
+export async function requireWriteAccess(
+  request: NextRequest
+): Promise<AuthResult | NextResponse> {
+  const authResult = await requireAuth(request);
+  
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
+  if (authResult.isGuest && !canGuestWrite(authResult.guest!)) {
+    return NextResponse.json(
+      { error: 'View-only guests cannot perform write operations' },
+      { status: 403 }
+    );
+  }
+
+  return authResult;
+}
+
+/**
+ * Require specific guest access level
+ */
+export async function requireGuestAccess(
+  request: NextRequest,
+  requiredLevel: 'VIEW_ONLY' | 'LIMITED' | 'CAREGIVER'
+): Promise<AuthResult | NextResponse> {
+  const authResult = await requireAuth(request);
+  
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
+  if (authResult.isGuest) {
+    if (!hasGuestAccess(authResult.guest!, requiredLevel)) {
+      return NextResponse.json(
+        { error: `This endpoint requires ${requiredLevel} access level` },
+        { status: 403 }
+      );
+    }
+  }
+
+  return authResult;
+}
+
+/**
+ * Get family ID from authenticated request
+ */
+export function getFamilyId(authResult: AuthResult): string {
+  if (authResult.isGuest) {
+    return authResult.guest!.familyId;
+  }
+  return authResult.user!.familyId;
+}

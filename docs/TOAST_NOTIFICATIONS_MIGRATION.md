@@ -6,7 +6,7 @@ Migrated 5 major components from inline error/success messages and AlertModals t
 
 ## Toast System Implementation
 
-### Component: `/components/ui/Toast.tsx`
+### Component: `/src/components/ui/Toast.tsx`
 
 - **Created**: Complete toast notification system using React Context API
 - **Features**:
@@ -25,13 +25,13 @@ Migrated 5 major components from inline error/success messages and AlertModals t
   showToast('error', 'Something went wrong');
   ```
 
-### Root Integration: `/app/layout.tsx`
+### Root Integration: `/src/app/layout.tsx`
 
 Wrapped entire application with `ToastProvider` at lines 65-67, making the `useToast()` hook available globally.
 
 ## Components Migrated
 
-### 1. Sick Mode Settings (`/components/sick-mode/SickModeSettings.tsx`)
+### 1. Sick Mode Settings (`/src/components/sick-mode/SickModeSettings.tsx`)
 
 **Changes**:
 - Removed inline message display (lines 101-111)
@@ -44,7 +44,7 @@ Wrapped entire application with `ToastProvider` at lines 65-67, making the `useT
 
 ---
 
-### 2. Chores Page (`/app/dashboard/chores/page.tsx`)
+### 2. Chores Page (`/src/app/dashboard/chores/page.tsx`)
 
 **Changes**:
 - Removed `AlertModal` import
@@ -60,7 +60,7 @@ Wrapped entire application with `ToastProvider` at lines 65-67, making the `useT
 
 ---
 
-### 3. Notifications Settings (`/app/dashboard/settings/notifications/page.tsx`)
+### 3. Notifications Settings (`/src/app/dashboard/settings/notifications/page.tsx`)
 
 **Changes**:
 - Removed `message` state variable
@@ -78,7 +78,7 @@ Wrapped entire application with `ToastProvider` at lines 65-67, making the `useT
 
 ---
 
-### 4. Shopping Page (`/app/dashboard/shopping/page.tsx`)
+### 4. Shopping Page (`/src/app/dashboard/shopping/page.tsx`)
 
 **Changes**:
 - Removed `AlertModal` import (kept `ConfirmModal`)
@@ -102,7 +102,7 @@ Wrapped entire application with `ToastProvider` at lines 65-67, making the `useT
 
 ---
 
-### 5. Medications Page (`/app/dashboard/medications/page.tsx`)
+### 5. Medications Page (`/src/app/dashboard/medications/page.tsx`)
 
 **Changes**:
 - Removed `error` and `success` state variables (2 lines)
@@ -172,21 +172,21 @@ Wrapped entire application with `ToastProvider` at lines 65-67, making the `useT
 
 ### High Priority Components with AlertModals/Messages
 
-1. `/app/dashboard/calendar/page.tsx` - 15 AlertModal usages
-2. `/components/dashboard/widgets/TransportWidget.tsx`
-3. `/components/dashboard/widgets/CommunicationWidget.tsx`
+1. `/src/app/dashboard/calendar/page.tsx` - 15 AlertModal usages
+2. `/src/components/dashboard/widgets/TransportWidget.tsx`
+3. `/src/components/dashboard/widgets/CommunicationWidget.tsx`
 4. Various other dashboard components
 
 ### Search Strategy
 
 Find components with inline messages:
 ```bash
-grep -r "useState.*message\|useState.*error.*success" app/ components/ --include="*.tsx"
+grep -r "useState.*message\|useState.*error.*success" src/app/ src/components/ --include="*.tsx"
 ```
 
 Find components with AlertModal:
 ```bash
-grep -r "AlertModal" app/ components/ --include="*.tsx"
+grep -r "AlertModal" src/app/ src/components/ --include="*.tsx"
 ```
 
 ## Testing

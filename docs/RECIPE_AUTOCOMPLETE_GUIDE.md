@@ -4,7 +4,7 @@
 A reusable autocomplete input for searching recipes with weighted results and support for custom text entry.
 
 ## File Location
-`components/meals/RecipeAutocomplete.tsx`
+`src/components/meals/RecipeAutocomplete.tsx`
 
 ## Component Code
 

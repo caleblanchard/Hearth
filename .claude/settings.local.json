@@ -40,7 +40,8 @@
       "Bash(docker ps:*)",
       "Bash(docker images:*)",
       "Bash(docker exec:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(wc:*)"
     ]
   }
 }

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm Your Hearth Account</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #FAFAFA;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #FAFAFA;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 40px 20px; text-align: center; border-bottom: 1px solid #CFD8DC;">
+              <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #E65100;">Hearth</h1>
+              <p style="margin: 8px 0 0; font-size: 14px; color: #4A6572;">Your Family's Digital Command Center</p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px; font-size: 24px; font-weight: 600; color: #263238;">Confirm Your Email Address</h2>
+              
+              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #263238;">
+                Welcome to Hearth! We're excited to have you join our community of families organizing their lives together.
+              </p>
+              
+              <p style="margin: 0 0 30px; font-size: 16px; line-height: 1.6; color: #263238;">
+                To get started, please confirm your email address by clicking the button below:
+              </p>
+              
+              <!-- CTA Button -->
+              <table role="presentation" style="width: 100%; margin: 0 0 30px;">
+                <tr>
+                  <td style="text-align: center;">
+                    <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 14px 32px; background-color: #E65100; color: #FFFFFF; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; transition: background-color 0.2s;">Confirm Email Address</a>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.6; color: #4A6572;">
+                Or copy and paste this link into your browser:
+              </p>
+              
+              <p style="margin: 0 0 30px; font-size: 14px; line-height: 1.6; color: #E65100; word-break: break-all;">
+                {{ .ConfirmationURL }}
+              </p>
+              
+              <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #4A6572;">
+                This link will expire in 24 hours. If you didn't create a Hearth account, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 30px 40px; background-color: #F5F5F5; border-top: 1px solid #CFD8DC; border-radius: 0 0 8px 8px;">
+              <p style="margin: 0 0 10px; font-size: 12px; color: #78909C; text-align: center;">
+                © 2026 Hearth. All rights reserved.
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #78909C; text-align: center;">
+                Questions? Reply to this email or visit our support center.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

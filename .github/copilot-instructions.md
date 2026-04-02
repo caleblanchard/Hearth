@@ -4,7 +4,7 @@ This file provides guidelines for GitHub Copilot to assist with development on t
 
 ## Project Overview
 
-Hearth is a Family Management & Household ERP System built with Next.js, Prisma, and TypeScript. The project follows strict Test-Driven Development (TDD) practices for all feature implementations.
+Hearth is a Family Management & Household ERP System built with Next.js, Supabase, and TypeScript. The project follows strict Test-Driven Development (TDD) practices for all feature implementations.
 
 ## Development Methodology
 
@@ -22,7 +22,7 @@ Never implement code without tests first.
 
 When implementing new features, follow this order:
 
-1. Database Schema (Prisma models)
+1. Database Schema (Supabase migrations)
 2. API Integration Tests
 3. API Implementation (routes)
 4. Component Tests (UI)
@@ -51,8 +51,8 @@ When implementing new features, follow this order:
 
 - **Test Framework**: Jest
 - **Component Testing**: React Testing Library
-- **API Testing**: Supertest-style with mocked Prisma client
-- **Mocking**: Use `@/lib/test-utils/prisma-mock` and `@/lib/test-utils/auth-mock`
+- **API Testing**: Supertest-style with mocked Supabase client
+- **Mocking**: Use `@/lib/test-utils/db-mock`, `@/lib/test-utils/supabase-mock`, and `@/lib/test-utils/auth-mock`
 
 ### Running Tests
 
@@ -78,31 +78,31 @@ npm test -- --coverage                           # Run with coverage report
 /app              - Next.js application (pages, layouts, API routes)
 /components       - React components (auth, dashboard, UI, etc.)
 /lib              - Utilities and helpers
-/prisma           - Database schema and migrations
+/supabase         - Database migrations and config
 /__tests__        - Test files (integration, unit, components)
 /docs             - Documentation
 ```
 
 ## Database
 
-- **ORM**: Prisma
-- **Schema**: Located at `/prisma/schema.prisma`
-- **Migrations**: Located at `/prisma/migrations/`
-- **Seed**: `/prisma/seed.ts` for sample data
+- **Database Client**: Supabase (PostgreSQL + RLS)
+- **Migrations**: Located at `/supabase/migrations/`
+- **Types**: Generated to `/src/lib/database.types.ts`
+- **Seed**: `/scripts/seed.ts` for sample data
 
-Always update Prisma schema and generate migrations when modifying database models.
+Always update Supabase migrations and regenerate types when modifying database models.
 
 ## API Routes
 
-- Located at `/app/api/[feature]/route.ts`
-- Use Prisma for database operations
+- Located at `/src/app/api/[feature]/route.ts`
+- Use Supabase for database operations
 - Implement proper error handling and validation
 - All routes should have comprehensive integration tests
 - Follow RESTful conventions where possible
 
 ## Component Standards
 
-- Located in `/components/[feature]/`
+- Located in `/src/components/[feature]/`
 - Use TypeScript for type safety
 - Write component tests before implementation
 - Use React Testing Library for component testing
@@ -172,6 +172,7 @@ Always update Prisma schema and generate migrations when modifying database mode
 6. **Error handling** - Ensure proper error handling and logging
 7. **Performance** - Suggest optimizations when relevant
 8. **Accessibility** - Include a11y considerations in UI changes
+9. **No Browser Alerts** - Use modal dialogs (ConfirmModal/AlertModal) instead of alert/confirm/prompt
 
 ## Common Development Commands
 
@@ -182,15 +183,15 @@ npm test                # Run tests
 npm run build           # Build for production
 npm run lint            # Run ESLint
 npm run format          # Format code with Prettier
-npx prisma migrate dev  # Create and apply migrations
-npx prisma generate     # Generate Prisma Client
+supabase db push        # Apply migrations
+supabase gen types typescript --local > src/lib/database.types.ts
 ```
 
 ## Debugging Tips
 
 - Use `console.log()` or debugger for troubleshooting
 - Check test output for specific failure reasons
-- Review Prisma logs with `DEBUG="prisma:*"`
+- Review Supabase logs in the local CLI or dashboard
 - Check browser dev tools for frontend issues
 - Review server logs for API issues
 
@@ -207,7 +208,7 @@ npx prisma generate     # Generate Prisma Client
 
 Configure in `.env` or `.env.local` (development):
 - Database connection (`DATABASE_URL`)
-- Authentication secrets (`NEXTAUTH_SECRET`, `NEXTAUTH_URL`)
+- Authentication settings (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `TOKEN_ENCRYPTION_SECRET`, `NEXT_PUBLIC_APP_URL`)
 - Push notification keys (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`)
 - API endpoints and credentials
 - Feature flags
@@ -235,7 +236,7 @@ If builds fail:
 2. Verify all imports are correct
 3. Run linter to catch style issues
 4. Check database migrations are applied
-5. Ensure Prisma Client is generated
+5. Ensure Supabase types are generated
 
 ---
 

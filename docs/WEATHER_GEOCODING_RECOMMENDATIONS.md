@@ -5,10 +5,10 @@
 The weather feature currently requires users to manually enter **latitude** and **longitude** coordinates in the Family Settings page. This is not user-friendly, as most users don't know their exact coordinates.
 
 **Current Implementation:**
-- Location: `/app/dashboard/family/page.tsx` (lines 595-623)
+- Location: `/src/app/dashboard/family/page.tsx` (lines 595-623)
 - Two number input fields for lat/lon
 - Example placeholders: "40.7128" and "-74.0060" (NYC)
-- Weather API: `/app/api/weather/route.ts` uses OpenWeatherMap
+- Weather API: `/src/app/api/weather/route.ts` uses OpenWeatherMap
 
 ## Problem
 
@@ -72,7 +72,7 @@ Users shouldn't need to:
 
 **Implementation Plan:**
 
-1. **Update Family Settings UI** (`/app/dashboard/family/page.tsx`):
+1. **Update Family Settings UI** (`/src/app/dashboard/family/page.tsx`):
    - Add dropdown/toggle for input method: "Zip Code" or "City Name"
    - **For Zip Code**: Single text input + country dropdown (default: US)
    - **For City Name**: Text input with autocomplete/suggestions
@@ -80,7 +80,7 @@ Users shouldn't need to:
    - Show resolved location name + coordinates before saving
    - Option to manually edit lat/lon for advanced users
 
-2. **Create Geocoding API Route** (`/app/api/geocoding/route.ts`):
+2. **Create Geocoding API Route** (`/src/app/api/geocoding/route.ts`):
    - Accept query parameters: `zip`, `city`, `country`
    - Call OpenWeatherMap Geocoding API
    - Return normalized response with lat/lon
@@ -214,13 +214,13 @@ Use the browser's built-in `navigator.geolocation.getCurrentPosition()` to get u
 ## Implementation Checklist
 
 ### Phase 1: Zip Code Geocoding (MVP)
-- [ ] Create `/app/api/geocoding/route.ts`
+- [ ] Create `/src/app/api/geocoding/route.ts`
   - [ ] Handle zip code + country input
   - [ ] Call OpenWeatherMap Geocoding API
   - [ ] Return lat/lon + location name
   - [ ] Error handling (invalid zip, network errors)
 
-- [ ] Update `/app/dashboard/family/page.tsx`
+- [ ] Update `/src/app/dashboard/family/page.tsx`
   - [ ] Add zip code input field
   - [ ] Add country dropdown (default: US)
   - [ ] Add "Look Up" button
@@ -323,7 +323,7 @@ Use the browser's built-in `navigator.geolocation.getCurrentPosition()` to get u
 ## Example API Route Code (Preview)
 
 ```typescript
-// /app/api/geocoding/route.ts
+// /src/app/api/geocoding/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {

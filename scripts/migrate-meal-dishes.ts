@@ -8,33 +8,32 @@
  * 4. Copies the name from recipe or uses customName
  */
 
-import prisma from '@/lib/prisma';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 async function migrateMealDishes() {
   console.log('Starting meal dish migration...');
 
   try {
+    const adminClient = createAdminClient();
     // Find all meal entries that have customName or recipeId but no dishes
-    const entries = await prisma.mealPlanEntry.findMany({
-      where: {
-        OR: [
-          { customName: { not: null } },
-          { recipeId: { not: null } },
-        ],
-      },
-      include: {
-        dishes: true,
-      },
-    });
+    const { data: entries, error: entriesError } = await adminClient
+      .from('meal_plan_entries')
+      .select('id, custom_name, recipe_id, dishes:meal_plan_dishes(id)')
+      .or('custom_name.not.is.null,recipe_id.not.is.null');
 
-    console.log(`Found ${entries.length} meal entries to migrate`);
+    if (entriesError) {
+      throw new Error(entriesError.message);
+    }
+
+    const entryRows = entries ?? [];
+    console.log(`Found ${entryRows.length} meal entries to migrate`);
 
     let migratedCount = 0;
     let skippedCount = 0;
 
-    for (const entry of entries) {
+    for (const entry of entryRows) {
       // Skip if already has dishes
-      if (entry.dishes.length > 0) {
+      if (entry.dishes && entry.dishes.length > 0) {
         console.log(`  Skipping entry ${entry.id} - already has dishes`);
         skippedCount++;
         continue;
@@ -44,24 +43,28 @@ async function migrateMealDishes() {
       let dishName: string;
       
       // If has recipeId, fetch the recipe name
-      if (entry.recipeId) {
-        const recipe = await prisma.recipe.findUnique({
-          where: { id: entry.recipeId },
-          select: { name: true },
-        });
+      if (entry.recipe_id) {
+        const { data: recipe, error: recipeError } = await adminClient
+          .from('recipes')
+          .select('name')
+          .eq('id', entry.recipe_id)
+          .maybeSingle();
+        if (recipeError) {
+          throw new Error(recipeError.message);
+        }
         
         if (recipe) {
           dishName = recipe.name;
-        } else if (entry.customName) {
+        } else if (entry.custom_name) {
           // Recipe not found, fall back to customName
-          dishName = entry.customName;
+          dishName = entry.custom_name;
         } else {
           console.log(`  Skipping entry ${entry.id} - recipe not found and no customName`);
           skippedCount++;
           continue;
         }
-      } else if (entry.customName) {
-        dishName = entry.customName;
+      } else if (entry.custom_name) {
+        dishName = entry.custom_name;
       } else {
         console.log(`  Skipping entry ${entry.id} - no name available`);
         skippedCount++;
@@ -69,14 +72,17 @@ async function migrateMealDishes() {
       }
 
       // Create dish
-      await prisma.mealPlanDish.create({
-        data: {
-          mealEntryId: entry.id,
-          recipeId: entry.recipeId,
-          dishName,
-          sortOrder: 0,
-        },
-      });
+      const { error: dishError } = await adminClient
+        .from('meal_plan_dishes')
+        .insert({
+          meal_entry_id: entry.id,
+          recipe_id: entry.recipe_id,
+          dish_name: dishName,
+          sort_order: 0,
+        });
+      if (dishError) {
+        throw new Error(dishError.message);
+      }
 
       migratedCount++;
       console.log(`  ✓ Migrated entry ${entry.id}: "${dishName}"`);
@@ -85,12 +91,10 @@ async function migrateMealDishes() {
     console.log('\nMigration complete!');
     console.log(`  Migrated: ${migratedCount}`);
     console.log(`  Skipped: ${skippedCount}`);
-    console.log(`  Total: ${entries.length}`);
+    console.log(`  Total: ${entryRows.length}`);
   } catch (error) {
     console.error('Migration failed:', error);
     throw error;
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

@@ -3,7 +3,7 @@
  * Run with: npx tsx scripts/debug-dashboard-widgets.ts
  */
 
-import prisma from '@/lib/prisma';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getAvailableWidgets } from '@/lib/dashboard/widget-registry';
 import { generateDefaultLayout } from '@/lib/dashboard/layout-utils';
 
@@ -11,12 +11,16 @@ async function main() {
   console.log('=== Dashboard Widget Diagnostic ===\n');
 
   // Get the first family (or you can hardcode your familyId)
-  const family = await prisma.family.findFirst({
-    select: {
-      id: true,
-      name: true,
-    },
-  });
+  const adminClient = createAdminClient();
+  const { data: family, error: familyError } = await adminClient
+    .from('families')
+    .select('id, name')
+    .limit(1)
+    .maybeSingle();
+
+  if (familyError) {
+    throw new Error(`Failed to fetch family: ${familyError.message}`);
+  }
 
   if (!family) {
     console.error('No family found in database');
@@ -26,31 +30,30 @@ async function main() {
   console.log(`Family: ${family.name} (${family.id})\n`);
 
   // Get all module configurations for this family
-  const allModules = await prisma.moduleConfiguration.findMany({
-    where: {
-      familyId: family.id,
-    },
-    select: {
-      moduleId: true,
-      isEnabled: true,
-    },
-    orderBy: {
-      moduleId: 'asc',
-    },
-  });
+  const { data: allModules, error: moduleError } = await adminClient
+    .from('module_configurations')
+    .select('module_id, is_enabled')
+    .eq('family_id', family.id)
+    .order('module_id', { ascending: true });
+
+  if (moduleError) {
+    throw new Error(`Failed to fetch modules: ${moduleError.message}`);
+  }
+
+  const modules = allModules ?? [];
 
   console.log('All modules in database:');
-  console.log(`Total: ${allModules.length}`);
-  console.log(`Enabled: ${allModules.filter((m) => m.isEnabled).length}`);
-  console.log(`Disabled: ${allModules.filter((m) => !m.isEnabled).length}\n`);
+  console.log(`Total: ${modules.length}`);
+  console.log(`Enabled: ${modules.filter((m) => m.is_enabled).length}`);
+  console.log(`Disabled: ${modules.filter((m) => !m.is_enabled).length}\n`);
 
-  allModules.forEach((m) => {
-    console.log(`  ${m.isEnabled ? '✓' : '✗'} ${m.moduleId}`);
+  modules.forEach((m) => {
+    console.log(`  ${m.is_enabled ? '✓' : '✗'} ${m.module_id}`);
   });
 
   // Get enabled modules
   const enabledModules = new Set(
-    allModules.filter((m) => m.isEnabled).map((m) => m.moduleId)
+    modules.filter((m) => m.is_enabled).map((m) => m.module_id)
   );
 
   console.log('\n=== Widget Analysis ===\n');
@@ -83,29 +86,38 @@ async function main() {
   });
 
   // Check if user has a saved layout
-  const member = await prisma.familyMember.findFirst({
-    where: {
-      familyId: family.id,
-      role: 'PARENT',
-    },
-    select: {
-      id: true,
-      dashboardLayout: true,
-    },
-  });
+  const { data: member, error: memberError } = await adminClient
+    .from('family_members')
+    .select('id')
+    .eq('family_id', family.id)
+    .eq('role', 'PARENT')
+    .limit(1)
+    .maybeSingle();
+
+  if (memberError) {
+    throw new Error(`Failed to fetch member: ${memberError.message}`);
+  }
 
   if (member) {
     console.log('\n=== User Layout ===\n');
     console.log(`Member ID: ${member.id}`);
 
-    if (member.dashboardLayout) {
-      const layout = member.dashboardLayout.layout as any;
+    const { data: layoutRow, error: layoutError } = await adminClient
+      .from('dashboard_layouts')
+      .select('layout')
+      .eq('member_id', member.id)
+      .maybeSingle();
+
+    if (layoutError) {
+      throw new Error(`Failed to fetch layout: ${layoutError.message}`);
+    }
+
+    if (layoutRow?.layout) {
+      const layout = layoutRow.layout as any;
       console.log(`Saved layout exists with ${layout.widgets?.length || 0} widgets`);
       if (layout.widgets) {
         layout.widgets.forEach((w: any) => {
-          console.log(
-            `  ${w.enabled ? '✓' : '✗'} [${w.order}] ${w.id}`
-          );
+          console.log(`  ${w.enabled ? '✓' : '✗'} [${w.order}] ${w.id}`);
         });
       }
     } else {
@@ -120,7 +132,4 @@ main()
   .catch((e) => {
     console.error('Error:', e);
     process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
   });

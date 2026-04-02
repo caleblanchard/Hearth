@@ -65,7 +65,7 @@ sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
 1. In Portainer, go to **Stacks**
 2. Click **Add stack**
 3. Name: `nginx-reverse-proxy`
-4. Copy the contents of `docker-compose.nginx.yml` (see below)
+4. Copy the contents of `infra/docker/docker-compose.nginx.yml` (see below)
 5. Click **Deploy the stack**
 
 ## Step 4: Update Hearth Production Stack
@@ -100,8 +100,8 @@ The Nginx container will automatically obtain SSL certificates from Let's Encryp
    ```
 
 3. If successful, certificates will be in:
-   - `/docker/nginx/certs/hearth.blanchardsd.com.crt`
-   - `/docker/nginx/certs/hearth.blanchardsd.com.key`
+   - `/docker/infra/nginx/certs/hearth.blanchardsd.com.crt`
+   - `/docker/infra/nginx/certs/hearth.blanchardsd.com.key`
 
 ## Step 6: Verify HTTPS
 

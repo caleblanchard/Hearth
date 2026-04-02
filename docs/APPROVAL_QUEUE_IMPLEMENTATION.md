@@ -37,7 +37,7 @@ export interface ApprovalItem {
 ```
 
 ### Test Suite Created
-**File**: `/__tests__/integration/api/approvals/route.test.ts`
+**File**: `/tests/integration/api/approvals/route.test.ts`
 
 **Tests Written** (7 tests):
 1. ✅ Should return 401 if not authenticated
@@ -155,7 +155,7 @@ export interface ApprovalItem {
 ## Phase 3: UI Components (TODO)
 
 ### 1. Approval Card Component
-**File**: `/components/approvals/ApprovalCard.tsx`
+**File**: `/src/components/approvals/ApprovalCard.tsx`
 
 **Features**:
 - Display based on approval type (different layouts for chores vs rewards)
@@ -176,7 +176,7 @@ export interface ApprovalItem {
 ```
 
 ### 2. Approvals Page
-**File**: `/app/dashboard/approvals/page.tsx`
+**File**: `/src/app/dashboard/approvals/page.tsx`
 
 **Layout**:
 ```
@@ -206,7 +206,7 @@ export interface ApprovalItem {
 - Infinite scroll or pagination
 
 ### 3. Dashboard Widget
-**File**: `/components/dashboard/widgets/ApprovalsWidget.tsx`
+**File**: `/src/components/dashboard/widgets/ApprovalsWidget.tsx`
 
 **Display**:
 ```

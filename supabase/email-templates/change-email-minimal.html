@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #FAFAFA;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #FAFAFA;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 8px;">
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px; font-size: 24px; font-weight: 600; color: #263238;">Confirm Your New Email Address</h2>
+              
+              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #263238;">
+                You recently requested to change your email address on Hearth. To complete this change, please confirm your new email address using the link below.
+              </p>
+              
+              <p style="margin: 0 0 30px; font-size: 16px; line-height: 1.6; color: #263238;">
+                <a href="{{ .ConfirmationURL }}" style="color: #E65100; text-decoration: underline; word-break: break-all;">{{ .ConfirmationURL }}</a>
+              </p>
+              
+              <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.6; color: #4A6572;">
+                This confirmation link will expire in 24 hours. After confirming, your email address will be updated and you will use this new address to sign in.
+              </p>
+              
+              <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #4A6572;">
+                If you did not request this email change, please contact our support team immediately.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 30px 40px; background-color: #F5F5F5; border-top: 1px solid #CFD8DC;">
+              <p style="margin: 0; font-size: 12px; color: #78909C; text-align: center;">
+                © 2026 Hearth. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

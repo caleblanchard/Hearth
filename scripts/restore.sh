@@ -12,7 +12,7 @@ set -e
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-COMPOSE_FILE="${PROJECT_DIR}/docker-compose.prod.yml"
+COMPOSE_FILE="${PROJECT_DIR}/infra/docker/docker-compose.prod.yml"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -95,7 +95,7 @@ if docker-compose -f "$COMPOSE_FILE" ps hearth-app | grep -q "Up"; then
     echo -e "${GREEN}✅ Application started successfully${NC}"
 else
     echo -e "${RED}⚠️  Warning: Application may not have started correctly${NC}"
-    echo "Check logs with: docker-compose -f docker-compose.prod.yml logs hearth-app"
+    echo "Check logs with: docker-compose -f infra/docker/docker-compose.prod.yml logs hearth-app"
 fi
 
 echo ""
@@ -103,5 +103,5 @@ echo -e "${GREEN}✅ Restore complete${NC}"
 echo "Completed at: $(date)"
 echo ""
 echo "Next steps:"
-echo "  1. Check application logs: docker-compose -f docker-compose.prod.yml logs -f"
+echo "  1. Check application logs: docker-compose -f infra/docker/docker-compose.prod.yml logs -f"
 echo "  2. Verify you can login to the application"

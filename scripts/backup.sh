@@ -14,7 +14,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BACKUP_DIR="${PROJECT_DIR}/backups"
-COMPOSE_FILE="${PROJECT_DIR}/docker-compose.prod.yml"
+COMPOSE_FILE="${PROJECT_DIR}/infra/docker/docker-compose.prod.yml"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="${BACKUP_DIR}/backup_${TIMESTAMP}.sql.gz"
 RETENTION_DAYS=30
@@ -34,7 +34,7 @@ mkdir -p "$BACKUP_DIR"
 
 # Check if docker-compose file exists
 if [ ! -f "$COMPOSE_FILE" ]; then
-    echo -e "${RED}❌ Error: docker-compose.prod.yml not found at $COMPOSE_FILE${NC}"
+    echo -e "${RED}❌ Error: infra/docker/docker-compose.prod.yml not found at $COMPOSE_FILE${NC}"
     exit 1
 fi
 

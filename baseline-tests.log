@@ -1,0 +1,3518 @@
+
+> hearth@0.1.0 test
+> jest --coverage --json --outputFile=baseline-tests.json
+
+FAIL __tests__/components/meals/MealPlanner.test.tsx (10.827 s)
+  ● MealPlanner Component › should render week navigation
+
+    Unable to find an element with the text: /Week of/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center justify-center min-h-[400px]"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+          [36m>[39m
+            [0mCannot read properties of undefined (reading 'ok')[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+      57 |     render(<MealPlanner />);
+      58 |
+    > 59 |     await waitFor(() => {
+         |                  ^
+      60 |       expect(screen.getByText(/Week of/i)).toBeInTheDocument();
+      61 |       expect(screen.getByRole('button', { name: /previous week/i })).toBeInTheDocument();
+      62 |       expect(screen.getByRole('button', { name: /next week/i })).toBeInTheDocument();
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at Object.<anonymous> (__tests__/components/meals/MealPlanner.test.tsx:59:18)
+
+  ● MealPlanner Component › should display empty state when no meals planned
+
+    Unable to find an element with the text: /no meals planned/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center justify-center min-h-[400px]"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+          [36m>[39m
+            [0mCannot read properties of undefined (reading 'ok')[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+      88 |     render(<MealPlanner />);
+      89 |
+    > 90 |     await waitFor(() => {
+         |                  ^
+      91 |       expect(screen.getByText(/no meals planned/i)).toBeInTheDocument();
+      92 |     });
+      93 |   });
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at Object.<anonymous> (__tests__/components/meals/MealPlanner.test.tsx:90:18)
+
+  ● MealPlanner Component › should display meal entries in calendar grid
+
+    Unable to find an element with the text: Pancakes. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center justify-center min-h-[400px]"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+          [36m>[39m
+            [0mCannot read properties of undefined (reading 'ok')[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+      101 |     render(<MealPlanner />);
+      102 |
+    > 103 |     await waitFor(() => {
+          |                  ^
+      104 |       expect(screen.getByText('Pancakes')).toBeInTheDocument();
+      105 |       expect(screen.getByText('Spaghetti')).toBeInTheDocument();
+      106 |     });
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at Object.<anonymous> (__tests__/components/meals/MealPlanner.test.tsx:103:18)
+
+  ● MealPlanner Component › should show meal type labels
+
+    Unable to find an element with the text: /breakfast/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center justify-center min-h-[400px]"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+          [36m>[39m
+            [0mCannot read properties of undefined (reading 'ok')[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+      115 |     render(<MealPlanner />);
+      116 |
+    > 117 |     await waitFor(() => {
+          |                  ^
+      118 |       expect(screen.getByText(/breakfast/i)).toBeInTheDocument();
+      119 |       expect(screen.getByText(/dinner/i)).toBeInTheDocument();
+      120 |     });
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at Object.<anonymous> (__tests__/components/meals/MealPlanner.test.tsx:117:18)
+
+  ● MealPlanner Component › should navigate to previous week
+
+    expect(jest.fn()).toHaveBeenCalledTimes(expected)
+
+    Expected number of calls: 2
+    Received number of calls: 3
+
+    Ignored nodes: comments, script, style
+    [36m<html>[39m
+      [36m<head />[39m
+      [36m<body>[39m
+        [36m<div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-center min-h-[400px]"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0mCannot read properties of undefined (reading 'ok')[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</body>[39m
+    [36m</html>[39m
+
+      147 |
+      148 |     await waitFor(() => {
+    > 149 |       expect(global.fetch).toHaveBeenCalledTimes(2);
+          |                            ^
+      150 |     });
+      151 |   });
+      152 |
+
+      at toHaveBeenCalledTimes (__tests__/components/meals/MealPlanner.test.tsx:149:28)
+      at runWithExpensiveErrorDiagnosticsDisabled (node_modules/@testing-library/dom/dist/config.js:47:12)
+      at checkCallback (node_modules/@testing-library/dom/dist/wait-for.js:124:77)
+      at checkRealTimersCallback (node_modules/@testing-library/dom/dist/wait-for.js:118:16)
+      at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19)
+
+  ● MealPlanner Component › should navigate to next week
+
+    expect(jest.fn()).toHaveBeenCalledTimes(expected)
+
+    Expected number of calls: 2
+    Received number of calls: 3
+
+    Ignored nodes: comments, script, style
+    [36m<html>[39m
+      [36m<head />[39m
+      [36m<body>[39m
+        [36m<div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-center min-h-[400px]"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0mCannot read properties of undefined (reading 'ok')[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</body>[39m
+    [36m</html>[39m
+
+      177 |
+      178 |     await waitFor(() => {
+    > 179 |       expect(global.fetch).toHaveBeenCalledTimes(2);
+          |                            ^
+      180 |     });
+      181 |   });
+      182 |
+
+      at toHaveBeenCalledTimes (__tests__/components/meals/MealPlanner.test.tsx:179:28)
+      at runWithExpensiveErrorDiagnosticsDisabled (node_modules/@testing-library/dom/dist/config.js:47:12)
+      at checkCallback (node_modules/@testing-library/dom/dist/wait-for.js:124:77)
+      at checkRealTimersCallback (node_modules/@testing-library/dom/dist/wait-for.js:118:16)
+      at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19)
+
+  ● MealPlanner Component › should open add meal dialog when clicking add button
+
+    Unable to find an element with the text: /Week of/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center justify-center min-h-[400px]"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+          [36m>[39m
+            [0mCannot read properties of undefined (reading 'ok')[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+      191 |     render(<MealPlanner />);
+      192 |
+    > 193 |     await waitFor(() => {
+          |                  ^
+      194 |       expect(screen.getByText(/Week of/i)).toBeInTheDocument();
+      195 |     });
+      196 |
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at Object.<anonymous> (__tests__/components/meals/MealPlanner.test.tsx:193:18)
+
+  ● MealPlanner Component › should create new meal entry
+
+    TestingLibraryElementError: Unable to find a label with the text of: /meal name/i
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-6"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-label[39m=[32m"Previous week"[39m
+              [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"[39m
+            [36m>[39m
+              [0m← Previous[0m
+            [36m</button>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-xl font-semibold text-gray-900 dark:text-gray-100"[39m
+            [36m>[39m
+              [0mWeek of [0m
+            [36m</h2>[39m
+            [36m<button[39m
+              [33maria-label[39m=[32m"Next week"[39m
+              [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"[39m
+            [36m>[39m
+              [0mNext →[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"overflow-x-auto"[39m
+          [36m>[39m
+            [36m<table[39m
+              [33mclass[39m=[32m"w-full border-collapse bg-white dark:bg-gray-800 rounded-lg shadow"[39m
+            [36m>[39m
+              [36m<thead>[39m
+                [36m<tr[39m
+                  [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+                [36m>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [0mMeal[0m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mMon[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mTue[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mWed[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mThu[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mFri[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mSat[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mSun[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                [36m</tr>[39m
+              [36m</thead>[39m
+              [36m<tbody>[39m
+                [36m<tr[39m
+                  [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+                [36m>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-3 text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [0mBreakfast[0m
+                  [36m</td>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33maria-label[39m=[32m"Add meal"[39m
+                      [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+                    [36m>[39m
+                      [0m+ Add[0m
+                    [36m</button>[39m
+                  [36m</td>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33maria-label[39m=[32m"Add meal"[39m
+                      [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+                    [36m>[39m
+                      [0m+ Add[0m
+                    [36m</button>[39m
+                  [36m</td>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33maria-label[39m=[32m"Add meal"[39m
+                      [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+                    [36m>[39m
+                      [0m+ Add[0m
+                    [36m</button>[39m
+                  [36m</td>...
+
+      235 |     await user.click(addButtons[0]);
+      236 |
+    > 237 |     const nameInput = screen.getByLabelText(/meal name/i);
+          |                              ^
+      238 |     await user.type(nameInput, 'Tacos');
+      239 |
+      240 |     const saveButton = screen.getByRole('button', { name: /save/i });
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at getAllByLabelText (node_modules/@testing-library/dom/dist/queries/label-text.js:111:38)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.getByLabelText (__tests__/components/meals/MealPlanner.test.tsx:237:30)
+
+  ● MealPlanner Component › should show meal notes when hovering over entry
+
+    Unable to find an element with the text: With maple syrup. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-6"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-label[39m=[32m"Previous week"[39m
+              [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"[39m
+            [36m>[39m
+              [0m← Previous[0m
+            [36m</button>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-xl font-semibold text-gray-900 dark:text-gray-100"[39m
+            [36m>[39m
+              [0mWeek of [0m
+              [0m1/5/2026[0m
+            [36m</h2>[39m
+            [36m<button[39m
+              [33maria-label[39m=[32m"Next week"[39m
+              [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"[39m
+            [36m>[39m
+              [0mNext →[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"overflow-x-auto"[39m
+          [36m>[39m
+            [36m<table[39m
+              [33mclass[39m=[32m"w-full border-collapse bg-white dark:bg-gray-800 rounded-lg shadow"[39m
+            [36m>[39m
+              [36m<thead>[39m
+                [36m<tr[39m
+                  [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+                [36m>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [0mMeal[0m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mMon[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m5[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mTue[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m6[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mWed[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m7[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mThu[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m8[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mFri[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m9[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mSat[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m10[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mSun[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m11[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                [36m</tr>[39m
+              [36m</thead>[39m
+              [36m<tbody>[39m
+                [36m<tr[39m
+                  [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+                [36m>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-3 text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [0mBreakfast[0m
+                  [36m</td>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33maria-label[39m=[32m"Add meal"[39m
+                      [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+                    [36m>[39m
+                      [0m+ Add[0m
+                    [36m</button>[39m
+                  [36m</td>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"space-y-2"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"p-2 rounded bg-info/10 dark:bg-info/20 text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mPancakes[0m
+                      [36m</div>[39m
+                      [36m<button[39m
+                        [33mclass[39m=[32m"w-full px-2 py-1 text-xs text-gray-600 dark:te...
+
+      269 |     await user.hover(pancakesEntry);
+      270 |
+    > 271 |     await waitFor(() => {
+          |                  ^
+      272 |       expect(screen.getByText('With maple syrup')).toBeInTheDocument();
+      273 |     });
+      274 |   });
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at Object.<anonymous> (__tests__/components/meals/MealPlanner.test.tsx:271:18)
+
+  ● MealPlanner Component › should edit meal entry
+
+    Unable to find an element with the text: Pancakes. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-6"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-label[39m=[32m"Previous week"[39m
+              [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"[39m
+            [36m>[39m
+              [0m← Previous[0m
+            [36m</button>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-xl font-semibold text-gray-900 dark:text-gray-100"[39m
+            [36m>[39m
+              [0mWeek of [0m
+            [36m</h2>[39m
+            [36m<button[39m
+              [33maria-label[39m=[32m"Next week"[39m
+              [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"[39m
+            [36m>[39m
+              [0mNext →[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"overflow-x-auto"[39m
+          [36m>[39m
+            [36m<table[39m
+              [33mclass[39m=[32m"w-full border-collapse bg-white dark:bg-gray-800 rounded-lg shadow"[39m
+            [36m>[39m
+              [36m<thead>[39m
+                [36m<tr[39m
+                  [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+                [36m>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [0mMeal[0m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mMon[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mTue[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mWed[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mThu[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mFri[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mSat[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mSun[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m/>[39m
+                  [36m</th>[39m
+                [36m</tr>[39m
+              [36m</thead>[39m
+              [36m<tbody>[39m
+                [36m<tr[39m
+                  [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+                [36m>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-3 text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [0mBreakfast[0m
+                  [36m</td>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33maria-label[39m=[32m"Add meal"[39m
+                      [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+                    [36m>[39m
+                      [0m+ Add[0m
+                    [36m</button>[39m
+                  [36m</td>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33maria-label[39m=[32m"Add meal"[39m
+                      [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+                    [36m>[39m
+                      [0m+ Add[0m
+                    [36m</button>[39m
+                  [36m</td>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33maria-label[39m=[32m"Add meal"[39m
+                      [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+                    [36m>[39m
+                      [0m+ Add[0m
+                    [36m</button>[39m
+                  [36m</td>...
+
+      299 |     render(<MealPlanner />);
+      300 |
+    > 301 |     await waitFor(() => {
+          |                  ^
+      302 |       expect(screen.getByText('Pancakes')).toBeInTheDocument();
+      303 |     });
+      304 |
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at Object.<anonymous> (__tests__/components/meals/MealPlanner.test.tsx:301:18)
+
+  ● MealPlanner Component › should delete meal entry
+
+    TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/delete/i`
+
+    Here are the accessible roles:
+
+      button:
+
+      Name "Previous week":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Previous week"[39m
+        [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"[39m
+      [36m/>[39m
+
+      Name "Next week":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Next week"[39m
+        [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add Dish":
+      [36m<button[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex items-center justify-center gap-1"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add Dish":
+      [36m<button[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex items-center justify-center gap-1"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      Name "Add meal":
+      [36m<button[39m
+        [33maria-label[39m=[32m"Add meal"[39m
+        [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      heading:
+
+      Name "Week of 1/5/2026":
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-xl font-semibold text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      table:
+
+      Name "":
+      [36m<table[39m
+        [33mclass[39m=[32m"w-full border-collapse bg-white dark:bg-gray-800 rounded-lg shadow"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      rowgroup:
+
+      Name "":
+      [36m<thead />[39m
+
+      Name "":
+      [36m<tbody />[39m
+
+      --------------------------------------------------
+      row:
+
+      Name "Meal Mon 5 Tue 6 Wed 7 Thu 8 Fri 9 Sat 10 Sun 11":
+      [36m<tr[39m
+        [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "Breakfast + Add Pancakes Add Dish Note: With maple syrup + Add + Add + Add + Add + Add":
+      [36m<tr[39m
+        [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "Lunch + Add + Add + Add + Add + Add + Add + Add":
+      [36m<tr[39m
+        [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "Dinner + Add Spaghetti Add Dish + Add + Add + Add + Add + Add":
+      [36m<tr[39m
+        [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "Snack + Add + Add + Add + Add + Add + Add + Add":
+      [36m<tr[39m
+        [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      columnheader:
+
+      Name "Meal":
+      [36m<th[39m
+        [33mclass[39m=[32m"p-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "Mon 5":
+      [36m<th[39m
+        [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "Tue 6":
+      [36m<th[39m
+        [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "Wed 7":
+      [36m<th[39m
+        [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "Thu 8":
+      [36m<th[39m
+        [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "Fri 9":
+      [36m<th[39m
+        [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "Sat 10":
+      [36m<th[39m
+        [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "Sun 11":
+      [36m<th[39m
+        [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      cell:
+
+      Name "Breakfast":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-3 text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "Pancakes Add Dish Note: With maple syrup":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "Lunch":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-3 text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "Dinner":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-3 text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "Spaghetti Add Dish":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "Snack":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-3 text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      Name "+ Add":
+      [36m<td[39m
+        [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-6"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-label[39m=[32m"Previous week"[39m
+              [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"[39m
+            [36m>[39m
+              [0m← Previous[0m
+            [36m</button>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-xl font-semibold text-gray-900 dark:text-gray-100"[39m
+            [36m>[39m
+              [0mWeek of [0m
+              [0m1/5/2026[0m
+            [36m</h2>[39m
+            [36m<button[39m
+              [33maria-label[39m=[32m"Next week"[39m
+              [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"[39m
+            [36m>[39m
+              [0mNext →[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"overflow-x-auto"[39m
+          [36m>[39m
+            [36m<table[39m
+              [33mclass[39m=[32m"w-full border-collapse bg-white dark:bg-gray-800 rounded-lg shadow"[39m
+            [36m>[39m
+              [36m<thead>[39m
+                [36m<tr[39m
+                  [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+                [36m>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [0mMeal[0m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mMon[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m5[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mTue[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m6[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mWed[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m7[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mThu[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m8[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mFri[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m9[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mSat[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m10[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                  [36m<th[39m
+                    [33mclass[39m=[32m"p-3 text-center text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [0mSun[0m
+                    [36m</div>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0m11[0m
+                    [36m</div>[39m
+                  [36m</th>[39m
+                [36m</tr>[39m
+              [36m</thead>[39m
+              [36m<tbody>[39m
+                [36m<tr[39m
+                  [33mclass[39m=[32m"border-b border-gray-200 dark:border-gray-700"[39m
+                [36m>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-3 text-sm font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [0mBreakfast[0m
+                  [36m</td>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33maria-label[39m=[32m"Add meal"[39m
+                      [33mclass[39m=[32m"w-full px-2 py-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"[39m
+                    [36m>[39m
+                      [0m+ Add[0m
+                    [36m</button>[39m
+                  [36m</td>[39m
+                  [36m<td[39m
+                    [33mclass[39m=[32m"p-2 align-top border-l border-gray-200 dark:border-gray-700"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"space-y-2"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"p-2 rounded bg-info/10 dark:bg-info/20 text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mPancakes[0m
+                      [36m</div>[39m
+                      [36m<button[39m
+                        [33mclass[39m=[32m"w-full px-2 py-1 text-xs text-gray-600 dark:te...
+
+      349 |     await user.click(pancakesEntry);
+      350 |
+    > 351 |     const deleteButton = screen.getByRole('button', { name: /delete/i });
+          |                                 ^
+      352 |     await user.click(deleteButton);
+      353 |
+      354 |     // Confirm deletion
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.getByRole (__tests__/components/meals/MealPlanner.test.tsx:351:33)
+
+  ● MealPlanner Component › should handle API errors gracefully
+
+    Unable to find an element with the text: /failed to load meal plan/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center justify-center min-h-[400px]"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+          [36m>[39m
+            [0mCannot read properties of undefined (reading 'ok')[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+      406 |     render(<MealPlanner />);
+      407 |
+    > 408 |     await waitFor(() => {
+          |                  ^
+      409 |       expect(screen.getByText(/failed to load meal plan/i)).toBeInTheDocument();
+      410 |     });
+      411 |   });
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at Object.<anonymous> (__tests__/components/meals/MealPlanner.test.tsx:408:18)
+
+FAIL __tests__/components/dashboard/DashboardContent.test.tsx
+  ● DashboardContent › should display screen time balance
+
+    Unable to find an element with the text: 60 / 120 min. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center justify-between mb-4"[39m
+            [36m>[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"text-lg font-semibold text-gray-900 dark:text-white"[39m
+              [36m>[39m
+                [0mToday's Chores[0m
+              [36m</h2>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"bg-info/20 dark:bg-info/30 text-info dark:text-info text-xs font-medium px-2.5 py-0.5 rounded"[39m
+              [36m>[39m
+                [0m1[0m
+                [0m/[0m
+                [0m2[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-2"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-sm font-medium text-gray-900 dark:text-white"[39m
+                  [36m>[39m
+                    [0mTest Chore[0m
+                  [36m</p>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                  [36m>[39m
+                    [0m+[0m
+                    [0m10[0m
+                    [0m credits[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"[39m
+                [36m>[39m
+                  [0mpending[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-sm font-medium text-gray-900 dark:text-white"[39m
+                  [36m>[39m
+                    [0mCompleted Chore[0m
+                  [36m</p>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                  [36m>[39m
+                    [0m+[0m
+                    [0m20[0m
+                    [0m credits[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"[39m
+                [36m>[39m
+                  [0mapproved[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center justify-between mb-4"[39m
+            [36m>[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"text-lg font-semibold text-gray-900 dark:text-white"[39m
+              [36m>[39m
+                [0mScreen Time[0m
+              [36m</h2>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium px-2.5 py-0.5 rounded"[39m
+              [36m>[39m
+                [0m60[0m
+                [0m min[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-gray-600 dark:text-gray-400 text-sm"[39m
+            [36m>[39m
+              [0mBalance not configured yet.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center justify-between mb-4"[39m
+            [36m>[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"text-lg font-semibold text-gray-900 dark:text-white"[39m
+              [36m>[39m
+                [0mCredits[0m
+              [36m</h2>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs font-medium px-2.5 py-0.5 rounded"[39m
+              [36m>[39m
+                [0m100[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-2"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex justify-between text-sm"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-600 dark:text-gray-400"[39m
+                [36m>[39m
+                  [0mCurrent Balance[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-900 dark:text-white font-semibold"[39m
+                [36m>[39m
+                  [0m100[0m
+                  [0m credits[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex justify-between text-xs"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-600 dark:text-gray-400"[39m
+                [36m>[39m
+                  [0mLifetime Earned[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-600 dark:text-gray-400"[39m
+                [36m>[39m
+                  [0m200[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex justify-between text-xs"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-600 dark:text-gray-400"[39m
+                [36m>[39m
+                  [0mLifetime Spent[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-600 dark:text-gray-400"[39m
+                [36m>[39m
+                  [0m100[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center justify-between mb-4"[39m
+            [36m>...
+
+      246 |     render(<DashboardContent />)
+      247 |
+    > 248 |     await waitFor(() => {
+          |                  ^
+      249 |       expect(screen.getByText('60 min')).toBeInTheDocument()
+      250 |       expect(screen.getByText('60 / 120 min')).toBeInTheDocument()
+      251 |     })
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at Object.<anonymous> (__tests__/components/dashboard/DashboardContent.test.tsx:248:18)
+
+  ● DashboardContent › should not render when session is not available
+
+    expect(jest.fn()).not.toHaveBeenCalled()
+
+    Expected number of calls: 0
+    Received number of calls: 1
+
+    1: "/api/dashboard/layout"
+
+    Ignored nodes: comments, script, style
+    [36m<html>[39m
+      [36m<head />[39m
+      [36m<body>[39m
+        [36m<div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-center min-h-[400px]"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"text-center"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 mx-auto mb-4"[39m
+              [36m/>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"text-gray-600 dark:text-gray-400"[39m
+              [36m>[39m
+                [0mLoading dashboard...[0m
+              [36m</p>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</body>[39m
+    [36m</html>[39m
+
+      282 |     await waitFor(() => {
+      283 |       // After loading completes, if no session, data should be null
+    > 284 |       expect(global.fetch).not.toHaveBeenCalled()
+          |                                ^
+      285 |     })
+      286 |   })
+      287 | })
+
+      at toHaveBeenCalled (__tests__/components/dashboard/DashboardContent.test.tsx:284:32)
+      at runWithExpensiveErrorDiagnosticsDisabled (node_modules/@testing-library/dom/dist/config.js:47:12)
+      at checkCallback (node_modules/@testing-library/dom/dist/wait-for.js:124:77)
+      at checkRealTimersCallback (node_modules/@testing-library/dom/dist/wait-for.js:118:16)
+      at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19)
+
+FAIL __tests__/components/auth/ParentLoginForm.test.tsx
+  ● ParentLoginForm › should show loading state during login
+
+    expect(element).not.toBeInTheDocument()
+
+    expected document not to contain element, found <button class="w-full bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-md" disabled="" type="submit">Signing in...</button> instead
+
+    Ignored nodes: comments, script, style
+    [36m<html>[39m
+      [36m<head />[39m
+      [36m<body>[39m
+        [36m<div>[39m
+          [36m<form[39m
+            [33mclass[39m=[32m"space-y-6"[39m
+          [36m>[39m
+            [36m<div>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"[39m
+                [33mfor[39m=[32m"email"[39m
+              [36m>[39m
+                [0mEmail Address[0m
+              [36m</label>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mid[39m=[32m"email"[39m
+                [33mplaceholder[39m=[32m"you@example.com"[39m
+                [33mrequired[39m=[32m""[39m
+                [33mtype[39m=[32m"email"[39m
+                [33mvalue[39m=[32m"test@example.com"[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"[39m
+                [33mfor[39m=[32m"password"[39m
+              [36m>[39m
+                [0mPassword[0m
+              [36m</label>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mid[39m=[32m"password"[39m
+                [33mplaceholder[39m=[32m"••••••••"[39m
+                [33mrequired[39m=[32m""[39m
+                [33mtype[39m=[32m"password"[39m
+                [33mvalue[39m=[32m"password123"[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"w-full bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"[39m
+              [33mdisabled[39m=[32m""[39m
+              [33mtype[39m=[32m"submit"[39m
+            [36m>[39m
+              [0mSigning in...[0m
+            [36m</button>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"text-center"[39m
+            [36m>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"text-sm text-ember-700 dark:text-ember-500 hover:underline"[39m
+                [33mhref[39m=[32m"/auth/forgot-password"[39m
+              [36m>[39m
+                [0mForgot password?[0m
+              [36m</a>[39m
+            [36m</div>[39m
+          [36m</form>[39m
+        [36m</div>[39m
+      [36m</body>[39m
+    [36m</html>[39m
+
+      79 |
+      80 |     await waitFor(() => {
+    > 81 |       expect(screen.queryByText(/Signing in.../i)).not.toBeInTheDocument()
+         |                                                        ^
+      82 |     })
+      83 |   })
+      84 |
+
+      at toBeInTheDocument (__tests__/components/auth/ParentLoginForm.test.tsx:81:56)
+      at runWithExpensiveErrorDiagnosticsDisabled (node_modules/@testing-library/dom/dist/config.js:47:12)
+      at checkCallback (node_modules/@testing-library/dom/dist/wait-for.js:124:77)
+      at checkRealTimersCallback (node_modules/@testing-library/dom/dist/wait-for.js:118:16)
+      at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19)
+
+  ● ParentLoginForm › should disable form fields during loading
+
+    expect(element).not.toBeDisabled()
+
+    Received element is disabled:
+      <input class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white" disabled="" id="email" placeholder="you@example.com" required="" type="email" value="test@example.com" />
+
+    Ignored nodes: comments, script, style
+    [36m<html>[39m
+      [36m<head />[39m
+      [36m<body>[39m
+        [36m<div>[39m
+          [36m<form[39m
+            [33mclass[39m=[32m"space-y-6"[39m
+          [36m>[39m
+            [36m<div>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"[39m
+                [33mfor[39m=[32m"email"[39m
+              [36m>[39m
+                [0mEmail Address[0m
+              [36m</label>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mid[39m=[32m"email"[39m
+                [33mplaceholder[39m=[32m"you@example.com"[39m
+                [33mrequired[39m=[32m""[39m
+                [33mtype[39m=[32m"email"[39m
+                [33mvalue[39m=[32m"test@example.com"[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"[39m
+                [33mfor[39m=[32m"password"[39m
+              [36m>[39m
+                [0mPassword[0m
+              [36m</label>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-transparent dark:bg-gray-700 dark:text-white"[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mid[39m=[32m"password"[39m
+                [33mplaceholder[39m=[32m"••••••••"[39m
+                [33mrequired[39m=[32m""[39m
+                [33mtype[39m=[32m"password"[39m
+                [33mvalue[39m=[32m"password123"[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"w-full bg-ember-700 hover:bg-ember-500 disabled:bg-ember-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"[39m
+              [33mdisabled[39m=[32m""[39m
+              [33mtype[39m=[32m"submit"[39m
+            [36m>[39m
+              [0mSigning in...[0m
+            [36m</button>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"text-center"[39m
+            [36m>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"text-sm text-ember-700 dark:text-ember-500 hover:underline"[39m
+                [33mhref[39m=[32m"/auth/forgot-password"[39m
+              [36m>[39m
+                [0mForgot password?[0m
+              [36m</a>[39m
+            [36m</div>[39m
+          [36m</form>[39m
+        [36m</div>[39m
+      [36m</body>[39m
+    [36m</html>[39m
+
+      100 |
+      101 |     await waitFor(() => {
+    > 102 |       expect(emailInput).not.toBeDisabled()
+          |                              ^
+      103 |     })
+      104 |   })
+      105 |
+
+      at toBeDisabled (__tests__/components/auth/ParentLoginForm.test.tsx:102:30)
+      at runWithExpensiveErrorDiagnosticsDisabled (node_modules/@testing-library/dom/dist/config.js:47:12)
+      at checkCallback (node_modules/@testing-library/dom/dist/wait-for.js:124:77)
+      at checkRealTimersCallback (node_modules/@testing-library/dom/dist/wait-for.js:118:16)
+      at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19)
+
+FAIL __tests__/components/meals/LeftoversList.test.tsx
+  ● LeftoversList Component › should show expiration countdown
+
+    Unable to find an element with the text: /expires/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-6"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-xl font-semibold text-gray-900 dark:text-gray-100"[39m
+            [36m>[39m
+              [0mLeftovers Tracker[0m
+            [36m</h2>[39m
+            [36m<button[39m
+              [33maria-label[39m=[32m"Add leftover"[39m
+              [33mclass[39m=[32m"px-4 py-2 text-sm font-medium text-white bg-ember-700 hover:bg-ember-500 rounded-lg"[39m
+            [36m>[39m
+              [0m+ Add Leftover[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"grid gap-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start justify-between"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1"[39m
+                [36m>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"text-lg font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [0mLasagna[0m
+                  [36m</h3>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-sm text-gray-600 dark:text-gray-400 mt-1"[39m
+                  [36m>[39m
+                    [0mHalf pan[0m
+                  [36m</p>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300"[39m
+                      [33mdata-status[39m=[32m"urgent"[39m
+                    [36m>[39m
+                      [0mExpired[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mby [0m
+                      [0mMom[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex gap-2 ml-4"[39m
+                [36m>[39m
+                  [36m<button[39m
+                    [33maria-label[39m=[32m"Mark as used"[39m
+                    [33mclass[39m=[32m"px-3 py-1 text-sm font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800"[39m
+                  [36m>[39m
+                    [0mUsed[0m
+                  [36m</button>[39m
+                  [36m<button[39m
+                    [33maria-label[39m=[32m"Mark as tossed"[39m
+                    [33mclass[39m=[32m"px-3 py-1 text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-800"[39m
+                  [36m>[39m
+                    [0mToss[0m
+                  [36m</button>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start justify-between"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1"[39m
+                [36m>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"text-lg font-medium text-gray-900 dark:text-gray-100"[39m
+                  [36m>[39m
+                    [0mChicken soup[0m
+                  [36m</h3>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-sm text-gray-600 dark:text-gray-400 mt-1"[39m
+                  [36m>[39m
+                    [0m2 servings[0m
+                  [36m</p>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300"[39m
+                      [33mdata-status[39m=[32m"urgent"[39m
+                    [36m>[39m
+                      [0mExpired[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mby [0m
+                      [0mDad[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex gap-2 ml-4"[39m
+                [36m>[39m
+                  [36m<button[39m
+                    [33maria-label[39m=[32m"Mark as used"[39m
+                    [33mclass[39m=[32m"px-3 py-1 text-sm font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800"[39m
+                  [36m>[39m
+                    [0mUsed[0m
+                  [36m</button>[39m
+                  [36m<button[39m
+                    [33maria-label[39m=[32m"Mark as tossed"[39m
+                    [33mclass[39m=[32m"px-3 py-1 text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-800"[39m
+                  [36m>[39m
+                    [0mToss[0m
+                  [36m</button>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+      144 |     render(<LeftoversList />);
+      145 |
+    > 146 |     await waitFor(() => {
+          |                  ^
+      147 |       expect(screen.getAllByText(/expires/i).length).toBeGreaterThan(0);
+      148 |     });
+      149 |   });
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at Object.<anonymous> (__tests__/components/meals/LeftoversList.test.tsx:146:18)
+
+FAIL __tests__/integration/api/kiosk/session.test.ts
+  ● Kiosk Session API Endpoints › DELETE /api/kiosk/session › should return 403 if not a parent
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 404
+
+      592 |       const response = await EndSession(request as NextRequest);
+      593 |
+    > 594 |       expect(response.status).toBe(403);
+          |                               ^
+      595 |     });
+      596 |
+      597 |     it('should end session successfully', async () => {
+
+      at Object.toBe (__tests__/integration/api/kiosk/session.test.ts:594:31)
+
+FAIL __tests__/integration/family-isolation.test.ts
+  ● Family Isolation Tests - Data Security › Chores Isolation › should only return chores for user's family
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      49 |       const data = await response.json()
+      50 |
+    > 51 |       expect(response.status).toBe(200)
+         |                               ^
+      52 |       expect(data.chores).toEqual(family1Chores)
+      53 |
+      54 |       // Verify query filters by familyId
+
+      at Object.toBe (__tests__/integration/family-isolation.test.ts:51:31)
+
+  ● Family Isolation Tests - Data Security › Chores Isolation › should prevent accessing chores from different family
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"familyId": "family-test-123"}}
+
+    Number of calls: 0
+
+      81 |
+      82 |       // The query should filter by familyId
+    > 83 |       expect(prismaMock.choreDefinition.findMany).toHaveBeenCalledWith(
+         |                                                   ^
+      84 |         expect.objectContaining({
+      85 |           where: expect.objectContaining({
+      86 |             familyId: session.user.familyId,
+
+      at Object.toHaveBeenCalledWith (__tests__/integration/family-isolation.test.ts:83:51)
+
+  ● Family Isolation Tests - Data Security › Rewards Isolation › should only return rewards for user's family
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      110 |       const data = await response.json()
+      111 |
+    > 112 |       expect(response.status).toBe(200)
+          |                               ^
+      113 |       expect(data.rewards).toEqual(family1Rewards)
+      114 |
+      115 |       // Verify query filters by familyId
+
+      at Object.toBe (__tests__/integration/family-isolation.test.ts:112:31)
+
+  ● Family Isolation Tests - Data Security › Rewards Isolation › should prevent accessing rewards from different family
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"familyId": "family-1"}}
+
+    Number of calls: 0
+
+      140 |
+      141 |       // Verify query filters by familyId
+    > 142 |       expect(prismaMock.rewardItem.findMany).toHaveBeenCalledWith(
+          |                                              ^
+      143 |         expect.objectContaining({
+      144 |           where: expect.objectContaining({
+      145 |             familyId: 'family-1',
+
+      at Object.toHaveBeenCalledWith (__tests__/integration/family-isolation.test.ts:142:46)
+
+FAIL __tests__/integration/api/screentime/adjust.test.ts
+  ● /api/screentime/adjust › POST › should return 400 if screen time not configured
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+      188 |       const data = await response.json()
+      189 |
+    > 190 |       expect(response.status).toBe(200)
+          |                               ^
+      191 |       expect(data.success).toBe(true)
+      192 |     })
+      193 |
+
+      at Object.toBe (__tests__/integration/api/screentime/adjust.test.ts:190:31)
+
+  ● /api/screentime/adjust › POST › should return 400 if trying to remove more than available balance
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "Insufficient balance"
+    Received: "No screen time allowance configured for this member and type"
+
+      221 |
+      222 |       expect(response.status).toBe(400)
+    > 223 |       expect(data.error).toBe('Insufficient balance')
+          |                          ^
+      224 |       expect(data.message).toContain('30 minutes')
+      225 |     })
+      226 |
+
+      at Object.toBe (__tests__/integration/api/screentime/adjust.test.ts:223:26)
+
+  ● /api/screentime/adjust › POST › should successfully add screen time
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+      266 |       const data = await response.json()
+      267 |
+    > 268 |       expect(response.status).toBe(200)
+          |                               ^
+      269 |       expect(data.success).toBe(true)
+      270 |       expect(data.balance).toBe(70)
+      271 |       expect(prismaMock.screenTimeBalance.update).toHaveBeenCalledWith({
+
+      at Object.toBe (__tests__/integration/api/screentime/adjust.test.ts:268:31)
+
+  ● /api/screentime/adjust › POST › should successfully remove screen time
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+      316 |       const data = await response.json()
+      317 |
+    > 318 |       expect(response.status).toBe(200)
+          |                               ^
+      319 |       expect(data.success).toBe(true)
+      320 |       expect(data.balance).toBe(50)
+      321 |     })
+
+      at Object.toBe (__tests__/integration/api/screentime/adjust.test.ts:318:31)
+
+  ● /api/screentime/adjust › POST › should prevent negative balance
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "Insufficient balance"
+    Received: "No screen time allowance configured for this member and type"
+
+      351 |
+      352 |       expect(response.status).toBe(400)
+    > 353 |       expect(data.error).toBe('Insufficient balance')
+          |                          ^
+      354 |       expect(prismaMock.screenTimeBalance.update).not.toHaveBeenCalled()
+      355 |     })
+      356 |
+
+      at Object.toBe (__tests__/integration/api/screentime/adjust.test.ts:353:26)
+
+  ● /api/screentime/adjust › POST › should create notification for child
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: {"data": ObjectContaining {"message": StringContaining "added", "title": "Screen time updated", "type": "SCREENTIME_ADJUSTED", "userId": "child-1"}}
+
+    Number of calls: 0
+
+      413 |       await POST(request)
+      414 |
+    > 415 |       expect(prismaMock.notification.create).toHaveBeenCalledWith({
+          |                                              ^
+      416 |         data: expect.objectContaining({
+      417 |           userId: 'child-1',
+      418 |           type: 'SCREENTIME_ADJUSTED',
+
+      at Object.toHaveBeenCalledWith (__tests__/integration/api/screentime/adjust.test.ts:415:46)
+
+  ● /api/screentime/adjust › POST › should create audit log
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: {"data": ObjectContaining {"action": "SCREENTIME_ADJUSTED", "entityType": "ScreenTimeTransaction", "familyId": "family-test-123", "memberId": "parent-test-123", "metadata": ObjectContaining {"amountMinutes": 10, "newBalance": 70, "targetMemberId": "child-1"}, "result": "SUCCESS"}}
+
+    Number of calls: 0
+
+      461 |       await POST(request)
+      462 |
+    > 463 |       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
+          |                                          ^
+      464 |         data: expect.objectContaining({
+      465 |           familyId: session.user.familyId,
+      466 |           memberId: session.user.id,
+
+      at Object.toHaveBeenCalledWith (__tests__/integration/api/screentime/adjust.test.ts:463:42)
+
+FAIL __tests__/integration/api/routines/route.test.ts
+  ● GET /api/routines › should return empty array if no routines exist
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      47 |     const response = await GET(request);
+      48 |
+    > 49 |     expect(response.status).toBe(200);
+         |                             ^
+      50 |     const data = await response.json();
+      51 |     expect(data.routines).toEqual([]);
+      52 |   });
+
+      at Object.toBe (__tests__/integration/api/routines/route.test.ts:49:29)
+
+  ● GET /api/routines › should return all family routines for parent
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      113 |     const response = await GET(request);
+      114 |
+    > 115 |     expect(response.status).toBe(200);
+          |                             ^
+      116 |     const data = await response.json();
+      117 |     expect(data.routines).toHaveLength(2);
+      118 |     expect(data.routines[0].steps).toHaveLength(2);
+
+      at Object.toBe (__tests__/integration/api/routines/route.test.ts:115:29)
+
+  ● GET /api/routines › should filter routines by type
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      147 |     const response = await GET(request);
+      148 |
+    > 149 |     expect(response.status).toBe(200);
+          |                             ^
+      150 |     const data = await response.json();
+      151 |     expect(data.routines).toHaveLength(1);
+      152 |     expect(prismaMock.routine.findMany).toHaveBeenCalledWith(
+
+      at Object.toBe (__tests__/integration/api/routines/route.test.ts:149:29)
+
+  ● GET /api/routines › should filter routines by assignedTo
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      190 |     const response = await GET(request);
+      191 |
+    > 192 |     expect(response.status).toBe(200);
+          |                             ^
+      193 |     const data = await response.json();
+      194 |     expect(data.routines).toHaveLength(1);
+      195 |     expect(data.routines[0].assignedTo).toBe('child-123');
+
+      at Object.toBe (__tests__/integration/api/routines/route.test.ts:192:29)
+
+  ● GET /api/routines › should apply OR filter for children (assigned or unassigned)
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"OR": [{"assignedTo": "child-test-123"}, {"assignedTo": null}]}}
+
+    Number of calls: 0
+
+      208 |     await GET(request);
+      209 |
+    > 210 |     expect(prismaMock.routine.findMany).toHaveBeenCalledWith(
+          |                                         ^
+      211 |       expect.objectContaining({
+      212 |         where: expect.objectContaining({
+      213 |           OR: [
+
+      at Object.toHaveBeenCalledWith (__tests__/integration/api/routines/route.test.ts:210:41)
+
+FAIL __tests__/integration/api/calendar/connections/[id]/route.test.ts
+  ● /api/calendar/connections/[id] › GET › should return connection details
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      75 |       const response = await GET(request, { params: { id: 'connection-1' } });
+      76 |
+    > 77 |       expect(response.status).toBe(200);
+         |                               ^
+      78 |       const json = await response.json();
+      79 |       expect(json.connection).toMatchObject({
+      80 |         id: 'connection-1',
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:77:31)
+
+  ● /api/calendar/connections/[id] › GET › should return 404 if connection not found
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "Connection not found"
+    Received: "Family member not found"
+
+      100 |       expect(response.status).toBe(404);
+      101 |       const json = await response.json();
+    > 102 |       expect(json.error).toBe('Connection not found');
+          |                          ^
+      103 |     });
+      104 |
+      105 |     it('should return 403 if connection belongs to different user', async () => {
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:102:26)
+
+  ● /api/calendar/connections/[id] › GET › should return 403 if connection belongs to different user
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 404
+
+      121 |       const response = await GET(request, { params: { id: 'connection-other' } });
+      122 |
+    > 123 |       expect(response.status).toBe(403);
+          |                               ^
+      124 |       const json = await response.json();
+      125 |       expect(json.error).toBe('Forbidden');
+      126 |     });
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:123:31)
+
+  ● /api/calendar/connections/[id] › PATCH › should update sync settings
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      175 |       const response = await PATCH(request, { params: { id: 'connection-1' } });
+      176 |
+    > 177 |       expect(response.status).toBe(200);
+          |                               ^
+      178 |       expect(prismaMock.calendarConnection.update).toHaveBeenCalledWith({
+      179 |         where: { id: 'connection-1' },
+      180 |         data: {
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:177:31)
+
+  ● /api/calendar/connections/[id] › PATCH › should only update provided fields
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      213 |       const response = await PATCH(request, { params: { id: 'connection-1' } });
+      214 |
+    > 215 |       expect(response.status).toBe(200);
+          |                               ^
+      216 |       expect(prismaMock.calendarConnection.update).toHaveBeenCalledWith({
+      217 |         where: { id: 'connection-1' },
+      218 |         data: { syncEnabled: false },
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:215:31)
+
+  ● /api/calendar/connections/[id] › PATCH › should return 400 for invalid fields
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      242 |       const response = await PATCH(request, { params: { id: 'connection-1' } });
+      243 |
+    > 244 |       expect(response.status).toBe(400);
+          |                               ^
+      245 |       const json = await response.json();
+      246 |       expect(json.error).toContain('Invalid');
+      247 |     });
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:244:31)
+
+  ● /api/calendar/connections/[id] › PATCH › should return 403 if connection belongs to different user
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 404
+
+      268 |       const response = await PATCH(request, { params: { id: 'connection-other' } });
+      269 |
+    > 270 |       expect(response.status).toBe(403);
+          |                               ^
+      271 |     });
+      272 |
+      273 |     it('should clear sync error when re-enabling sync', async () => {
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:270:31)
+
+  ● /api/calendar/connections/[id] › PATCH › should clear sync error when re-enabling sync
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      299 |       const response = await PATCH(request, { params: { id: 'connection-1' } });
+      300 |
+    > 301 |       expect(response.status).toBe(200);
+          |                               ^
+      302 |       expect(prismaMock.calendarConnection.update).toHaveBeenCalledWith(
+      303 |         expect.objectContaining({
+      304 |           data: expect.objectContaining({
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:301:31)
+
+  ● /api/calendar/connections/[id] › DELETE › should delete calendar connection
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      346 |       const response = await DELETE(request, { params: { id: 'connection-1' } });
+      347 |
+    > 348 |       expect(response.status).toBe(200);
+          |                               ^
+      349 |       expect(prismaMock.calendarConnection.delete).toHaveBeenCalledWith({
+      350 |         where: { id: 'connection-1' },
+      351 |       });
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:348:31)
+
+  ● /api/calendar/connections/[id] › DELETE › should return 403 if connection belongs to different user
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 404
+
+      394 |       const response = await DELETE(request, { params: { id: 'connection-other' } });
+      395 |
+    > 396 |       expect(response.status).toBe(403);
+          |                               ^
+      397 |     });
+      398 |
+      399 |     it('should allow child users to delete their own connections', async () => {
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:396:31)
+
+  ● /api/calendar/connections/[id] › DELETE › should allow child users to delete their own connections
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      421 |       const response = await DELETE(request, { params: { id: 'connection-child' } });
+      422 |
+    > 423 |       expect(response.status).toBe(200);
+          |                               ^
+      424 |     });
+      425 |   });
+      426 | });
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/[id]/route.test.ts:423:31)
+
+FAIL __tests__/integration/api/meals/recipes/route.test.ts
+  ● /api/meals/recipes › GET /api/meals/recipes › should return all recipes for family
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      80 |       const response = await GET(request);
+      81 |
+    > 82 |       expect(response.status).toBe(200);
+         |                               ^
+      83 |       const data = await response.json();
+      84 |       expect(data.recipes).toHaveLength(1);
+      85 |       expect(data.recipes[0].name).toBe('Spaghetti Carbonara');
+
+      at Object.toBe (__tests__/integration/api/meals/recipes/route.test.ts:82:31)
+
+  ● /api/meals/recipes › GET /api/meals/recipes › should filter by category
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      118 |       const response = await GET(request);
+      119 |
+    > 120 |       expect(response.status).toBe(200);
+          |                               ^
+      121 |       expect(prismaMock.recipe.findMany).toHaveBeenCalledWith({
+      122 |         where: {
+      123 |           familyId: 'family-test-123',
+
+      at Object.toBe (__tests__/integration/api/meals/recipes/route.test.ts:120:31)
+
+  ● /api/meals/recipes › GET /api/meals/recipes › should filter by isFavorite
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      135 |       const response = await GET(request);
+      136 |
+    > 137 |       expect(response.status).toBe(200);
+          |                               ^
+      138 |       expect(prismaMock.recipe.findMany).toHaveBeenCalledWith({
+      139 |         where: {
+      140 |           familyId: 'family-test-123',
+
+      at Object.toBe (__tests__/integration/api/meals/recipes/route.test.ts:137:31)
+
+  ● /api/meals/recipes › GET /api/meals/recipes › should search by name
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      152 |       const response = await GET(request);
+      153 |
+    > 154 |       expect(response.status).toBe(200);
+          |                               ^
+      155 |       expect(prismaMock.recipe.findMany).toHaveBeenCalledWith({
+      156 |         where: {
+      157 |           familyId: 'family-test-123',
+
+      at Object.toBe (__tests__/integration/api/meals/recipes/route.test.ts:154:31)
+
+  ● /api/meals/recipes › GET /api/meals/recipes › should combine multiple filters
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      174 |       const response = await GET(request);
+      175 |
+    > 176 |       expect(response.status).toBe(200);
+          |                               ^
+      177 |       expect(prismaMock.recipe.findMany).toHaveBeenCalledWith({
+      178 |         where: {
+      179 |           familyId: 'family-test-123',
+
+      at Object.toBe (__tests__/integration/api/meals/recipes/route.test.ts:176:31)
+
+  ● /api/meals/recipes › GET /api/meals/recipes › should return empty array when no recipes exist
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      196 |       const response = await GET(request);
+      197 |
+    > 198 |       expect(response.status).toBe(200);
+          |                               ^
+      199 |       const data = await response.json();
+      200 |       expect(data.recipes).toEqual([]);
+      201 |     });
+
+      at Object.toBe (__tests__/integration/api/meals/recipes/route.test.ts:198:31)
+
+FAIL __tests__/integration/api/calendar/google/callback/route.test.ts
+  ● /api/calendar/google/callback › GET › should exchange code for tokens and create new connection
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "auth-code-123"
+
+    Number of calls: 0
+
+      229 |       const response = await GET(request);
+      230 |
+    > 231 |       expect(mockGetTokensFromCode).toHaveBeenCalledWith('auth-code-123');
+          |                                     ^
+      232 |       expect(encryptToken).toHaveBeenCalledWith('access-token-123');
+      233 |       expect(encryptToken).toHaveBeenCalledWith('refresh-token-456');
+      234 |
+
+      at Object.toHaveBeenCalledWith (__tests__/integration/api/calendar/google/callback/route.test.ts:231:37)
+
+  ● /api/calendar/google/callback › GET › should update existing connection if already exists
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: {"data": {"accessToken": "encrypted:access-token-123", "googleEmail": "user@example.com", "nextSyncAt": Any<Date>, "refreshToken": "encrypted:refresh-token-456", "syncEnabled": true, "syncError": null, "syncStatus": "ACTIVE", "tokenExpiresAt": 2026-01-05T00:00:00.000Z}, "where": {"id": "connection-existing"}}
+
+    Number of calls: 0
+
+      291 |       const response = await GET(request);
+      292 |
+    > 293 |       expect(prismaMock.calendarConnection.update).toHaveBeenCalledWith({
+          |                                                    ^
+      294 |         where: { id: 'connection-existing' },
+      295 |         data: {
+      296 |           accessToken: 'encrypted:access-token-123',
+
+      at Object.toHaveBeenCalledWith (__tests__/integration/api/calendar/google/callback/route.test.ts:293:52)
+
+  ● /api/calendar/google/callback › GET › should handle token exchange errors
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "error=token_exchange_failed"
+    Received string:    "http://localhost:3001/dashboard/settings/calendars?error=member_not_found"
+
+      329 |       expect(response.status).toBe(302);
+      330 |       expect(response.headers.get('location')).toContain('/dashboard/settings/calendars');
+    > 331 |       expect(response.headers.get('location')).toContain('error=token_exchange_failed');
+          |                                                ^
+      332 |     });
+      333 |
+      334 |     it('should handle missing refresh token error', async () => {
+
+      at Object.toContain (__tests__/integration/api/calendar/google/callback/route.test.ts:331:48)
+
+  ● /api/calendar/google/callback › GET › should handle missing refresh token error
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "error=token_exchange_failed"
+    Received string:    "http://localhost:3001/dashboard/settings/calendars?error=member_not_found"
+
+      351 |
+      352 |       expect(response.status).toBe(302);
+    > 353 |       expect(response.headers.get('location')).toContain('error=token_exchange_failed');
+          |                                                ^
+      354 |     });
+      355 |
+      356 |     it('should get user email after token exchange', async () => {
+
+      at Object.toContain (__tests__/integration/api/calendar/google/callback/route.test.ts:353:48)
+
+  ● /api/calendar/google/callback › GET › should get user email after token exchange
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+      383 |       const response = await GET(request);
+      384 |
+    > 385 |       expect(mockGetUserEmail).toHaveBeenCalled();
+          |                                ^
+      386 |       expect(response.status).toBe(302);
+      387 |     });
+      388 |
+
+      at Object.toHaveBeenCalled (__tests__/integration/api/calendar/google/callback/route.test.ts:385:32)
+
+  ● /api/calendar/google/callback › GET › should allow child users to connect calendar
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "success=true"
+    Received string:    "http://localhost:3001/dashboard/settings/calendars?error=member_not_found"
+
+      409 |
+      410 |       expect(response.status).toBe(302);
+    > 411 |       expect(response.headers.get('location')).toContain('success=true');
+          |                                                ^
+      412 |     });
+      413 |
+      414 |     it('should clear state cookie after successful connection', async () => {
+
+      at Object.toContain (__tests__/integration/api/calendar/google/callback/route.test.ts:411:48)
+
+  ● /api/calendar/google/callback › GET › should clear state cookie after successful connection
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "google_oauth_state", "", ObjectContaining {"maxAge": 0}
+
+    Number of calls: 0
+
+      441 |
+      442 |       // Verify the response clears the cookie (mock environment may not set actual header)
+    > 443 |       expect(response.cookies.set).toHaveBeenCalledWith(
+          |                                    ^
+      444 |         'google_oauth_state',
+      445 |         '',
+      446 |         expect.objectContaining({
+
+      at Object.toHaveBeenCalledWith (__tests__/integration/api/calendar/google/callback/route.test.ts:443:36)
+
+  ● /api/calendar/google/callback › GET › should set nextSyncAt to current time for immediate first sync
+
+    TypeError: Cannot read properties of undefined (reading '0')
+
+      482 |
+      483 |       // Second create call is the final connection (first is temp)
+    > 484 |       const createCall = prismaMock.calendarConnection.create.mock.calls[1][0];
+          |                                                                            ^
+      485 |       const nextSyncAt = createCall.data.nextSyncAt;
+      486 |
+      487 |       expect(nextSyncAt.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime() - 1000);
+
+      at Object.<anonymous> (__tests__/integration/api/calendar/google/callback/route.test.ts:484:76)
+
+FAIL __tests__/integration/api/screentime/stats/route.test.ts
+  ● /api/screentime/stats › GET › should return stats for child (own data)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      83 |       const data = await response.json()
+      84 |
+    > 85 |       expect(response.status).toBe(200)
+         |                               ^
+      86 |       expect(data.summary.totalMinutes).toBe(65) // 30 + 20 + 15
+      87 |       expect(data.summary.totalHours).toBe(1) // Math.floor(65/60)
+      88 |       expect(data.summary.currentBalance).toBe(60)
+
+      at Object.toBe (__tests__/integration/api/screentime/stats/route.test.ts:85:31)
+
+  ● /api/screentime/stats › GET › should return stats for parent viewing child
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      127 |       const data = await response.json()
+      128 |
+    > 129 |       expect(response.status).toBe(200)
+          |                               ^
+      130 |       expect(data.summary.totalMinutes).toBe(65)
+      131 |
+      132 |       expect(prismaMock.familyMember.findUnique).toHaveBeenCalledWith({
+
+      at Object.toBe (__tests__/integration/api/screentime/stats/route.test.ts:129:31)
+
+  ● /api/screentime/stats › GET › should filter by month period
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      191 |       const data = await response.json()
+      192 |
+    > 193 |       expect(response.status).toBe(200)
+          |                               ^
+      194 |       expect(data.period).toBe('month')
+      195 |
+      196 |       // Verify date range is for month (30 days)
+
+      at Object.toBe (__tests__/integration/api/screentime/stats/route.test.ts:193:31)
+
+  ● /api/screentime/stats › GET › should filter by all time period
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      213 |       const data = await response.json()
+      214 |
+    > 215 |       expect(response.status).toBe(200)
+          |                               ^
+      216 |       expect(data.period).toBe('all')
+      217 |
+      218 |       // Verify date range is from epoch (all time)
+
+      at Object.toBe (__tests__/integration/api/screentime/stats/route.test.ts:215:31)
+
+FAIL __tests__/integration/api/projects/route.test.ts
+  ● GET /api/projects › Project Listing › should return all projects for the family
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+       97 |       const response = await GET(request);
+       98 |
+    >  99 |       expect(response.status).toBe(200);
+          |                               ^
+      100 |       const data = await response.json();
+      101 |       expect(data.projects).toHaveLength(2);
+      102 |       expect(data.projects[0].name).toBe('Birthday Party');
+
+      at Object.toBe (__tests__/integration/api/projects/route.test.ts:99:31)
+
+  ● GET /api/projects › Project Listing › should filter projects by status
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      143 |       const response = await GET(request);
+      144 |
+    > 145 |       expect(response.status).toBe(200);
+          |                               ^
+      146 |       expect(prismaMock.project.findMany).toHaveBeenCalledWith({
+      147 |         where: {
+      148 |           familyId: 'family-test-123',
+
+      at Object.toBe (__tests__/integration/api/projects/route.test.ts:145:31)
+
+  ● GET /api/projects › Project Listing › should return empty array when no projects exist
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      173 |       const response = await GET(request);
+      174 |
+    > 175 |       expect(response.status).toBe(200);
+          |                               ^
+      176 |       const data = await response.json();
+      177 |       expect(data.projects).toEqual([]);
+      178 |     });
+
+      at Object.toBe (__tests__/integration/api/projects/route.test.ts:175:31)
+
+  ● GET /api/projects › Project Listing › should only return projects for the user family
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"familyId": "family-test-123"}}
+
+    Number of calls: 0
+
+      185 |       await GET(request);
+      186 |
+    > 187 |       expect(prismaMock.project.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      188 |         expect.objectContaining({
+      189 |           where: expect.objectContaining({
+      190 |             familyId: 'family-test-123',
+
+      at Object.toHaveBeenCalledWith (__tests__/integration/api/projects/route.test.ts:187:43)
+
+FAIL __tests__/integration/api/screentime/types/[id]/route.test.ts
+  ● /api/screentime/types/[id] › PATCH › should update type name
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+      159 |       const data = await response.json();
+      160 |
+    > 161 |       expect(response.status).toBe(200);
+          |                               ^
+      162 |       expect(data.type.name).toBe('Updated Name');
+      163 |       expect(prismaMock.screenTimeType.update).toHaveBeenCalledWith({
+      164 |         where: { id: 'type-1' },
+
+      at Object.toBe (__tests__/integration/api/screentime/types/[id]/route.test.ts:161:31)
+
+FAIL __tests__/integration/api/screentime/family/route.test.ts
+  ● /api/screentime/family › GET › should return family screen time overview for parent
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      116 |       const data = await response.json()
+      117 |
+    > 118 |       expect(response.status).toBe(200)
+          |                               ^
+      119 |       expect(data.members).toHaveLength(2)
+      120 |       expect(data.members[0]).toEqual({
+      121 |         id: 'child-1',
+
+      at Object.toBe (__tests__/integration/api/screentime/family/route.test.ts:118:31)
+
+  ● /api/screentime/family › GET › should handle members without balance or settings
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      175 |       const data = await response.json()
+      176 |
+    > 177 |       expect(response.status).toBe(200)
+          |                               ^
+      178 |       expect(data.members[0]).toEqual({
+      179 |         id: 'child-1',
+      180 |         name: 'Child One',
+
+      at Object.toBe (__tests__/integration/api/screentime/family/route.test.ts:177:31)
+
+FAIL __tests__/integration/api/chores/route.test.ts
+  ● /api/chores › GET › should return chores for authenticated parent
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      74 |       const data = await response.json()
+      75 |
+    > 76 |       expect(response.status).toBe(200)
+         |                               ^
+      77 |       expect(data.chores).toEqual(mockChores)
+      78 |       expect(prismaMock.choreDefinition.findMany).toHaveBeenCalledWith({
+      79 |         where: { familyId: session.user.familyId },
+
+      at Object.toBe (__tests__/integration/api/chores/route.test.ts:76:31)
+
+FAIL __tests__/integration/api/family/sick-mode/settings/route.test.ts
+  ● /api/family/sick-mode/settings › GET › should return settings for family
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      72 |       const response = await GET(request);
+      73 |
+    > 74 |       expect(response.status).toBe(200);
+         |                               ^
+      75 |       const data = await response.json();
+      76 |       expect(data.settings.pauseChores).toBe(true);
+      77 |       expect(data.settings.screenTimeBonus).toBe(120);
+
+      at Object.toBe (__tests__/integration/api/family/sick-mode/settings/route.test.ts:74:31)
+
+  ● /api/family/sick-mode/settings › GET › should create default settings if none exist
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      92 |       const response = await GET(request);
+      93 |
+    > 94 |       expect(response.status).toBe(200);
+         |                               ^
+      95 |       const data = await response.json();
+      96 |       expect(data.settings).toBeDefined();
+      97 |
+
+      at Object.toBe (__tests__/integration/api/family/sick-mode/settings/route.test.ts:94:31)
+
+  ● /api/family/sick-mode/settings › GET › should allow children to view settings
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      112 |       const response = await GET(request);
+      113 |
+    > 114 |       expect(response.status).toBe(200);
+          |                               ^
+      115 |       const data = await response.json();
+      116 |       expect(data.settings).toBeDefined();
+      117 |     });
+
+      at Object.toBe (__tests__/integration/api/family/sick-mode/settings/route.test.ts:114:31)
+
+  ● /api/family/sick-mode/settings › PUT › should allow parents to update settings
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      167 |       const response = await PUT(request);
+      168 |
+    > 169 |       expect(response.status).toBe(200);
+          |                               ^
+      170 |       const data = await response.json();
+      171 |       expect(data.settings.pauseChores).toBe(false);
+      172 |       expect(data.settings.screenTimeBonus).toBe(60);
+
+      at Object.toBe (__tests__/integration/api/family/sick-mode/settings/route.test.ts:169:31)
+
+  ● /api/family/sick-mode/settings › PUT › should create settings if none exist during update
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      197 |       const response = await PUT(request);
+      198 |
+    > 199 |       expect(response.status).toBe(200);
+          |                               ^
+      200 |       expect(prismaMock.sickModeSettings.create).toHaveBeenCalledWith({
+      201 |         data: {
+      202 |           familyId: 'family-test-123',
+
+      at Object.toBe (__tests__/integration/api/family/sick-mode/settings/route.test.ts:199:31)
+
+  ● /api/family/sick-mode/settings › PUT › should log audit event on successful update
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      254 |       const response = await PUT(request);
+      255 |
+    > 256 |       expect(response.status).toBe(200);
+          |                               ^
+      257 |       expect(prismaMock.auditLog.create).toHaveBeenCalledWith({
+      258 |         data: {
+      259 |           familyId: 'family-test-123',
+
+      at Object.toBe (__tests__/integration/api/family/sick-mode/settings/route.test.ts:256:31)
+
+FAIL __tests__/integration/api/rewards/route.test.ts
+  ● /api/rewards › GET › should return active rewards for authenticated user
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      71 |       const data = await response.json()
+      72 |
+    > 73 |       expect(response.status).toBe(200)
+         |                               ^
+      74 |       expect(data.rewards).toEqual(mockRewards)
+      75 |
+      76 |       expect(prismaMock.rewardItem.findMany).toHaveBeenCalledWith({
+
+      at Object.toBe (__tests__/integration/api/rewards/route.test.ts:73:31)
+
+FAIL __tests__/integration/api/calendar/connections/route.test.ts
+  ● /api/calendar/connections › GET › should return empty array if user has no connections
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      68 |       const response = await GET(request);
+      69 |
+    > 70 |       expect(response.status).toBe(200);
+         |                               ^
+      71 |       const json = await response.json();
+      72 |       expect(json.connections).toEqual([]);
+      73 |     });
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/route.test.ts:70:31)
+
+  ● /api/calendar/connections › GET › should return user calendar connections
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      105 |       const response = await GET(request);
+      106 |
+    > 107 |       expect(response.status).toBe(200);
+          |                               ^
+      108 |       const json = await response.json();
+      109 |       expect(json.connections).toHaveLength(1);
+      110 |       expect(json.connections[0]).toMatchObject({
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/route.test.ts:107:31)
+
+  ● /api/calendar/connections › GET › should not expose sensitive token fields
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      145 |       const response = await GET(request);
+      146 |
+    > 147 |       expect(response.status).toBe(200);
+          |                               ^
+      148 |       const json = await response.json();
+      149 |       expect(json.connections[0].accessToken).toBeUndefined();
+      150 |       expect(json.connections[0].refreshToken).toBeUndefined();
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/route.test.ts:147:31)
+
+  ● /api/calendar/connections › GET › should return connections for child users
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      176 |       const response = await GET(request);
+      177 |
+    > 178 |       expect(response.status).toBe(200);
+          |                               ^
+      179 |       const json = await response.json();
+      180 |       expect(json.connections).toHaveLength(1);
+      181 |       expect(json.connections[0].googleEmail).toBe('child@example.com');
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/route.test.ts:178:31)
+
+  ● /api/calendar/connections › GET › should include sync error messages when present
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      219 |       const response = await GET(request);
+      220 |
+    > 221 |       expect(response.status).toBe(200);
+          |                               ^
+      222 |       const json = await response.json();
+      223 |       expect(json.connections[0].syncStatus).toBe('ERROR');
+      224 |       expect(json.connections[0].syncError).toBe('Token refresh failed: Invalid credentials');
+
+      at Object.toBe (__tests__/integration/api/calendar/connections/route.test.ts:221:31)
+
+  ● /api/calendar/connections › GET › should filter connections to only the current user
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: {"orderBy": {"createdAt": "desc"}, "select": ObjectContaining {"accessToken": false, "googleEmail": true, "id": true, "provider": true, "refreshToken": false, "syncStatus": true}, "where": {"memberId": "parent-test-123"}}
+
+    Number of calls: 0
+
+      240 |       await GET(request);
+      241 |
+    > 242 |       expect(prismaMock.calendarConnection.findMany).toHaveBeenCalledWith({
+          |                                                      ^
+      243 |         where: {
+      244 |           memberId: session.user.id,
+      245 |         },
+
+      at Object.toHaveBeenCalledWith (__tests__/integration/api/calendar/connections/route.test.ts:242:54)
+
+PASS __tests__/unit/lib/token-encryption.test.ts
+PASS __tests__/integration/middleware.test.ts
+PASS __tests__/components/routines/RoutineExecutionView.test.tsx
+PASS __tests__/components/communication/PostComposer.test.tsx
+PASS __tests__/unit/lib/integrations/google-calendar.test.ts
+PASS __tests__/unit/lib/rules-engine/actions.test.ts
+PASS __tests__/hooks/useKioskSession.test.ts
+PASS __tests__/components/recipes/NewRecipeForm.test.tsx
+PASS __tests__/unit/lib/rate-limit.test.ts
+PASS __tests__/components/auth/ChildPinLogin.test.tsx
+PASS __tests__/unit/lib/rules-engine/triggers.test.ts
+PASS __tests__/hooks/useDashboardWidgets.test.ts
+PASS __tests__/components/communication/CommunicationFeed.test.tsx
+PASS __tests__/components/rules/CreateRuleForm.test.tsx
+PASS __tests__/components/rules/RulesList.test.tsx
+PASS __tests__/unit/lib/kiosk-session.test.ts
+PASS __tests__/components/approvals/ApprovalCard.test.tsx
+PASS __tests__/components/allowance/AllowanceManage.test.tsx
+PASS __tests__/components/dashboard/Sidebar.test.tsx
+PASS __tests__/components/routines/RoutineBuilder.test.tsx
+PASS __tests__/components/ui/Modal.test.tsx
+PASS __tests__/components/financial/FinancialDashboard.test.tsx
+PASS __tests__/components/rules/TemplateBrowser.test.tsx
+PASS __tests__/integration/api/communication/route.test.ts
+PASS __tests__/components/notifications/NotificationBell.test.tsx
+PASS __tests__/components/dashboard/DashboardCustomizer.test.tsx
+PASS __tests__/components/rules/ExecutionHistory.test.tsx
+PASS __tests__/integration/api/transport/schedules/route.test.ts
+PASS __tests__/integration/api/screentime/log.test.ts
+PASS __tests__/integration/api/communication/[id]/react/route.test.ts
+PASS __tests__/integration/api/rules/[id]/toggle/route.test.ts
+PASS __tests__/integration/api/rules/[id]/route.test.ts
+PASS __tests__/components/screentime/GraceRequestButton.test.tsx
+PASS __tests__/integration/api/onboarding.test.ts
+  ● Console
+
+    console.log
+      📧 SMTP not configured. Welcome email would have been sent:
+
+      at log (lib/welcome-email.ts:173:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:174:13)
+
+    console.log
+      To: john@example.com
+
+      at log (lib/welcome-email.ts:175:13)
+
+    console.log
+      Subject: Welcome to Hearth, Test Family!
+
+      at log (lib/welcome-email.ts:176:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:177:13)
+
+    console.log
+      Welcome to Hearth, John Doe!
+      
+      Your family's household management system "Test Family" is now ready to use.
+      
+      
+      
+      
+      
+      NEXT STEPS:
+      1. Explore your dashboard and familiarize yourself with the interface
+      2. Add family members (children, other parents) in Settings
+      3. Customize your family's preferences and timezone
+      4. Start creating chores, events, and other content
+      5. Enable additional modules as needed in Settings → Modules
+      
+      Visit your dashboard: http://localhost:3000/dashboard
+      
+      Happy organizing!
+      The Hearth Team
+
+      at log (lib/welcome-email.ts:178:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:179:13)
+
+    console.log
+      📧 SMTP not configured. Welcome email would have been sent:
+
+      at log (lib/welcome-email.ts:173:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:174:13)
+
+    console.log
+      To: john@example.com
+
+      at log (lib/welcome-email.ts:175:13)
+
+    console.log
+      Subject: Welcome to Hearth, Test Family!
+
+      at log (lib/welcome-email.ts:176:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:177:13)
+
+    console.log
+      Welcome to Hearth, John Doe!
+      
+      Your family's household management system "Test Family" is now ready to use.
+      
+      
+      
+      
+      
+      NEXT STEPS:
+      1. Explore your dashboard and familiarize yourself with the interface
+      2. Add family members (children, other parents) in Settings
+      3. Customize your family's preferences and timezone
+      4. Start creating chores, events, and other content
+      5. Enable additional modules as needed in Settings → Modules
+      
+      Visit your dashboard: http://localhost:3000/dashboard
+      
+      Happy organizing!
+      The Hearth Team
+
+      at log (lib/welcome-email.ts:178:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:179:13)
+
+    console.log
+      📧 SMTP not configured. Welcome email would have been sent:
+
+      at log (lib/welcome-email.ts:173:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:174:13)
+
+    console.log
+      To: john@example.com
+
+      at log (lib/welcome-email.ts:175:13)
+
+    console.log
+      Subject: Welcome to Hearth, Test Family!
+
+      at log (lib/welcome-email.ts:176:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:177:13)
+
+    console.log
+      Welcome to Hearth, John Doe!
+      
+      Your family's household management system "Test Family" is now ready to use.
+      
+      
+      ENABLED MODULES:
+      - Chores & Tasks
+      - Screen Time Management
+      - Credits & Rewards
+      
+      
+      
+      
+      NEXT STEPS:
+      1. Explore your dashboard and familiarize yourself with the interface
+      2. Add family members (children, other parents) in Settings
+      3. Customize your family's preferences and timezone
+      4. Start creating chores, events, and other content
+      5. Enable additional modules as needed in Settings → Modules
+      
+      Visit your dashboard: http://localhost:3000/dashboard
+      
+      Happy organizing!
+      The Hearth Team
+
+      at log (lib/welcome-email.ts:178:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:179:13)
+
+    console.log
+      📧 SMTP not configured. Welcome email would have been sent:
+
+      at log (lib/welcome-email.ts:173:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:174:13)
+
+    console.log
+      To: john@example.com
+
+      at log (lib/welcome-email.ts:175:13)
+
+    console.log
+      Subject: Welcome to Hearth, Test Family!
+
+      at log (lib/welcome-email.ts:176:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:177:13)
+
+    console.log
+      Welcome to Hearth, John Doe!
+      
+      Your family's household management system "Test Family" is now ready to use.
+      
+      
+      ENABLED MODULES:
+      - Chores & Tasks
+      - To-Do Lists
+      
+      
+      
+      
+      NEXT STEPS:
+      1. Explore your dashboard and familiarize yourself with the interface
+      2. Add family members (children, other parents) in Settings
+      3. Customize your family's preferences and timezone
+      4. Start creating chores, events, and other content
+      5. Enable additional modules as needed in Settings → Modules
+      
+      Visit your dashboard: http://localhost:3000/dashboard
+      
+      Happy organizing!
+      The Hearth Team
+
+      at log (lib/welcome-email.ts:178:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:179:13)
+
+    console.log
+      📧 SMTP not configured. Welcome email would have been sent:
+
+      at log (lib/welcome-email.ts:173:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:174:13)
+
+    console.log
+      To: john@example.com
+
+      at log (lib/welcome-email.ts:175:13)
+
+    console.log
+      Subject: Welcome to Hearth, Test Family!
+
+      at log (lib/welcome-email.ts:176:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:177:13)
+
+    console.log
+      Welcome to Hearth, John Doe!
+      
+      Your family's household management system "Test Family" is now ready to use.
+      
+      
+      
+      
+      
+      NEXT STEPS:
+      1. Explore your dashboard and familiarize yourself with the interface
+      2. Add family members (children, other parents) in Settings
+      3. Customize your family's preferences and timezone
+      4. Start creating chores, events, and other content
+      5. Enable additional modules as needed in Settings → Modules
+      
+      Visit your dashboard: http://localhost:3000/dashboard
+      
+      Happy organizing!
+      The Hearth Team
+
+      at log (lib/welcome-email.ts:178:13)
+
+    console.log
+      ---------------------------------------------------
+
+      at log (lib/welcome-email.ts:179:13)
+
+PASS __tests__/components/screentime/GraceRequest.test.tsx
+PASS __tests__/components/dashboard/DashboardNav.test.tsx
+PASS __tests__/components/dashboard/TopBar.test.tsx
+PASS __tests__/integration/api/dashboard/layout.test.ts
+PASS __tests__/integration/api/projects/tasks/[taskId]/route.test.ts
+PASS __tests__/integration/api/approvals/bulk-actions.test.ts
+PASS __tests__/components/kiosk/KioskLayout.test.tsx
+  ● Console
+
+    console.error
+      Error: Not implemented: navigation (except hash changes)
+          at module.exports (/Users/cblanchard/Repos/Hearth/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+          at navigateFetch (/Users/cblanchard/Repos/Hearth/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+          at exports.navigate (/Users/cblanchard/Repos/Hearth/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+          at LocationImpl._locationObjectNavigate (/Users/cblanchard/Repos/Hearth/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:30:5)
+          at LocationImpl._locationObjectSetterNavigate (/Users/cblanchard/Repos/Hearth/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:24:17)
+          at LocationImpl.set href [as href] (/Users/cblanchard/Repos/Hearth/node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:46:10)
+          at Location.set href [as href] (/Users/cblanchard/Repos/Hearth/node_modules/jsdom/lib/jsdom/living/generated/Location.js:125:37)
+          at handleEndSession (/Users/cblanchard/Repos/Hearth/components/kiosk/KioskLayout.tsx:66:27) {
+        type: 'not implemented'
+      }
+
+      64 |       await endSession();
+      65 |       // Redirect to home or kiosk setup page
+    > 66 |       window.location.href = '/dashboard';
+         |                           ^
+      67 |     } catch (error) {
+      68 |       console.error('Failed to end session:', error);
+      69 |       alert(error instanceof Error ? error.message : 'Failed to end kiosk session');
+
+      at VirtualConsole.<anonymous> (node_modules/@jest/environment-jsdom-abstract/build/index.js:87:23)
+      at module.exports (node_modules/jsdom/lib/jsdom/browser/not-implemented.js:12:26)
+      at navigateFetch (node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+      at exports.navigate (node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+      at LocationImpl._locationObjectNavigate (node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:30:5)
+      at LocationImpl._locationObjectSetterNavigate (node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:24:17)
+      at LocationImpl.set href [as href] (node_modules/jsdom/lib/jsdom/living/window/Location-impl.js:46:10)
+      at Location.set href [as href] (node_modules/jsdom/lib/jsdom/living/generated/Location.js:125:37)
+      at handleEndSession (components/kiosk/KioskLayout.tsx:66:27)
+
+PASS __tests__/integration/api/notifications/subscribe/route.test.ts
+PASS __tests__/integration/api/health/temperature/route.test.ts
+PASS __tests__/components/dashboard/widgets/MealsWidget.test.tsx
+PASS __tests__/integration/api/dashboard/route.test.ts
+PASS __tests__/integration/api/cron/distribute-allowances/route.test.ts
+PASS __tests__/integration/api/chores/[id]/complete.test.ts
+PASS __tests__/unit/lib/screentime-grace.test.ts
+PASS __tests__/components/dashboard/widgets/InventoryWidget.test.tsx
+PASS __tests__/components/dashboard/widgets/TransportWidget.test.tsx
+PASS __tests__/integration/api/meals/plan/route.test.ts
+PASS __tests__/unit/lib/rules-engine/validation.test.ts
+PASS __tests__/integration/api/todos/route.test.ts
+PASS __tests__/unit/lib/allowance-scheduler.test.ts
+PASS __tests__/integration/api/routines/[id]/route.test.ts
+PASS __tests__/components/dashboard/widgets/WeatherWidget.test.tsx
+PASS __tests__/unit/lib/budget-tracker.test.ts
+PASS __tests__/integration/sick-mode/notifications.test.ts
+PASS __tests__/integration/api/rules/route.test.ts
+PASS __tests__/integration/api/todos/[id]/route.test.ts
+PASS __tests__/components/SessionProvider.test.tsx
+PASS __tests__/integration/api/projects/templates/route.test.ts
+PASS __tests__/hooks/useActivityDetection.test.ts
+PASS __tests__/integration/api/notifications/preferences/route.test.ts
+PASS __tests__/components/dashboard/widgets/MedicationWidget.test.tsx
+PASS __tests__/components/dashboard/widgets/MaintenanceWidget.test.tsx
+PASS __tests__/unit/lib/financial-analytics.test.ts
+PASS __tests__/integration/api/screentime/grace/request.test.ts
+PASS __tests__/integration/api/inventory/[id]/route.test.ts
+PASS __tests__/hooks/useKioskAutoLock.test.ts
+PASS __tests__/integration/api/medications/dose/route.test.ts
+PASS __tests__/unit/lib/input-validation.test.ts
+PASS __tests__/integration/api/pets/[id]/feed/route.test.ts
+PASS __tests__/integration/api/health/profile/[memberId]/route.test.ts
+PASS __tests__/integration/api/rewards/[id]/redeem.test.ts
+PASS __tests__/integration/api/meals/recipes/[id]/route.test.ts
+PASS __tests__/integration/api/medications/route.test.ts
+PASS __tests__/integration/api/projects/[id]/route.test.ts

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Re-authenticate Your Hearth Account</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #FAFAFA;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #FAFAFA;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 40px 20px; text-align: center; border-bottom: 1px solid #CFD8DC;">
+              <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #E65100;">Hearth</h1>
+              <p style="margin: 8px 0 0; font-size: 14px; color: #4A6572;">Your Family's Digital Command Center</p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px; font-size: 24px; font-weight: 600; color: #263238;">Re-authentication Required</h2>
+              
+              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #263238;">
+                For your security, we need to verify your identity before you can perform a sensitive action on your Hearth account.
+              </p>
+              
+              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #263238;">
+                Enter the code below to re-authenticate and continue:
+              </p>
+              
+              <!-- Token Display -->
+              <table role="presentation" style="width: 100%; margin: 0 0 30px;">
+                <tr>
+                  <td style="text-align: center;">
+                    <div style="display: inline-block; padding: 20px 40px; background-color: #F5F5F5; border: 2px solid #E65100; border-radius: 8px; font-size: 32px; font-weight: 700; color: #E65100; letter-spacing: 4px; font-family: 'Courier New', monospace;">
+                      {{ .Token }}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+              
+              <div style="padding: 20px; background-color: #E3F2FD; border-left: 4px solid #1565C0; border-radius: 4px; margin: 0 0 30px;">
+                <p style="margin: 0 0 10px; font-size: 14px; font-weight: 600; color: #263238;">Why is this required?</p>
+                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #263238;">
+                  We require re-authentication for sensitive actions like changing your password, updating payment information, or modifying critical account settings. This helps protect your account from unauthorized access.
+                </p>
+              </div>
+              
+              <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #4A6572;">
+                This code will expire in 15 minutes. If you didn't initiate this action, please contact our support team immediately.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 30px 40px; background-color: #F5F5F5; border-top: 1px solid #CFD8DC; border-radius: 0 0 8px 8px;">
+              <p style="margin: 0 0 10px; font-size: 12px; color: #78909C; text-align: center;">
+                © 2026 Hearth. All rights reserved.
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #78909C; text-align: center;">
+                Questions? Reply to this email or visit our support center.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -59,7 +59,18 @@ next-env.d.ts
 /backups
 *.sql
 !prisma/migrations/**/*.sql
+!supabase/migrations/**/*.sql
 *.sql.gz
 
 # Uploads
 /uploads
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+tests/e2e/.auth/
+
+# Claude IDE settings
+.claude/

@@ -1,0 +1,1365 @@
+/**
+ * Unit Tests: Rules Engine Action Executors
+ *
+ * Tests for all 8 action type executors
+ * Total: 64 tests (8 per action type)
+ */
+
+import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock';
+
+import {
+  executeAwardCredits,
+  executeSendNotification,
+  executeAddShoppingItem,
+  executeCreateTodo,
+  executeLockMedication,
+  executeSuggestMeal,
+  executeReduceChores,
+  executeAdjustScreenTime,
+} from '@/lib/rules-engine/actions';
+import type { RuleContext } from '@/lib/rules-engine/types';
+
+describe('Rules Engine Action Executors', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resetDbMock();
+  });
+
+  // ============================================
+  // AWARD CREDITS ACTION (8 tests)
+  // ============================================
+
+  describe('Award Credits Action', () => {
+    it('should award credits to specified member', async () => {
+      const config = { amount: 10, memberId: 'member-1', reason: 'Good job!' };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const mockExistingBalance = {
+        id: 'balance-1',
+        memberId: 'member-1',
+        currentBalance: 50,
+        lifetimeEarned: 100,
+        lifetimeSpent: 50,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      dbMock.creditBalance.findUnique.mockResolvedValue(mockExistingBalance as any);
+      dbMock.creditBalance.update.mockResolvedValue({} as any);
+      dbMock.creditTransaction.create.mockResolvedValue({} as any);
+
+      const result = await executeAwardCredits(config, context);
+
+      expect(dbMock.creditBalance.findUnique).toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(dbMock.creditBalance.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { memberId: 'member-1' },
+        data: expect.objectContaining({
+          currentBalance: 60,
+          lifetimeEarned: 110,
+        }),
+      }));
+    });
+
+    it('should award credits to context member if not specified', async () => {
+      const config = { amount: 15, reason: 'Bonus!' };
+      const context: RuleContext = {
+        familyId: 'family-1',
+        memberId: 'member-2',
+      };
+
+      const mockExistingBalance = {
+        id: 'balance-2',
+        memberId: 'member-2',
+        currentBalance: 25,
+        lifetimeEarned: 75,
+        lifetimeSpent: 50,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      dbMock.creditBalance.findUnique.mockResolvedValue(mockExistingBalance as any);
+      dbMock.creditBalance.update.mockResolvedValue({} as any);
+      dbMock.creditTransaction.create.mockResolvedValue({} as any);
+
+      const result = await executeAwardCredits(config, context);
+
+      expect(result.success).toBe(true);
+      expect(dbMock.creditBalance.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { memberId: 'member-2' },
+        data: expect.objectContaining({
+          currentBalance: 40,
+          lifetimeEarned: 90,
+        }),
+      }));
+    });
+
+    it('should create balance if it does not exist', async () => {
+      const config = { amount: 20, memberId: 'member-3' };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.creditBalance.findUnique.mockResolvedValue(null);
+      dbMock.creditBalance.create.mockResolvedValue({} as any);
+      dbMock.creditTransaction.create.mockResolvedValue({} as any);
+
+      const result = await executeAwardCredits(config, context);
+
+      expect(result.success).toBe(true);
+      expect(dbMock.creditBalance.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          memberId: 'member-3',
+          currentBalance: 20,
+          lifetimeEarned: 20,
+        }),
+      }));
+    });
+
+    it('should enforce maximum credit limit', async () => {
+      const config = { amount: 1500, memberId: 'member-1' }; // Over 1000 limit
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeAwardCredits(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Credit amount must be between 1 and 1000');
+    });
+
+    it('should reject negative amounts', async () => {
+      const config = { amount: -10, memberId: 'member-1' };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeAwardCredits(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Credit amount must be between 1 and 1000');
+    });
+
+    it('should handle database errors gracefully', async () => {
+      const config = { amount: 10, memberId: 'member-1' };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      // Mock DB error
+      dbMock.creditBalance.findUnique.mockRejectedValue(new Error('Database error'));
+      dbMock.creditBalance.create.mockRejectedValue(new Error('Database error'));
+      dbMock.creditBalance.update.mockRejectedValue(new Error('Database error'));
+
+      const result = await executeAwardCredits(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+
+    it('should use default reason if not provided', async () => {
+      const config = { amount: 10, memberId: 'member-1' };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const mockExistingBalance = {
+        id: 'balance-1',
+        memberId: 'member-1',
+        currentBalance: 50,
+        lifetimeEarned: 100,
+        lifetimeSpent: 50,
+      };
+
+      dbMock.creditBalance.findFirst.mockResolvedValue(mockExistingBalance as any);
+      dbMock.creditBalance.updateMany.mockResolvedValue({ count: 1 } as any);
+      dbMock.creditTransaction.create.mockResolvedValue({} as any);
+
+      const result = await executeAwardCredits(config, context);
+
+      expect(result.success).toBe(true);
+      expect(dbMock.creditTransaction.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          reason: 'Automation rule bonus',
+        }),
+      }));
+    });
+
+    it('should fail if no member ID available', async () => {
+      const config = { amount: 10 }; // No memberId
+      const context: RuleContext = {
+        familyId: 'family-1',
+        // No memberId in context either
+      };
+
+      const result = await executeAwardCredits(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No member ID specified for credit award');
+    });
+  });
+
+  // ============================================
+  // SEND NOTIFICATION ACTION (8 tests)
+  // ============================================
+
+  describe('Send Notification Action', () => {
+    it('should send notification to specified recipients', async () => {
+      const config = {
+        recipients: ['member-1', 'member-2'],
+        title: 'Alert',
+        message: 'Important message',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.notification.createMany.mockResolvedValue({ count: 2 });
+
+      const result = await executeSendNotification(config, context);
+
+      expect(result.success).toBe(true);
+      expect(dbMock.notification.createMany).toHaveBeenCalled();
+    });
+
+    it('should include action URL if provided', async () => {
+      const config = {
+        recipients: ['member-1'],
+        title: 'Check this',
+        message: 'New update',
+        actionUrl: '/dashboard/updates',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.notification.createMany.mockResolvedValue({ count: 1 });
+
+      const result = await executeSendNotification(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should enforce maximum recipient limit', async () => {
+      const config = {
+        recipients: Array(15).fill('member'),
+        title: 'Test',
+        message: 'Test',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeSendNotification(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Maximum 10 notification recipients allowed');
+    });
+
+    it('should require title', async () => {
+      const config = {
+        recipients: ['member-1'],
+        message: 'Message without title',
+      } as any;
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeSendNotification(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Send notification action requires title');
+    });
+
+    it('should require message', async () => {
+      const config = {
+        recipients: ['member-1'],
+        title: 'Title without message',
+      } as any;
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeSendNotification(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Send notification action requires message');
+    });
+
+    it('should require at least one recipient', async () => {
+      const config = {
+        recipients: [],
+        title: 'Test',
+        message: 'Test',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeSendNotification(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Send notification action requires at least one recipient');
+    });
+
+    it('should handle database errors', async () => {
+      const config = {
+        recipients: ['member-1'],
+        title: 'Test',
+        message: 'Test',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.notification.createMany.mockRejectedValue(new Error('DB error'));
+
+      const result = await executeSendNotification(config, context);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should handle special recipient keywords', async () => {
+      const config = {
+        recipients: ['child', 'parent'],
+        title: 'Family Alert',
+        message: 'Important',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+        memberId: 'member-1',
+      };
+
+      // Mock finding family members by role
+      dbMock.familyMember.findMany.mockResolvedValue([
+        { id: 'child-1', role: 'CHILD' },
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      dbMock.notification.createMany.mockResolvedValue({ count: 2 });
+
+      const result = await executeSendNotification(config, context);
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // ============================================
+  // ADD SHOPPING ITEM ACTION (8 tests)
+  // ============================================
+
+  describe('Add Shopping Item Action', () => {
+    const mockShoppingList = {
+      id: 'list-1',
+      familyId: 'family-1',
+      name: 'Family Shopping List',
+      isActive: true,
+    };
+
+    const mockParent = {
+      id: 'parent-1',
+      familyId: 'family-1',
+      role: 'PARENT',
+    };
+
+    beforeEach(() => {
+      // Setup common mocks for shopping item tests
+      dbMock.shoppingList.findFirst.mockResolvedValue(mockShoppingList as any);
+      dbMock.familyMember.findFirst.mockResolvedValue(mockParent as any);
+    });
+    it('should add shopping item with all details', async () => {
+      const config = {
+        itemName: 'Milk',
+        quantity: 2,
+        category: 'FOOD_FRIDGE',
+        priority: 'NEEDED_SOON' as const,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const mockShoppingList = {
+        id: 'list-1',
+        familyId: 'family-1',
+        name: 'Family Shopping List',
+        isActive: true,
+      };
+
+      const mockParent = {
+        id: 'parent-1',
+        familyId: 'family-1',
+        role: 'PARENT',
+      };
+
+      dbMock.shoppingList.findFirst.mockResolvedValue(mockShoppingList as any);
+      dbMock.familyMember.findFirst.mockResolvedValue(mockParent as any);
+      dbMock.shoppingItem.create.mockResolvedValue({
+        id: 'item-1',
+        familyId: 'family-1',
+        itemName: 'Milk',
+        quantity: 2,
+        category: 'FOOD_FRIDGE',
+        priority: 'NEEDED_SOON',
+        isPurchased: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      const result = await executeAddShoppingItem(config, context);
+
+      expect(result.success).toBe(true);
+      expect(dbMock.shoppingItem.create).toHaveBeenCalled();
+    });
+
+    it('should use default quantity if not provided', async () => {
+      const config = {
+        itemName: 'Eggs',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.shoppingItem.create.mockResolvedValue({} as any);
+
+      const result = await executeAddShoppingItem(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should pull from inventory context if fromInventory is true', async () => {
+      const config = {
+        itemName: '', // Will be overwritten from inventory
+        fromInventory: true,
+        priority: 'NEEDED_SOON' as const,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+        inventoryItemId: 'inv-1',
+      };
+
+      dbMock.inventoryItem.findUnique.mockResolvedValue({
+        id: 'inv-1',
+        name: 'Paper Towels',
+      } as any);
+      dbMock.shoppingItem.create.mockResolvedValue({} as any);
+
+      const result = await executeAddShoppingItem(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should require itemName if not from inventory', async () => {
+      const config = {
+        quantity: 1,
+      } as any;
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeAddShoppingItem(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Shopping item requires a name');
+    });
+
+    it('should handle duplicate items gracefully', async () => {
+      const config = {
+        itemName: 'Bread',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.shoppingItem.create.mockRejectedValue(new Error('Unique constraint violation'));
+
+      const result = await executeAddShoppingItem(config, context);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should validate priority values', async () => {
+      const config = {
+        itemName: 'Test',
+        priority: 'NEEDED_SOON' as const,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.shoppingItem.create.mockResolvedValue({
+        id: 'item-1',
+        priority: 'NEEDED_SOON',
+      } as any);
+
+      const result = await executeAddShoppingItem(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle database errors', async () => {
+      const config = {
+        itemName: 'Test Item',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.shoppingItem.create.mockRejectedValue(new Error('DB error'));
+
+      const result = await executeAddShoppingItem(config, context);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should add note if provided in config', async () => {
+      const config = {
+        itemName: 'Special Item',
+        notes: 'Get the organic version',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.shoppingItem.create.mockResolvedValue({
+        id: 'item-1',
+        notes: 'Get the organic version',
+      } as any);
+
+      const result = await executeAddShoppingItem(config, context);
+
+      expect(result.success).toBe(true);
+      expect(dbMock.shoppingItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            note: 'Get the organic version',
+          }),
+        })
+      );
+    });
+  });
+
+  // ============================================
+  // CREATE TODO ACTION (8 tests)
+  // ============================================
+
+  describe('Create Todo Action', () => {
+    it('should create todo with all details', async () => {
+      const config = {
+        title: 'Buy groceries',
+        description: 'Get milk and eggs',
+        assignedToId: 'member-1',
+        dueDate: '2024-12-31',
+        priority: 'HIGH' as const,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.familyMember.findFirst.mockResolvedValue({ id: 'parent-1' } as any);
+      dbMock.todoItem.create.mockResolvedValue({
+        id: 'todo-1',
+        familyId: 'family-1',
+        title: 'Buy groceries',
+        description: 'Get milk and eggs',
+        assignedToId: 'member-1',
+        dueDate: new Date('2024-12-31'),
+        priority: 'HIGH',
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      const result = await executeCreateTodo(config, context);
+
+      expect(result.success).toBe(true);
+      expect(dbMock.todoItem.create).toHaveBeenCalled();
+    });
+
+    it('should use context memberId if not specified', async () => {
+      const config = {
+        title: 'Clean room',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+        memberId: 'member-2',
+      };
+
+      dbMock.familyMember.findFirst.mockResolvedValue({ id: 'parent-1' } as any);
+      dbMock.todoItem.create.mockResolvedValue({} as any);
+
+      const result = await executeCreateTodo(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should require title', async () => {
+      const config = {
+        description: 'No title',
+      } as any;
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeCreateTodo(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Create TODO action requires title');
+    });
+
+    it('should handle optional description', async () => {
+      const config = {
+        title: 'Simple todo',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.familyMember.findFirst.mockResolvedValue({ id: 'parent-1' } as any);
+      dbMock.todoItem.create.mockResolvedValue({} as any);
+
+      const result = await executeCreateTodo(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle optional dueDate', async () => {
+      const config = {
+        title: 'No deadline todo',
+        assignedToId: 'member-1',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.familyMember.findFirst.mockResolvedValue({ id: 'parent-1' } as any);
+      dbMock.todoItem.create.mockResolvedValue({} as any);
+
+      const result = await executeCreateTodo(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate priority values', async () => {
+      const config = {
+        title: 'Priority test',
+        priority: 'MEDIUM' as const,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.familyMember.findFirst.mockResolvedValue({ id: 'parent-1' } as any);
+      dbMock.todoItem.create.mockResolvedValue({} as any);
+
+      const result = await executeCreateTodo(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle database errors', async () => {
+      const config = {
+        title: 'Test',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.todoItem.create.mockRejectedValue(new Error('DB error'));
+
+      const result = await executeCreateTodo(config, context);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should parse date strings correctly', async () => {
+      const config = {
+        title: 'Date test',
+        dueDate: '2024-12-25T00:00:00.000Z',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.familyMember.findFirst.mockResolvedValue({ id: 'parent-1' } as any);
+      dbMock.todoItem.create.mockResolvedValue({} as any);
+
+      const result = await executeCreateTodo(config, context);
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // ============================================
+  // LOCK MEDICATION ACTION (8 tests)
+  // ============================================
+
+  describe('Lock Medication Action', () => {
+    it('should lock medication for specified hours', async () => {
+      const config = {
+        medicationId: 'med-1',
+        hours: 6,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const now = new Date();
+      const lockUntil = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
+      dbMock.medicationSafety.update.mockResolvedValue({
+        id: 'safety-1',
+        nextDoseAvailableAt: lockUntil,
+      } as any);
+
+      const result = await executeLockMedication(config, context);
+
+      expect(result.success).toBe(true);
+      expect(dbMock.medicationSafety.update).toHaveBeenCalled();
+    });
+
+    it('should use medication from context if not specified', async () => {
+      const config = {
+        medicationId: '', // Will be overwritten from context
+        hours: 4,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+        medicationId: 'med-from-context',
+      };
+
+      dbMock.medicationSafety.update.mockResolvedValue({} as any);
+
+      const result = await executeLockMedication(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should require medication ID', async () => {
+      const config = {
+        medicationId: undefined as any,
+        hours: 6,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeLockMedication(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No medication ID specified');
+    });
+
+    it('should require hours', async () => {
+      const config = {
+        medicationId: 'med-1',
+        hours: undefined as any,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeLockMedication(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Lock medication action requires hours');
+    });
+
+    it('should enforce maximum lock duration', async () => {
+      const config = {
+        medicationId: 'med-1',
+        hours: 48, // Over 24 hour limit
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeLockMedication(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Lock duration must be between 0 and 24 hours');
+    });
+
+    it('should reject negative hours', async () => {
+      const config = {
+        medicationId: 'med-1',
+        hours: -2,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeLockMedication(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Lock duration must be between 0 and 24 hours');
+    });
+
+    it('should handle database errors', async () => {
+      const config = {
+        medicationId: 'med-1',
+        hours: 6,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.medicationSafety.update.mockRejectedValue(new Error('DB error'));
+
+      const result = await executeLockMedication(config, context);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should calculate correct lock time', async () => {
+      const config = {
+        medicationId: 'med-1',
+        hours: 12,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.medicationSafety.update.mockResolvedValue({} as any);
+
+      const result = await executeLockMedication(config, context);
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // ============================================
+  // SUGGEST MEAL ACTION (8 tests)
+  // ============================================
+
+  describe('Suggest Meal Action', () => {
+    it('should suggest meal with difficulty filter', async () => {
+      const config = {
+        difficulty: 'EASY' as const,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.recipe.findMany.mockResolvedValue([
+        { id: 'meal-1', name: 'Pasta', difficulty: 'EASY' },
+      ] as any);
+
+      dbMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      dbMock.notification.createMany.mockResolvedValue({ count: 1 });
+
+      const result = await executeSuggestMeal(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should suggest meal with category filter', async () => {
+      const config = {
+        category: 'DINNER',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.recipe.findMany.mockResolvedValue([
+        { id: 'meal-1', name: 'Steak', category: 'DINNER' },
+      ] as any);
+
+      dbMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      dbMock.notification.createMany.mockResolvedValue({ count: 1 });
+
+      const result = await executeSuggestMeal(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle no meals found', async () => {
+      const config = {
+        difficulty: 'EASY' as const,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.recipe.findMany.mockResolvedValue([]);
+
+      const result = await executeSuggestMeal(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No recipes found matching criteria');
+    });
+
+    it('should select random meal from results', async () => {
+      const config = {};
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.recipe.findMany.mockResolvedValue([
+        { id: 'meal-1', name: 'Pizza' },
+        { id: 'meal-2', name: 'Burger' },
+        { id: 'meal-3', name: 'Salad' },
+      ] as any);
+
+      dbMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      dbMock.notification.createMany.mockResolvedValue({ count: 1 });
+
+      const result = await executeSuggestMeal(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should send notification to family', async () => {
+      const config = {
+        difficulty: 'MEDIUM' as const,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.recipe.findMany.mockResolvedValue([
+        { id: 'meal-1', name: 'Tacos' },
+      ] as any);
+
+      dbMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      dbMock.notification.createMany.mockResolvedValue({ count: 1 });
+
+      const result = await executeSuggestMeal(config, context);
+
+      expect(result.success).toBe(true);
+      expect(dbMock.notification.createMany).toHaveBeenCalled();
+    });
+
+    it('should handle both difficulty and category filters', async () => {
+      const config = {
+        difficulty: 'EASY' as const,
+        category: 'LUNCH',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.recipe.findMany.mockResolvedValue([
+        { id: 'meal-1', name: 'Sandwich', difficulty: 'EASY', category: 'LUNCH' },
+      ] as any);
+
+      dbMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      dbMock.notification.createMany.mockResolvedValue({ count: 1 });
+
+      const result = await executeSuggestMeal(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle database errors', async () => {
+      const config = {
+        difficulty: 'EASY' as const,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.recipe.findMany.mockRejectedValue(new Error('DB error'));
+
+      const result = await executeSuggestMeal(config, context);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should work with no filters', async () => {
+      const config = {};
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.recipe.findMany.mockResolvedValue([
+        { id: 'meal-1', name: 'Random meal' },
+      ] as any);
+
+      dbMock.familyMember.findMany.mockResolvedValue([
+        { id: 'parent-1', role: 'PARENT' },
+      ] as any);
+
+      dbMock.notification.createMany.mockResolvedValue({ count: 1 });
+
+      const result = await executeSuggestMeal(config, context);
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // ============================================
+  // REDUCE CHORES ACTION (8 tests)
+  // ============================================
+
+  describe('Reduce Chores Action', () => {
+    it('should reduce chore instances for member', async () => {
+      const config = {
+        memberId: 'member-1',
+        percentage: 20,
+        duration: 7,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.choreInstance.findMany.mockResolvedValue([
+        { id: 'chore-1', status: 'PENDING' },
+        { id: 'chore-2', status: 'PENDING' },
+        { id: 'chore-3', status: 'PENDING' },
+        { id: 'chore-4', status: 'PENDING' },
+        { id: 'chore-5', status: 'PENDING' },
+      ] as any);
+
+      dbMock.choreInstance.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await executeReduceChores(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should use context memberId if not specified', async () => {
+      const config = {
+        memberId: '', // Will be overwritten from context
+        percentage: 10,
+        duration: 3,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+        memberId: 'member-from-context',
+      };
+
+      dbMock.choreInstance.findMany.mockResolvedValue([
+        { id: 'chore-1', status: 'PENDING' },
+      ] as any);
+
+      dbMock.choreInstance.updateMany.mockResolvedValue({ count: 0 });
+
+      const result = await executeReduceChores(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should require member ID', async () => {
+      const config = {
+        memberId: undefined as any,
+        percentage: 20,
+        duration: 7,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeReduceChores(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No member ID specified');
+    });
+
+    it('should enforce maximum percentage', async () => {
+      const config = {
+        memberId: 'member-1',
+        percentage: 150, // Over 100% limit
+        duration: 7,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeReduceChores(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Chore reduction percentage must be between 1 and 100');
+    });
+
+    it('should enforce maximum duration', async () => {
+      const config = {
+        memberId: 'member-1',
+        percentage: 20,
+        duration: 31, // Over 30 day limit
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeReduceChores(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Chore reduction duration must be between 1 and 30 days');
+    });
+
+    it('should handle no pending chores', async () => {
+      const config = {
+        memberId: 'member-1',
+        percentage: 20,
+        duration: 7,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.choreInstance.findMany.mockResolvedValue([]);
+
+      const result = await executeReduceChores(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No pending chores found for member');
+    });
+
+    it('should calculate correct number to cancel', async () => {
+      const config = {
+        memberId: 'member-1',
+        percentage: 50,
+        duration: 7,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.choreInstance.findMany.mockResolvedValue([
+        { id: 'chore-1' },
+        { id: 'chore-2' },
+        { id: 'chore-3' },
+        { id: 'chore-4' },
+      ] as any);
+
+      dbMock.choreInstance.updateMany.mockResolvedValue({ count: 2 });
+
+      const result = await executeReduceChores(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle database errors', async () => {
+      const config = {
+        memberId: 'member-1',
+        percentage: 20,
+        duration: 7,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.choreInstance.findMany.mockRejectedValue(new Error('DB error'));
+
+      const result = await executeReduceChores(config, context);
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  // ============================================
+  // ADJUST SCREEN TIME ACTION (8 tests)
+  // ============================================
+
+  describe('Adjust Screen Time Action', () => {
+    it('should add screen time minutes', async () => {
+      const config = {
+        memberId: 'member-1',
+        amountMinutes: 30,
+        reason: 'Bonus time',
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.screenTimeBalance.findUnique.mockResolvedValue({
+        id: 'balance-1',
+        memberId: 'member-1',
+        currentBalanceMinutes: 60,
+        weekStartDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      dbMock.screenTimeBalance.update.mockResolvedValue({
+        id: 'balance-1',
+        memberId: 'member-1',
+        currentBalanceMinutes: 90,
+        weekStartDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      dbMock.screenTimeTransaction.create.mockResolvedValue({} as any);
+
+      const result = await executeAdjustScreenTime(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should subtract screen time minutes', async () => {
+      const config = {
+        memberId: 'member-1',
+        amountMinutes: -15,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.screenTimeBalance.findUnique.mockResolvedValue({
+        id: 'balance-1',
+        memberId: 'member-1',
+        currentBalanceMinutes: 60,
+        weekStartDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      dbMock.screenTimeBalance.update.mockResolvedValue({
+        id: 'balance-1',
+        memberId: 'member-1',
+        currentBalanceMinutes: 45,
+        weekStartDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      dbMock.screenTimeTransaction.create.mockResolvedValue({} as any);
+
+      const result = await executeAdjustScreenTime(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should use context memberId if not specified', async () => {
+      const config = {
+        memberId: '', // Will be overwritten from context
+        amountMinutes: 20,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+        memberId: 'member-from-context',
+      };
+
+      dbMock.screenTimeBalance.findUnique.mockResolvedValue({
+        id: 'balance-2',
+        memberId: 'member-from-context',
+        currentBalanceMinutes: 30,
+        weekStartDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      dbMock.screenTimeBalance.update.mockResolvedValue({} as any);
+      dbMock.screenTimeTransaction.create.mockResolvedValue({} as any);
+
+      const result = await executeAdjustScreenTime(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should require member ID', async () => {
+      const config = {
+        memberId: undefined as any,
+        amountMinutes: 30,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeAdjustScreenTime(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No member ID specified');
+    });
+
+    it('should enforce maximum adjustment', async () => {
+      const config = {
+        memberId: 'member-1',
+        amountMinutes: 500, // Over 480 minute limit
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      const result = await executeAdjustScreenTime(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Screentime adjustment must be within +/- 480 minutes');
+    });
+
+    it('should handle balance not found', async () => {
+      const config = {
+        memberId: 'member-1',
+        amountMinutes: 30,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.screenTimeBalance.findUnique.mockResolvedValue(null);
+
+      const result = await executeAdjustScreenTime(config, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No screentime balance found for member');
+    });
+
+    it('should prevent negative balance', async () => {
+      const config = {
+        memberId: 'member-1',
+        amountMinutes: -100,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.screenTimeBalance.findUnique.mockResolvedValue({
+        id: 'balance-1',
+        memberId: 'member-1',
+        currentBalanceMinutes: 50, // Would go negative
+        weekStartDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      dbMock.screenTimeBalance.update.mockResolvedValue({
+        id: 'balance-1',
+        memberId: 'member-1',
+        currentBalanceMinutes: 0, // Clamped to 0
+        weekStartDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      dbMock.screenTimeTransaction.create.mockResolvedValue({} as any);
+
+      const result = await executeAdjustScreenTime(config, context);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle database errors', async () => {
+      const config = {
+        memberId: 'member-1',
+        amountMinutes: 30,
+      };
+      const context: RuleContext = {
+        familyId: 'family-1',
+      };
+
+      dbMock.screenTimeBalance.findUnique.mockRejectedValue(new Error('DB error'));
+
+      const result = await executeAdjustScreenTime(config, context);
+
+      expect(result.success).toBe(false);
+    });
+  });
+});

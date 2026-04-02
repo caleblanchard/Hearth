@@ -1,0 +1,49 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { approveGracePeriod, rejectGracePeriod } from '@/lib/data/screentime';
+import { logger } from '@/lib/logger';
+
+export async function POST(request: NextRequest) {
+  try {
+    const authContext = await getAuthContext();
+
+    if (!authContext) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
+
+    if (!familyId || !memberId) {
+      return NextResponse.json({ error: 'No family found' }, { status: 400 });
+    }
+
+    // Check if user is a parent
+    const isParent = await isParentInFamily( familyId);
+    if (!isParent) {
+      return NextResponse.json(
+        { error: 'Only parents can approve grace requests' },
+        { status: 403 }
+      );
+    }
+
+    const { graceLogId, approved } = await request.json();
+
+    const graceLog = approved
+      ? await approveGracePeriod(graceLogId, memberId)
+      : await rejectGracePeriod(graceLogId, memberId);
+
+    return NextResponse.json({
+      success: true,
+      graceLog,
+      message: approved ? 'Grace period approved' : 'Grace period rejected',
+    });
+  } catch (error) {
+    logger.error('Approve/reject grace period error:', error);
+    return NextResponse.json(
+      { error: 'Failed to process grace request' },
+      { status: 500 }
+    );
+  }
+}

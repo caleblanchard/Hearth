@@ -104,7 +104,7 @@ DELETE /api/meals/plan/dishes/dish-1
 
 ### Step 1: Create RecipeAutocomplete Component ⚡ START HERE
 
-**File**: `components/meals/RecipeAutocomplete.tsx`
+**File**: `src/components/meals/RecipeAutocomplete.tsx`
 
 **Code**: See `docs/RECIPE_AUTOCOMPLETE_GUIDE.md`
 
@@ -112,7 +112,7 @@ DELETE /api/meals/plan/dishes/dish-1
 
 ### Step 2: Update MealPlanner Component
 
-**File**: `app/dashboard/meals/MealPlanner.tsx`
+**File**: `src/app/dashboard/meals/MealPlanner.tsx`
 
 **Changes Needed**:
 1. Display `meal.dishes` array instead of `meal.customName`
@@ -184,7 +184,7 @@ const handleDeleteDish = async (dishId: string) => {
 
 ### Step 3: Add "Add to Meal" Button to Recipe Detail
 
-**File**: `app/dashboard/meals/recipes/[id]/page.tsx`
+**File**: `src/app/dashboard/meals/recipes/[id]/page.tsx`
 
 **Location**: Around line 274 (in the header actions)
 
@@ -213,7 +213,7 @@ const [showAddToMealModal, setShowAddToMealModal] = useState(false);
 
 ### Step 4: Create AddToMealModal Component
 
-**File**: `components/meals/AddToMealModal.tsx`
+**File**: `src/components/meals/AddToMealModal.tsx`
 
 **Features**:
 - Date picker
@@ -223,7 +223,7 @@ const [showAddToMealModal, setShowAddToMealModal] = useState(false);
 
 ### Step 5: Create MealDetailModal Component
 
-**File**: `components/meals/MealDetailModal.tsx`
+**File**: `src/components/meals/MealDetailModal.tsx`
 
 **Features**:
 - Read-only display of meal
@@ -233,7 +233,7 @@ const [showAddToMealModal, setShowAddToMealModal] = useState(false);
 
 ### Step 6: Update Calendar to Show Meals
 
-**File**: `app/dashboard/calendar/page.tsx`
+**File**: `src/app/dashboard/calendar/page.tsx`
 
 **Changes**:
 1. Fetch meals in addition to events
@@ -296,7 +296,7 @@ Recipe Search API: **12/12 tests passing** ✓
 
 ```bash
 # Run tests
-npx jest __tests__/integration/api/meals/recipes/search/route.test.ts
+npx jest tests/integration/api/meals/recipes/search/route.test.ts
 ```
 
 ---
