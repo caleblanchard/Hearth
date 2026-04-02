@@ -499,12 +499,12 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractedRecipe
   }
 
   // Extract and normalize data
-  const name = recipeData.name || '';
+  const name = stripHtml(recipeData.name || '');
   if (!name) {
     throw new Error('Recipe name is required');
   }
 
-  const description = recipeData.description || undefined;
+  const description = recipeData.description ? stripHtml(recipeData.description) || undefined : undefined;
 
   // Extract notes — WPRM outputs a non-standard `notes` property in JSON-LD;
   // fall back to parsing the WPRM HTML notes container.
