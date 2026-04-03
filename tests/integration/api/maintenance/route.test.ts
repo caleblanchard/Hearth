@@ -63,8 +63,8 @@ describe('/api/maintenance', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.items).toHaveLength(2);
-      expect(data.items[0].name).toBe('HVAC Filter Replacement');
-      expect(data.items[1].name).toBe('Smoke Detector Batteries');
+      expect(data.items[0].title).toBe('HVAC Filter Replacement');
+      expect(data.items[1].title).toBe('Smoke Detector Batteries');
 
       expect(dbMock.maintenanceItem.findMany).toHaveBeenCalledWith({
         where: {
@@ -227,7 +227,7 @@ describe('/api/maintenance', () => {
 
       expect(response.status).toBe(201);
       const data = await response.json();
-      expect(data.item.name).toBe('HVAC Filter Replacement');
+      expect(data.item.title).toBe('HVAC Filter Replacement');
       expect(data.item.category).toBe('HVAC');
       expect(data.message).toBe('Maintenance item created successfully');
 
@@ -305,7 +305,7 @@ describe('/api/maintenance', () => {
 
       expect(response.status).toBe(201);
       const data = await response.json();
-      expect(data.item.name).toBe('Sprinkler System Check');
+      expect(data.item.title).toBe('Sprinkler System Check');
       expect(data.item.season).toBe('SPRING');
       expect(data.item.estimatedCost).toBe(150.0);
 

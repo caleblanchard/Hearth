@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const mappedItems = items.map(item => ({
       id: item.id,
       familyId: item.family_id,
-      name: item.name,
+      title: item.name,
       description: item.description,
       category: item.category,
       frequency: item.frequency,
@@ -146,7 +146,20 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      item,
+      item: {
+        id: item.id,
+        familyId: item.family_id,
+        title: item.name,
+        description: item.description,
+        category: item.category,
+        frequency: item.frequency,
+        season: item.season,
+        estimatedCost: item.estimated_cost,
+        lastCompletedAt: item.last_completed_at,
+        nextDueAt: item.next_due_at,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+      },
       message: 'Maintenance item created successfully',
     }, { status: 201 });
   } catch (error) {

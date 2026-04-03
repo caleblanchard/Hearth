@@ -95,7 +95,7 @@ describe('/api/maintenance/[id]', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.item.id).toBe('item-1');
-      expect(data.item.name).toBe('HVAC Filter Replacement');
+      expect(data.item.title).toBe('HVAC Filter Replacement');
       expect(data.item.completions).toHaveLength(1);
 
       expect(dbMock.maintenanceItem.findUnique).toHaveBeenCalledWith({
@@ -198,7 +198,7 @@ describe('/api/maintenance/[id]', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.item.name).toBe('Updated HVAC Filter');
+      expect(data.item.title).toBe('Updated HVAC Filter');
       expect(data.message).toBe('Maintenance item updated successfully');
 
       expect(dbMock.auditLog.create).toHaveBeenCalledWith({

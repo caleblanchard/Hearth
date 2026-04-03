@@ -43,7 +43,7 @@ export async function GET(
     const mappedItem = {
       id: item.id,
       familyId: item.family_id,
-      name: item.name,
+      title: item.name,
       description: item.description,
       category: item.category,
       frequency: item.frequency,
@@ -135,7 +135,7 @@ export async function PATCH(
     const mappedItem = {
       id: item.id,
       familyId: item.family_id,
-      name: item.name,
+      title: item.name,
       description: item.description,
       category: item.category,
       frequency: item.frequency,
