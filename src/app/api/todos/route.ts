@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     const familyId = authContext.activeFamilyId;
+    const memberId = authContext.activeMemberId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
             }
       );
 
-    return NextResponse.json({ data: (todos || []).map(normalizeTodo), count: count || 0 });
+    return NextResponse.json({ data: (todos || []).map(normalizeTodo), count: count || 0, currentUserId: memberId });
   } catch (error) {
     logger.error('Error fetching todos:', error);
     return NextResponse.json({ error: 'Failed to fetch todos' }, { status: 500 });
