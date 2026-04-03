@@ -181,7 +181,7 @@ export async function recordVetVisit(
     diagnosis?: string
     treatment?: string
     cost?: number
-    next_visit_date?: string
+    next_visit?: string
     notes?: string
   }
 ): Promise<PetVetVisit> {
@@ -225,13 +225,12 @@ export async function addPetVetVisit(
     diagnosis?: string
     treatment?: string
     cost?: number
-    nextVisitDate?: string
+    nextVisit?: string
     notes?: string
   }
 ) {
   const supabase = await createClient()
 
-  // Get pet details for audit log
   const { data: pet } = await supabase
     .from('pets')
     .select('family_id, name')
@@ -247,17 +246,17 @@ export async function addPetVetVisit(
     diagnosis: visitData.diagnosis,
     treatment: visitData.treatment,
     cost: visitData.cost,
-    next_visit_date: visitData.nextVisitDate,
+    next_visit: visitData.nextVisit,
     notes: visitData.notes,
   })
 
-  // Create audit log
   await supabase.from('audit_logs').insert({
     family_id: pet.family_id,
     member_id: recordedBy,
     action: 'PET_VET_VISIT_RECORDED',
-    details: {
-      pet_id: petId,
+    entity_type: 'PET',
+    entity_id: petId,
+    metadata: {
       pet_name: pet.name,
       visit_id: visit.id,
       reason: visitData.reason,

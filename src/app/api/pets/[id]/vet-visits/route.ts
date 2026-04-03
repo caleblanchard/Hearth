@@ -39,7 +39,7 @@ export async function GET(
 
     const visits = await getPetVetVisits(id);
 
-    return NextResponse.json({ visits });
+    return NextResponse.json({ vetVisits: visits });
   } catch (error) {
     logger.error('Get pet vet visits error:', error);
     return NextResponse.json({ error: 'Failed to get vet visits' }, { status: 500 });
