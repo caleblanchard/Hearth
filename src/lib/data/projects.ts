@@ -396,6 +396,7 @@ export async function createProjectFromTemplate(
     title: string
     description?: string
     familyId: string
+    memberId: string
     budget?: number
     startDate?: Date | string
   }
@@ -426,7 +427,7 @@ export async function createProjectFromTemplate(
       budget: projectData.budget ?? template.suggestedBudget,
       start_date: startDate.toISOString(),
       due_date: dueDate.toISOString(),
-      created_by_id: (await supabase.auth.getUser()).data.user?.id,
+      created_by_id: projectData.memberId,
     })
     .select()
     .single()

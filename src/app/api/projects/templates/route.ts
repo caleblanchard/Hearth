@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
 
     const project = await createProjectFromTemplate(templateId, {
       familyId,
+      memberId,
       title: name,
       budget,
       startDate,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import { XMarkIcon, CheckIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -47,6 +47,7 @@ export default function TodosPage() {
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'MY_TODOS' | 'COMPLETED'>('ALL');
   const router = useRouter();
+  const hasMounted = useRef(false);
 
   // Form state
   const [newTodo, setNewTodo] = useState({
@@ -114,9 +115,11 @@ export default function TodosPage() {
   }, []);
 
   useEffect(() => {
-    if (currentUserId) {
-      fetchTodos(filter);
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
     }
+    fetchTodos(filter);
   }, [filter]);
 
   const handleAddTodo = async () => {
