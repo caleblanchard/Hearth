@@ -63,7 +63,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { templateId, name, budget, startDate, description } = body;
+    const { templateId, customizations } = body;
+    const name = body.name ?? customizations?.name;
+    const budget = body.budget ?? customizations?.budget;
+    const startDate = body.startDate ?? customizations?.startDate;
+    const description = body.description ?? customizations?.description;
 
     if (!templateId) {
       return NextResponse.json({ error: 'Template ID is required' }, { status: 400 });
