@@ -12,7 +12,7 @@ interface FamilyMember {
   role: string;
 }
 
-export default function NewTaskPage({ params }: { params: { id: string } }) {
+export default function NewTaskPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { user } = useSupabaseSession();
   const { isParent, loading: memberLoading } = useCurrentMember();
@@ -20,6 +20,7 @@ export default function NewTaskPage({ params }: { params: { id: string } }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -28,6 +29,10 @@ export default function NewTaskPage({ params }: { params: { id: string } }) {
     dueDate: '',
     estimatedHours: '',
   });
+
+  useEffect(() => {
+    params.then(setResolvedParams);
+  }, [params]);
 
   useEffect(() => {
     fetchFamilyMembers();
@@ -56,7 +61,7 @@ export default function NewTaskPage({ params }: { params: { id: string } }) {
 
     try {
       setSaving(true);
-      const res = await fetch(`/api/projects/${params.id}/tasks`, {
+      const res = await fetch(`/api/projects/${resolvedParams?.id}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -70,7 +75,7 @@ export default function NewTaskPage({ params }: { params: { id: string } }) {
       });
 
       if (res.ok) {
-        router.push(`/dashboard/projects/${params.id}`);
+        router.push(`/dashboard/projects/${resolvedParams?.id}`);
       } else {
         const data = await res.json();
         setError(data.error || 'Failed to create task');
@@ -97,7 +102,7 @@ export default function NewTaskPage({ params }: { params: { id: string } }) {
   return (
     <div className="p-8 max-w-3xl mx-auto">
       <button
-        onClick={() => router.push(`/dashboard/projects/${params.id}`)}
+        onClick={() => router.push(`/dashboard/projects/${resolvedParams?.id}`)}
         className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6"
       >
         <ArrowLeftIcon className="h-5 w-5" />
@@ -212,7 +217,7 @@ export default function NewTaskPage({ params }: { params: { id: string } }) {
           <div className="flex gap-3 pt-4">
             <button
               type="button"
-              onClick={() => router.push(`/dashboard/projects/${params.id}`)}
+              onClick={() => router.push(`/dashboard/projects/${resolvedParams?.id}`)}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               disabled={saving}
             >

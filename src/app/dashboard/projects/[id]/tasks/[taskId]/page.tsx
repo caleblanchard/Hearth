@@ -67,7 +67,7 @@ interface Task {
 export default function TaskDetailPage({ 
   params 
 }: { 
-  params: { id: string; taskId: string } 
+  params: Promise<{ id: string; taskId: string }>
 }) {
   const router = useRouter();
   const { user } = useSupabaseSession();
@@ -81,6 +81,7 @@ export default function TaskDetailPage({
   const [editingStatus, setEditingStatus] = useState(false);
   const [editingAssignee, setEditingAssignee] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
+  const [resolvedParams, setResolvedParams] = useState<{ id: string; taskId: string } | null>(null);
   const [formData, setFormData] = useState({
     status: '',
     assigneeId: '',
@@ -88,9 +89,14 @@ export default function TaskDetailPage({
   });
 
   useEffect(() => {
+    params.then(setResolvedParams);
+  }, [params]);
+
+  useEffect(() => {
+    if (!resolvedParams?.taskId) return;
     fetchTask();
     fetchFamilyMembers();
-  }, [params.taskId]);
+  }, [resolvedParams]);
 
   const fetchFamilyMembers = async () => {
     try {
@@ -106,7 +112,7 @@ export default function TaskDetailPage({
 
   const fetchTask = async () => {
     try {
-      const res = await fetch(`/api/projects/tasks/${params.taskId}`);
+      const res = await fetch(`/api/projects/tasks/${resolvedParams?.taskId}`);
       if (res.ok) {
         const data = await res.json();
         setTask(data.task);
@@ -116,7 +122,7 @@ export default function TaskDetailPage({
           notes: data.task.notes || '',
         });
       } else if (res.status === 404) {
-        router.push(`/dashboard/projects/${params.id}`);
+        router.push(`/dashboard/projects/${resolvedParams?.id}`);
       }
     } catch (error) {
       console.error('Error fetching task:', error);
@@ -129,7 +135,7 @@ export default function TaskDetailPage({
     try {
       setSaving(true);
       setError('');
-      const res = await fetch(`/api/projects/tasks/${params.taskId}`, {
+      const res = await fetch(`/api/projects/tasks/${resolvedParams?.taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: formData.status }),
@@ -155,7 +161,7 @@ export default function TaskDetailPage({
     try {
       setSaving(true);
       setError('');
-      const res = await fetch(`/api/projects/tasks/${params.taskId}`, {
+      const res = await fetch(`/api/projects/tasks/${resolvedParams?.taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assigneeId: formData.assigneeId || null }),
@@ -180,7 +186,7 @@ export default function TaskDetailPage({
     try {
       setSaving(true);
       setError('');
-      const res = await fetch(`/api/projects/tasks/${params.taskId}`, {
+      const res = await fetch(`/api/projects/tasks/${resolvedParams?.taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: formData.notes || null }),
@@ -207,12 +213,12 @@ export default function TaskDetailPage({
 
   const confirmDeleteTask = async () => {
     try {
-      const res = await fetch(`/api/projects/tasks/${params.taskId}`, {
+      const res = await fetch(`/api/projects/tasks/${resolvedParams?.taskId}`, {
         method: 'DELETE',
       });
 
       if (res.ok) {
-        router.push(`/dashboard/projects/${params.id}`);
+        router.push(`/dashboard/projects/${resolvedParams?.id}`);
       } else {
         setDeleteConfirmModal({ isOpen: false });
       }
@@ -279,7 +285,7 @@ export default function TaskDetailPage({
     <div className="p-8">
       {/* Header */}
       <button
-        onClick={() => router.push(`/dashboard/projects/${params.id}`)}
+        onClick={() => router.push(`/dashboard/projects/${resolvedParams?.id}`)}
         className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6"
       >
         <ArrowLeftIcon className="h-5 w-5" />

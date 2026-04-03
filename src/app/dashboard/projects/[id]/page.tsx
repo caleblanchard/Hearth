@@ -53,21 +53,27 @@ interface Project {
   tasks: Task[];
 }
 
-export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { user } = useSupabaseSession();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [taskFilter, setTaskFilter] = useState<string>('all');
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false });
+  const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
+    params.then(setResolvedParams);
+  }, [params]);
+
+  useEffect(() => {
+    if (!resolvedParams?.id) return;
     fetchProject();
-  }, [params.id]);
+  }, [resolvedParams]);
 
   const fetchProject = async () => {
     try {
-      const res = await fetch(`/api/projects/${params.id}`);
+      const res = await fetch(`/api/projects/${resolvedParams?.id}`);
       if (res.ok) {
         const data = await res.json();
         setProject(data.project);
@@ -87,7 +93,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
   const confirmDeleteProject = async () => {
     try {
-      const res = await fetch(`/api/projects/${params.id}`, {
+      const res = await fetch(`/api/projects/${resolvedParams?.id}`, {
         method: 'DELETE',
       });
 
@@ -195,7 +201,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => router.push(`/dashboard/projects/${params.id}/edit`)}
+              onClick={() => router.push(`/dashboard/projects/${resolvedParams?.id}/edit`)}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title="Edit project"
             >
@@ -299,7 +305,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             Tasks ({filteredTasks.length})
           </h2>
           <button
-            onClick={() => router.push(`/dashboard/projects/${params.id}/tasks/new`)}
+            onClick={() => router.push(`/dashboard/projects/${resolvedParams?.id}/tasks/new`)}
             className="flex items-center gap-2 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors"
           >
             <PlusIcon className="h-5 w-5" />
@@ -343,7 +349,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 : `No ${taskFilter.toLowerCase().replace('_', ' ')} tasks.`}
             </p>
             <button
-              onClick={() => router.push(`/dashboard/projects/${params.id}/tasks/new`)}
+              onClick={() => router.push(`/dashboard/projects/${resolvedParams?.id}/tasks/new`)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors"
             >
               <PlusIcon className="h-5 w-5" />
@@ -355,7 +361,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             {filteredTasks.map((task) => (
               <div
                 key={task.id}
-                onClick={() => router.push(`/dashboard/projects/${params.id}/tasks/${task.id}`)}
+                onClick={() => router.push(`/dashboard/projects/${resolvedParams?.id}/tasks/${task.id}`)}
                 className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
               >
                 <div className="flex items-start justify-between">
