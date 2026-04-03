@@ -40,7 +40,18 @@ export async function GET(
 
     const feedings = await getPetFeedings(id);
 
-    return NextResponse.json({ feedings });
+    const mappedFeedings = feedings.map(f => ({
+      id: f.id,
+      petId: f.pet_id,
+      fedAt: f.fed_at,
+      fedBy: f.fed_by,
+      foodType: f.food_type,
+      amount: f.amount,
+      notes: f.notes,
+      member: (f as any).fed_by_member ?? undefined,
+    }));
+
+    return NextResponse.json({ feedings: mappedFeedings });
   } catch (error) {
     logger.error('Get pet feedings error:', error);
     return NextResponse.json({ error: 'Failed to get feedings' }, { status: 500 });
