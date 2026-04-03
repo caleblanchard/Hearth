@@ -105,8 +105,8 @@ export async function getHealthEvents(
     .select(`
       *,
       member:family_members!health_events_member_id_fkey(id, name, family_id),
-      symptoms:health_event_symptoms(*),
-      medications:health_event_medications(*)
+      symptoms:health_symptoms(*),
+      medications:health_medications(*)
     `)
 
   // Filter by family through the member relation
@@ -246,14 +246,14 @@ export async function addMedicationToHealthEvent(
   if (!event) throw new Error('Health event not found')
 
   const { data, error} = await supabase
-    .from('health_event_medications')
+    .from('health_medications')
     .insert({
       health_event_id: eventId,
       medication_name: medicationData.medicationName,
       dosage: medicationData.dosage,
       given_at: medicationData.givenAt || new Date().toISOString(),
       notes: medicationData.notes,
-      recorded_by: recordedBy,
+      given_by: recordedBy,
     })
     .select()
     .single()
@@ -282,19 +282,19 @@ export async function addMedicationToHealthEvent(
 export async function addSymptomToHealthEvent(
   eventId: string,
   symptomData: {
-    symptom: string
-    severity?: string
+    symptom_type: string
+    severity?: number
     notes?: string
   }
 ) {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('health_event_symptoms')
+    .from('health_symptoms')
     .insert({
       health_event_id: eventId,
-      symptom: symptomData.symptom,
-      severity: symptomData.severity || 'MODERATE',
+      symptom_type: symptomData.symptom_type,
+      severity: symptomData.severity ?? 5,
       notes: symptomData.notes,
     })
     .select()
