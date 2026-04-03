@@ -298,14 +298,14 @@ export async function addPetMedication(
   medicationData: {
     medicationName: string
     dosage: string
-    givenAt?: string
-    nextDoseHours?: number
+    frequency: string
+    minIntervalHours?: number | null
     notes?: string
+    isActive?: boolean
   }
 ) {
   const supabase = await createClient()
 
-  // Get pet details for audit log
   const { data: pet } = await supabase
     .from('pets')
     .select('family_id, name')
@@ -320,23 +320,23 @@ export async function addPetMedication(
       pet_id: petId,
       medication_name: medicationData.medicationName,
       dosage: medicationData.dosage,
-      given_at: medicationData.givenAt || new Date().toISOString(),
-      next_dose_hours: medicationData.nextDoseHours,
+      frequency: medicationData.frequency,
+      min_interval_hours: medicationData.minIntervalHours ?? null,
       notes: medicationData.notes,
-      recorded_by: recordedBy,
+      is_active: medicationData.isActive ?? true,
     })
     .select()
     .single()
 
   if (error) throw error
 
-  // Create audit log
   await supabase.from('audit_logs').insert({
     family_id: pet.family_id,
     member_id: recordedBy,
     action: 'PET_MEDICATION_GIVEN',
-    details: {
-      pet_id: petId,
+    entity_type: 'PET',
+    entity_id: petId,
+    metadata: {
       pet_name: pet.name,
       medication_name: medicationData.medicationName,
     },
