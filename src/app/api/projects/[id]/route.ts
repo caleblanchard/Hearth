@@ -4,6 +4,25 @@ import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getProject, updateProject, deleteProject } from '@/lib/data/projects';
 import { logger } from '@/lib/logger';
 
+const normalizeTask = (task: any) => ({
+  ...task,
+  dueDate: task.due_date ?? task.dueDate ?? null,
+  startDate: task.start_date ?? task.startDate ?? null,
+  estimatedHours: task.estimated_hours ?? task.estimatedHours ?? null,
+  actualHours: task.actual_hours ?? task.actualHours ?? null,
+  createdAt: task.created_at ?? task.createdAt,
+  sortOrder: task.sort_order ?? task.sortOrder ?? null,
+});
+
+const normalizeProject = (project: any) => ({
+  ...project,
+  dueDate: project.due_date ?? project.dueDate ?? null,
+  startDate: project.start_date ?? project.startDate ?? null,
+  createdAt: project.created_at ?? project.createdAt,
+  familyId: project.family_id ?? project.familyId,
+  tasks: project.tasks ? project.tasks.map(normalizeTask) : undefined,
+});
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -44,7 +63,7 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ project });
+    return NextResponse.json({ project: normalizeProject(project) });
   } catch (error) {
     logger.error('Error fetching project', error);
     return NextResponse.json({ error: 'Failed to fetch project' }, { status: 500 });
@@ -154,7 +173,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      project,
+      project: normalizeProject(project),
       message: 'Project updated successfully',
     });
   } catch (error) {

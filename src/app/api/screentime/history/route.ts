@@ -3,6 +3,16 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
+const normalizeTransaction = (t: any) => ({
+  ...t,
+  createdAt: t.created_at ?? t.createdAt,
+  amountMinutes: t.amount_minutes ?? t.amountMinutes,
+  balanceAfter: t.balance_after ?? t.balanceAfter ?? null,
+  deviceType: t.device_type ?? t.deviceType ?? null,
+  memberId: t.member_id ?? t.memberId,
+  screenTimeTypeId: t.screen_time_type_id ?? t.screenTimeTypeId ?? null,
+});
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -76,7 +86,7 @@ export async function GET(request: NextRequest) {
       .eq('member_id', targetMemberId);
 
     return NextResponse.json({
-      transactions: transactions || [],
+      transactions: (transactions || []).map(normalizeTransaction),
       pagination: {
         total: count || 0,
         limit,

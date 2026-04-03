@@ -4,6 +4,20 @@ import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getDocument, updateDocument, deleteDocument } from '@/lib/data/documents';
 import { logger } from '@/lib/logger';
 
+const normalizeDocument = (doc: any) => ({
+  ...doc,
+  fileSize: doc.file_size ?? doc.fileSize,
+  mimeType: doc.mime_type ?? doc.mimeType,
+  documentNumber: doc.document_number ?? doc.documentNumber ?? null,
+  issuedDate: doc.issued_date ?? doc.issuedDate ?? null,
+  expiresAt: doc.expires_at ?? doc.expiresAt ?? null,
+  createdAt: doc.created_at ?? doc.createdAt,
+  familyId: doc.family_id ?? doc.familyId,
+  uploadedBy: doc.uploaded_by ?? doc.uploadedBy,
+  accessList: doc.access_list ?? doc.accessList ?? [],
+  uploader: doc.uploader,
+});
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -35,7 +49,7 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    return NextResponse.json({ document });
+    return NextResponse.json({ document: normalizeDocument(document) });
   } catch (error) {
     logger.error('Error fetching document:', error);
     return NextResponse.json({ error: 'Failed to fetch document' }, { status: 500 });
@@ -76,7 +90,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      document,
+      document: normalizeDocument(document),
       message: 'Document updated successfully',
     });
   } catch (error) {

@@ -7,6 +7,22 @@ import { dbMock } from '@/lib/test-utils/db-mock';
 
 const useMockDb = process.env.NODE_ENV === 'test';
 
+const normalizeTodo = (todo: any) => ({
+  id: todo.id,
+  title: todo.title,
+  description: todo.description,
+  priority: todo.priority,
+  status: todo.status,
+  dueDate: todo.due_date ?? todo.dueDate ?? null,
+  category: todo.category,
+  notes: todo.notes,
+  createdAt: todo.created_at ?? todo.createdAt,
+  completedAt: todo.completed_at ?? todo.completedAt ?? null,
+  familyId: todo.family_id ?? todo.familyId,
+  assigned_to: todo.assigned_to ?? todo.assignedTo ?? null,
+  created_by: todo.created_by ?? todo.createdBy,
+});
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -78,7 +94,7 @@ export async function GET(request: NextRequest) {
             }
       );
 
-    return NextResponse.json({ data: todos || [], count: count || 0 });
+    return NextResponse.json({ data: (todos || []).map(normalizeTodo), count: count || 0 });
   } catch (error) {
     logger.error('Error fetching todos:', error);
     return NextResponse.json({ error: 'Failed to fetch todos' }, { status: 500 });
@@ -193,7 +209,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { success: true, todo, message: 'Todo created successfully' },
+      { success: true, todo: normalizeTodo(todo), message: 'Todo created successfully' },
       { status: 200 }
     );
   } catch (error) {

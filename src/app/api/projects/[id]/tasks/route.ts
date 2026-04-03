@@ -4,6 +4,16 @@ import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getProjectTasks, createProjectTask } from '@/lib/data/projects';
 import { logger } from '@/lib/logger';
 
+const normalizeTask = (task: any) => ({
+  ...task,
+  dueDate: task.due_date ?? task.dueDate ?? null,
+  startDate: task.start_date ?? task.startDate ?? null,
+  estimatedHours: task.estimated_hours ?? task.estimatedHours ?? null,
+  actualHours: task.actual_hours ?? task.actualHours ?? null,
+  createdAt: task.created_at ?? task.createdAt,
+  sortOrder: task.sort_order ?? task.sortOrder ?? null,
+});
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -50,7 +60,7 @@ export async function GET(
 
     const tasks = await getProjectTasks(id);
 
-    return NextResponse.json({ tasks });
+    return NextResponse.json({ tasks: tasks.map(normalizeTask) });
   } catch (error) {
     logger.error('Get project tasks error:', error);
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
@@ -165,7 +175,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      task,
+      task: normalizeTask(task),
       message: 'Task created successfully',
     }, { status: 201 });
   } catch (error) {

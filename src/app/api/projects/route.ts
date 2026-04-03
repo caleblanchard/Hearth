@@ -8,6 +8,25 @@ import { parseJsonBody } from '@/lib/request-validation';
 
 const VALID_STATUSES = ['ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
 
+const normalizeTask = (task: any) => ({
+  ...task,
+  dueDate: task.due_date ?? task.dueDate ?? null,
+  startDate: task.start_date ?? task.startDate ?? null,
+  estimatedHours: task.estimated_hours ?? task.estimatedHours ?? null,
+  actualHours: task.actual_hours ?? task.actualHours ?? null,
+  createdAt: task.created_at ?? task.createdAt,
+  sortOrder: task.sort_order ?? task.sortOrder ?? null,
+});
+
+const normalizeProject = (project: any) => ({
+  ...project,
+  dueDate: project.due_date ?? project.dueDate ?? null,
+  startDate: project.start_date ?? project.startDate ?? null,
+  createdAt: project.created_at ?? project.createdAt,
+  familyId: project.family_id ?? project.familyId,
+  tasks: project.tasks ? project.tasks.map(normalizeTask) : undefined,
+});
+
 export async function GET(request: NextRequest) {
   try {
     const authContext = await getAuthContext();
@@ -37,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     const projects = await getProjects(familyId, status ? { status } : undefined);
 
-    return NextResponse.json({ projects: projects, total: projects.length });
+    return NextResponse.json({ projects: projects.map(normalizeProject), total: projects.length });
   } catch (error) {
     logger.error('Error fetching projects', error);
     return NextResponse.json(
@@ -147,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      project,
+      project: normalizeProject(project),
       message: 'Project created successfully',
     }, { status: 201 });
   } catch (error) {

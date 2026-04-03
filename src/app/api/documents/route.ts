@@ -4,6 +4,20 @@ import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getDocuments, createDocument } from '@/lib/data/documents';
 import { logger } from '@/lib/logger';
 
+const normalizeDocument = (doc: any) => ({
+  ...doc,
+  fileSize: doc.file_size ?? doc.fileSize,
+  mimeType: doc.mime_type ?? doc.mimeType,
+  documentNumber: doc.document_number ?? doc.documentNumber ?? null,
+  issuedDate: doc.issued_date ?? doc.issuedDate ?? null,
+  expiresAt: doc.expires_at ?? doc.expiresAt ?? null,
+  createdAt: doc.created_at ?? doc.createdAt,
+  familyId: doc.family_id ?? doc.familyId,
+  uploadedBy: doc.uploaded_by ?? doc.uploadedBy,
+  accessList: doc.access_list ?? doc.accessList ?? [],
+  uploader: doc.uploader,
+});
+
 const VALID_CATEGORIES = [
   'IDENTITY', 'MEDICAL', 'FINANCIAL', 'HOUSEHOLD',
   'EDUCATION', 'LEGAL', 'PETS', 'OTHER'
@@ -27,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     const documents = await getDocuments(familyId, category ? { category } : undefined);
 
-    return NextResponse.json({ documents });
+    return NextResponse.json({ documents: documents.map(normalizeDocument) });
   } catch (error) {
     logger.error('Error fetching documents:', error);
     return NextResponse.json(
@@ -117,7 +131,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        document,
+        document: normalizeDocument(document),
         message: 'Document uploaded successfully',
       },
       { status: 201 }
