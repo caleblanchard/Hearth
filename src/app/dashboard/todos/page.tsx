@@ -101,7 +101,7 @@ export default function TodosPage() {
       const response = await fetch('/api/family-data');
       if (response.ok) {
         const data = await response.json();
-        setFamilyMembers(data.family.members.filter((m: any) => m.is_active));
+        setFamilyMembers(data.family.members.filter((m: any) => m.isActive));
       }
     } catch (error) {
       console.error('Failed to fetch family members:', error);
