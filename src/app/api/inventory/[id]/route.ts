@@ -139,7 +139,7 @@ export async function PATCH(
     // Create audit log
     await supabase.from('audit_logs').insert({
       family_id: familyId,
-      member_id: authContext.activeMemberId || authContext.user.id,
+      member_id: authContext.activeMemberId || null,
       action: 'INVENTORY_ITEM_UPDATED',
       result: 'SUCCESS',
       metadata: {
@@ -205,7 +205,7 @@ export async function DELETE(
     // Create audit log
     await supabase.from('audit_logs').insert({
       family_id: familyId,
-      member_id: authContext.activeMemberId || authContext.user.id,
+      member_id: authContext.activeMemberId || null,
       action: 'INVENTORY_ITEM_DELETED',
       result: 'SUCCESS',
       metadata: {

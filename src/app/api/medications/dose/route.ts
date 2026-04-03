@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const memberId = (session as any)?.activeMemberId ?? session?.user?.id ?? childAuth?.memberId;
+    const memberId = (session as any)?.activeMemberId ?? childAuth?.memberId;
     const familyId =
       (session as any)?.activeFamilyId ?? (session as any)?.user?.familyId ?? childAuth?.familyId;
 

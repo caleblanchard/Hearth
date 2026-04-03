@@ -47,7 +47,7 @@ export async function PATCH(
     // Create audit log
     await supabase.from('audit_logs').insert({
       family_id: familyId,
-      member_id: authContext.activeMemberId || authContext.user.id,
+      member_id: authContext.activeMemberId || null,
       action: 'MEAL_ENTRY_UPDATED',
       entity_type: 'MEAL_PLAN',
       entity_id: id,
@@ -111,7 +111,7 @@ export async function DELETE(
     // Create audit log
     await supabase.from('audit_logs').insert({
       family_id: familyId,
-      member_id: authContext.activeMemberId || authContext.user.id,
+      member_id: authContext.activeMemberId || null,
       action: 'MEAL_ENTRY_DELETED',
       entity_type: 'MEAL_PLAN',
       entity_id: id,

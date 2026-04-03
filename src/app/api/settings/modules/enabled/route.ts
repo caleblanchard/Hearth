@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     const enabledModules = await getEnabledModules(familyId);
-    const activeMemberId = authContext.activeMemberId || authContext.user?.id || null;
+    const activeMemberId = authContext.activeMemberId || null;
 
     if (activeMemberId) {
       const supabase = await createClient();

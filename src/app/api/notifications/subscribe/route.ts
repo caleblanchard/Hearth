@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authContext.user.id;
+    const userId = authContext.activeMemberId;
     if (!userId) {
       return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }
@@ -69,7 +69,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authContext.user.id;
+    const userId = authContext.activeMemberId;
     if (!userId) {
       return NextResponse.json({ error: 'No user found' }, { status: 400 });
     }
