@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface InventoryItem {
@@ -24,12 +24,86 @@ interface InventoryResponse {
   items: InventoryItem[];
 }
 
+interface UndoToast {
+  id: string;
+  itemId: string;
+  name: string;
+  prevQuantity: number;
+  amount: number;
+}
+
 export default function InventoryList() {
   const router = useRouter();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'low-stock' | 'expiring'>('all');
+  const [undoToasts, setUndoToasts] = useState<UndoToast[]>([]);
+  const [openPopover, setOpenPopover] = useState<string | null>(null);
+  const [customAmount, setCustomAmount] = useState('');
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Close popover on outside click
+  useEffect(() => {
+    if (!openPopover) return;
+    const handler = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setOpenPopover(null);
+        setCustomAmount('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openPopover]);
+
+  const adjustQuantity = useCallback(async (itemId: string, delta: number, itemName: string, currentQty: number) => {
+    const newQty = Math.max(0, currentQty + delta);
+    if (newQty === currentQty) return;
+
+    // Optimistic update
+    setItems(prev => prev.map(i =>
+      i.id === itemId ? { ...i, currentQuantity: newQty } : i
+    ));
+
+    if (delta < 0) {
+      const toastId = Math.random().toString(36).slice(2);
+      const toast: UndoToast = { id: toastId, itemId, name: itemName, prevQuantity: currentQty, amount: Math.abs(delta) };
+      setUndoToasts(prev => [...prev, toast]);
+      setTimeout(() => {
+        setUndoToasts(prev => prev.filter(t => t.id !== toastId));
+      }, 4000);
+    }
+
+    try {
+      const res = await fetch(`/api/inventory/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_quantity: newQty }),
+      });
+      if (!res.ok) throw new Error('Failed');
+    } catch {
+      // Revert on failure
+      setItems(prev => prev.map(i =>
+        i.id === itemId ? { ...i, currentQuantity: currentQty } : i
+      ));
+    }
+  }, []);
+
+  const undoAdjust = useCallback(async (toast: UndoToast) => {
+    setUndoToasts(prev => prev.filter(t => t.id !== toast.id));
+    setItems(prev => prev.map(i =>
+      i.id === toast.itemId ? { ...i, currentQuantity: toast.prevQuantity } : i
+    ));
+    try {
+      await fetch(`/api/inventory/${toast.itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_quantity: toast.prevQuantity }),
+      });
+    } catch {
+      // best-effort undo
+    }
+  }, []);
 
   const loadItems = async () => {
     setLoading(true);
@@ -224,15 +298,88 @@ export default function InventoryList() {
                 </div>
               </div>
 
-              {/* Quantity */}
+              {/* Quantity + quick-use controls */}
               <div className="mb-3">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    {item.currentQuantity}
-                  </span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {item.unit}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-baseline gap-2 flex-1">
+                    <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {item.currentQuantity}
+                    </span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {item.unit}
+                    </span>
+                  </div>
+                  {/* Use / Restock buttons */}
+                  <div className="flex items-center gap-1" ref={openPopover === item.id ? popoverRef : null}>
+                    <div className="flex relative">
+                      <button
+                        onClick={() => adjustQuantity(item.id, -1, item.name, item.currentQuantity)}
+                        disabled={item.currentQuantity === 0}
+                        title="Use 1"
+                        className="w-8 h-8 flex items-center justify-center rounded-l-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold text-base leading-none"
+                      >
+                        −
+                      </button>
+                      <button
+                        onClick={() => { setOpenPopover(openPopover === item.id ? null : item.id); setCustomAmount(''); }}
+                        disabled={item.currentQuantity === 0}
+                        title="Use custom amount"
+                        className="w-5 h-8 flex items-center justify-center rounded-r-lg bg-orange-100 dark:bg-orange-900/30 text-orange-500 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border-l border-orange-200 dark:border-orange-800 text-xs"
+                      >
+                        ▾
+                      </button>
+                      {/* Custom amount popover */}
+                      {openPopover === item.id && (
+                        <div className="absolute top-full right-0 mt-1 z-20 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 w-44">
+                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Use how many?</p>
+                          <div className="flex gap-1 mb-2">
+                            {[2, 5, 10].map(n => (
+                              <button
+                                key={n}
+                                onClick={() => { adjustQuantity(item.id, -n, item.name, item.currentQuantity); setOpenPopover(null); }}
+                                disabled={item.currentQuantity < n}
+                                className="flex-1 py-1 text-sm rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                              >
+                                −{n}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex gap-1">
+                            <input
+                              type="number"
+                              min="1"
+                              max={item.currentQuantity}
+                              value={customAmount}
+                              onChange={e => setCustomAmount(e.target.value)}
+                              placeholder="Other"
+                              className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 min-w-0"
+                            />
+                            <button
+                              onClick={() => {
+                                const n = parseInt(customAmount);
+                                if (n > 0 && n <= item.currentQuantity) {
+                                  adjustQuantity(item.id, -n, item.name, item.currentQuantity);
+                                  setOpenPopover(null);
+                                  setCustomAmount('');
+                                }
+                              }}
+                              disabled={!customAmount || parseInt(customAmount) <= 0 || parseInt(customAmount) > item.currentQuantity}
+                              className="px-2 py-1 text-sm rounded bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Use
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => adjustQuantity(item.id, 1, item.name, item.currentQuantity)}
+                      title="Restock 1"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors font-bold text-base leading-none"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
                 {item.lowStockThreshold !== null && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -273,6 +420,26 @@ export default function InventoryList() {
                   View Details
                 </button>
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Undo toast stack */}
+      {undoToasts.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center">
+          {undoToasts.map(toast => (
+            <div
+              key={toast.id}
+              className="flex items-center gap-3 px-4 py-3 bg-gray-900 dark:bg-gray-700 text-white rounded-xl shadow-lg text-sm whitespace-nowrap"
+            >
+              <span>Used {toast.amount} {toast.name}</span>
+              <button
+                onClick={() => undoAdjust(toast)}
+                className="font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Undo
+              </button>
             </div>
           ))}
         </div>
