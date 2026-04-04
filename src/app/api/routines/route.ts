@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
       .order('name');
 
-    if (type) routinesQuery = routinesQuery.eq('type', type);
+    if (type) routinesQuery = routinesQuery.eq('type', type as any);
     if (assignedTo) routinesQuery = routinesQuery.eq('assigned_to', assignedTo);
     if (userRole === 'CHILD') {
       routinesQuery = routinesQuery.or(`assigned_to.eq.${memberId},assigned_to.is.null`);
