@@ -31,7 +31,7 @@ interface Task {
     id: string;
     name: string;
   } | null;
-  _count: {
+  _count?: {
     dependencies: number;
     dependents: number;
   };
@@ -410,7 +410,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                           {task.estimatedHours}h estimated
                         </span>
                       )}
-                      {task._count.dependencies > 0 && (
+                      {(task._count?.dependencies ?? 0) > 0 && (
                         <span className="text-orange-600 dark:text-orange-400">
                           {task._count.dependencies} dependencies
                         </span>
