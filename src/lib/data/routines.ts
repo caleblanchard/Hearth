@@ -320,7 +320,7 @@ export async function getTodayCompletions(memberId: string) {
     .from('routine_completions')
     .select(`
       *,
-      routine:routines(id, name, time_of_day)
+      routine:routines(id, name, type)
     `)
     .eq('completed_by', memberId)
     .gte('completed_at', today.toISOString())
