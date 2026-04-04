@@ -133,7 +133,7 @@ export default function RoutineBuilder({
       };
 
       const url = isEdit ? `/api/routines/${routine.id}` : '/api/routines';
-      const method = isEdit ? 'PUT' : 'POST';
+      const method = isEdit ? 'PATCH' : 'POST';
 
       const response = await fetch(url, {
         method,

@@ -38,6 +38,7 @@ import {
   BoltIcon,
   ChatBubbleLeftRightIcon,
   BookOpenIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -116,6 +117,7 @@ export default function Sidebar() {
       name: 'Tasks & Activities',
       items: [
         { name: 'Chores', path: '/dashboard/chores', icon: CheckCircleIcon, moduleId: 'CHORES' },
+        { name: 'Routines', path: '/dashboard/routines', icon: ClipboardDocumentListIcon, moduleId: 'ROUTINES' },
         { name: 'Projects', path: '/dashboard/projects', icon: FolderIcon, moduleId: 'PROJECTS' },
         { name: 'To-Do', path: '/dashboard/todos', icon: ListBulletIcon, moduleId: 'TODOS' },
         { name: 'Shopping', path: '/dashboard/shopping', icon: ShoppingCartIcon, moduleId: 'SHOPPING' },

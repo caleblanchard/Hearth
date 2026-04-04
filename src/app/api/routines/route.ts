@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
-import { getRoutines, createRoutine } from '@/lib/data/routines';
+import { getRoutines, createRoutine, getTodayCompletions } from '@/lib/data/routines';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
@@ -36,8 +36,32 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Use data module
-    const routines = await getRoutines(familyId, filters);
+    const [rawRoutines, todayCompletions] = await Promise.all([
+      getRoutines(familyId, filters),
+      getTodayCompletions(memberId),
+    ]);
+
+    const completedRoutineIds = new Map(
+      todayCompletions.map((c: any) => [c.routine_id, c.completed_at])
+    );
+
+    const routines = rawRoutines.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      type: r.type,
+      assignedTo: r.assigned_to,
+      isWeekday: r.is_weekday,
+      isWeekend: r.is_weekend,
+      steps: (r.items || []).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
+        estimatedMinutes: item.estimated_minutes,
+        sortOrder: item.sort_order,
+      })),
+      completedToday: completedRoutineIds.has(r.id),
+      completedAt: completedRoutineIds.get(r.id) || null,
+    }));
 
     return NextResponse.json({ routines });
   } catch (error) {
