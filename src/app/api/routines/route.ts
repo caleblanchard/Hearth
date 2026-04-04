@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
-import { getRoutines, createRoutine, getTodayCompletions } from '@/lib/data/routines';
+import { createRoutine, getTodayCompletions } from '@/lib/data/routines';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
@@ -24,22 +24,27 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
     const assignedTo = searchParams.get('assignedTo');
 
-    const filters: any = {};
-    if (type) filters.type = type;
-    if (assignedTo) filters.assignedTo = assignedTo;
+    const supabase = await createClient();
 
-    // Child should only see their own routines or unassigned ones
+    let routinesQuery = supabase
+      .from('routines')
+      .select(`*, steps:routine_steps(*)`)
+      .eq('family_id', familyId)
+      .eq('is_active', true)
+      .order('name');
+
+    if (type) routinesQuery = routinesQuery.eq('type', type);
+    if (assignedTo) routinesQuery = routinesQuery.eq('assigned_to', assignedTo);
     if (userRole === 'CHILD') {
-      filters.OR = [
-        { assignedTo: memberId },
-        { assignedTo: null }
-      ];
+      routinesQuery = routinesQuery.or(`assigned_to.eq.${memberId},assigned_to.is.null`);
     }
 
-    const [rawRoutines, todayCompletions] = await Promise.all([
-      getRoutines(familyId, filters),
+    const [rawRoutinesResult, todayCompletions] = await Promise.all([
+      routinesQuery,
       getTodayCompletions(memberId),
     ]);
+
+    const rawRoutines = rawRoutinesResult.data || [];
 
     const completedRoutineIds = new Map(
       todayCompletions.map((c: any) => [c.routine_id, c.completed_at])
@@ -52,13 +57,15 @@ export async function GET(request: NextRequest) {
       assignedTo: r.assigned_to,
       isWeekday: r.is_weekday,
       isWeekend: r.is_weekend,
-      steps: (r.items || []).map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        icon: item.icon,
-        estimatedMinutes: item.estimated_minutes,
-        sortOrder: item.sort_order,
-      })),
+      steps: (r.steps || [])
+        .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          icon: item.icon,
+          estimatedMinutes: item.estimated_minutes,
+          sortOrder: item.sort_order,
+        })),
       completedToday: completedRoutineIds.has(r.id),
       completedAt: completedRoutineIds.get(r.id) || null,
     }));
@@ -137,14 +144,15 @@ export async function POST(request: NextRequest) {
         sort_order: typeof step.sortOrder === 'number' ? step.sortOrder : index,
       }));
 
-      await supabase.from('routine_steps').insert(itemsPayload);
-      
-      // Fetch routine again to get items
-      // But for response we can just construct it or assume success?
-      // The test checks data.routine.steps
-      // So we should attach steps to response
-      (routine as any).steps = itemsPayload.map((item: any) => ({
-        ...item,
+      const { data: insertedSteps } = await supabase
+        .from('routine_steps')
+        .insert(itemsPayload)
+        .select();
+
+      (routine as any).steps = (insertedSteps || []).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
         sortOrder: item.sort_order,
         estimatedMinutes: item.estimated_minutes,
       }));
