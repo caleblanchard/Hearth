@@ -51,7 +51,10 @@ export async function GET(request: NextRequest) {
 
     const { familyId, id: memberId } = authResult.user!;
 
-    // Fetch all pending/rejected chores for the user
+    // Fetch pending/rejected chores for the user due today or earlier (not future instances)
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
     const { data: chores } = await supabase
       .from('chore_instances')
       .select(`
@@ -63,6 +66,7 @@ export async function GET(request: NextRequest) {
       `)
       .eq('assigned_to_id', memberId)
       .in('status', ['PENDING', 'REJECTED'])
+      .lte('due_date', endOfToday.toISOString())
       .order('due_date', { ascending: true })
       .order('created_at', { ascending: true });
 
