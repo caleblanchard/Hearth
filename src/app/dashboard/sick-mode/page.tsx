@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { useRouter } from 'next/navigation';
 import { Heart, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
@@ -14,6 +15,7 @@ interface FamilyMember {
 
 export default function StartSickModePage() {
   const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const router = useRouter();
   const { showToast } = useToast();
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -72,7 +74,17 @@ export default function StartSickModePage() {
     }
   };
 
-  if (user?.user_metadata?.role !== 'PARENT') {
+  if (memberLoading) {
+    return (
+      <div className="max-w-2xl mx-auto p-6">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 dark:border-ember-500 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isParent) {
     return (
       <div className="max-w-2xl mx-auto p-6">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">

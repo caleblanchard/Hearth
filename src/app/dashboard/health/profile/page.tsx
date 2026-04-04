@@ -145,7 +145,7 @@ export default function MedicalProfilePage() {
   }, [selectedMemberId]);
 
   const handleSave = async () => {
-    if (!selectedMemberId || user?.user_metadata?.role !== 'PARENT') return;
+    if (!selectedMemberId || currentUserRole !== 'PARENT') return;
 
     setSaving(true);
     try {

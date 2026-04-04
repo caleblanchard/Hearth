@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import {
   GiftIcon,
@@ -38,6 +39,7 @@ interface Reward {
 
 export default function RewardsPage() {
   const { user } = useSupabaseSession();
+  const { isParent } = useCurrentMember();
   const router = useRouter();
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,7 +184,7 @@ export default function RewardsPage() {
               </p>
             </div>
           </div>
-          {user?.user_metadata?.role === 'PARENT' && (
+          {isParent && (
             <div className="mt-4 flex gap-3">
               <button
                 onClick={() => router.push('/dashboard/rewards/manage')}
@@ -304,7 +306,7 @@ export default function RewardsPage() {
                 ? 'No rewards available yet.'
                 : 'No rewards in this category.'}
             </p>
-            {user?.user_metadata?.role === 'PARENT' && filter === 'ALL' && (
+            {isParent && filter === 'ALL' && (
               <button
                 onClick={() => router.push('/dashboard/rewards/manage')}
                 className="mt-4 px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"

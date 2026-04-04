@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import CommunicationFeed from '@/app/components/communication/CommunicationFeed';
 import PostComposer from '@/app/components/communication/PostComposer';
 import { Modal } from '@/components/ui/Modal';
@@ -9,6 +10,7 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 
 export default function CommunicationPage() {
   const { user } = useSupabaseSession();
+  const { isParent } = useCurrentMember();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -22,7 +24,7 @@ export default function CommunicationPage() {
     setIsModalOpen(false);
   };
 
-  const userRole = user?.user_metadata?.role === 'PARENT' ? 'PARENT' : 'CHILD';
+  const userRole = isParent ? 'PARENT' : 'CHILD';
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">

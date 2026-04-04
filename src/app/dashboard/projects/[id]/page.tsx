@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -56,6 +57,7 @@ interface Project {
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { user } = useSupabaseSession();
+  const { isParent, loading: memberLoading } = useCurrentMember();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [taskFilter, setTaskFilter] = useState<string>('all');
@@ -134,7 +136,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     });
   };
 
-  if (user?.user_metadata?.role !== 'PARENT') {
+  if (memberLoading) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ember-700 dark:border-ember-500 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isParent) {
     return (
       <div className="p-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
