@@ -30,7 +30,6 @@ export async function GET(request: NextRequest) {
       .from('routines')
       .select(`*, steps:routine_steps(*)`)
       .eq('family_id', familyId)
-      .eq('is_active', true)
       .order('name');
 
     if (type) routinesQuery = routinesQuery.eq('type', type as any);
@@ -44,6 +43,7 @@ export async function GET(request: NextRequest) {
       getTodayCompletions(memberId),
     ]);
 
+    if (rawRoutinesResult.error) throw rawRoutinesResult.error;
     const rawRoutines = rawRoutinesResult.data || [];
 
     const completedRoutineIds = new Map(

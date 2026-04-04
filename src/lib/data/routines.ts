@@ -166,7 +166,7 @@ export async function deleteRoutine(routineId: string) {
 
   const { error } = await supabase
     .from('routines')
-    .update({ is_active: false })
+    .delete()
     .eq('id', routineId)
 
   if (error) throw error
