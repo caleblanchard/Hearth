@@ -27,9 +27,10 @@ interface Project {
     id: string;
     name: string;
   };
-  _count: {
+  _count?: {
     tasks: number;
   };
+  tasks?: { id: string }[];
 }
 
 export default function ProjectsPage() {
@@ -245,7 +246,7 @@ export default function ProjectsPage() {
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <CheckCircleIcon className="h-4 w-4" />
-                  <span>{project._count.tasks} tasks</span>
+                  <span>{project._count?.tasks ?? project.tasks?.length ?? 0} tasks</span>
                 </div>
                 {project.dueDate && (
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
