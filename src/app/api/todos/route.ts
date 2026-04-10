@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: todos || [], count: count || 0 });
     }
 
-    const { data: todos, error } = await supabase
+    let todosQuery = supabase
       .from('todo_items')
       .select(
         `
@@ -69,31 +69,36 @@ export async function GET(request: NextRequest) {
         created_by:family_members!todo_items_created_by_id_fkey(id, name)
       `
       )
-      .eq('family_id', familyId)
-      .match(
-        filter === 'all'
-          ? {}
-          : {
-              status:
-                filter === 'completed' ? TodoStatus.COMPLETED : TodoStatus.PENDING,
-            }
-      )
-      .order('created_at', { ascending: false });
+      .eq('family_id', familyId);
+
+    if (filter === 'completed') {
+      todosQuery = todosQuery.eq('status', TodoStatus.COMPLETED);
+    } else {
+      // 'all' and 'active' both exclude completed/cancelled — "all" means
+      // all active work, not literally every row
+      todosQuery = todosQuery
+        .neq('status', TodoStatus.COMPLETED)
+        .neq('status', 'CANCELLED' as any);
+    }
+
+    const { data: todos, error } = await todosQuery.order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    const { count } = await supabase
+    let countQuery = supabase
       .from('todo_items')
       .select('*', { count: 'exact', head: true })
-      .eq('family_id', familyId)
-      .match(
-        filter === 'all'
-          ? {}
-          : {
-              status:
-                filter === 'completed' ? TodoStatus.COMPLETED : TodoStatus.PENDING,
-            }
-      );
+      .eq('family_id', familyId);
+
+    if (filter === 'completed') {
+      countQuery = countQuery.eq('status', TodoStatus.COMPLETED);
+    } else {
+      countQuery = countQuery
+        .neq('status', TodoStatus.COMPLETED)
+        .neq('status', 'CANCELLED' as any);
+    }
+
+    const { count } = await countQuery;
 
     return NextResponse.json({ data: (todos || []).map(normalizeTodo), count: count || 0, currentUserId: memberId });
   } catch (error) {

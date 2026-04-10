@@ -78,7 +78,7 @@ export default function TodosPage() {
   const fetchTodos = async (filterType: 'ALL' | 'MY_TODOS' | 'COMPLETED' = filter) => {
     try {
       // Map filter to API parameter
-      const apiFilter = filterType === 'COMPLETED' ? 'completed' : 'all';
+      const apiFilter = filterType === 'COMPLETED' ? 'completed' : 'active';
       const response = await fetch(`/api/todos?filter=${apiFilter}`);
       if (response.ok) {
         const data = await response.json();
