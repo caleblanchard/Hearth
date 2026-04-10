@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse and validate date
-    const weekDate = new Date(weekParam);
+    const weekDate = new Date(weekParam + 'T00:00:00');
     if (isNaN(weekDate.getTime())) {
       return NextResponse.json(
         { error: 'Invalid date format' },
@@ -45,9 +45,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use the provided date as-is — the client computes the correct week start
-    // based on the family's weekStartDay setting (Sunday or Monday).
-    const weekStart = weekParam;
+    // Compute the actual week start from any date in the week using the
+    // family's weekStartDay setting. This lets callers pass any date
+    // (e.g. today) without having to pre-compute the week start themselves.
+    const { data: familyData } = await supabase
+      .from('families')
+      .select('settings')
+      .eq('id', familyId)
+      .single();
+    const settings = familyData?.settings as Record<string, any> | null;
+    const startDay: 'SUNDAY' | 'MONDAY' = settings?.weekStartDay || 'SUNDAY';
+
+    const d = new Date(weekDate);
+    const dow = d.getDay(); // 0=Sun, 1=Mon...
+    if (startDay === 'SUNDAY') {
+      d.setDate(d.getDate() - dow);
+    } else {
+      const diff = dow === 0 ? 6 : dow - 1;
+      d.setDate(d.getDate() - diff);
+    }
+    const weekStart = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     // Use data module
     const mealPlan = await getMealPlanWithEntries(familyId, weekStart);
