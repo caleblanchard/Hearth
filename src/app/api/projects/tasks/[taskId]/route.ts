@@ -120,16 +120,11 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name, status, estimatedHours, actualHours } = body;
+    const { name, description, status, assigneeId, estimatedHours, actualHours, dueDate, notes, sortOrder } = body;
 
     // Validation
     if (name !== undefined && name.trim() === '') {
       return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
-    }
-    
-    // Trim name if provided
-    if (name) {
-      body.name = name.trim();
     }
 
     if (status !== undefined) {
@@ -147,7 +142,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'Actual hours must be a positive number' }, { status: 400 });
     }
 
-    const task = await updateProjectTask(taskId, body);
+    // Build snake_case update object for Supabase
+    const updates: Record<string, any> = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (description !== undefined) updates.description = description;
+    if (status !== undefined) updates.status = status;
+    if (assigneeId !== undefined) updates.assignee_id = assigneeId;
+    if (estimatedHours !== undefined) updates.estimated_hours = estimatedHours;
+    if (actualHours !== undefined) updates.actual_hours = actualHours;
+    if (dueDate !== undefined) updates.due_date = dueDate;
+    if (notes !== undefined) updates.notes = notes;
+    if (sortOrder !== undefined) updates.sort_order = sortOrder;
+
+    const task = await updateProjectTask(taskId, updates);
 
     // Audit log
     await (supabase as any).from('audit_logs').insert({
