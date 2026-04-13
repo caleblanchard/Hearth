@@ -65,6 +65,8 @@ export default function CalendarPage() {
   const [savingEvent, setSavingEvent] = useState(false);
   const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('MONDAY');
   const [familyTimezone, setFamilyTimezone] = useState<string>('America/New_York');
+  const [selectedDay, setSelectedDay] = useState<Date>(new Date());
+  const [isMobile, setIsMobile] = useState(false);
 
   // Helper: Get current date in family timezone
   const getNowInTimezone = (): Date => {
@@ -352,6 +354,14 @@ export default function CalendarPage() {
     }
   }, [searchParams]);
 
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Scroll to 6am on view change or when switching to week/day view
   useEffect(() => {
     if (view === 'week' && weekScrollRef.current) {
@@ -508,11 +518,16 @@ export default function CalendarPage() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  // Handle clicking on a date in month view - switch to day view
+  // Handle clicking on a date in month view
+  // On mobile: select the day and show events below; on desktop: navigate to day view
   const handleDayClick = (date: Date | null) => {
     if (!date) return;
     setCurrentDate(date);
-    setView('day');
+    if (isMobile && view === 'month') {
+      setSelectedDay(date);
+    } else {
+      setView('day');
+    }
   };
 
   // Handle clicking the plus button - open event creation dialog
@@ -727,45 +742,45 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-3 sm:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Calendar</h1>
+        <div className="mb-4 sm:mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Calendar</h1>
             <button
               onClick={handleToday}
-              className="px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 text-sm sm:text-base"
             >
               <CalendarIcon className="h-4 w-4" />
               Today
             </button>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-4 flex-1 min-w-0">
               <button
                 onClick={handlePrevious}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
               >
                 <ChevronLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </button>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white min-w-[200px] text-center">
+              <h2 className="text-sm sm:text-xl font-semibold text-gray-900 dark:text-white flex-1 text-center min-w-0 truncate">
                 {getViewTitle()}
               </h2>
               <button
                 onClick={handleNext}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
               >
                 <ChevronRightIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
-            
+
             {/* View Switcher */}
-            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex-shrink-0">
               <button
                 onClick={() => setView('month')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                className={`px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors ${
                   view === 'month'
                     ? 'bg-ember-700 text-white'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -775,7 +790,7 @@ export default function CalendarPage() {
               </button>
               <button
                 onClick={() => setView('week')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                className={`px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors ${
                   view === 'week'
                     ? 'bg-ember-700 text-white'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -785,7 +800,7 @@ export default function CalendarPage() {
               </button>
               <button
                 onClick={() => setView('day')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                className={`px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors ${
                   view === 'day'
                     ? 'bg-ember-700 text-white'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -799,15 +814,18 @@ export default function CalendarPage() {
 
         {/* Calendar Views */}
         {view === 'month' && (
+          <>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
             {/* Week day headers */}
             <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
               {weekDays.map((day) => (
                 <div
                   key={day}
-                  className="p-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900"
+                  className="p-1 sm:p-3 text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900"
                 >
-                  {day}
+                  {/* Single letter on mobile, full abbreviation on desktop */}
+                  <span className="sm:hidden">{day[0]}</span>
+                  <span className="hidden sm:inline">{day}</span>
                 </div>
               ))}
             </div>
@@ -821,36 +839,46 @@ export default function CalendarPage() {
                   date.getDate() === new Date().getDate() &&
                   date.getMonth() === new Date().getMonth() &&
                   date.getFullYear() === new Date().getFullYear();
+                const isSelected =
+                  isMobile &&
+                  date &&
+                  selectedDay &&
+                  date.toDateString() === selectedDay.toDateString();
 
                 return (
                   <div
                   key={index}
                   onClick={() => handleDayClick(date)}
-                  className={`group min-h-[120px] border-r border-b border-gray-200 dark:border-gray-700 p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                  className={`group min-h-[60px] sm:min-h-[120px] border-r border-b border-gray-200 dark:border-gray-700 p-1 sm:p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                     !date ? 'bg-gray-50 dark:bg-gray-900' : ''
-                  }`}
+                  } ${isSelected ? 'bg-ember-50 dark:bg-ember-900/20' : ''}`}
                 >
                   {date && (
                     <>
                       <div className="flex justify-between items-start mb-1">
                         <span
-                          className={`text-sm font-medium ${
+                          className={`text-xs sm:text-sm font-medium leading-none ${
                             isToday
-                              ? 'bg-ember-700 text-white w-6 h-6 rounded-full flex items-center justify-center'
+                              ? 'bg-ember-700 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs'
+                              : isSelected
+                              ? 'text-ember-700 dark:text-ember-400 font-bold'
                               : 'text-gray-700 dark:text-gray-300'
                           }`}
                         >
                           {date.getDate()}
                         </span>
+                        {/* Add button — desktop only (hover) */}
                         <button
                           onClick={(e) => handleAddEventClick(date, e)}
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-all"
+                          className="opacity-0 group-hover:opacity-100 hidden sm:block p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-all"
                           title="Add event"
                         >
                           <PlusIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                         </button>
                       </div>
-                      <div className="space-y-1">
+
+                      {/* Desktop: event pills */}
+                      <div className="hidden sm:block space-y-1">
                         {dayEvents.slice(0, 3).map((event) => (
                           <div
                             key={event.id}
@@ -878,6 +906,20 @@ export default function CalendarPage() {
                           </div>
                         )}
                       </div>
+
+                      {/* Mobile: colored dots */}
+                      <div className="sm:hidden flex flex-wrap gap-0.5 mt-1">
+                        {dayEvents.slice(0, 4).map((event) => (
+                          <div
+                            key={event.id}
+                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: event.color || '#9CA3AF' }}
+                          />
+                        ))}
+                        {dayEvents.length > 4 && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+                        )}
+                      </div>
                     </>
                   )}
                   </div>
@@ -885,9 +927,78 @@ export default function CalendarPage() {
               })}
             </div>
           </div>
+
+          {/* Mobile: Selected Day Events Panel */}
+          {isMobile && (
+            <div className="mt-3 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {selectedDay.toLocaleDateString('default', { weekday: 'long' })}
+                  </p>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                    {selectedDay.toLocaleDateString('default', { month: 'long', day: 'numeric' })}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => handleAddEventClick(selectedDay, e)}
+                    className="p-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors"
+                    title="Add event"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => { setCurrentDate(selectedDay); setView('day'); }}
+                    className="px-3 py-1.5 text-sm text-ember-700 dark:text-ember-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors font-medium"
+                  >
+                    Day →
+                  </button>
+                </div>
+              </div>
+              {(() => {
+                const dayEvts = getEventsForDay(selectedDay);
+                if (dayEvts.length === 0) {
+                  return (
+                    <div className="p-6 text-center">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No events this day</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {dayEvts.map((event) => (
+                      <div
+                        key={event.id}
+                        onClick={() => handleEditEvent(event)}
+                        className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
+                          style={{ backgroundColor: event.color || '#9CA3AF' }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{event.title}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {event.isAllDay
+                              ? 'All day'
+                              : `${new Date(event.startTime).toLocaleTimeString('default', { hour: 'numeric', minute: '2-digit' })} – ${new Date(event.endTime).toLocaleTimeString('default', { hour: 'numeric', minute: '2-digit' })}`
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+          </>
         )}
 
         {view === 'week' && (
+          <div className="overflow-x-auto -mx-3 sm:mx-0">
+          <div className="min-w-[560px] sm:min-w-0">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden flex flex-col">
             {/* Week day headers - fixed */}
             <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0 gap-px bg-gray-200 dark:bg-gray-700" style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}>
@@ -1052,6 +1163,8 @@ export default function CalendarPage() {
                 })}
               </div>
             </div>
+          </div>
+          </div>
           </div>
         )}
 
