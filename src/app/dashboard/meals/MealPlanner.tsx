@@ -484,7 +484,7 @@ export default function MealPlanner() {
         <table className="w-full min-w-[560px] table-fixed border-collapse bg-white dark:bg-gray-800 rounded-lg shadow">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700">
-              <th className="w-14 p-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
+              <th className="w-24 p-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
                 Meal
               </th>
               {days.map((day, index) => (
