@@ -67,7 +67,6 @@ export default function CalendarPage() {
   const [familyTimezone, setFamilyTimezone] = useState<string>('America/New_York');
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
   const [isMobile, setIsMobile] = useState(false);
-  const [showDaySheet, setShowDaySheet] = useState(false);
 
   // Helper: Get current date in family timezone
   const getNowInTimezone = (): Date => {
@@ -520,13 +519,12 @@ export default function CalendarPage() {
   };
 
   // Handle clicking on a date in month view
-  // On mobile: show bottom sheet with events; on desktop: navigate to day view
+  // On mobile: select the day and show events below; on desktop: navigate to day view
   const handleDayClick = (date: Date | null) => {
     if (!date) return;
     setCurrentDate(date);
     if (isMobile && view === 'month') {
       setSelectedDay(date);
-      setShowDaySheet(true);
     } else {
       setView('day');
     }
@@ -929,88 +927,70 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          {/* Mobile: Day Events Bottom Sheet */}
-          {isMobile && showDaySheet && (
-            <>
-              {/* Backdrop */}
-              <div
-                className="fixed inset-0 bg-black/40 z-40"
-                onClick={() => setShowDaySheet(false)}
-              />
-              {/* Sheet */}
-              <div className="fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-gray-800 rounded-t-2xl shadow-xl max-h-[70vh] flex flex-col">
-                {/* Drag handle */}
-                <div className="flex justify-center pt-3 pb-1">
-                  <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+          {/* Mobile: Selected Day Events Panel */}
+          {isMobile && (
+            <div className="mt-3 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {selectedDay.toLocaleDateString('default', { weekday: 'long' })}
+                  </p>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                    {selectedDay.toLocaleDateString('default', { month: 'long', day: 'numeric' })}
+                  </h3>
                 </div>
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                      {selectedDay.toLocaleDateString('default', { weekday: 'long' })}
-                    </p>
-                    <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                      {selectedDay.toLocaleDateString('default', { month: 'long', day: 'numeric' })}
-                    </h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => { setShowDaySheet(false); handleAddEventClick(selectedDay, e); }}
-                      className="p-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors"
-                      title="Add event"
-                    >
-                      <PlusIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => { setShowDaySheet(false); setCurrentDate(selectedDay); setView('day'); }}
-                      className="px-3 py-1.5 text-sm text-ember-700 dark:text-ember-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors font-medium"
-                    >
-                      Day →
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => handleAddEventClick(selectedDay, e)}
+                    className="p-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors"
+                    title="Add event"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => { setCurrentDate(selectedDay); setView('day'); }}
+                    className="px-3 py-1.5 text-sm text-ember-700 dark:text-ember-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors font-medium"
+                  >
+                    Day →
+                  </button>
                 </div>
-                {/* Events list */}
-                <div className="overflow-y-auto flex-1">
-                  {(() => {
-                    const dayEvts = getEventsForDay(selectedDay);
-                    if (dayEvts.length === 0) {
-                      return (
-                        <div className="p-6 text-center">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">No events this day</p>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {dayEvts.map((event) => (
-                          <div
-                            key={event.id}
-                            onClick={() => { setShowDaySheet(false); handleEditEvent(event); }}
-                            className="flex items-start gap-3 px-4 py-3 cursor-pointer active:bg-gray-50 dark:active:bg-gray-700 transition-colors"
-                          >
-                            <div
-                              className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
-                              style={{ backgroundColor: event.color || '#9CA3AF' }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{event.title}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {event.isAllDay
-                                  ? 'All day'
-                                  : `${new Date(event.startTime).toLocaleTimeString('default', { hour: 'numeric', minute: '2-digit' })} – ${new Date(event.endTime).toLocaleTimeString('default', { hour: 'numeric', minute: '2-digit' })}`
-                                }
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </div>
-                {/* Safe area spacer */}
-                <div className="h-safe-bottom pb-4" />
               </div>
-            </>
+              {(() => {
+                const dayEvts = getEventsForDay(selectedDay);
+                if (dayEvts.length === 0) {
+                  return (
+                    <div className="p-6 text-center">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No events this day</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {dayEvts.map((event) => (
+                      <div
+                        key={event.id}
+                        onClick={() => handleEditEvent(event)}
+                        className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
+                          style={{ backgroundColor: event.color || '#9CA3AF' }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{event.title}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {event.isAllDay
+                              ? 'All day'
+                              : `${new Date(event.startTime).toLocaleTimeString('default', { hour: 'numeric', minute: '2-digit' })} – ${new Date(event.endTime).toLocaleTimeString('default', { hour: 'numeric', minute: '2-digit' })}`
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
           )}
           </>
         )}
