@@ -186,13 +186,7 @@ export default function RoutinesPage() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Routines</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {isParent ? 'Manage and track family routines' : 'Complete your daily routines'}
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end mb-8 gap-4">
         {isParent && (
           <button
             onClick={() => { setEditingRoutine(null); setShowBuilder(true); }}

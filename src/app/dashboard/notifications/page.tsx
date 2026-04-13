@@ -112,15 +112,7 @@ export default function NotificationsPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Notifications
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Stay updated with your family's activities
-              </p>
-            </div>
+          <div className="flex items-center justify-end mb-4">
             {notifications && notifications.unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}

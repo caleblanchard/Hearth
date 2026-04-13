@@ -401,29 +401,19 @@ export default function ManageAllowancePage() {
     <div className="p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Manage Allowances
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Configure automatic allowance schedules for family members
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                if (showAddForm) {
-                  handleCancelEdit();
-                } else {
-                  setShowAddForm(true);
-                }
-              }}
-              className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
-            >
-              {showAddForm ? '✕ Cancel' : '+ Add Schedule'}
-            </button>
-          </div>
+        <div className="mb-8 flex items-center justify-end">
+          <button
+            onClick={() => {
+              if (showAddForm) {
+                handleCancelEdit();
+              } else {
+                setShowAddForm(true);
+              }
+            }}
+            className="px-6 py-3 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
+          >
+            {showAddForm ? '✕ Cancel' : '+ Add Schedule'}
+          </button>
         </div>
 
         {/* Add/Edit Schedule Form */}

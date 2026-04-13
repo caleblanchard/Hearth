@@ -603,9 +603,6 @@ export default function NewRecipePage() {
             Back to Recipes
           </button>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Create New Recipe
-            </h1>
             <button
               onClick={() => { setImportUrl(''); setImportError(''); setImportModalOpen(true); }}
               className="flex items-center gap-2 px-4 py-2 text-sm bg-info/10 hover:bg-info/20 text-info rounded-lg transition-colors sm:flex-shrink-0"

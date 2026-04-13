@@ -103,15 +103,7 @@ export default function FinancialDashboardPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Financial Dashboard
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Track your credit transactions and spending patterns
-              </p>
-            </div>
+          <div className="flex items-center justify-end">
             <div className="flex gap-2">
               <button
                 onClick={() => setPeriod('weekly')}

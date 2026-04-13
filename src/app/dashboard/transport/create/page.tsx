@@ -144,10 +144,6 @@ export default function CreateTransportPage() {
         Back to Transportation
       </button>
 
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-        Add Transport Schedule
-      </h1>
-
       {error && (
         <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg mb-6">
           {error}

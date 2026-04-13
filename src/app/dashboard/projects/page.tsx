@@ -128,19 +128,10 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-8">
+    <div className="p-4 sm:p-8 overflow-x-hidden">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <FolderIcon className="h-8 w-8 text-ember-700 dark:text-ember-500" />
-              Projects
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Plan and track family projects with tasks and dependencies
-            </p>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-end mb-4 gap-4">
           <div className="flex gap-3 sm:flex-shrink-0">
             <button
               onClick={() => router.push('/dashboard/projects/templates')}
@@ -160,25 +151,27 @@ export default function ProjectsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="flex items-center gap-2 flex-shrink-0">
             <FunnelIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
             <span className="text-sm text-gray-600 dark:text-gray-400">Status:</span>
           </div>
-          <div className="flex gap-2 flex-nowrap">
-            {['all', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                  statusFilter === status
-                    ? 'bg-ember-700 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                {status === 'all' ? 'All' : status.replace('_', ' ')}
-              </button>
-            ))}
+          <div className="overflow-x-auto flex-1 min-w-0 pb-1">
+            <div className="flex gap-2 flex-nowrap">
+              {['all', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    statusFilter === status
+                      ? 'bg-ember-700 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {status === 'all' ? 'All' : status.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -227,8 +220,8 @@ export default function ProjectsPage() {
             >
               {/* Project Header */}
               <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 truncate">
                     {project.name}
                   </h3>
                   {project.description && (

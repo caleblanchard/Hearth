@@ -746,8 +746,7 @@ export default function CalendarPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-4 sm:mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Calendar</h1>
+          <div className="flex items-center justify-end mb-3">
             <button
               onClick={handleToday}
               className="px-3 py-1.5 sm:px-4 sm:py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 text-sm sm:text-base"

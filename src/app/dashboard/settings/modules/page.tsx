@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
-  Cog6ToothIcon,
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -140,17 +139,6 @@ export default function ModuleSettingsPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3">
-          <Cog6ToothIcon className="h-8 w-8" />
-          Module Settings
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Enable or disable modules for your family. Disabled modules will be hidden from the sidebar
-          and inaccessible to all family members.
-        </p>
-      </div>
-
       {/* Info Banner */}
       <div className="bg-info/10 dark:bg-info/20 border border-info/30 dark:border-info/40 rounded-lg p-4 mb-8">
         <div className="flex items-start gap-3">

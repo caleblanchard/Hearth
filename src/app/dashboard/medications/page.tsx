@@ -252,15 +252,7 @@ export default function MedicationsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Medication Safety
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Track medications with safety interlock to prevent double-dosing
-          </p>
-        </div>
+      <div className="mb-6 flex items-center justify-end">
         {isParent && (
           <button
             onClick={() => setShowAddModal(true)}

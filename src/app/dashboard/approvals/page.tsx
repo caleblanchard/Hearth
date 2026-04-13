@@ -195,15 +195,6 @@ export default function ApprovalsPage() {
   return (
     <div className="p-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-slate-900 min-h-screen">
       <div className="max-w-5xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Approval Queue
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            Review and approve pending chore completions and reward redemptions
-          </p>
-        </div>
-
         <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
             <label htmlFor="filter" className="text-sm font-medium text-gray-700 dark:text-gray-200">

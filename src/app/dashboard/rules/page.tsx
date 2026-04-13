@@ -175,12 +175,6 @@ export default function RulesPage() {
   return (
     <div className="min-h-screen bg-canvas-50 dark:bg-slate-900 p-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Automation Rules</h1>
-          <p className="text-slate-600 dark:text-slate-400">Create and manage automated household rules</p>
-        </div>
-
         {/* Actions Bar */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
           <div className="flex items-center justify-between">

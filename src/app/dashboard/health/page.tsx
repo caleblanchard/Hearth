@@ -5,7 +5,6 @@ import HealthEventsList from './HealthEventsList';
 import {
   UserCircleIcon,
   ChartBarIcon,
-  BeakerIcon,
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 
@@ -38,16 +37,6 @@ export default function HealthPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
-          <BeakerIcon className="h-8 w-8" />
-          Health & Wellness
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Track health events, symptoms, temperatures, and medical information for your family
-        </p>
-      </div>
-
       {/* Quick Links */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {quickLinks.map((link) => {
