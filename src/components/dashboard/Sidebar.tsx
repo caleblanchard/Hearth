@@ -166,6 +166,7 @@ export default function Sidebar() {
       items: [
         { name: 'Module Settings', path: '/dashboard/settings/modules', icon: Cog6ToothIcon },
         { name: 'Calendar Settings', path: '/dashboard/settings/calendars', icon: CalendarDaysIcon, moduleId: 'CALENDAR' },
+        { name: 'Meal Settings', path: '/dashboard/settings/meals', icon: CakeIcon, moduleId: 'MEAL_PLANNING' },
         { name: 'Automation Rules', path: '/dashboard/rules', icon: BoltIcon, moduleId: 'RULES_ENGINE' },
         { name: 'Reports', path: '/dashboard/reports', icon: ChartBarIcon },
         { name: 'Approvals', path: '/dashboard/approvals', icon: CheckBadgeIcon },

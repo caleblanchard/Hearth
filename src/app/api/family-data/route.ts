@@ -84,6 +84,7 @@ export async function GET(request: Request) {
 
     // Build response matching /api/family structure
     const settings = (familyData.settings as any) || {};
+    const VALID_MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'];
     const family = {
       id: familyData.id,
       name: familyData.name,
@@ -94,6 +95,9 @@ export async function GET(request: Request) {
       settings: {
         currency: settings.currency || 'USD',
         weekStartDay: settings.weekStartDay || 'SUNDAY',
+        plannedMealTypes: Array.isArray(settings.plannedMealTypes) && settings.plannedMealTypes.length > 0
+          ? settings.plannedMealTypes.filter((t: string) => VALID_MEAL_TYPES.includes(t))
+          : VALID_MEAL_TYPES,
       },
       members,
     };
@@ -121,15 +125,51 @@ export async function PATCH(request: Request) {
 
     const body = await request.json();
 
-    // Map camelCase to snake_case for database
+    const VALID_MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'];
+
+    // Fetch current settings to merge into
+    const { data: currentFamily, error: fetchError } = await supabase
+      .from('families')
+      .select('settings')
+      .eq('id', familyId)
+      .single();
+
+    if (fetchError) {
+      logger.error('Error fetching current family settings:', fetchError);
+      return NextResponse.json({ error: 'Failed to fetch family settings' }, { status: 500 });
+    }
+
+    const currentSettings = (currentFamily?.settings as any) || {};
+
+    // Map camelCase to snake_case for top-level columns
     const updateData: any = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.timezone !== undefined) updateData.timezone = body.timezone;
     if (body.location !== undefined) updateData.location = body.location;
     if (body.latitude !== undefined) updateData.latitude = body.latitude;
     if (body.longitude !== undefined) updateData.longitude = body.longitude;
-    if (body.currency !== undefined) updateData.currency = body.currency;
-    if (body.weekStartDay !== undefined) updateData.week_start_day = body.weekStartDay;
+
+    // Merge settings into the JSONB column
+    const newSettings = { ...currentSettings };
+    if (body.currency !== undefined) newSettings.currency = body.currency;
+    if (body.weekStartDay !== undefined) newSettings.weekStartDay = body.weekStartDay;
+    if (body.plannedMealTypes !== undefined) {
+      if (!Array.isArray(body.plannedMealTypes) || body.plannedMealTypes.length === 0) {
+        return NextResponse.json(
+          { error: 'plannedMealTypes must be a non-empty array' },
+          { status: 400 }
+        );
+      }
+      const invalid = body.plannedMealTypes.filter((t: string) => !VALID_MEAL_TYPES.includes(t));
+      if (invalid.length > 0) {
+        return NextResponse.json(
+          { error: `Invalid meal types: ${invalid.join(', ')}` },
+          { status: 400 }
+        );
+      }
+      newSettings.plannedMealTypes = body.plannedMealTypes;
+    }
+    updateData.settings = newSettings;
 
     const { data: family, error } = await supabase
       .from('families')

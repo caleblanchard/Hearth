@@ -53,6 +53,7 @@ export default function MealPlanner() {
   const [hoveredEntry, setHoveredEntry] = useState<string | null>(null);
   const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('MONDAY');
   const [familyTimezone, setFamilyTimezone] = useState<string>('America/New_York');
+  const [mealTypes, setMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner', 'Snack']);
   
   // New dish state
   const [addingDishToEntry, setAddingDishToEntry] = useState<string | null>(null);
@@ -66,8 +67,6 @@ export default function MealPlanner() {
     }
     return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   }, [weekStartDay]);
-  
-  const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
   // Get start of week based on family setting
   const getWeekStart = (date: Date, startDay: 'SUNDAY' | 'MONDAY'): Date => {
@@ -136,6 +135,13 @@ export default function MealPlanner() {
           const data = await response.json();
           const weekStartDaySetting = data.family?.settings?.weekStartDay || 'MONDAY';
           const timezone = data.family?.timezone || 'America/New_York';
+
+          // Filter meal types to family's planned types (preserve display order)
+          const ALL_MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+          const plannedTypes: string[] = data.family?.settings?.plannedMealTypes ?? [];
+          if (plannedTypes.length > 0) {
+            setMealTypes(ALL_MEAL_TYPES.filter(m => plannedTypes.includes(m.toUpperCase())));
+          }
           
           console.log('[MealPlanner] Week start day setting:', weekStartDaySetting);
           console.log('[MealPlanner] Family timezone:', timezone);
