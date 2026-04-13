@@ -481,10 +481,10 @@ export default function MealPlanner() {
 
       {/* Meal Plan Grid */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] border-collapse bg-white dark:bg-gray-800 rounded-lg shadow">
+        <table className="w-full min-w-[560px] table-fixed border-collapse bg-white dark:bg-gray-800 rounded-lg shadow">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700">
-              <th className="p-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
+              <th className="w-14 p-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
                 Meal
               </th>
               {days.map((day, index) => (
@@ -534,7 +534,7 @@ export default function MealPlanner() {
                                   >
                                     <div className="flex items-start gap-2">
                                       <div className="flex-1 min-w-0">
-                                        <div className="text-sm text-gray-900 dark:text-gray-100 break-words">
+                                        <div className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2" title={dish.dishName}>
                                           {dish.dishName}
                                         </div>
                                         {dish.recipeId && (
