@@ -1062,7 +1062,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Week grid with time slots - scrollable */}
-            <div className="overflow-y-auto flex-1" ref={weekScrollRef} style={{ maxHeight: 'calc(100vh - 300px)' }}>
+            <div className="overflow-y-auto flex-1" ref={weekScrollRef} style={{ maxHeight: 'calc(100vh - 300px)', scrollbarGutter: 'stable' }}>
               <div className="grid relative gap-px bg-gray-200 dark:bg-gray-700" style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}>
                 {/* Time column - sticky */}
                 <div className="sticky left-0 bg-white dark:bg-gray-800 z-20">
@@ -1230,7 +1230,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Day grid with time slots - scrollable */}
-            <div className="overflow-y-auto flex-1" ref={dayScrollRef} style={{ maxHeight: 'calc(100vh - 300px)' }}>
+            <div className="overflow-y-auto flex-1" ref={dayScrollRef} style={{ maxHeight: 'calc(100vh - 300px)', scrollbarGutter: 'stable' }}>
               <div className="grid grid-cols-12">
                 {/* Time column - sticky */}
                 <div className="col-span-2 border-r border-gray-200 dark:border-gray-700 sticky left-0 bg-white dark:bg-gray-800 z-20">
