@@ -300,8 +300,8 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
             Back to Recipes
           </button>
 
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex-1 min-w-0">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 {recipe.name}
               </h1>
@@ -322,7 +322,7 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:flex-shrink-0">
               <button
                 onClick={() => setShowAddToMealModal(true)}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
