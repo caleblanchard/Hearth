@@ -404,15 +404,15 @@ export default function EditRecipePage({ params }: { params: Promise<{ id: strin
         step="any"
         value={ingredient.quantity}
         onChange={e => onUpdate('quantity', e.target.value)}
-        placeholder="Quantity"
-        className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        placeholder="Qty"
+        className="w-14 sm:w-24 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       />
       <input
         type="text"
         value={ingredient.unit}
         onChange={e => onUpdate('unit', e.target.value)}
         placeholder="Unit"
-        className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        className="w-20 sm:w-32 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       />
       <input
         type="text"
@@ -501,7 +501,7 @@ export default function EditRecipePage({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <button
@@ -601,9 +601,9 @@ export default function EditRecipePage({ params }: { params: Promise<{ id: strin
 
           {/* Ingredients */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Ingredients</h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button type="button" onClick={addIngredientGroup}
                   className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors">
                   <FolderPlusIcon className="h-4 w-4" />
@@ -625,10 +625,10 @@ export default function EditRecipePage({ params }: { params: Promise<{ id: strin
                     placeholder="Section name"
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-medium" />
                   <button type="button" onClick={() => addIngredientToSection(section.id)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-3 py-2 text-sm bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors flex-shrink-0"
                     aria-label="Add ingredient to section">
                     <PlusIcon className="h-4 w-4" />
-                    Add ingredient to section
+                    <span className="hidden sm:inline">Add ingredient to section</span>
                   </button>
                   <button type="button" onClick={() => removeIngredientSection(section.id)}
                     className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
@@ -660,9 +660,9 @@ export default function EditRecipePage({ params }: { params: Promise<{ id: strin
 
           {/* Instructions */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Instructions</h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button type="button" onClick={addInstructionGroup}
                   className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors">
                   <FolderPlusIcon className="h-4 w-4" />
@@ -684,10 +684,10 @@ export default function EditRecipePage({ params }: { params: Promise<{ id: strin
                     placeholder="Section name"
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-medium" />
                   <button type="button" onClick={() => addStepToSection(section.id)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-3 py-2 text-sm bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors flex-shrink-0"
                     aria-label="Add step to section">
                     <PlusIcon className="h-4 w-4" />
-                    Add step
+                    <span className="hidden sm:inline">Add step</span>
                   </button>
                   <button type="button" onClick={() => removeInstructionSection(section.id)}
                     className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"

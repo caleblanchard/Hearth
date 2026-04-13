@@ -406,15 +406,15 @@ export default function NewRecipePage() {
         step="any"
         value={ingredient.quantity}
         onChange={e => onUpdate('quantity', e.target.value)}
-        placeholder="Quantity"
-        className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        placeholder="Qty"
+        className="w-14 sm:w-24 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       />
       <input
         type="text"
         value={ingredient.unit}
         onChange={e => onUpdate('unit', e.target.value)}
         placeholder="Unit"
-        className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        className="w-20 sm:w-32 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       />
       <input
         type="text"
@@ -494,7 +494,7 @@ export default function NewRecipePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -505,13 +505,13 @@ export default function NewRecipePage() {
             <ArrowLeftIcon className="h-5 w-5" />
             Back to Recipes
           </button>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Create New Recipe
             </h1>
             <button
               onClick={() => { setImportUrl(''); setImportError(''); setImportModalOpen(true); }}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-info/10 hover:bg-info/20 text-info rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-info/10 hover:bg-info/20 text-info rounded-lg transition-colors sm:flex-shrink-0"
             >
               <ArrowDownTrayIcon className="h-5 w-5" />
               Import from URL
@@ -745,9 +745,9 @@ export default function NewRecipePage() {
 
           {/* Ingredients */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Ingredients</h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={addIngredientGroup}
@@ -784,11 +784,11 @@ export default function NewRecipePage() {
                   <button
                     type="button"
                     onClick={() => addIngredientToSection(section.id)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-3 py-2 text-sm bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors flex-shrink-0"
                     aria-label="Add ingredient to section"
                   >
                     <PlusIcon className="h-4 w-4" />
-                    Add ingredient to section
+                    <span className="hidden sm:inline">Add ingredient to section</span>
                   </button>
                   <button
                     type="button"
@@ -830,9 +830,9 @@ export default function NewRecipePage() {
 
           {/* Instructions */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Instructions</h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={addInstructionGroup}
@@ -869,11 +869,11 @@ export default function NewRecipePage() {
                   <button
                     type="button"
                     onClick={() => addStepToSection(section.id)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-3 py-2 text-sm bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors flex-shrink-0"
                     aria-label="Add step to section"
                   >
                     <PlusIcon className="h-4 w-4" />
-                    Add step
+                    <span className="hidden sm:inline">Add step</span>
                   </button>
                   <button
                     type="button"
