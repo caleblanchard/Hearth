@@ -67,8 +67,7 @@ export default function RecipeAutocomplete({
         );
         if (response.ok) {
           const data = await response.json();
-          console.log('Search results:', data.results);
-          setRecipes(data.results || []);
+          setRecipes(data.recipes || []);
           setShowDropdown(true);
         } else {
           setRecipes([]);

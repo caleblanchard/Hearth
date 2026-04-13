@@ -13,8 +13,31 @@ import {
   ArrowDownTrayIcon,
   FolderPlusIcon,
 } from '@heroicons/react/24/outline';
+import {
+  DndContext,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  SortableIngredientRow,
+  IngredientSectionContainer,
+  IngredientDragOverlayContent,
+} from '@/components/recipes/IngredientDnd';
 
 interface Ingredient {
+  _dndId: string;
   name: string;
   quantity: string;
   unit: string;
@@ -46,55 +69,14 @@ const DIETARY_TAGS = [
   { value: 'PALEO', label: 'Paleo' },
 ];
 
-const emptyIngredient = (): Ingredient => ({ name: '', quantity: '', unit: '', notes: '' });
+const emptyIngredient = (): Ingredient => ({ _dndId: newIngId(), name: '', quantity: '', unit: '', notes: '' });
 
 function newSectionId() {
   return `sec-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function IngredientRow({
-  ingredient,
-  onUpdate,
-  onRemove,
-}: {
-  ingredient: Ingredient;
-  onUpdate: (field: keyof Ingredient, value: string) => void;
-  onRemove: () => void;
-}) {
-  return (
-    <div className="flex gap-2">
-      <input
-        type="number"
-        step="any"
-        value={ingredient.quantity}
-        onChange={e => onUpdate('quantity', e.target.value)}
-        placeholder="Qty"
-        className="w-14 sm:w-24 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      />
-      <input
-        type="text"
-        value={ingredient.unit}
-        onChange={e => onUpdate('unit', e.target.value)}
-        placeholder="Unit"
-        className="w-20 sm:w-32 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      />
-      <input
-        type="text"
-        value={ingredient.name}
-        onChange={e => onUpdate('name', e.target.value)}
-        placeholder="Ingredient name"
-        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      />
-      <button
-        type="button"
-        onClick={onRemove}
-        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-        aria-label="Remove ingredient"
-      >
-        <XMarkIcon className="h-5 w-5" />
-      </button>
-    </div>
-  );
+function newIngId() {
+  return `ing-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function StepRow({
@@ -185,6 +167,13 @@ export default function NewRecipePage() {
   const [ungroupedIngredients, setUngroupedIngredients] = useState<Ingredient[]>([emptyIngredient()]);
   const [ingredientSections, setIngredientSections] = useState<IngredientSection[]>([]);
 
+  // DnD for ingredients
+  const [activeIngredient, setActiveIngredient] = useState<Ingredient | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   // Flat (ungrouped) steps + named sections
   const [ungroupedSteps, setUngroupedSteps] = useState<string[]>(['']);
   const [instructionSections, setInstructionSections] = useState<InstructionSection[]>([]);
@@ -231,6 +220,7 @@ export default function NewRecipePage() {
       setUngroupedIngredients(
         rawUngrouped.length > 0
           ? rawUngrouped.map((ing: any) => ({
+              _dndId: newIngId(),
               name: ing.name || '',
               quantity: ing.quantity?.toString() || '',
               unit: ing.unit || '',
@@ -246,6 +236,7 @@ export default function NewRecipePage() {
           id: newSectionId(),
           name: sec.name || '',
           ingredients: (sec.ingredients ?? []).map((ing: any) => ({
+            _dndId: newIngId(),
             name: ing.name || '',
             quantity: ing.quantity?.toString() || '',
             unit: ing.unit || '',
@@ -409,6 +400,107 @@ export default function NewRecipePage() {
         return { ...s, ingredients: ings };
       })
     );
+
+  // ── Ingredient DnD handlers ────────────────────────────────────────────────
+  const handleIngredientDragStart = (event: DragStartEvent) => {
+    const activeId = event.active.id as string;
+    const found =
+      ungroupedIngredients.find(i => i._dndId === activeId) ??
+      ingredientSections.flatMap(s => s.ingredients).find(i => i._dndId === activeId) ??
+      null;
+    setActiveIngredient(found);
+  };
+
+  const handleIngredientDragEnd = (event: DragEndEvent) => {
+    setActiveIngredient(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Determine source container
+    const isUngroupedSource = ungroupedIngredients.some(i => i._dndId === activeId);
+    const sourceSectionId = isUngroupedSource
+      ? null
+      : ingredientSections.find(s => s.ingredients.some(i => i._dndId === activeId))?.id ?? null;
+
+    // Determine dest container (overId is either a container id or an item dndId)
+    const sectionIds = ingredientSections.map(s => s.id);
+    let destContainerId: string | null;
+    if (overId === 'ungrouped') {
+      destContainerId = null;
+    } else if (sectionIds.includes(overId)) {
+      destContainerId = overId;
+    } else {
+      // overId is an ingredient dndId — find its container
+      if (ungroupedIngredients.some(i => i._dndId === overId)) {
+        destContainerId = null;
+      } else {
+        destContainerId = ingredientSections.find(s => s.ingredients.some(i => i._dndId === overId))?.id ?? null;
+      }
+    }
+
+    const sourceContainerId = sourceSectionId;
+
+    if (sourceContainerId === destContainerId) {
+      // Same container — reorder
+      if (destContainerId === null) {
+        const oldIdx = ungroupedIngredients.findIndex(i => i._dndId === activeId);
+        const newIdx = ungroupedIngredients.findIndex(i => i._dndId === overId);
+        if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+          setUngroupedIngredients(arrayMove(ungroupedIngredients, oldIdx, newIdx));
+        }
+      } else {
+        setIngredientSections(prev =>
+          prev.map(s => {
+            if (s.id !== destContainerId) return s;
+            const oldIdx = s.ingredients.findIndex(i => i._dndId === activeId);
+            const newIdx = s.ingredients.findIndex(i => i._dndId === overId);
+            if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+              return { ...s, ingredients: arrayMove(s.ingredients, oldIdx, newIdx) };
+            }
+            return s;
+          })
+        );
+      }
+    } else {
+      // Cross-container move
+      let movedItem: Ingredient | undefined;
+      if (sourceContainerId === null) {
+        movedItem = ungroupedIngredients.find(i => i._dndId === activeId);
+        setUngroupedIngredients(prev => prev.filter(i => i._dndId !== activeId));
+      } else {
+        const srcSection = ingredientSections.find(s => s.id === sourceContainerId);
+        movedItem = srcSection?.ingredients.find(i => i._dndId === activeId);
+        setIngredientSections(prev =>
+          prev.map(s => {
+            if (s.id !== sourceContainerId) return s;
+            const remaining = s.ingredients.filter(i => i._dndId !== activeId);
+            return { ...s, ingredients: remaining.length > 0 ? remaining : [emptyIngredient()] };
+          })
+        );
+      }
+      if (!movedItem) return;
+      if (destContainerId === null) {
+        setUngroupedIngredients(prev => [...prev, movedItem!]);
+      } else {
+        setIngredientSections(prev =>
+          prev.map(s => {
+            if (s.id !== destContainerId) return s;
+            // Insert before the over item if overId is an ingredient, else append
+            const overIdx = s.ingredients.findIndex(i => i._dndId === overId);
+            if (overIdx !== -1) {
+              const updated = [...s.ingredients];
+              updated.splice(overIdx, 0, movedItem!);
+              return { ...s, ingredients: updated };
+            }
+            return { ...s, ingredients: [...s.ingredients, movedItem!] };
+          })
+        );
+      }
+    }
+  };
 
   // ── Ungrouped step helpers ─────────────────────────────────────────────────
   const addUngroupedStep = () => setUngroupedSteps([...ungroupedSteps, '']);
@@ -772,65 +864,92 @@ export default function NewRecipePage() {
               </div>
             </div>
 
-            {/* Named ingredient sections */}
-            {ingredientSections.map(section => (
-              <div
-                key={section.id}
-                className="mb-4 border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-750"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <input
-                    type="text"
-                    value={section.name}
-                    onChange={e => updateIngredientSectionName(section.id, e.target.value)}
-                    placeholder="Section name"
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-medium"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => addIngredientToSection(section.id)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors flex-shrink-0"
-                    aria-label="Add ingredient to section"
-                  >
-                    <PlusIcon className="h-4 w-4" />
-                    <span className="hidden sm:inline">Add ingredient to section</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeIngredientSection(section.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                    aria-label="Remove section"
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="space-y-2 pl-2 border-l-2 border-ember-200 dark:border-ember-800">
-                  {section.ingredients.map((ing, i) => (
-                    <IngredientRow
-                      key={i}
-                      ingredient={ing}
-                      onUpdate={(field, val) => updateIngredientInSection(section.id, i, field, val)}
-                      onRemove={() => removeIngredientFromSection(section.id, i)}
+            {/* Named ingredient sections + ungrouped — wrapped in DnD context */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCorners}
+              onDragStart={handleIngredientDragStart}
+              onDragEnd={handleIngredientDragEnd}
+            >
+              {ingredientSections.map(section => (
+                <div
+                  key={section.id}
+                  className="mb-4 border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-750"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <input
+                      type="text"
+                      value={section.name}
+                      onChange={e => updateIngredientSectionName(section.id, e.target.value)}
+                      placeholder="Section name"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-medium"
                     />
-                  ))}
+                    <button
+                      type="button"
+                      onClick={() => addIngredientToSection(section.id)}
+                      className="flex items-center gap-1 px-3 py-2 text-sm bg-ember-700 hover:bg-ember-500 text-white rounded-lg transition-colors flex-shrink-0"
+                      aria-label="Add ingredient to section"
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                      <span className="hidden sm:inline">Add ingredient to section</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeIngredientSection(section.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      aria-label="Remove section"
+                    >
+                      <XMarkIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <SortableContext
+                    items={section.ingredients.map(i => i._dndId)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <IngredientSectionContainer id={section.id}>
+                      <div className="space-y-2 pl-2 border-l-2 border-ember-200 dark:border-ember-800">
+                        {section.ingredients.map((ing, i) => (
+                          <SortableIngredientRow
+                            key={ing._dndId}
+                            dndId={ing._dndId}
+                            ingredient={ing}
+                            onUpdate={(field, val) => updateIngredientInSection(section.id, i, field, val)}
+                            onRemove={() => removeIngredientFromSection(section.id, i)}
+                          />
+                        ))}
+                      </div>
+                    </IngredientSectionContainer>
+                  </SortableContext>
                 </div>
-              </div>
-            ))}
-
-            {/* Ungrouped ingredients */}
-            {(ingredientSections.length > 0) && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Other ingredients</p>
-            )}
-            <div className="space-y-3">
-              {ungroupedIngredients.map((ingredient, i) => (
-                <IngredientRow
-                  key={i}
-                  ingredient={ingredient}
-                  onUpdate={(field, val) => updateUngroupedIngredient(i, field, val)}
-                  onRemove={() => removeUngroupedIngredient(i)}
-                />
               ))}
-            </div>
+
+              {/* Ungrouped ingredients */}
+              {ingredientSections.length > 0 && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Other ingredients</p>
+              )}
+              <SortableContext
+                items={ungroupedIngredients.map(i => i._dndId)}
+                strategy={verticalListSortingStrategy}
+              >
+                <IngredientSectionContainer id="ungrouped">
+                  <div className="space-y-3">
+                    {ungroupedIngredients.map((ingredient, i) => (
+                      <SortableIngredientRow
+                        key={ingredient._dndId}
+                        dndId={ingredient._dndId}
+                        ingredient={ingredient}
+                        onUpdate={(field, val) => updateUngroupedIngredient(i, field, val)}
+                        onRemove={() => removeUngroupedIngredient(i)}
+                      />
+                    ))}
+                  </div>
+                </IngredientSectionContainer>
+              </SortableContext>
+
+              <DragOverlay>
+                {activeIngredient && <IngredientDragOverlayContent ingredient={activeIngredient} />}
+              </DragOverlay>
+            </DndContext>
           </div>
 
           {/* Instructions */}
