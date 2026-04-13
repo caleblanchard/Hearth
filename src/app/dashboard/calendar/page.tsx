@@ -58,6 +58,7 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -136,9 +137,13 @@ export default function CalendarPage() {
   const dayScrollRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const fetchEvents = async (date: Date, viewType: CalendarView = view) => {
+  const fetchEvents = async (date: Date, viewType: CalendarView = view, background = false) => {
     try {
-      setLoading(true);
+      if (background) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       let startDate: Date;
       let endDate: Date;
 
@@ -187,6 +192,7 @@ export default function CalendarPage() {
       setEvents([]); // Set empty array on error
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -335,9 +341,13 @@ export default function CalendarPage() {
     }
   };
 
+  const initialLoadRef = useRef(true);
+
   useEffect(() => {
     if (user) {
-      fetchEvents(currentDate, view);
+      const isBackground = !initialLoadRef.current;
+      initialLoadRef.current = false;
+      fetchEvents(currentDate, view, isBackground);
       fetchFamilyMembers();
     } else if (!sessionLoading) {
       // User is not authenticated and loading is complete
@@ -522,10 +532,11 @@ export default function CalendarPage() {
   // On mobile: select the day and show events below; on desktop: navigate to day view
   const handleDayClick = (date: Date | null) => {
     if (!date) return;
-    setCurrentDate(date);
     if (isMobile && view === 'month') {
+      // Only update the selected day — don't change currentDate so events aren't re-fetched
       setSelectedDay(date);
     } else {
+      setCurrentDate(date);
       setView('day');
     }
   };
@@ -743,6 +754,12 @@ export default function CalendarPage() {
 
   return (
     <div className="p-3 sm:p-8">
+      {/* Subtle refresh indicator - doesn't replace the page */}
+      {refreshing && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-ember-200 dark:bg-ember-900 overflow-hidden">
+          <div className="h-full bg-ember-600 animate-[slide-in_1.5s_ease-in-out_infinite]" style={{ animation: 'pulse 1.5s ease-in-out infinite', width: '60%', marginLeft: '20%' }} />
+        </div>
+      )}
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-4 sm:mb-6">
