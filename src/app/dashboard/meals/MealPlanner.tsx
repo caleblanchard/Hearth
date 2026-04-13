@@ -475,7 +475,7 @@ export default function MealPlanner() {
 
       {/* Meal Plan Grid */}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse bg-white dark:bg-gray-800 rounded-lg shadow">
+        <table className="w-full min-w-[560px] border-collapse bg-white dark:bg-gray-800 rounded-lg shadow">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700">
               <th className="p-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100">

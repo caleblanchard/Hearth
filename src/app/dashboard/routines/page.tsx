@@ -186,7 +186,7 @@ export default function RoutinesPage() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Routines</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -196,7 +196,7 @@ export default function RoutinesPage() {
         {isParent && (
           <button
             onClick={() => { setEditingRoutine(null); setShowBuilder(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white font-semibold rounded-lg transition-colors sm:flex-shrink-0"
           >
             <PlusIcon className="h-5 w-5" />
             New Routine

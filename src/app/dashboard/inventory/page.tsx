@@ -9,7 +9,7 @@ export default function InventoryPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             Household Inventory
@@ -20,7 +20,7 @@ export default function InventoryPage() {
         </div>
         <button
           onClick={() => router.push('/dashboard/inventory/create')}
-          className="flex items-center gap-2 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-ember-700 hover:bg-ember-500 text-white rounded-lg font-medium transition-colors sm:flex-shrink-0"
         >
           <PlusIcon className="h-5 w-5" />
           Add Item
