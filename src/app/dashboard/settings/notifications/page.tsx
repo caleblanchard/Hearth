@@ -168,8 +168,6 @@ export default function NotificationSettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Notification Settings</h1>
-
       {/* Push Notifications */}
       {pushSupported && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">

@@ -103,7 +103,6 @@ export default function MealSettingsPage() {
 
   return (
     <div className="p-6 max-w-lg">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Meal Settings</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
         Choose which meal types to show in the weekly meal planner. At least one must be selected.
       </p>
