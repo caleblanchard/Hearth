@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
-import { getProjectTask, updateProjectTask, deleteProjectTask } from '@/lib/data/projects';
+import { getProjectTask, updateProjectTask, updateProjectTaskWithAssignee, deleteProjectTask } from '@/lib/data/projects';
 import { logger } from '@/lib/logger';
 
 const normalizeTask = (task: any) => ({
   ...task,
+  assigneeId: task.assignee_id ?? task.assigneeId ?? null,
   dueDate: task.due_date ?? task.dueDate ?? null,
   startDate: task.start_date ?? task.startDate ?? null,
   estimatedHours: task.estimated_hours ?? task.estimatedHours ?? null,
@@ -154,7 +155,7 @@ export async function PATCH(
     if (notes !== undefined) updates.notes = notes;
     if (sortOrder !== undefined) updates.sort_order = sortOrder;
 
-    const task = await updateProjectTask(taskId, updates);
+    const task = await updateProjectTaskWithAssignee(taskId, updates);
 
     // Audit log
     await (supabase as any).from('audit_logs').insert({

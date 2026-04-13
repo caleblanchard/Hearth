@@ -174,6 +174,34 @@ export async function updateProjectTask(
   return data
 }
 
+export async function updateProjectTaskWithAssignee(
+  taskId: string,
+  updates: ProjectTaskUpdate
+) {
+  const supabase = await createClient()
+
+  const { data: task, error } = await supabase
+    .from('project_tasks')
+    .update(updates)
+    .eq('id', taskId)
+    .select()
+    .single()
+
+  if (error) throw error
+
+  let assignee: { id: string; name: string; avatar_url: string | null } | null = null
+  if (task.assignee_id) {
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('id, name, avatar_url')
+      .eq('id', task.assignee_id)
+      .single()
+    assignee = member
+  }
+
+  return { ...task, assignee }
+}
+
 /**
  * Delete project task
  */
@@ -287,14 +315,25 @@ export async function getTaskDependencies(taskId: string) {
 export async function getProjectTask(taskId: string) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  const { data: task, error } = await supabase
     .from('project_tasks')
     .select('*')
     .eq('id', taskId)
     .single()
 
   if (error) throw error
-  return data
+
+  let assignee: { id: string; name: string; avatar_url: string | null } | null = null
+  if (task.assignee_id) {
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('id, name, avatar_url')
+      .eq('id', task.assignee_id)
+      .single()
+    assignee = member
+  }
+
+  return { ...task, assignee }
 }
 
 /**
