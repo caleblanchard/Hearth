@@ -52,6 +52,112 @@ function newSectionId() {
   return `sec-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function IngredientRow({
+  ingredient,
+  onUpdate,
+  onRemove,
+}: {
+  ingredient: Ingredient;
+  onUpdate: (field: keyof Ingredient, value: string) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      <input
+        type="number"
+        step="any"
+        value={ingredient.quantity}
+        onChange={e => onUpdate('quantity', e.target.value)}
+        placeholder="Qty"
+        className="w-14 sm:w-24 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+      />
+      <input
+        type="text"
+        value={ingredient.unit}
+        onChange={e => onUpdate('unit', e.target.value)}
+        placeholder="Unit"
+        className="w-20 sm:w-32 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+      />
+      <input
+        type="text"
+        value={ingredient.name}
+        onChange={e => onUpdate('name', e.target.value)}
+        placeholder="Ingredient name"
+        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+      />
+      <button
+        type="button"
+        onClick={onRemove}
+        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+        aria-label="Remove ingredient"
+      >
+        <XMarkIcon className="h-5 w-5" />
+      </button>
+    </div>
+  );
+}
+
+function StepRow({
+  step,
+  index,
+  total,
+  onUpdate,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
+}: {
+  step: string;
+  index: number;
+  total: number;
+  onUpdate: (val: string) => void;
+  onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      <span className="flex-shrink-0 w-8 h-10 flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-400">
+        {index + 1}.
+      </span>
+      <textarea
+        value={step}
+        onChange={e => onUpdate(e.target.value)}
+        placeholder={`Step ${index + 1}`}
+        rows={2}
+        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+      />
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          onClick={onMoveUp}
+          disabled={index === 0}
+          className="p-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Move up"
+        >
+          <ChevronUpIcon className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onMoveDown}
+          disabled={index === total - 1}
+          className="p-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Move down"
+        >
+          <ChevronDownIcon className="h-4 w-4" />
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+        aria-label="Remove step"
+      >
+        <XMarkIcon className="h-5 w-5" />
+      </button>
+    </div>
+  );
+}
+
 export default function NewRecipePage() {
   const router = useRouter();
   const { user } = useSupabaseSession();
@@ -391,107 +497,6 @@ export default function NewRecipePage() {
   };
 
   // ── Shared sub-components ──────────────────────────────────────────────────
-  const IngredientRow = ({
-    ingredient,
-    onUpdate,
-    onRemove,
-  }: {
-    ingredient: Ingredient;
-    onUpdate: (field: keyof Ingredient, value: string) => void;
-    onRemove: () => void;
-  }) => (
-    <div className="flex gap-2">
-      <input
-        type="number"
-        step="any"
-        value={ingredient.quantity}
-        onChange={e => onUpdate('quantity', e.target.value)}
-        placeholder="Qty"
-        className="w-14 sm:w-24 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      />
-      <input
-        type="text"
-        value={ingredient.unit}
-        onChange={e => onUpdate('unit', e.target.value)}
-        placeholder="Unit"
-        className="w-20 sm:w-32 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      />
-      <input
-        type="text"
-        value={ingredient.name}
-        onChange={e => onUpdate('name', e.target.value)}
-        placeholder="Ingredient name"
-        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      />
-      <button
-        type="button"
-        onClick={onRemove}
-        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-        aria-label="Remove ingredient"
-      >
-        <XMarkIcon className="h-5 w-5" />
-      </button>
-    </div>
-  );
-
-  const StepRow = ({
-    step,
-    index,
-    total,
-    onUpdate,
-    onRemove,
-    onMoveUp,
-    onMoveDown,
-  }: {
-    step: string;
-    index: number;
-    total: number;
-    onUpdate: (val: string) => void;
-    onRemove: () => void;
-    onMoveUp: () => void;
-    onMoveDown: () => void;
-  }) => (
-    <div className="flex gap-2">
-      <span className="flex-shrink-0 w-8 h-10 flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-400">
-        {index + 1}.
-      </span>
-      <textarea
-        value={step}
-        onChange={e => onUpdate(e.target.value)}
-        placeholder={`Step ${index + 1}`}
-        rows={2}
-        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      />
-      <div className="flex flex-col gap-1">
-        <button
-          type="button"
-          onClick={onMoveUp}
-          disabled={index === 0}
-          className="p-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
-          aria-label="Move up"
-        >
-          <ChevronUpIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onMoveDown}
-          disabled={index === total - 1}
-          className="p-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
-          aria-label="Move down"
-        >
-          <ChevronDownIcon className="h-4 w-4" />
-        </button>
-      </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-        aria-label="Remove step"
-      >
-        <XMarkIcon className="h-5 w-5" />
-      </button>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-8">
