@@ -135,7 +135,10 @@ export default function CalendarPage() {
   const [showMealModal, setShowMealModal] = useState(false);
 
   const weekScrollRef = useRef<HTMLDivElement>(null);
+  const weekScrollMobileRef = useRef<HTMLDivElement>(null);
   const dayScrollRef = useRef<HTMLDivElement>(null);
+
+
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const fetchEvents = async (date: Date, viewType: CalendarView = view, background = false) => {
@@ -373,32 +376,46 @@ export default function CalendarPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Scroll to 6am on view change or when switching to week/day view
+  // Auto-scroll to current time (or 8am if it's a future date) when entering week/day view
   useEffect(() => {
-    if (view === 'week' && weekScrollRef.current) {
-      // Scroll to 6am (6 hours * 64px per hour = 384px)
-      // Each hour is h-16 (64px)
-      // Mobile uses h-14 (56px/hr), desktop uses h-16 (64px/hr)
-      weekScrollRef.current.scrollTop = isMobile ? 6 * 56 : 6 * 64;
-    }
-    if (view === 'day' && dayScrollRef.current) {
-      // Scroll to 6am (6 hours * 80px per hour = 480px)
-      // Each hour is h-20 (80px)
-      dayScrollRef.current.scrollTop = 6 * 80;
-    }
-  }, [view, currentDate]);
+    const now = new Date();
+    const currentHour = now.getHours() + now.getMinutes() / 60;
+    // Use current time if viewing today's week/day, otherwise scroll to 8am
+    const isCurrentPeriod = (() => {
+      if (view === 'week') {
+        const weekDays = getWeekDays();
+        return weekDays.some(d => d.toDateString() === now.toDateString());
+      }
+      return currentDate.toDateString() === now.toDateString();
+    })();
+    const targetHour = isCurrentPeriod ? Math.max(currentHour - 1, 0) : 8;
 
-  // Scroll to current time
+    // Use setTimeout to ensure the DOM has fully painted before scrolling
+    const timer = setTimeout(() => {
+      if (view === 'week') {
+        const hourPx = isMobile ? 56 : 64;
+        const ref = isMobile ? weekScrollMobileRef : weekScrollRef;
+        if (ref.current) ref.current.scrollTop = targetHour * hourPx;
+      }
+      if (view === 'day' && dayScrollRef.current) {
+        dayScrollRef.current.scrollTop = targetHour * 80;
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, currentDate, isMobile]);
+
+  // Scroll to current time (manual "Now" button)
   const scrollToNow = () => {
     const now = new Date();
     const currentHour = now.getHours() + now.getMinutes() / 60;
-    
-    if (view === 'week' && weekScrollRef.current) {
+    if (view === 'week') {
       const hourPx = isMobile ? 56 : 64;
-      weekScrollRef.current.scrollTop = currentHour * hourPx - 100;
+      const ref = isMobile ? weekScrollMobileRef : weekScrollRef;
+      if (ref.current) ref.current.scrollTop = currentHour * hourPx - 100;
     }
     if (view === 'day' && dayScrollRef.current) {
-      dayScrollRef.current.scrollTop = currentHour * 80 - 100; // Offset by 100px to show some context above
+      dayScrollRef.current.scrollTop = currentHour * 80 - 100;
     }
   };
 
@@ -1109,7 +1126,7 @@ export default function CalendarPage() {
                   {/* Time grid */}
                   <div
                     className="overflow-y-auto"
-                    ref={weekScrollRef}
+                    ref={weekScrollMobileRef}
                     style={{ maxHeight: 'calc(100vh - 320px)', scrollbarGutter: 'stable' }}
                   >
                     <div className="relative flex" style={{ height: `${24 * 56}px` }}>
