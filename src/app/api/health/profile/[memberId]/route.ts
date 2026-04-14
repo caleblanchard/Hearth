@@ -53,6 +53,20 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ memberId: string }> }
 ) {
+  return handleUpdate(request, params);
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ memberId: string }> }
+) {
+  return handleUpdate(request, params);
+}
+
+async function handleUpdate(
+  request: NextRequest,
+  params: Promise<{ memberId: string }>
+) {
   const { memberId } = await params
   try {
     const supabase = await createClient();
@@ -92,7 +106,7 @@ export async function PUT(
 
     // Validation
     const { weight, weightUnit, bloodType, ...rest } = body || {};
-    if (weight !== undefined && (typeof weight !== 'number' || weight <= 0)) {
+    if (weight !== undefined && weight !== null && (typeof weight !== 'number' || weight <= 0)) {
       return NextResponse.json(
         { error: 'Weight must be a positive number' },
         { status: 400 }
@@ -126,9 +140,16 @@ export async function PUT(
       result: 'SUCCESS',
     });
 
+    // Normalize response to camelCase
+    const normalizedProfile = profile ? {
+      ...profile,
+      bloodType: profile.blood_type,
+      weightUnit: profile.weight_unit,
+    } : null;
+
     return NextResponse.json({
       success: true,
-      profile,
+      profile: normalizedProfile,
       message: 'Medical profile updated successfully',
     });
   } catch (error) {
