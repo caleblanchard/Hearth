@@ -40,6 +40,7 @@ export async function GET(
       ...profile,
       bloodType: profile.blood_type,
       weightUnit: profile.weight_unit,
+      updatedAt: profile.updated_at,
     } : null;
 
     return NextResponse.json({ profile: normalizedProfile });
@@ -145,6 +146,7 @@ async function handleUpdate(
       ...profile,
       bloodType: profile.blood_type,
       weightUnit: profile.weight_unit,
+      updatedAt: profile.updated_at,
     } : null;
 
     return NextResponse.json({
