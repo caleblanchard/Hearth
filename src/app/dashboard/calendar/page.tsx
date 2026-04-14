@@ -67,6 +67,7 @@ export default function CalendarPage() {
   const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('MONDAY');
   const [familyTimezone, setFamilyTimezone] = useState<string>('America/New_York');
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
+  const [selectedWeekDay, setSelectedWeekDay] = useState<Date>(new Date());
   const [isMobile, setIsMobile] = useState(false);
 
   // Helper: Get current date in family timezone
@@ -377,7 +378,8 @@ export default function CalendarPage() {
     if (view === 'week' && weekScrollRef.current) {
       // Scroll to 6am (6 hours * 64px per hour = 384px)
       // Each hour is h-16 (64px)
-      weekScrollRef.current.scrollTop = 6 * 64;
+      // Mobile uses h-14 (56px/hr), desktop uses h-16 (64px/hr)
+      weekScrollRef.current.scrollTop = isMobile ? 6 * 56 : 6 * 64;
     }
     if (view === 'day' && dayScrollRef.current) {
       // Scroll to 6am (6 hours * 80px per hour = 480px)
@@ -392,7 +394,8 @@ export default function CalendarPage() {
     const currentHour = now.getHours() + now.getMinutes() / 60;
     
     if (view === 'week' && weekScrollRef.current) {
-      weekScrollRef.current.scrollTop = currentHour * 64 - 100; // Offset by 100px to show some context above
+      const hourPx = isMobile ? 56 : 64;
+      weekScrollRef.current.scrollTop = currentHour * hourPx - 100;
     }
     if (view === 'day' && dayScrollRef.current) {
       dayScrollRef.current.scrollTop = currentHour * 80 - 100; // Offset by 100px to show some context above
@@ -494,6 +497,12 @@ export default function CalendarPage() {
       const newDate = new Date(currentDate);
       newDate.setDate(newDate.getDate() - 7);
       setCurrentDate(newDate);
+      // Keep same day-of-week index in the new week
+      setSelectedWeekDay(prev => {
+        const d = new Date(prev);
+        d.setDate(d.getDate() - 7);
+        return d;
+      });
     } else {
       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
     }
@@ -508,6 +517,12 @@ export default function CalendarPage() {
       const newDate = new Date(currentDate);
       newDate.setDate(newDate.getDate() + 7);
       setCurrentDate(newDate);
+      // Keep same day-of-week index in the new week
+      setSelectedWeekDay(prev => {
+        const d = new Date(prev);
+        d.setDate(d.getDate() + 7);
+        return d;
+      });
     } else {
       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
     }
@@ -515,6 +530,7 @@ export default function CalendarPage() {
 
   const handleToday = () => {
     setCurrentDate(new Date());
+    setSelectedWeekDay(new Date());
   };
 
   // Helper function to format Date for datetime-local input (local time, not UTC)
@@ -805,7 +821,7 @@ export default function CalendarPage() {
                 Month
               </button>
               <button
-                onClick={() => setView('week')}
+                onClick={() => { setView('week'); setSelectedWeekDay(currentDate); }}
                 className={`px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors ${
                   view === 'week'
                     ? 'bg-ember-700 text-white'
@@ -1013,8 +1029,166 @@ export default function CalendarPage() {
         )}
 
         {view === 'week' && (
-          <div className="overflow-x-auto -mx-3 sm:mx-0">
-          <div className="min-w-[560px] sm:min-w-0">
+          <>
+          {/* ── MOBILE: Day-strip + single-day timeline ─────────────────── */}
+          <div className="sm:hidden space-y-2">
+            {/* Day chip strip */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow px-2 pt-3 pb-2">
+              <div className="grid grid-cols-7 gap-0.5">
+                {getWeekDays().map((date, i) => {
+                  const today = new Date();
+                  const isToday = date.toDateString() === today.toDateString();
+                  const isSelected = date.toDateString() === selectedWeekDay.toDateString();
+                  const hasEvents = getEventsForDay(date).length > 0;
+                  const abbrev = date.toLocaleDateString('default', { weekday: 'narrow' });
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setSelectedWeekDay(date)}
+                      className={`flex flex-col items-center py-1.5 rounded-xl transition-colors ${
+                        isSelected
+                          ? 'bg-ember-700 text-white'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <span className="text-[10px] font-semibold uppercase tracking-wide">{abbrev}</span>
+                      <span className={`text-sm font-bold mt-0.5 w-7 h-7 flex items-center justify-center rounded-full ${
+                        isToday && !isSelected
+                          ? 'border-2 border-ember-700 text-ember-700 dark:text-ember-400'
+                          : ''
+                      }`}>
+                        {date.getDate()}
+                      </span>
+                      <span className={`w-1.5 h-1.5 rounded-full mt-1 ${
+                        hasEvents
+                          ? isSelected ? 'bg-white/80' : 'bg-ember-500'
+                          : 'bg-transparent'
+                      }`} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Single-day timeline for selectedWeekDay */}
+            {(() => {
+              const dayEvents = getEventsForDay(selectedWeekDay);
+              const allDayEvts = dayEvents.filter(e => e.isAllDay);
+              const timedEvts = dayEvents.filter(e => !e.isAllDay);
+              const isToday = selectedWeekDay.toDateString() === new Date().toDateString();
+
+              const getEventPos = (event: CalendarEvent) => {
+                const start = new Date(event.startTime);
+                const end = new Date(event.endTime);
+                const startH = start.getHours() + start.getMinutes() / 60;
+                const endH = end.getHours() + end.getMinutes() / 60;
+                return {
+                  top: `${(startH / 24) * 100}%`,
+                  height: `${Math.max(((endH - startH) / 24) * 100, 2.5)}%`,
+                };
+              };
+
+              return (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+                  {/* All-day events */}
+                  {allDayEvts.length > 0 && (
+                    <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700 space-y-1">
+                      {allDayEvts.map(ev => (
+                        <div
+                          key={ev.id}
+                          onClick={() => handleEditEvent(ev)}
+                          className="text-xs px-2 py-1 rounded-md text-white font-medium cursor-pointer truncate"
+                          style={{ backgroundColor: ev.color || '#9CA3AF' }}
+                        >
+                          {ev.title}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Time grid */}
+                  <div
+                    className="overflow-y-auto"
+                    ref={weekScrollRef}
+                    style={{ maxHeight: 'calc(100vh - 320px)', scrollbarGutter: 'stable' }}
+                  >
+                    <div className="relative flex" style={{ height: `${24 * 56}px` }}>
+                      {/* Time labels */}
+                      <div className="w-14 flex-shrink-0">
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <div key={i} className="h-14 flex items-start justify-end pr-2 pt-1">
+                            <span className="text-[10px] text-gray-400 dark:text-gray-500 leading-none">
+                              {i === 0 ? '12am' : i < 12 ? `${i}am` : i === 12 ? '12pm' : `${i - 12}pm`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Event area */}
+                      <div
+                        className={`flex-1 relative border-l border-gray-100 dark:border-gray-700 cursor-pointer ${
+                          isToday ? 'bg-ember-50/20 dark:bg-ember-900/10' : ''
+                        }`}
+                        onClick={() => handleAddEventClick(selectedWeekDay, { stopPropagation: () => {} } as React.MouseEvent)}
+                      >
+                        {/* Hour lines */}
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <div
+                            key={i}
+                            className="absolute left-0 right-0 border-b border-gray-100 dark:border-gray-700"
+                            style={{ top: `${(i / 24) * 100}%` }}
+                          />
+                        ))}
+
+                        {/* Current time line */}
+                        {isToday && (
+                          <div
+                            className="absolute left-0 right-0 z-10 pointer-events-none"
+                            style={{ top: `${(getCurrentTimePosition() / 24) * 100}%` }}
+                          >
+                            <div className="flex items-center">
+                              <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 border border-white dark:border-gray-800 flex-shrink-0" />
+                              <div className="flex-1 h-0.5 bg-red-500" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Timed events */}
+                        {timedEvts.map(ev => {
+                          const pos = getEventPos(ev);
+                          return (
+                            <div
+                              key={ev.id}
+                              onClick={(e) => { e.stopPropagation(); handleEditEvent(ev); }}
+                              className="absolute left-1 right-1 rounded-lg px-2 py-1 text-xs text-white font-medium cursor-pointer z-10 overflow-hidden shadow-sm"
+                              style={{ backgroundColor: ev.color || '#9CA3AF', top: pos.top, height: pos.height, minHeight: '28px' }}
+                              title={ev.title}
+                            >
+                              <div className="flex items-center gap-1">
+                                {ev.isMeal ? (
+                                  <CakeIcon className="h-3 w-3 flex-shrink-0" />
+                                ) : (
+                                  <ClockIcon className="h-3 w-3 flex-shrink-0" />
+                                )}
+                                <span className="truncate">{ev.title}</span>
+                              </div>
+                              <div className="text-[10px] opacity-80 leading-none mt-0.5 truncate">
+                                {new Date(ev.startTime).toLocaleTimeString('default', { hour: 'numeric', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* ── DESKTOP: 7-column grid ───────────────────────────────────── */}
+          <div className="hidden sm:block overflow-x-auto">
+          <div className="min-w-[560px]">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden flex flex-col">
             {/* Week day headers - fixed */}
             <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0 gap-px bg-gray-200 dark:bg-gray-700" style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}>
@@ -1182,6 +1356,7 @@ export default function CalendarPage() {
           </div>
           </div>
           </div>
+          </>
         )}
 
         {view === 'day' && (
