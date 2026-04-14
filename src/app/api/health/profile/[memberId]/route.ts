@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/server';
+import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getMedicalProfile, updateMedicalProfile } from '@/lib/data/health';
 import { logger } from '@/lib/logger';
 
@@ -18,8 +18,6 @@ export async function GET(
     }
 
     const familyId = authContext.activeFamilyId;
-    const requesterId = authContext.activeMemberId;
-    const requesterRole = (authContext as any).user?.role;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
@@ -37,7 +35,14 @@ export async function GET(
 
     const profile = await getMedicalProfile(memberId);
 
-    return NextResponse.json({ profile });
+    // Transform snake_case fields to camelCase for UI consistency
+    const normalizedProfile = profile ? {
+      ...profile,
+      bloodType: profile.blood_type,
+      weightUnit: profile.weight_unit,
+    } : null;
+
+    return NextResponse.json({ profile: normalizedProfile });
   } catch (error) {
     logger.error('Get medical profile error:', error);
     return NextResponse.json({ error: 'Failed to get profile' }, { status: 500 });
@@ -58,12 +63,19 @@ export async function PUT(
     }
 
     const familyId = authContext.activeFamilyId;
+    const requesterId = authContext.activeMemberId;
     if (!familyId) {
       return NextResponse.json({ error: 'No family found' }, { status: 400 });
     }
 
-    const requesterId = authContext.activeMemberId;
-    const requesterRole = (authContext as any).user?.role;
+    // Only parents can update
+    const isParent = await isParentInFamily(familyId);
+    if (!isParent) {
+      return NextResponse.json(
+        { error: 'Only parents can update medical profiles' },
+        { status: 403 }
+      );
+    }
 
     // Verify member belongs to family
     const { data: member } = await supabase
@@ -78,16 +90,8 @@ export async function PUT(
 
     const body = await request.json();
 
-    // Only parents can update
-    if (requesterRole !== 'PARENT') {
-      return NextResponse.json(
-        { error: 'Only parents can update medical profiles' },
-        { status: 403 }
-      );
-    }
-
     // Validation
-    const { weight, weightUnit, ...rest } = body || {};
+    const { weight, weightUnit, bloodType, ...rest } = body || {};
     if (weight !== undefined && (typeof weight !== 'number' || weight <= 0)) {
       return NextResponse.json(
         { error: 'Weight must be a positive number' },
@@ -110,6 +114,7 @@ export async function PUT(
       ...rest,
       weight,
       weight_unit: weightUnit,
+      blood_type: bloodType,
     });
 
     await supabase.from('audit_logs').insert({
