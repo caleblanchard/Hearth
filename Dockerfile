@@ -4,7 +4,6 @@ WORKDIR /app
 
 COPY package.json package-lock.json* ./
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-ENV npm_config_optional=false
 RUN npm ci --legacy-peer-deps --no-audit --prefer-offline || npm ci --legacy-peer-deps --no-audit
 
 FROM node:20-alpine AS builder
