@@ -1,15 +1,16 @@
-const withPWA = require('next-pwa')({
+const withPWA = require('@ducanh2912/next-pwa').default({
   dest: 'public',
   register: false, // We'll handle registration manually to have more control
-  skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
-  buildExcludes: [
-    /middleware-manifest\.json$/,
-    /app-build-manifest\.json$/,
-  ],
-  runtimeCaching: [],
-  // Ensure service worker files are included in the build
   sw: 'sw.js',
+  workboxOptions: {
+    skipWaiting: true,
+    buildExcludes: [
+      /middleware-manifest\.json$/,
+      /app-build-manifest\.json$/,
+    ],
+    runtimeCaching: [],
+  },
 });
 
 /** @type {import('next').NextConfig} */

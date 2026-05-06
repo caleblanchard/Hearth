@@ -1,10 +1,6 @@
 import { randomBytes, timingSafeEqual, createHash } from 'crypto'
 import { headers } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import type { Database } from '@/lib/database.types'
-
-type SupabaseClient = ReturnType<typeof createClient> extends Promise<infer R> ? R : never
 
 export interface DeviceSecretAuth {
   deviceSecretId: string
@@ -87,7 +83,7 @@ export async function authenticateChildSession(): Promise<ChildSessionAuth | nul
 }
 
 export async function updateChildSessionActivity(sessionId: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   await supabase
     .from('kiosk_child_sessions')
     .update({ last_activity_at: new Date().toISOString() })
@@ -95,7 +91,7 @@ export async function updateChildSessionActivity(sessionId: string) {
 }
 
 export async function endChildSession(sessionId: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   await supabase
     .from('kiosk_child_sessions')
     .update({ ended_at: new Date().toISOString() })
@@ -103,7 +99,7 @@ export async function endChildSession(sessionId: string) {
 }
 
 export async function revokeDeviceSecret(deviceSecretId: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   await supabase
     .from('kiosk_device_secrets')
     .update({ revoked_at: new Date().toISOString() })
@@ -111,7 +107,7 @@ export async function revokeDeviceSecret(deviceSecretId: string) {
 }
 
 export async function insertDeviceSecret(familyId: string, deviceId: string, secret: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const secretHash = hashSecret(secret)
 
   const { data, error } = await supabase
@@ -129,7 +125,7 @@ export async function insertDeviceSecret(familyId: string, deviceId: string, sec
 }
 
 export async function insertChildSession(deviceSecretId: string, memberId: string, ttlMinutes = 15) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const token = generateSecret(16)
   const tokenHash = hashSecret(token)
   const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString()

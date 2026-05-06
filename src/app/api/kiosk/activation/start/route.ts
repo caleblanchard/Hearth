@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, isParentInFamily, getMemberInFamily } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { randomBytes, createHash } from 'crypto'
 import { addMinutes } from 'date-fns'
 
@@ -34,7 +35,8 @@ export async function POST(req: NextRequest) {
 
   const member = await getMemberInFamily(familyId)
 
-  const { error } = await supabase.from('kiosk_activation_codes').insert({
+  const serviceClient = createServiceClient()
+  const { error } = await serviceClient.from('kiosk_activation_codes').insert({
     family_id: familyId,
     code_hash: codeHash,
     expires_at: expiresAt,

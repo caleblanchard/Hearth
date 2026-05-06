@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { generateSecret, insertDeviceSecret } from '@/lib/kiosk-auth'
 import { createHash } from 'crypto'
 
@@ -8,7 +8,7 @@ function hashCode(code: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const body = await req.json().catch(() => ({}))
   const { code, deviceId } = body
 
