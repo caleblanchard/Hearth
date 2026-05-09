@@ -241,19 +241,25 @@ function extractWprmIngredientSections(html: string): {
 
   const ingredientSections: ExtractedIngredientSection[] = [];
 
-  // Find all group header positions and names
-  const headerRegex = /wprm-recipe-ingredient-group-name[^>]*>([^<]+)<\/[^>]+>/g;
-  const headers: Array<{ name: string; endIndex: number }> = [];
+  // Match only real HTML elements (span, div, h1-h6, p) whose class attribute
+  // contains wprm-recipe-ingredient-group-name. This prevents false matches
+  // against CSS rules that reference the same class name inside <style> blocks.
+  const headerRegex = /<(?:span|div|p|h[1-6])\b[^>]+class="[^"]*wprm-recipe-ingredient-group-name[^"]*"[^>]*>([^<]*)<\/(?:span|div|p|h[1-6])>/gi;
+  const headers: Array<{ name: string; startIndex: number; endIndex: number }> = [];
   let hm;
   while ((hm = headerRegex.exec(html)) !== null) {
-    headers.push({ name: stripHtml(hm[1]).trim(), endIndex: hm.index + hm[0].length });
+    const name = stripHtml(hm[1]).trim();
+    if (name) {
+      headers.push({ name, startIndex: hm.index, endIndex: hm.index + hm[0].length });
+    }
   }
 
   if (headers.length === 0) return null;
 
   for (let i = 0; i < headers.length; i++) {
     const start = headers[i].endIndex;
-    const end = i + 1 < headers.length ? headers[i + 1].endIndex - headers[i + 1].name.length - 50 : html.length;
+    // Slice up to the start of the next group header element (not its end) to avoid boundary overlap
+    const end = i + 1 < headers.length ? headers[i + 1].startIndex : html.length;
     const groupHtml = html.slice(start, end);
     const ingredients = extractWprmIngredientsFromHtml(groupHtml);
     if (ingredients.length > 0) {
@@ -473,6 +479,12 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractedRecipe
 
   let recipeData: any = null;
 
+  // Collect ALL Recipe schemas from all JSON-LD blocks, then pick the most
+  // complete one (most recipeIngredient entries). Pages with sub-recipes (e.g.
+  // a sauce embedded in a main recipe) can have multiple Recipe schemas, and the
+  // sub-recipe may appear first in the markup.
+  const allRecipeSchemas: any[] = [];
+
   for (const match of jsonLdMatches) {
     try {
       const json = JSON.parse(match[1]);
@@ -482,21 +494,25 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractedRecipe
 
       for (const item of items) {
         if (item['@type'] === 'Recipe' || (Array.isArray(item['@type']) && item['@type'].includes('Recipe'))) {
-          recipeData = item;
-          break;
+          allRecipeSchemas.push(item);
         }
       }
-
-      if (recipeData) break;
     } catch (e) {
       // Skip invalid JSON
       continue;
     }
   }
 
-  if (!recipeData) {
+  if (allRecipeSchemas.length === 0) {
     throw new Error('No recipe data found');
   }
+
+  // Prefer the schema with the most ingredients as a proxy for "main recipe"
+  recipeData = allRecipeSchemas.reduce((best: any, current: any) => {
+    const bestCount = Array.isArray(best.recipeIngredient) ? best.recipeIngredient.length : 0;
+    const currentCount = Array.isArray(current.recipeIngredient) ? current.recipeIngredient.length : 0;
+    return currentCount > bestCount ? current : best;
+  });
 
   // Extract and normalize data
   const name = stripHtml(recipeData.name || '');
@@ -532,15 +548,19 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractedRecipe
     servings = yieldMatch ? parseInt(yieldMatch[1], 10) : undefined;
   }
 
-  // Extract ingredients — try JSON-LD first, fall back to WPRM HTML parsing
+  // Extract ingredients — try JSON-LD first, then always attempt WPRM HTML
+  // parsing and prefer whichever source yields more total ingredients.
   const ingredientsList = recipeData.recipeIngredient || [];
   const rawIngredients = Array.isArray(ingredientsList) ? ingredientsList : [ingredientsList];
   let { ingredientSections, ungroupedIngredients } = extractIngredientSections(rawIngredients);
 
-  // If JSON-LD gave no named sections, try WPRM HTML (and similar recipe plugins)
-  if (ingredientSections.length === 0) {
-    const wprmResult = extractWprmIngredientSections(html);
-    if (wprmResult) {
+  // Always attempt WPRM HTML extraction; use it when it produces more total
+  // ingredients than JSON-LD (e.g. when JSON-LD only captured a sub-recipe).
+  const wprmResult = extractWprmIngredientSections(html);
+  if (wprmResult) {
+    const jsonLdTotal = ingredientSections.reduce((n, s) => n + s.ingredients.length, 0) + ungroupedIngredients.length;
+    const wprmTotal = wprmResult.ingredientSections.reduce((n, s) => n + s.ingredients.length, 0) + wprmResult.ungroupedIngredients.length;
+    if (wprmTotal > jsonLdTotal) {
       ingredientSections = wprmResult.ingredientSections;
       ungroupedIngredients = wprmResult.ungroupedIngredients;
     }

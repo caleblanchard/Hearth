@@ -320,6 +320,17 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
                   </span>
                 ))}
               </div>
+              {recipe.sourceUrl && (
+                <a
+                  href={recipe.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 mt-2 text-sm text-info hover:underline"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                  View Original Recipe
+                </a>
+              )}
             </div>
 
             <div className="flex items-center gap-2 sm:flex-shrink-0">
@@ -419,7 +430,7 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
                         rel="noopener noreferrer"
                         className="font-medium text-info hover:underline truncate block"
                       >
-                        {new URL(recipe.sourceUrl).hostname}
+                        {(() => { try { return new URL(recipe.sourceUrl!).hostname; } catch { return recipe.sourceUrl; } })()}
                       </a>
                     </div>
                   </div>
