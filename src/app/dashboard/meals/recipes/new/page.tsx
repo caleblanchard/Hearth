@@ -148,6 +148,7 @@ export default function NewRecipePage() {
   const [error, setError] = useState('');
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
+  const [importedFromUrl, setImportedFromUrl] = useState('');
   const [importError, setImportError] = useState('');
 
   const [formData, setFormData] = useState({
@@ -259,6 +260,7 @@ export default function NewRecipePage() {
         }))
       );
 
+      setImportedFromUrl(importUrl);
       setImportModalOpen(false);
       setImportUrl('');
     } catch (err) {
@@ -294,7 +296,7 @@ export default function NewRecipePage() {
           cookTimeMinutes: formData.cookTimeMinutes ? parseInt(formData.cookTimeMinutes) : undefined,
           servings: parseInt(formData.servings) || 4,
           imageUrl: formData.imageUrl.trim() || undefined,
-          sourceUrl: importUrl || undefined,
+          sourceUrl: importedFromUrl || undefined,
           dietaryTags: formData.dietaryTags,
           ungroupedIngredients: ungroupedIngredients
             .filter(ing => ing.name.trim())

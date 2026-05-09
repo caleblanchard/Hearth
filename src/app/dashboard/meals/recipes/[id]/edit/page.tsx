@@ -685,6 +685,13 @@ export default function EditRecipePage({ params }: { params: Promise<{ id: strin
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="https://example.com/image.jpg" />
               </div>
+              <div>
+                <label htmlFor="source-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Source URL</label>
+                <input id="source-url" type="url" value={formData.sourceUrl}
+                  onChange={e => setFormData({ ...formData, sourceUrl: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="https://example.com/recipe" />
+              </div>
             </div>
           </div>
 
