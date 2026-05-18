@@ -121,6 +121,14 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title?: string; message?: string; type?: 'error' | 'success' }>({ isOpen: false });
   const [showAddToMealModal, setShowAddToMealModal] = useState(false);
   const [isParent, setIsParent] = useState(false);
+  const [scaleFactor, setScaleFactor] = useState(1);
+
+  const scaleQty = (quantity: number | undefined): string | undefined => {
+    if (quantity == null) return undefined;
+    const scaled = quantity * scaleFactor;
+    // Round to 2 decimal places, strip trailing zeros
+    return parseFloat(scaled.toFixed(2)).toString();
+  };
 
   useEffect(() => {
     params.then(p => setRecipeId(p.id));
@@ -415,7 +423,7 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
                     <UserGroupIcon className="h-5 w-5 text-gray-400" />
                     <div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">Servings</div>
-                      <div className="font-medium text-gray-900 dark:text-white">{recipe.servings}</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{recipe.servings * scaleFactor}</div>
                     </div>
                   </div>
                 )}
@@ -485,7 +493,25 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
 
             {/* Ingredients */}
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Ingredients</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Ingredients</h2>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Scale:</span>
+                  {[1, 2, 3, 4].map(factor => (
+                    <button
+                      key={factor}
+                      onClick={() => setScaleFactor(factor)}
+                      className={`px-2.5 py-1 rounded text-sm font-medium transition-colors ${
+                        scaleFactor === factor
+                          ? 'bg-ember-700 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {factor}×
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {hasIngredientSections ? (
                 <div className="space-y-6">
@@ -501,7 +527,7 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
                             <span className="text-ember-700 mt-1">•</span>
                             <span className="text-gray-700 dark:text-gray-300">
                               {ingredient.quantity && ingredient.unit && (
-                                <strong>{ingredient.quantity} {ingredient.unit}</strong>
+                                <strong>{scaleQty(ingredient.quantity)} {ingredient.unit}</strong>
                               )}{' '}
                               {ingredient.name}
                               {ingredient.notes && (
@@ -527,7 +553,7 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
                             <span className="text-ember-700 mt-1">•</span>
                             <span className="text-gray-700 dark:text-gray-300">
                               {ingredient.quantity && ingredient.unit && (
-                                <strong>{ingredient.quantity} {ingredient.unit}</strong>
+                                <strong>{scaleQty(ingredient.quantity)} {ingredient.unit}</strong>
                               )}{' '}
                               {ingredient.name}
                               {ingredient.notes && (
@@ -547,7 +573,7 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
                       <span className="text-ember-700 mt-1">•</span>
                       <span className="text-gray-700 dark:text-gray-300">
                         {ingredient.quantity && ingredient.unit && (
-                          <strong>{ingredient.quantity} {ingredient.unit}</strong>
+                          <strong>{scaleQty(ingredient.quantity)} {ingredient.unit}</strong>
                         )}{' '}
                         {ingredient.name}
                         {ingredient.notes && (

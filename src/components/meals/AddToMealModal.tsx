@@ -40,8 +40,9 @@ export default function AddToMealModal({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [weekStartDay, setWeekStartDay] = useState<'SUNDAY' | 'MONDAY'>('MONDAY');
+  const [allowedMealTypes, setAllowedMealTypes] = useState<string[]>(MEAL_TYPES);
 
-  // Fetch family settings to get the correct week start day
+  // Fetch family settings to get the correct week start day and planned meal types
   useEffect(() => {
     if (!isOpen) return;
     fetch('/api/family-data')
@@ -49,6 +50,10 @@ export default function AddToMealModal({
       .then((data) => {
         if (data?.family?.settings?.weekStartDay) {
           setWeekStartDay(data.family.settings.weekStartDay);
+        }
+        const planned = data?.family?.settings?.plannedMealTypes;
+        if (Array.isArray(planned) && planned.length > 0) {
+          setAllowedMealTypes(planned.filter((t: string) => MEAL_TYPES.includes(t)));
         }
       })
       .catch(() => {});
@@ -63,19 +68,23 @@ export default function AddToMealModal({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
-  // Auto-select meal type based on current time
+  // Auto-select meal type based on current time, constrained to allowed types
   useEffect(() => {
     if (isOpen && !selectedMealType) {
       const hour = new Date().getHours();
+      let preferred: string;
       if (hour < 11) {
-        setSelectedMealType('BREAKFAST');
+        preferred = 'BREAKFAST';
       } else if (hour < 16) {
-        setSelectedMealType('LUNCH');
+        preferred = 'LUNCH';
       } else {
-        setSelectedMealType('DINNER');
+        preferred = 'DINNER';
       }
+      // Fall back to first allowed type if preferred isn't available
+      const type = allowedMealTypes.includes(preferred) ? preferred : allowedMealTypes[0];
+      if (type) setSelectedMealType(type);
     }
-  }, [isOpen, selectedMealType]);
+  }, [isOpen, selectedMealType, allowedMealTypes]);
 
   // Set default date to today
   useEffect(() => {
@@ -307,7 +316,7 @@ export default function AddToMealModal({
                     onChange={(e) => setSelectedMealType(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   >
-                    {MEAL_TYPES.map((type) => (
+                    {allowedMealTypes.map((type) => (
                       <option key={type} value={type}>
                         {MEAL_TYPE_LABELS[type]}
                       </option>
