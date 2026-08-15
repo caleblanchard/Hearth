@@ -1,5 +1,6 @@
 // @ts-nocheck - Supabase generated types cause unavoidable type errors
 import { createClient } from '@/lib/supabase/server'
+import { insertAuditLog } from '@/lib/data/lifecycle-core'
 // Note: Some complex Supabase generated type errors are suppressed below
 // These do not affect runtime correctness - all code is tested
 import type { Database } from '@/lib/database.types'
@@ -261,15 +262,16 @@ export async function addMedicationToHealthEvent(
   if (error) throw error
 
   // Create audit log
-  await supabase.from('audit_logs').insert({
-    family_id: event.member.family_id,
-    member_id: recordedBy,
-    action: 'HEALTH_EVENT_MEDICATION_ADDED',
-    details: {
-      event_id: eventId,
-      member_id: event.member_id,
-      member_name: event.member.name,
-      medication_name: medicationData.medicationName,
+  await insertAuditLog({
+    familyId: event.member.family_id,
+    memberId: recordedBy,
+    action: 'HEALTH_MEDICATION_GIVEN',
+    entityType: 'HEALTH_EVENT',
+    entityId: eventId,
+    metadata: {
+      memberId: event.member_id,
+      memberName: event.member.name,
+      medicationName: medicationData.medicationName,
     },
   })
 
@@ -432,14 +434,14 @@ export async function startSickMode(
   if (error) throw error
   
   // Create audit log
-  await supabase.from('audit_logs').insert({
-    family_id: member.family_id,
-    member_id: startedBy,
+  await insertAuditLog({
+    familyId: member.family_id,
+    memberId: startedBy,
     action: 'SICK_MODE_STARTED',
-    entity_type: 'SickModeInstance',
-    entity_id: data.id,
+    entityType: 'SickModeInstance',
+    entityId: data.id,
     result: 'SUCCESS',
-    details: {
+    metadata: {
       sickMemberId: memberId,
       triggeredBy,
       reason
@@ -480,14 +482,14 @@ export async function endSickMode(instanceId: string, endedBy?: string) {
   if (error) throw error
 
   if (endedBy && current) {
-    await supabase.from('audit_logs').insert({
-      family_id: current.family_id,
-      member_id: endedBy,
+    await insertAuditLog({
+      familyId: current.family_id,
+      memberId: endedBy,
       action: 'SICK_MODE_ENDED',
-      entity_type: 'SickModeInstance',
-      entity_id: instanceId,
+      entityType: 'SickModeInstance',
+      entityId: instanceId,
       result: 'SUCCESS',
-      details: {
+      metadata: {
         sickMemberId: current.member_id
       }
     })

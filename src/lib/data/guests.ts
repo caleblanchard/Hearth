@@ -8,6 +8,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { insertAuditLog } from '@/lib/data/lifecycle-core';
 import { sanitizeString, sanitizeInteger } from '@/lib/input-sanitization';
 import crypto from 'crypto';
 
@@ -104,14 +105,15 @@ export async function createGuestInvite(
   }
 
   // Create audit log
-  await supabase.from('audit_logs').insert({
-    family_id: familyId,
-    member_id: createdBy,
+  await insertAuditLog({
+    familyId,
+    memberId: createdBy,
     action: 'GUEST_INVITE_CREATED',
-    details: {
-      invite_id: invite.id,
-      guest_name: data.guestName,
-      access_level: data.accessLevel,
+    entityType: 'GUEST_INVITE',
+    entityId: invite.id,
+    metadata: {
+      guestName: data.guestName,
+      accessLevel: data.accessLevel,
     },
   });
 
@@ -156,13 +158,14 @@ export async function revokeGuestInvite(inviteId: string) {
 
   // Create audit log
   if (invite) {
-    await supabase.from('audit_logs').insert({
-      family_id: invite.family_id,
-      member_id: invite.invited_by_id,
+    await insertAuditLog({
+      familyId: invite.family_id,
+      memberId: invite.invited_by_id,
       action: 'GUEST_INVITE_REVOKED',
-      details: {
-        invite_id: inviteId,
-        guest_name: invite.guest_name,
+      entityType: 'GUEST_INVITE',
+      entityId: inviteId,
+      metadata: {
+        guestName: invite.guest_name,
       },
     });
   }

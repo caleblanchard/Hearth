@@ -139,9 +139,11 @@ describe('/api/family/guests/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'GUEST_INVITE_REVOKED',
-          details: {
-            invite_id: 'invite-1',
-            guest_name: 'Grandma',
+          entityType: 'GUEST_INVITE',
+          entityId: 'invite-1',
+          result: 'SUCCESS',
+          metadata: {
+            guestName: 'Grandma',
           },
         },
       });

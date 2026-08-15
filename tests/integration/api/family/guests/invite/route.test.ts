@@ -143,10 +143,12 @@ describe('/api/family/guests/invite', () => {
         familyId: 'family-test-123',
         memberId: 'parent-test-123',
         action: 'GUEST_INVITE_CREATED',
-        details: {
-          invite_id: 'invite-1',
-          guest_name: 'Grandma',
-          access_level: 'VIEW_ONLY',
+        entityType: 'GUEST_INVITE',
+        entityId: 'invite-1',
+        result: 'SUCCESS',
+        metadata: {
+          guestName: 'Grandma',
+          accessLevel: 'VIEW_ONLY',
         },
       },
     });

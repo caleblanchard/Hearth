@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { processGraceRepayment } from '@/lib/screentime-grace';
+import { insertAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 /**
@@ -104,22 +105,21 @@ export async function GET(request: NextRequest) {
           });
 
         // Create audit log
-        await supabase
-          .from('audit_logs')
-          .insert({
-            family_id: balance.member.family_id,
-            member_id: balance.member_id,
-            action: 'SCREENTIME_ADJUSTED',
-            entity_type: 'SCREEN_TIME',
-            result: 'SUCCESS',
-            details: {
-              memberName: balance.member.name,
-              weeklyAllocationMinutes: weeklyAllocation,
-              previousBalance: balance.current_balance_minutes,
-              graceRepaymentsProcessed: repaymentResult.logsProcessed,
-              graceMinutesRepaid: repaymentResult.totalRepaid,
-            },
-          });
+        await insertAuditLog({
+          familyId: balance.member.family_id,
+          memberId: balance.member_id,
+          action: 'SCREENTIME_ADJUSTED',
+          entityType: 'SCREEN_TIME',
+          entityId: balance.member_id,
+          result: 'SUCCESS',
+          metadata: {
+            memberName: balance.member.name,
+            weeklyAllocationMinutes: weeklyAllocation,
+            previousBalance: balance.current_balance_minutes,
+            graceRepaymentsProcessed: repaymentResult.logsProcessed,
+            graceMinutesRepaid: repaymentResult.totalRepaid,
+          },
+        });
 
         // Create notification for the reset
         await (supabase as any)

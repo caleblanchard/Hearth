@@ -173,9 +173,10 @@ describe('/api/auth/guest/[code]', () => {
         familyId: 'family-test-123',
         memberId: null,
         action: 'GUEST_SESSION_STARTED',
+        entityType: 'GUEST_SESSION',
+        entityId: 'invite-1',
         result: 'SUCCESS',
-        details: {
-          inviteId: 'invite-1',
+        metadata: {
           guestName: 'Grandma',
           accessLevel: 'VIEW_ONLY',
         },

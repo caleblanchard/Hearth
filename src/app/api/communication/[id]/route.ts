@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { updateCommunicationPost, deleteCommunicationPost } from '@/lib/data/communication';
+import { insertAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
@@ -73,22 +74,22 @@ export async function PATCH(
 
     // Create audit log
     if (isPinned !== undefined) {
-      await supabase.from('audit_logs').insert({
-        family_id: familyId,
-        actor_id: memberId,
+      await insertAuditLog({
+        familyId,
+        memberId,
         action: isPinned ? 'POST_PINNED' : 'POST_UNPINNED',
-        target_id: id,
-        target_type: 'COMMUNICATION_POST',
-        details: { title: updatedPost.title }
+        entityType: 'COMMUNICATION_POST',
+        entityId: id,
+        metadata: { title: updatedPost.title }
       });
     } else {
-      await supabase.from('audit_logs').insert({
-        family_id: familyId,
-        actor_id: memberId,
+      await insertAuditLog({
+        familyId,
+        memberId,
         action: 'POST_UPDATED',
-        target_id: id,
-        target_type: 'COMMUNICATION_POST',
-        details: { changes: Object.keys(body) }
+        entityType: 'COMMUNICATION_POST',
+        entityId: id,
+        metadata: { changes: Object.keys(body) }
       });
     }
 
@@ -152,13 +153,13 @@ export async function DELETE(
     await deleteCommunicationPost(id);
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      actor_id: memberId,
+    await insertAuditLog({
+      familyId,
+      memberId,
       action: 'POST_DELETED',
-      target_id: id,
-      target_type: 'COMMUNICATION_POST',
-      details: { title: 'Deleted Post' } // Note: post details lost after delete unless we fetch before
+      entityType: 'COMMUNICATION_POST',
+      entityId: id,
+      metadata: { title: 'Deleted Post' } // Note: post details lost after delete unless we fetch before
     });
 
     return NextResponse.json({

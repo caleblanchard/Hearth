@@ -11,6 +11,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { insertAuditLog } from '@/lib/data/lifecycle-core';
 import { evaluateTrigger } from './triggers';
 import { executeAction } from './actions';
 import {
@@ -231,22 +232,20 @@ export async function evaluateRules(
         });
 
       // Create audit log
-      await supabase
-        .from('audit_logs')
-        .insert({
-          family_id: context.familyId,
-          member_id: context.memberId || null,
-          action: 'RULE_EXECUTED',
-          entity_type: 'AutomationRule',
-          entity_id: rule.id,
-          result: success ? 'SUCCESS' : 'FAILURE',
-          details: {
-            ruleName: rule.name,
-            triggerType,
-            actionsCompleted,
-            actionsFailed,
-          },
-        });
+      await insertAuditLog({
+        familyId: context.familyId,
+        memberId: context.memberId || null,
+        action: 'RULE_EXECUTED',
+        entityType: 'AutomationRule',
+        entityId: rule.id,
+        result: success ? 'SUCCESS' : 'FAILURE',
+        metadata: {
+          ruleName: rule.name,
+          triggerType,
+          actionsCompleted,
+          actionsFailed,
+        },
+      });
 
       results.push({
         ruleId: rule.id,

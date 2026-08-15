@@ -138,7 +138,7 @@ export type AuditResult = Database['public']['Enums']['audit_result']
 
 export interface AuditLogInput {
   familyId: string
-  memberId: string
+  memberId: string | null
   action: AuditAction
   entityType: string
   entityId?: string | null

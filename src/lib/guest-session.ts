@@ -7,6 +7,7 @@
  */
 
 import { createClient } from './supabase/server';
+import { insertAuditLog } from './data/lifecycle-core';
 import { logger } from './logger';
 
 export interface GuestSessionInfo {
@@ -122,18 +123,17 @@ export async function endGuestSession(sessionToken: string): Promise<boolean> {
       .eq('id', session.id);
 
     // Create audit log
-    await supabase
-      .from('audit_logs')
-      .insert({
-        family_id: session.guest_invite.family_id,
-        member_id: null,
-        action: 'GUEST_SESSION_ENDED',
-        result: 'SUCCESS',
-        details: {
-          sessionId: session.id,
-          guestName: session.guest_invite.guest_name,
-        },
-      });
+    await insertAuditLog({
+      familyId: session.guest_invite.family_id,
+      memberId: null,
+      action: 'GUEST_SESSION_ENDED',
+      entityType: 'GUEST_SESSION',
+      entityId: session.id,
+      result: 'SUCCESS',
+      metadata: {
+        guestName: session.guest_invite.guest_name,
+      },
+    });
 
     return true;
   } catch (error) {
