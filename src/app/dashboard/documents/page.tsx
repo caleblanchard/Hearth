@@ -3,6 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  fetchDocumentLifecycleDocumentsClient,
+  fetchDocumentLifecycleExpiringDocumentsClient,
+} from '@/lib/document-lifecycle-client';
+import {
   IdentificationIcon,
   BeakerIcon,
   CurrencyDollarIcon,
@@ -66,13 +70,8 @@ export default function DocumentsPage() {
 
   const loadDocuments = async () => {
     try {
-      const url = filter === 'all'
-        ? '/api/documents'
-        : `/api/documents?category=${filter}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to load documents');
-      const data = await response.json();
-      setDocuments(data.documents);
+      const data = await fetchDocumentLifecycleDocumentsClient(filter);
+      setDocuments(data as Document[]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -82,10 +81,8 @@ export default function DocumentsPage() {
 
   const loadExpiringDocuments = async () => {
     try {
-      const response = await fetch('/api/documents/expiring?days=90');
-      if (!response.ok) return;
-      const data = await response.json();
-      setExpiring(data.documents);
+      const data = await fetchDocumentLifecycleExpiringDocumentsClient(90);
+      setExpiring(data as Document[]);
     } catch (err) {
       console.error(err);
     }

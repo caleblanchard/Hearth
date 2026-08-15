@@ -1,8 +1,17 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+} from 'react';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { createClient } from '@/lib/supabase/client';
+import { getActiveFamilyStorageKey } from '@/lib/active-family-storage';
 
 interface ActiveFamilyContextType {
   activeFamilyId: string | null;
@@ -11,8 +20,6 @@ interface ActiveFamilyContextType {
 }
 
 export const ActiveFamilyContext = createContext<ActiveFamilyContextType | undefined>(undefined);
-
-const STORAGE_KEY = 'hearth_active_family_id';
 
 export function ActiveFamilyProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useSupabaseSession();
@@ -44,7 +51,7 @@ export function ActiveFamilyProvider({ children }: { children: ReactNode }) {
       );
 
       // Try to load stored family ID
-      const stored = localStorage.getItem(`${STORAGE_KEY}_${user!.id}`);
+      const stored = localStorage.getItem(getActiveFamilyStorageKey(user!.id));
 
       if (stored && validFamilyIds.has(stored)) {
         // Stored family is still valid
@@ -53,10 +60,10 @@ export function ActiveFamilyProvider({ children }: { children: ReactNode }) {
         // Stored family is stale or missing — fall back to first valid family
         const firstValid = (memberships || [])[0]?.family_id;
         setActiveFamilyIdState(firstValid);
-        localStorage.setItem(`${STORAGE_KEY}_${user!.id}`, firstValid);
+        localStorage.setItem(getActiveFamilyStorageKey(user!.id), firstValid);
       } else {
         // No valid families — clear stored value
-        localStorage.removeItem(`${STORAGE_KEY}_${user!.id}`);
+        localStorage.removeItem(getActiveFamilyStorageKey(user!.id));
         setActiveFamilyIdState(null);
       }
 
@@ -67,15 +74,20 @@ export function ActiveFamilyProvider({ children }: { children: ReactNode }) {
   }, [user, authLoading]);
 
   // Function to set active family and persist to localStorage
-  const setActiveFamilyId = (familyId: string) => {
+  const setActiveFamilyId = useCallback((familyId: string) => {
     setActiveFamilyIdState(familyId);
     if (user?.id) {
-      localStorage.setItem(`${STORAGE_KEY}_${user.id}`, familyId);
+      localStorage.setItem(getActiveFamilyStorageKey(user.id), familyId);
     }
-  };
+  }, [user?.id]);
+
+  const value = useMemo(
+    () => ({ activeFamilyId, setActiveFamilyId, loading }),
+    [activeFamilyId, setActiveFamilyId, loading]
+  );
 
   return (
-    <ActiveFamilyContext.Provider value={{ activeFamilyId, setActiveFamilyId, loading }}>
+    <ActiveFamilyContext.Provider value={value}>
       {children}
     </ActiveFamilyContext.Provider>
   );

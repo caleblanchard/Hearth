@@ -32,7 +32,7 @@ export default function ChoresPage() {
 
   const fetchChores = async () => {
     try {
-      const response = await fetch('/api/dashboard');
+      const response = await fetch('/api/chores/assigned');
       if (response.ok) {
         const data = await response.json();
         setChores(data.chores || []);

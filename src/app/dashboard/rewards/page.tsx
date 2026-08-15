@@ -75,10 +75,10 @@ export default function RewardsPage() {
 
   const fetchUserCredits = async () => {
     try {
-      const response = await fetch('/api/dashboard');
+      const response = await fetch('/api/credits/balance');
       if (response.ok) {
         const data = await response.json();
-        setUserCredits(data.credits?.current || 0);
+        setUserCredits(data.balance?.current || 0);
       }
     } catch (error) {
       console.error('Failed to fetch user credits:', error);

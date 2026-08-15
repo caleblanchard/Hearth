@@ -1,32 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { authenticateChildSession, authenticateDeviceSecret } from '@/lib/kiosk-auth';
+import { buildDashboardWidgetCollection } from '@/lib/data/dashboard-widget-collection';
 import { logger } from '@/lib/logger';
+import {
+  DASHBOARD_WIDGET_KINDS,
+  isDashboardWidgetKind,
+} from '@/types/dashboard-widget-collection';
 
 export const dynamic = 'force-dynamic';
-import { GET as GetTransport } from '@/app/api/transport/today/route';
-import { GET as GetMedications } from '@/app/api/medications/route';
-import { GET as GetMaintenance } from '@/app/api/maintenance/upcoming/route';
-import { GET as GetInventory } from '@/app/api/inventory/low-stock/route';
-import { GET as GetWeather } from '@/app/api/weather/route';
-
-const VALID_WIDGETS = [
-  'transport',
-  'medication',
-  'maintenance',
-  'inventory',
-  'weather',
-];
-
-type WidgetHandler = (req: NextRequest) => Promise<NextResponse>;
-
-const WIDGET_HANDLERS: Record<string, WidgetHandler> = {
-  transport: GetTransport,
-  medication: GetMedications,
-  maintenance: GetMaintenance,
-  inventory: GetInventory,
-  weather: GetWeather,
-};
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,49 +21,42 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const widgets = [
+    const requestedWidgets = [
       ...searchParams.getAll('widgets[]'),
       ...searchParams.getAll('widgets'),
     ].filter(Boolean);
 
-    if (widgets.length === 0) {
+    if (requestedWidgets.length === 0) {
       return NextResponse.json({ error: 'No widgets specified' }, { status: 400 });
     }
 
-    const invalidWidgets = widgets.filter((widget) => !VALID_WIDGETS.includes(widget));
+    const invalidWidgets = requestedWidgets.filter(
+      (widget) => !DASHBOARD_WIDGET_KINDS.includes(widget as any)
+    );
     if (invalidWidgets.length > 0) {
       return NextResponse.json({ error: 'Invalid widget names' }, { status: 400 });
     }
 
-    const results = await Promise.all(
-      widgets.map(async (widget) => {
-        const handler = WIDGET_HANDLERS[widget];
-        if (!handler) {
-          return { widget, success: false, error: 'Widget handler not found' };
-        }
-        try {
-          const response = await handler(request);
-          const data = await response.json();
-          return {
-            widget,
-            success: response.status >= 200 && response.status < 300,
-            data,
-            error: response.status >= 200 && response.status < 300 ? undefined : data?.error || 'Widget fetch failed',
-          };
-        } catch (error) {
-          return { widget, success: false, error: 'Widget fetch failed' };
-        }
-      })
-    );
+    const widgets = requestedWidgets.filter(isDashboardWidgetKind);
+    const familyId = authContext?.activeFamilyId ?? childAuth?.familyId ?? deviceAuth?.familyId;
+    if (!familyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const payload: Record<string, unknown> = {};
-    results.forEach((result) => {
-      const { widget, success, data, error } = result as any;
-      payload[widget] = {
-        success,
-        ...(success ? { data } : { error }),
-      };
-    });
+    const memberId =
+      searchParams.get('memberId') ??
+      childAuth?.memberId ??
+      authContext?.activeMemberId ??
+      undefined;
+
+    const payload = await buildDashboardWidgetCollection(
+      {
+        familyId,
+        memberId,
+        useServiceClient: !authContext || authContext.user?.role === 'CHILD',
+      },
+      widgets
+    );
 
     return NextResponse.json(payload);
   } catch (error) {

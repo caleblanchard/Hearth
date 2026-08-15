@@ -1,64 +1,42 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { ApprovalCard } from '@/components/approvals/ApprovalCard';
-import { ApprovalItem } from '@/types/approvals';
 import { useToast } from '@/components/ui/Toast';
+import { useApprovalRequestLifecycle } from '@/hooks/useApprovalRequestLifecycle';
+import type { ApprovalRequestQueueFilter } from '@/types/approval-request-lifecycle';
 
-type FilterType = 'ALL' | 'CHORE_COMPLETION' | 'REWARD_REDEMPTION';
+type FilterType = ApprovalRequestQueueFilter;
 
 export default function ApprovalsPage() {
-  const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterType>('ALL');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkProcessing, setBulkProcessing] = useState(false);
   const { showToast } = useToast();
+  const {
+    approvals,
+    filter,
+    setFilter,
+    loading,
+    processing,
+    error,
+    selectedIds,
+    toggleSelect,
+    toggleSelectAll,
+    approveOne,
+    denyOne,
+    approveSelected,
+    denySelected,
+  } = useApprovalRequestLifecycle();
 
-  const fetchApprovals = async () => {
-    try {
-      setLoading(true);
-      const url = filter === 'ALL' 
-        ? '/api/approvals' 
-        : `/api/approvals?type=${filter}`;
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch approvals');
-      }
-
-      const data = await response.json();
-      setApprovals(data.approvals || []);
-    } catch (error) {
-      console.error('Error fetching approvals:', error);
-      showToast('error', 'Failed to load approvals');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchApprovals();
-  }, [filter]);
+  const actionableCount = useMemo(
+    () => approvals.filter((approval) => approval.actionable !== false).length,
+    [approvals]
+  );
 
   const handleApprove = async (id: string) => {
     try {
-      const response = await fetch('/api/approvals/bulk-approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemIds: [id] })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to approve item');
-      }
-
-      const result = await response.json();
+      const result = await approveOne(id);
       
       if (result.success.length > 0) {
         showToast('success', 'Approved successfully! ✓');
-        await fetchApprovals();
       } else if (result.failed.length > 0) {
         showToast('error', result.failed[0].reason);
       }
@@ -70,21 +48,10 @@ export default function ApprovalsPage() {
 
   const handleDeny = async (id: string) => {
     try {
-      const response = await fetch('/api/approvals/bulk-deny', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemIds: [id] })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to deny item');
-      }
-
-      const result = await response.json();
+      const result = await denyOne(id);
       
       if (result.success.length > 0) {
         showToast('success', 'Denied successfully');
-        await fetchApprovals();
       } else if (result.failed.length > 0) {
         showToast('error', result.failed[0].reason);
       }
@@ -95,88 +62,40 @@ export default function ApprovalsPage() {
   };
 
   const handleSelect = (id: string, selected: boolean) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      if (selected) {
-        newSet.add(id);
-      } else {
-        newSet.delete(id);
-      }
-      return newSet;
-    });
+    toggleSelect(id, selected);
   };
 
   const handleBulkApprove = async () => {
     if (selectedIds.size === 0) return;
 
-    setBulkProcessing(true);
     try {
-      const response = await fetch('/api/approvals/bulk-approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemIds: Array.from(selectedIds) })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to bulk approve');
-      }
-
-      const result = await response.json();
+      const result = await approveSelected();
       
       showToast('success', `Approved ${result.success.length} item(s) ✓`);
       
       if (result.failed.length > 0) {
         showToast('error', `${result.failed.length} item(s) failed to approve`);
       }
-
-      setSelectedIds(new Set());
-      await fetchApprovals();
     } catch (error) {
       console.error('Error bulk approving:', error);
       showToast('error', 'Failed to bulk approve items');
-    } finally {
-      setBulkProcessing(false);
     }
   };
 
   const handleBulkDeny = async () => {
     if (selectedIds.size === 0) return;
 
-    setBulkProcessing(true);
     try {
-      const response = await fetch('/api/approvals/bulk-deny', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemIds: Array.from(selectedIds) })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to bulk deny');
-      }
-
-      const result = await response.json();
+      const result = await denySelected();
       
       showToast('success', `Denied ${result.success.length} item(s)`);
       
       if (result.failed.length > 0) {
         showToast('error', `${result.failed.length} item(s) failed to deny`);
       }
-
-      setSelectedIds(new Set());
-      await fetchApprovals();
     } catch (error) {
       console.error('Error bulk denying:', error);
       showToast('error', 'Failed to bulk deny items');
-    } finally {
-      setBulkProcessing(false);
-    }
-  };
-
-  const handleSelectAll = () => {
-    if (selectedIds.size === approvals.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(approvals.map(a => a.id)));
     }
   };
 
@@ -209,14 +128,15 @@ export default function ApprovalsPage() {
               <option value="ALL">All Types</option>
               <option value="CHORE_COMPLETION">Chores Only</option>
               <option value="REWARD_REDEMPTION">Rewards Only</option>
+              <option value="SHOPPING_ITEM">Shopping Only</option>
             </select>
             
-            {approvals.length > 0 && (
+            {actionableCount > 0 && (
               <button
-                onClick={handleSelectAll}
+                onClick={toggleSelectAll}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
-                {selectedIds.size === approvals.length ? 'Deselect All' : 'Select All'}
+                {selectedIds.size === actionableCount ? 'Deselect All' : 'Select All'}
               </button>
             )}
           </div>
@@ -228,21 +148,27 @@ export default function ApprovalsPage() {
               </span>
               <button
                 onClick={handleBulkApprove}
-                disabled={bulkProcessing}
+                disabled={processing}
                 className="px-4 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
-                {bulkProcessing ? 'Processing...' : 'Approve All'}
+                {processing ? 'Processing...' : 'Approve All'}
               </button>
               <button
                 onClick={handleBulkDeny}
-                disabled={bulkProcessing}
+                disabled={processing}
                 className="px-4 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
-                {bulkProcessing ? 'Processing...' : 'Deny All'}
+                {processing ? 'Processing...' : 'Deny All'}
               </button>
             </div>
           )}
         </div>
+
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         {approvals.length === 0 ? (
           <div className="bg-white dark:bg-slate-900/60 rounded-lg shadow-sm p-12 text-center border border-gray-100 dark:border-slate-800">
@@ -274,8 +200,8 @@ export default function ApprovalsPage() {
               <ApprovalCard
                 key={approval.id}
                 approval={approval}
-                onApprove={handleApprove}
-                onDeny={handleDeny}
+                onApprove={approval.actionable === false ? undefined : handleApprove}
+                onDeny={approval.actionable === false ? undefined : handleDeny}
                 onSelect={handleSelect}
                 isSelected={selectedIds.has(approval.id)}
               />

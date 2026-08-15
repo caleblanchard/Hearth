@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createProjectLifecycleProjectClient } from '@/lib/project-lifecycle-client';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
@@ -33,29 +34,18 @@ export default function NewProjectPage() {
 
     try {
       setCreating(true);
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          description: formData.description || undefined,
-          status: formData.status,
-          startDate: formData.startDate || undefined,
-          dueDate: formData.dueDate || undefined,
-          budget: formData.budget ? parseFloat(formData.budget) : undefined,
-          notes: formData.notes || undefined,
-        }),
+      const project = await createProjectLifecycleProjectClient({
+        name: formData.name,
+        description: formData.description || undefined,
+        status: formData.status,
+        startDate: formData.startDate || undefined,
+        dueDate: formData.dueDate || undefined,
+        budget: formData.budget ? parseFloat(formData.budget) : undefined,
+        notes: formData.notes || undefined,
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        router.push(`/dashboard/projects/${data.project.id}`);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to create project');
-      }
+      router.push(`/dashboard/projects/${project.id}`);
     } catch (err) {
-      setError('An error occurred while creating the project');
+      setError(err instanceof Error ? err.message : 'An error occurred while creating the project');
     } finally {
       setCreating(false);
     }

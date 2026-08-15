@@ -1,132 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/server';
-import { updateMealPlanEntry, deleteMealPlanEntry } from '@/lib/data/meals';
-import { logger } from '@/lib/logger';
+import {
+  deleteMealPlanLifecycleEntryAction,
+  updateMealPlanLifecycleEntryAction,
+} from '@/lib/data/meal-plan-lifecycle';
+import { readJsonBody, routeHandler } from '@/lib/api-route';
+import type { RouteContext } from '@/lib/api-route';
+import type { UpdateMealPlanLifecycleEntryInput } from '@/types/meal-plan-lifecycle';
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-  try {
-    const supabase = await createClient();
-    const authContext = await getAuthContext();
+export const PATCH = routeHandler(
+  async (request: NextRequest, { params }: RouteContext) => {
+    const { id } = await params;
+    const body = await readJsonBody<UpdateMealPlanLifecycleEntryInput>(request);
+    const entry = await updateMealPlanLifecycleEntryAction(id, body);
 
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
-    if (!familyId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
-    }
-
-    // Get existing entry
-    const { data: entry } = await supabase
-      .from('meal_plan_entries')
-      .select('*, meal_plan:meal_plans!inner(family_id)')
-      .eq('id', id)
-      .single();
-
-    if (!entry) {
-      return NextResponse.json({ error: 'Meal entry not found' }, { status: 404 });
-    }
-
-    // Verify entry belongs to user's family
-    if (entry.meal_plan.family_id !== familyId) {
-      return NextResponse.json(
-        { error: 'You do not have permission to update this meal entry' },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
-    const updatedEntry = await updateMealPlanEntry(id, body);
-
-    // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: authContext.activeMemberId || null,
-      action: 'MEAL_ENTRY_UPDATED',
-      entity_type: 'MEAL_PLAN',
-      entity_id: id,
-      result: 'SUCCESS',
-      metadata: {
-        entryId: id,
-        updates: body,
-      },
-    });
-
-    return NextResponse.json({
+    return {
       success: true,
-      entry: updatedEntry,
+      entry,
       message: 'Meal entry updated successfully',
-    });
-  } catch (error) {
-    logger.error('Update meal plan entry error:', error);
-    return NextResponse.json({ error: 'Failed to update meal entry' }, { status: 500 });
-  }
-}
+    };
+  },
+  { errorMessage: 'Failed to update meal entry' }
+);
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-  try {
-    const supabase = await createClient();
-    const authContext = await getAuthContext();
+export const DELETE = routeHandler(
+  async (_request: NextRequest, { params }: RouteContext) => {
+    const { id } = await params;
+    await deleteMealPlanLifecycleEntryAction(id);
 
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
-    if (!familyId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
-    }
-
-    // Get existing entry
-    const { data: entry } = await supabase
-      .from('meal_plan_entries')
-      .select('*, meal_plan:meal_plans!inner(family_id)')
-      .eq('id', id)
-      .single();
-
-    if (!entry) {
-      return NextResponse.json({ error: 'Meal entry not found' }, { status: 404 });
-    }
-
-    // Verify entry belongs to user's family
-    if (entry.meal_plan.family_id !== familyId) {
-      return NextResponse.json(
-        { error: 'You do not have permission to delete this meal entry' },
-        { status: 403 }
-      );
-    }
-
-    await deleteMealPlanEntry(id);
-
-    // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: authContext.activeMemberId || null,
-      action: 'MEAL_ENTRY_DELETED',
-      entity_type: 'MEAL_PLAN',
-      entity_id: id,
-      result: 'SUCCESS',
-      metadata: {
-        entryId: id,
-      },
-    });
-
-    return NextResponse.json({
+    return {
       success: true,
       message: 'Meal entry deleted successfully',
-    });
-  } catch (error) {
-    logger.error('Delete meal plan entry error:', error);
-    return NextResponse.json({ error: 'Failed to delete meal entry' }, { status: 500 });
-  }
-}
+    };
+  },
+  { errorMessage: 'Failed to delete meal entry' }
+);

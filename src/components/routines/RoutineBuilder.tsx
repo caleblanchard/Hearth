@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ArrowUpIcon, ArrowDownIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { saveRoutineLifecycleRoutineClient } from '@/lib/routine-lifecycle-client';
 
 interface RoutineStep {
   id?: string;
@@ -132,24 +133,8 @@ export default function RoutineBuilder({
         })),
       };
 
-      const url = isEdit ? `/api/routines/${routine.id}` : '/api/routines';
-      const method = isEdit ? 'PATCH' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to save routine');
-      }
-
-      onSave(data.routine);
+      const savedRoutine = await saveRoutineLifecycleRoutineClient(body, routine?.id);
+      onSave(savedRoutine);
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -1,72 +1,53 @@
-// Set up mocks BEFORE any imports
-import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock';
-
-// Mock auth
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}));
-
-// Mock kiosk auth + supabase auth context
 jest.mock('@/lib/kiosk-auth', () => ({
   authenticateChildSession: jest.fn(),
   authenticateDeviceSecret: jest.fn(),
 }));
+
 jest.mock('@/lib/supabase/server', () => ({
   getAuthContext: jest.fn(),
 }));
 
-// Mock the widget route handlers
-jest.mock('@/app/api/transport/today/route', () => ({
-  GET: jest.fn(),
-}));
-jest.mock('@/app/api/medications/route', () => ({
-  GET: jest.fn(),
-}));
-jest.mock('@/app/api/maintenance/upcoming/route', () => ({
-  GET: jest.fn(),
-}));
-jest.mock('@/app/api/inventory/low-stock/route', () => ({
-  GET: jest.fn(),
-}));
-jest.mock('@/app/api/weather/route', () => ({
-  GET: jest.fn(),
+jest.mock('@/lib/data/transport', () => ({
+  getTodaysTransportSchedules: jest.fn(),
 }));
 
-// NOW import the routes after mocks are set up
-import { NextRequest, NextResponse } from 'next/server';
+jest.mock('@/lib/data/medications', () => ({
+  getMedications: jest.fn(),
+}));
+
+jest.mock('@/lib/data/maintenance', () => ({
+  getUpcomingMaintenanceItems: jest.fn(),
+}));
+
+jest.mock('@/lib/data/inventory', () => ({
+  getLowStockItems: jest.fn(),
+}));
+
+jest.mock('@/lib/data/weather', () => ({
+  getWeatherForFamily: jest.fn(),
+}));
+
+import { NextRequest } from 'next/server';
 import { GET as GetWidgets } from '@/app/api/dashboard/widgets/route';
-import { mockParentSession } from '@/lib/test-utils/auth-mock';
 import { authenticateChildSession, authenticateDeviceSecret } from '@/lib/kiosk-auth';
 import { getAuthContext } from '@/lib/supabase/server';
-const { GET: GetTransport } = require('@/app/api/transport/today/route');
-const { GET: GetMedications } = require('@/app/api/medications/route');
-const { GET: GetMaintenance } = require('@/app/api/maintenance/upcoming/route');
-const { GET: GetInventory } = require('@/app/api/inventory/low-stock/route');
-const { GET: GetWeather } = require('@/app/api/weather/route');
+import { getTodaysTransportSchedules } from '@/lib/data/transport';
+import { getMedications } from '@/lib/data/medications';
+import { getUpcomingMaintenanceItems } from '@/lib/data/maintenance';
+import { getLowStockItems } from '@/lib/data/inventory';
+import { getWeatherForFamily } from '@/lib/data/weather';
 
 describe('/api/dashboard/widgets', () => {
-  const mockTransportData = {
-    todaySchedules: [
-      {
-        id: 'schedule-1',
-        type: 'SCHOOL_PICKUP',
-        time: '15:00',
-        location: 'Elementary School',
-        driver: 'Parent 1',
-      },
-    ],
-  };
-
-  const mockWeatherData = {
-    location: 'San Francisco, CA',
-    current: { temp: 65, condition: 'Clear' },
-    today: { high: 70, low: 55 },
-    forecast: [],
+  const mockAuthContext = {
+    activeFamilyId: 'family-test-123',
+    activeMemberId: 'member-test-123',
+    user: {
+      role: 'PARENT',
+    },
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    resetDbMock();
   });
 
   describe('GET /api/dashboard/widgets', () => {
@@ -85,13 +66,9 @@ describe('/api/dashboard/widgets', () => {
       expect(data.error).toBe('Unauthorized');
     });
 
-    it('should fetch single widget for authenticated user', async () => {
-      const session = mockParentSession();
-      (getAuthContext as jest.Mock).mockResolvedValue(session);
-
-      GetTransport.mockResolvedValue(
-        NextResponse.json(mockTransportData, { status: 200 })
-      );
+    it('should fetch a single widget for an authenticated user', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValue(mockAuthContext);
+      (getTodaysTransportSchedules as jest.Mock).mockResolvedValue([]);
 
       const request = new NextRequest(
         'http://localhost:3000/api/dashboard/widgets?widgets[]=transport'
@@ -100,21 +77,28 @@ describe('/api/dashboard/widgets', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.transport).toBeDefined();
-      expect(data.transport.success).toBe(true);
-      expect(data.transport.data).toEqual(mockTransportData);
+      expect(data.partial).toBe(false);
+      expect(data.requested).toEqual(['transport']);
+      expect(data.widgets.transport).toEqual({
+        kind: 'transport',
+        state: 'ready',
+        data: { schedules: [] },
+      });
+      expect(getTodaysTransportSchedules).toHaveBeenCalledWith(
+        mockAuthContext.activeFamilyId,
+        mockAuthContext.activeMemberId
+      );
     });
 
     it('should fetch multiple widgets in parallel', async () => {
-      const session = mockParentSession();
-      (getAuthContext as jest.Mock).mockResolvedValue(session);
-
-      GetTransport.mockResolvedValue(
-        NextResponse.json(mockTransportData, { status: 200 })
-      );
-      GetWeather.mockResolvedValue(
-        NextResponse.json(mockWeatherData, { status: 200 })
-      );
+      (getAuthContext as jest.Mock).mockResolvedValue(mockAuthContext);
+      (getTodaysTransportSchedules as jest.Mock).mockResolvedValue([]);
+      (getWeatherForFamily as jest.Mock).mockResolvedValue({
+        location: 'Test City',
+        current: { temp: 65 },
+        today: { high: 70, low: 55 },
+        forecast: [],
+      });
 
       const request = new NextRequest(
         'http://localhost:3000/api/dashboard/widgets?widgets[]=transport&widgets[]=weather'
@@ -123,12 +107,10 @@ describe('/api/dashboard/widgets', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.transport).toBeDefined();
-      expect(data.transport.success).toBe(true);
-      expect(data.weather).toBeDefined();
-      expect(data.weather.success).toBe(true);
-      expect(GetTransport).toHaveBeenCalledTimes(1);
-      expect(GetWeather).toHaveBeenCalledTimes(1);
+      expect(data.widgets.transport.state).toBe('ready');
+      expect(data.widgets.weather.state).toBe('ready');
+      expect(getTodaysTransportSchedules).toHaveBeenCalledTimes(1);
+      expect(getWeatherForFamily).toHaveBeenCalledTimes(1);
     });
 
     it('should authenticate via kiosk child session if no regular session', async () => {
@@ -137,9 +119,7 @@ describe('/api/dashboard/widgets', () => {
         familyId: 'family-test-123',
         memberId: 'child-test-123',
       });
-      GetTransport.mockResolvedValue(
-        NextResponse.json(mockTransportData, { status: 200 })
-      );
+      (getTodaysTransportSchedules as jest.Mock).mockResolvedValue([]);
 
       const request = new NextRequest(
         'http://localhost:3000/api/dashboard/widgets?widgets[]=transport'
@@ -148,6 +128,10 @@ describe('/api/dashboard/widgets', () => {
 
       expect(response.status).toBe(200);
       expect(authenticateChildSession).toHaveBeenCalled();
+      expect(getTodaysTransportSchedules).toHaveBeenCalledWith(
+        'family-test-123',
+        'child-test-123'
+      );
     });
 
     it('should authenticate via kiosk device secret if no session or child', async () => {
@@ -157,9 +141,7 @@ describe('/api/dashboard/widgets', () => {
         deviceId: 'device-123',
         familyId: 'family-test-123',
       });
-      GetTransport.mockResolvedValue(
-        NextResponse.json(mockTransportData, { status: 200 })
-      );
+      (getTodaysTransportSchedules as jest.Mock).mockResolvedValue([]);
 
       const request = new NextRequest(
         'http://localhost:3000/api/dashboard/widgets?widgets[]=transport',
@@ -171,15 +153,11 @@ describe('/api/dashboard/widgets', () => {
       expect(authenticateDeviceSecret).toHaveBeenCalled();
     });
 
-    it('should handle widget fetch failures gracefully', async () => {
-      const session = mockParentSession();
-      (getAuthContext as jest.Mock).mockResolvedValue(session);
-
-      GetTransport.mockResolvedValue(
-        NextResponse.json(mockTransportData, { status: 200 })
-      );
-      GetWeather.mockResolvedValue(
-        NextResponse.json({ error: 'Server error' }, { status: 500 })
+    it('should handle widget fetch failures with partial results', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValue(mockAuthContext);
+      (getTodaysTransportSchedules as jest.Mock).mockResolvedValue([]);
+      (getWeatherForFamily as jest.Mock).mockRejectedValue(
+        new Error('Weather unavailable')
       );
 
       const request = new NextRequest(
@@ -189,14 +167,20 @@ describe('/api/dashboard/widgets', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.transport.success).toBe(true);
-      expect(data.weather.success).toBe(false);
-      expect(data.weather.error).toBeDefined();
+      expect(data.partial).toBe(true);
+      expect(data.widgets.transport.state).toBe('ready');
+      expect(data.widgets.weather).toEqual({
+        kind: 'weather',
+        state: 'unavailable',
+        error: 'Weather unavailable',
+      });
+      expect(data.issues).toEqual([
+        { kind: 'weather', message: 'Weather unavailable' },
+      ]);
     });
 
     it('should return 400 if no widgets parameter provided', async () => {
-      const session = mockParentSession();
-      (getAuthContext as jest.Mock).mockResolvedValue(session);
+      (getAuthContext as jest.Mock).mockResolvedValue(mockAuthContext);
 
       const request = new NextRequest('http://localhost:3000/api/dashboard/widgets');
       const response = await GetWidgets(request);
@@ -207,8 +191,7 @@ describe('/api/dashboard/widgets', () => {
     });
 
     it('should return 400 for invalid widget names', async () => {
-      const session = mockParentSession();
-      (getAuthContext as jest.Mock).mockResolvedValue(session);
+      (getAuthContext as jest.Mock).mockResolvedValue(mockAuthContext);
 
       const request = new NextRequest(
         'http://localhost:3000/api/dashboard/widgets?widgets[]=invalid-widget'
@@ -221,14 +204,18 @@ describe('/api/dashboard/widgets', () => {
     });
 
     it('should handle all valid widget types', async () => {
-      const session = mockParentSession();
-      (getAuthContext as jest.Mock).mockResolvedValue(session);
+      (getAuthContext as jest.Mock).mockResolvedValue(mockAuthContext);
 
-      GetTransport.mockResolvedValue(NextResponse.json({}, { status: 200 }));
-      GetMedications.mockResolvedValue(NextResponse.json({}, { status: 200 }));
-      GetMaintenance.mockResolvedValue(NextResponse.json({}, { status: 200 }));
-      GetInventory.mockResolvedValue(NextResponse.json({}, { status: 200 }));
-      GetWeather.mockResolvedValue(NextResponse.json({}, { status: 200 }));
+      (getTodaysTransportSchedules as jest.Mock).mockResolvedValue([]);
+      (getMedications as jest.Mock).mockResolvedValue([]);
+      (getUpcomingMaintenanceItems as jest.Mock).mockResolvedValue([]);
+      (getLowStockItems as jest.Mock).mockResolvedValue([]);
+      (getWeatherForFamily as jest.Mock).mockResolvedValue({
+        location: 'Test City',
+        current: { temp: 65 },
+        today: { high: 70, low: 55 },
+        forecast: [],
+      });
 
       const request = new NextRequest(
         'http://localhost:3000/api/dashboard/widgets?widgets[]=transport&widgets[]=medication&widgets[]=maintenance&widgets[]=inventory&widgets[]=weather'
@@ -237,16 +224,16 @@ describe('/api/dashboard/widgets', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.transport).toBeDefined();
-      expect(data.medication).toBeDefined();
-      expect(data.maintenance).toBeDefined();
-      expect(data.inventory).toBeDefined();
-      expect(data.weather).toBeDefined();
-      expect(GetTransport).toHaveBeenCalledTimes(1);
-      expect(GetMedications).toHaveBeenCalledTimes(1);
-      expect(GetMaintenance).toHaveBeenCalledTimes(1);
-      expect(GetInventory).toHaveBeenCalledTimes(1);
-      expect(GetWeather).toHaveBeenCalledTimes(1);
+      expect(data.widgets.transport).toBeDefined();
+      expect(data.widgets.medication).toBeDefined();
+      expect(data.widgets.maintenance).toBeDefined();
+      expect(data.widgets.inventory).toBeDefined();
+      expect(data.widgets.weather).toBeDefined();
+      expect(getTodaysTransportSchedules).toHaveBeenCalledTimes(1);
+      expect(getMedications).toHaveBeenCalledTimes(1);
+      expect(getUpcomingMaintenanceItems).toHaveBeenCalledTimes(1);
+      expect(getLowStockItems).toHaveBeenCalledTimes(1);
+      expect(getWeatherForFamily).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -1,228 +1,120 @@
-// Set up mocks BEFORE any imports
-import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock';
-import { mockParentSession, mockChildSession, setMockSession } from '@/lib/test-utils/auth-mock';
+import { NextRequest } from 'next/server'
+import { GET, PUT } from '@/app/api/family/sick-mode/settings/route'
 
-import { NextRequest } from 'next/server';
-import { GET, PUT } from '@/app/api/family/sick-mode/settings/route';
+jest.mock('@/lib/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}))
 
-describe('/api/family/sick-mode/settings', () => {
+jest.mock('@/lib/data/parent-configuration-lifecycle', () => {
+  class MockParentConfigurationLifecycleError extends Error {
+    status: number
+
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+
+  return {
+    ParentConfigurationLifecycleError: MockParentConfigurationLifecycleError,
+    isParentConfigurationLifecycleError: (error: unknown) =>
+      error instanceof MockParentConfigurationLifecycleError,
+    getFamilySickModeConfiguration: jest.fn(),
+    updateFamilySickModeConfiguration: jest.fn(),
+  }
+})
+
+const {
+  ParentConfigurationLifecycleError,
+  getFamilySickModeConfiguration: mockGetFamilySickModeConfiguration,
+  updateFamilySickModeConfiguration: mockUpdateFamilySickModeConfiguration,
+} = jest.requireMock('@/lib/data/parent-configuration-lifecycle')
+
+describe('/api/family/sick-mode/settings route', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    resetDbMock();
-    mockParentSession();
-  });
+    jest.clearAllMocks()
+  })
 
-  const mockSettings = {
-    id: 'settings-1',
-    familyId: 'family-test-123',
-    autoEnableOnTemperature: true,
-    temperatureThreshold: 100.4,
-    autoDisableAfter24Hours: false,
-    pauseChores: true,
-    pauseScreenTimeTracking: true,
-    screenTimeBonus: 120,
-    skipMorningRoutine: true,
-    skipBedtimeRoutine: false,
-    muteNonEssentialNotifs: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
+  it('delegates sick mode reads to Parent Configuration Lifecycle', async () => {
+    mockGetFamilySickModeConfiguration.mockResolvedValue({
+      id: 'sick-settings-1',
+      autoEnableOnTemperature: true,
+      temperatureThreshold: 100.4,
+      autoDisableAfter24Hours: false,
+      pauseChores: true,
+      pauseScreenTimeTracking: true,
+      screenTimeBonus: 60,
+      skipMorningRoutine: false,
+      skipBedtimeRoutine: false,
+      muteNonEssentialNotifs: false,
+    })
 
-  describe('GET', () => {
-    it('should return 401 if not authenticated', async () => {
-      setMockSession(null);
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
-        method: 'GET',
-      });
-      const response = await GET(request);
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/family/sick-mode/settings')
+    )
+    const data = await response.json()
 
-      expect(response.status).toBe(401);
-    });
+    expect(response.status).toBe(200)
+    expect(data.settings.temperatureThreshold).toBe(100.4)
+    expect(mockGetFamilySickModeConfiguration).toHaveBeenCalledWith()
+  })
 
-    it('should return settings for family', async () => {
-      dbMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
+  it('delegates sick mode updates to Parent Configuration Lifecycle', async () => {
+    mockUpdateFamilySickModeConfiguration.mockResolvedValue({
+      id: 'sick-settings-1',
+      autoEnableOnTemperature: true,
+      temperatureThreshold: 101.2,
+      autoDisableAfter24Hours: true,
+      pauseChores: false,
+      pauseScreenTimeTracking: true,
+      screenTimeBonus: 45,
+      skipMorningRoutine: false,
+      skipBedtimeRoutine: false,
+      muteNonEssentialNotifs: false,
+    })
 
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
-        method: 'GET',
-      });
-      const response = await GET(request);
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.settings.pauseChores).toBe(true);
-      expect(data.settings.screenTimeBonus).toBe(120);
-
-      expect(dbMock.sickModeSettings.findUnique).toHaveBeenCalledWith({
-        where: { familyId: 'family-test-123' },
-      });
-    });
-
-    it('should create default settings if none exist', async () => {
-      dbMock.sickModeSettings.findUnique.mockResolvedValue(null);
-      dbMock.sickModeSettings.findFirst.mockResolvedValue(null);
-      dbMock.sickModeSettings.upsert.mockResolvedValue(mockSettings as any);
-
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
-        method: 'GET',
-        });
-      const response = await GET(request);
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.settings).toBeDefined();
-
-      expect(dbMock.sickModeSettings.upsert).toHaveBeenCalled();
-    });
-
-    it('should allow children to view settings', async () => {
-      mockChildSession();
-      dbMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
-
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
-        method: 'GET',
-      });
-      const response = await GET(request);
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.settings).toBeDefined();
-    });
-  });
-
-  describe('PUT', () => {
-    it('should return 401 if not authenticated', async () => {
-      setMockSession(null);
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
+    const response = await PUT(
+      new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
         method: 'PUT',
         body: JSON.stringify({
+          autoEnableOnTemperature: true,
+          temperatureThreshold: 101.2,
+          autoDisableAfter24Hours: true,
           pauseChores: false,
+          screenTimeBonus: 45,
         }),
-      });
-      const response = await PUT(request);
+      })
+    )
+    const data = await response.json()
 
-      expect(response.status).toBe(401);
-    });
+    expect(response.status).toBe(200)
+    expect(data.success).toBe(true)
+    expect(data.settings.autoDisableAfter24Hours).toBe(true)
+    expect(mockUpdateFamilySickModeConfiguration).toHaveBeenCalledWith({
+      autoEnableOnTemperature: true,
+      temperatureThreshold: 101.2,
+      autoDisableAfter24Hours: true,
+      pauseChores: false,
+      screenTimeBonus: 45,
+    })
+  })
 
-    it('should return 403 if child tries to update settings', async () => {
-      mockChildSession();
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          pauseChores: false,
-        }),
-      });
-      const response = await PUT(request);
+  it('maps lifecycle errors to HTTP responses', async () => {
+    mockGetFamilySickModeConfiguration.mockRejectedValue(
+      new ParentConfigurationLifecycleError(403, 'Parent access required')
+    )
 
-      expect(response.status).toBe(403);
-      const data = await response.json();
-      expect(data.error).toBe('Parent access required');
-    });
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/family/sick-mode/settings')
+    )
+    const data = await response.json()
 
-    it('should allow parents to update settings', async () => {
-      dbMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
-      dbMock.sickModeSettings.upsert.mockResolvedValue({
-        ...mockSettings,
-        pauseChores: false,
-        screenTimeBonus: 60,
-      } as any);
-
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          pauseChores: false,
-          screenTimeBonus: 60,
-        }),
-      });
-      const response = await PUT(request);
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.settings.pauseChores).toBe(false);
-      expect(data.settings.screenTimeBonus).toBe(60);
-
-      expect(dbMock.sickModeSettings.upsert).toHaveBeenCalled();
-    });
-
-    it('should create settings if none exist during update', async () => {
-      dbMock.sickModeSettings.findUnique.mockResolvedValue(null);
-      dbMock.sickModeSettings.findFirst.mockResolvedValue(null);
-      dbMock.sickModeSettings.upsert.mockResolvedValue({
-        ...mockSettings,
-        pauseChores: false,
-      } as any);
-
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          pauseChores: false,
-        }),
-      });
-      const response = await PUT(request);
-
-      expect(response.status).toBe(200);
-      expect(dbMock.sickModeSettings.upsert).toHaveBeenCalled();
-    });
-
-    it('should validate temperatureThreshold is a positive number', async () => {
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          temperatureThreshold: -10,
-        }),
-      });
-      const response = await PUT(request);
-
-      expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data.error).toBe('Temperature threshold must be a positive number');
-    });
-
-    it('should validate screenTimeBonus is non-negative', async () => {
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          screenTimeBonus: -30,
-        }),
-      });
-      const response = await PUT(request);
-
-      expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data.error).toBe('Screen time bonus must be a non-negative number');
-    });
-
-    it('should log audit event on successful update', async () => {
-      dbMock.sickModeSettings.findUnique.mockResolvedValue(mockSettings as any);
-      dbMock.sickModeSettings.upsert.mockResolvedValue({
-        ...mockSettings,
-        pauseChores: false,
-      } as any);
-
-      const request = new NextRequest('http://localhost:3000/api/family/sick-mode/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          pauseChores: false,
-        }),
-      });
-      const response = await PUT(request);
-
-      expect(response.status).toBe(200);
-      expect(dbMock.auditLog.create).toHaveBeenCalledWith({
-        data: {
-          familyId: 'family-test-123',
-          memberId: 'parent-test-123',
-          action: 'SICK_MODE_SETTINGS_UPDATED',
-          entityType: 'SickModeSettings',
-          entityId: 'settings-1',
-          result: 'SUCCESS',
-          details: {
-            previousValue: mockSettings,
-            newValue: expect.objectContaining({
-              pauseChores: false,
-            }),
-          },
-        },
-      });
-    });
-  });
-});
+    expect(response.status).toBe(403)
+    expect(data.error).toBe('Parent access required')
+  })
+})

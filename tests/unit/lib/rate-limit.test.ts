@@ -187,12 +187,12 @@ describe('lib/rate-limit.ts', () => {
     })
 
     it('should have correct limits for apiRateLimiter', () => {
-      expect(apiRateLimiter.maxRequests).toBe(100)
+      expect(apiRateLimiter.maxRequests).toBe(300)
       expect(apiRateLimiter.windowMs).toBe(60000)
     })
 
     it('should have correct limits for authRateLimiter', () => {
-      expect(authRateLimiter.maxRequests).toBe(5)
+      expect(authRateLimiter.maxRequests).toBe(10)
       expect(authRateLimiter.windowMs).toBe(60000)
     })
 

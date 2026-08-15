@@ -3,22 +3,14 @@
 import { useEffect, useState } from 'react';
 import { Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
-
-interface Settings {
-  id: string;
-  autoEnableOnTemperature: boolean;
-  temperatureThreshold: number;
-  autoDisableAfter24Hours: boolean;
-  pauseChores: boolean;
-  pauseScreenTimeTracking: boolean;
-  screenTimeBonus: number;
-  skipMorningRoutine: boolean;
-  skipBedtimeRoutine: boolean;
-  muteNonEssentialNotifs: boolean;
-}
+import {
+  fetchFamilySickModeConfiguration,
+  updateFamilySickModeConfigurationClient,
+} from '@/lib/parent-configuration-lifecycle-client';
+import type { FamilySickModeConfiguration } from '@/types/parent-configuration-lifecycle';
 
 export default function SickModeSettings() {
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const [settings, setSettings] = useState<FamilySickModeConfiguration | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { showToast } = useToast();
@@ -29,11 +21,8 @@ export default function SickModeSettings() {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('/api/family/sick-mode/settings');
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data.settings);
-      }
+      const data = await fetchFamilySickModeConfiguration();
+      setSettings(data);
     } catch (error) {
       console.error('Failed to fetch settings:', error);
     } finally {
@@ -47,28 +36,20 @@ export default function SickModeSettings() {
     setSaving(true);
 
     try {
-      const response = await fetch('/api/family/sick-mode/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data.settings);
-        showToast('success', 'Settings saved successfully! ✓');
-      } else {
-        const error = await response.json();
-        showToast('error', error.error || 'Failed to save settings');
-      }
+      const updated = await updateFamilySickModeConfigurationClient(settings);
+      setSettings(updated);
+      showToast('success', 'Settings saved successfully! ✓');
     } catch (error) {
-      showToast('error', 'An error occurred while saving');
+      showToast(
+        'error',
+        error instanceof Error ? error.message : 'An error occurred while saving'
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const updateSetting = (key: keyof Settings, value: any) => {
+  const updateSetting = (key: keyof FamilySickModeConfiguration, value: any) => {
     if (!settings) return;
     setSettings({ ...settings, [key]: value });
   };

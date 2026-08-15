@@ -45,31 +45,30 @@ describe('GET /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         name: 'Design wireframes',
         description: 'Create wireframes for app',
         status: 'IN_PROGRESS',
-        assigneeId: 'child-test-123',
-        dueDate: new Date('2026-02-15'),
-        estimatedHours: 8,
-        actualHours: 4,
-        sortOrder: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        assignee_id: 'child-test-123',
+        due_date: new Date('2026-02-15'),
+        estimated_hours: 8,
+        actual_hours: 4,
+        sort_order: 0,
+        created_at: new Date(),
+        updated_at: new Date(),
         project: {
           id: 'project-1',
-          familyId: 'family-test-123',
+          family_id: 'family-test-123',
         },
-        assignee: {
-          id: 'child-test-123',
-          name: 'Child User',
-        },
-        dependencies: [],
-        dependents: [],
       };
 
       dbMock.projectTask.findUnique.mockResolvedValue(mockTask as any);
       dbMock.project.findUnique.mockResolvedValue(mockTask.project as any);
+      dbMock.familyMember.findUnique.mockResolvedValue({
+        id: 'child-test-123',
+        name: 'Child User',
+        avatar_url: null,
+      } as any);
 
       const request = new NextRequest('http://localhost:3000/api/projects/tasks/task-1');
       const response = await GET(request, { params: Promise.resolve({ taskId: 'task-1' }) });
@@ -96,11 +95,11 @@ describe('GET /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         name: 'Design wireframes',
         project: {
           id: 'project-1',
-          familyId: 'other-family-456',
+          family_id: 'other-family-456',
         },
       };
 
@@ -173,7 +172,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         project: { familyId: 'family-test-123' },
       };
 
@@ -194,7 +193,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         project: { familyId: 'family-test-123' },
       };
 
@@ -215,7 +214,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         project: { familyId: 'family-test-123' },
       };
 
@@ -236,7 +235,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         project: { familyId: 'family-test-123' },
       };
 
@@ -273,7 +272,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         project: { familyId: 'other-family-456' },
       };
 
@@ -296,7 +295,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         name: 'Old Task Name',
         project: { familyId: 'family-test-123' },
       };
@@ -326,7 +325,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         status: 'PENDING',
         project: { familyId: 'family-test-123' },
       };
@@ -355,10 +354,10 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         name: 'Old Name',
         status: 'PENDING',
-        estimatedHours: 5,
+        estimated_hours: 5,
         project: { familyId: 'family-test-123' },
       };
 
@@ -366,7 +365,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
         ...mockTask,
         name: 'New Name',
         status: 'IN_PROGRESS',
-        estimatedHours: 8,
+        estimated_hours: 8,
       };
 
       dbMock.projectTask.findUnique.mockResolvedValue(mockTask as any);
@@ -394,7 +393,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         project: { familyId: 'family-test-123' },
       };
 
@@ -421,14 +420,14 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
-        assigneeId: null,
+        project_id: 'project-1',
+        assignee_id: null,
         project: { familyId: 'family-test-123' },
       };
 
       const updatedTask = {
         ...mockTask,
-        assigneeId: 'child-test-123',
+        assignee_id: 'child-test-123',
       };
 
       dbMock.projectTask.findUnique.mockResolvedValue(mockTask as any);
@@ -450,14 +449,14 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
-        sortOrder: 0,
+        project_id: 'project-1',
+        sort_order: 0,
         project: { familyId: 'family-test-123' },
       };
 
       const updatedTask = {
         ...mockTask,
-        sortOrder: 5,
+        sort_order: 5,
       };
 
       dbMock.projectTask.findUnique.mockResolvedValue(mockTask as any);
@@ -481,7 +480,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         name: 'Old Name',
         project: { id: 'project-1', familyId: 'family-test-123' },
       };
@@ -519,7 +518,7 @@ describe('PATCH /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         project: { familyId: 'family-test-123' },
       };
 
@@ -590,7 +589,7 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         name: 'Test Task',
         project: { familyId: 'other-family-456' },
       };
@@ -613,7 +612,7 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         name: 'Test Task',
         project: { familyId: 'family-test-123' },
       };
@@ -641,7 +640,7 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         name: 'Test Task',
         project: { id: 'project-1', familyId: 'family-test-123' },
       };
@@ -678,7 +677,7 @@ describe('DELETE /api/projects/tasks/[taskId]', () => {
 
       const mockTask = {
         id: 'task-1',
-        projectId: 'project-1',
+        project_id: 'project-1',
         name: 'Test Task',
         project: { familyId: 'family-test-123' },
       };

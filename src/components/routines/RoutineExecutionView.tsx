@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { CheckCircleIcon as CheckCircleOutlineIcon } from '@heroicons/react/24/outline';
+import { completeRoutineLifecycleRoutineClient } from '@/lib/routine-lifecycle-client';
 
 interface RoutineStep {
   id: string;
@@ -60,16 +61,7 @@ export default function RoutineExecutionView({
     setSuccess(null);
 
     try {
-      const response = await fetch(`/api/routines/${routine.id}/complete`, {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to complete routine');
-      }
-
+      const data = await completeRoutineLifecycleRoutineClient(routine.id);
       setSuccess(data.message || 'Routine completed successfully!');
       setTimeout(() => {
         onComplete();

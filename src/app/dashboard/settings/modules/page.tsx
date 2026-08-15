@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
+  fetchParentConfigurationModules,
+  updateParentConfigurationModuleClient,
+} from '@/lib/parent-configuration-lifecycle-client';
+import {
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -31,14 +35,9 @@ export default function ModuleSettingsPage() {
   useEffect(() => {
     async function fetchModules() {
       try {
-        const res = await fetch('/api/settings/modules');
-        if (res.ok) {
-          const data = await res.json();
-          setModules(data.modules || []);
-          setCategories(data.categories || {});
-        } else if (res.status === 403) {
-          // Redirect handled by parent check, no alert needed
-        }
+        const data = await fetchParentConfigurationModules();
+        setModules(data.modules || []);
+        setCategories(data.categories || {});
       } catch (error) {
         console.error('Error fetching module configurations:', error);
       } finally {
@@ -57,42 +56,30 @@ export default function ModuleSettingsPage() {
     setUpdating((prev) => new Set(prev).add(moduleId));
 
     try {
-      const res = await fetch('/api/settings/modules', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          moduleId,
-          isEnabled: !currentlyEnabled,
-        }),
+      await updateParentConfigurationModuleClient({
+        moduleId,
+        isEnabled: !currentlyEnabled,
       });
 
-      if (res.ok) {
-        // Update local state
-        setModules((prevModules) =>
-          prevModules.map((module) =>
+      setModules((prevModules) =>
+        prevModules.map((module) =>
+          module.moduleId === moduleId
+            ? { ...module, isEnabled: !currentlyEnabled }
+            : module
+        )
+      );
+
+      setCategories((prevCategories) => {
+        const newCategories = { ...prevCategories };
+        Object.keys(newCategories).forEach((category) => {
+          newCategories[category] = newCategories[category].map((module) =>
             module.moduleId === moduleId
               ? { ...module, isEnabled: !currentlyEnabled }
               : module
-          )
-        );
-
-        // Update categories
-        setCategories((prevCategories) => {
-          const newCategories = { ...prevCategories };
-          Object.keys(newCategories).forEach((category) => {
-            newCategories[category] = newCategories[category].map((module) =>
-              module.moduleId === moduleId
-                ? { ...module, isEnabled: !currentlyEnabled }
-                : module
-            );
-          });
-          return newCategories;
+          );
         });
-      } else {
-        const error = await res.json();
-        // Error handling - could add modal here if needed
-        console.error('Failed to update module:', error.error || 'Failed to update module');
-      }
+        return newCategories;
+      });
     } catch (error) {
       console.error('Error updating module:', error);
     } finally {

@@ -1,179 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
-import { getProjects, createProject } from '@/lib/data/projects';
-import { logger } from '@/lib/logger';
-import { sanitizeString } from '@/lib/input-sanitization';
-import { parseJsonBody } from '@/lib/request-validation';
+import { readJsonBody, routeHandler } from '@/lib/api-route';
+import {
+  createProjectLifecycleProject,
+  getProjectLifecycleProjects,
+} from '@/lib/data/project-lifecycle';
 
-const VALID_STATUSES = ['ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
-
-const normalizeTask = (task: any) => ({
-  ...task,
-  dueDate: task.due_date ?? task.dueDate ?? null,
-  startDate: task.start_date ?? task.startDate ?? null,
-  estimatedHours: task.estimated_hours ?? task.estimatedHours ?? null,
-  actualHours: task.actual_hours ?? task.actualHours ?? null,
-  createdAt: task.created_at ?? task.createdAt,
-  sortOrder: task.sort_order ?? task.sortOrder ?? null,
-});
-
-const normalizeProject = (project: any) => ({
-  ...project,
-  dueDate: project.due_date ?? project.dueDate ?? null,
-  startDate: project.start_date ?? project.startDate ?? null,
-  createdAt: project.created_at ?? project.createdAt,
-  familyId: project.family_id ?? project.familyId,
-  tasks: project.tasks ? project.tasks.map(normalizeTask) : undefined,
-});
-
-export async function GET(request: NextRequest) {
-  try {
-    const authContext = await getAuthContext();
-
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
-    const memberId = authContext.activeMemberId;
-
-    if (!familyId || !memberId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
-    }
-
-    // Only parents can manage projects
-    const isParent = await isParentInFamily( familyId);
-    if (!isParent) {
-      return NextResponse.json(
-        { error: 'Only parents can manage projects' },
-        { status: 403 }
-      );
-    }
-
+export const GET = routeHandler(
+  async (request: NextRequest) => {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-
-    const projects = await getProjects(familyId, status ? { status } : undefined);
-
-    return NextResponse.json({ projects: projects.map(normalizeProject), total: projects.length });
-  } catch (error) {
-    logger.error('Error fetching projects', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch projects' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const authContext = await getAuthContext();
-
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
-    const memberId = authContext.activeMemberId;
-
-    if (!familyId || !memberId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
-    }
-
-    // Only parents can manage projects
-    const isParent = await isParentInFamily( familyId);
-    if (!isParent) {
-      return NextResponse.json(
-        { error: 'Only parents can create projects' },
-        { status: 403 }
-      );
-    }
-
-    // Validate and parse JSON body
-    const bodyResult = await parseJsonBody(request);
-    if (!bodyResult.success) {
-      return NextResponse.json(
-        { error: bodyResult.error },
-        { status: bodyResult.status }
-      );
-    }
-    const { name, description, startDate, endDate, dueDate, budget, status } = bodyResult.data;
-
-    // Sanitize and validate input
-    const sanitizedName = sanitizeString(name);
-    if (!sanitizedName || sanitizedName.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      );
-    }
-
-    const sanitizedDescription = description ? sanitizeString(description) : null;
-    
-    // Normalize date fields (accept either endDate or dueDate)
-    const effectiveEndDate = endDate || dueDate;
-
-    // Validate dates
-    if (startDate && effectiveEndDate) {
-      const start = new Date(startDate);
-      const end = new Date(effectiveEndDate);
-      if (end <= start) {
-        return NextResponse.json(
-          { error: 'Due date must be after start date' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Validate status
-    if (status && !VALID_STATUSES.includes(status)) {
-        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
-    }
-    const projectStatus = status || 'ACTIVE';
-
-    // Validate budget
-    if (budget !== undefined && budget < 0) {
-        return NextResponse.json({ error: 'Budget must be a positive number' }, { status: 400 });
-    }
-
-    const project = await createProject({
-      family_id: familyId,
-      name: sanitizedName,
-      description: sanitizedDescription,
-      start_date: startDate ? new Date(startDate).toISOString() : null,
-      due_date: effectiveEndDate ? new Date(effectiveEndDate).toISOString() : null,
-      budget: budget || null,
-      created_by_id: memberId,
-      status: projectStatus,
+    const projects = await getProjectLifecycleProjects({
+      status: searchParams.get('status'),
     });
+    return { projects, total: projects.length };
+  },
+  { errorMessage: 'Failed to fetch projects' }
+);
 
-    // Audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
-      action: 'PROJECT_CREATED',
-      entity_type: 'PROJECT',
-      entity_id: project.id,
-      result: 'SUCCESS',
-      metadata: { 
-        name: sanitizedName,
-        projectId: project.id,
-        status: projectStatus
+export const POST = routeHandler(
+  async (request: NextRequest) => {
+    const body = await readJsonBody<Record<string, unknown>>(request);
+    const project = await createProjectLifecycleProject(body);
+    return NextResponse.json(
+      {
+        success: true,
+        project,
+        message: 'Project created successfully',
       },
-    });
-
-    return NextResponse.json({
-      success: true,
-      project: normalizeProject(project),
-      message: 'Project created successfully',
-    }, { status: 201 });
-  } catch (error) {
-    logger.error('Error creating project', error);
-    return NextResponse.json(
-      { error: 'Failed to create project' },
-      { status: 500 }
+      { status: 201 }
     );
-  }
-}
+  },
+  { errorMessage: 'Failed to create project' }
+);

@@ -1,56 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
-
-type ModuleId = 
-  | 'CHORES'
-  | 'SCREEN_TIME'
-  | 'CREDITS'
-  | 'SHOPPING'
-  | 'CALENDAR'
-  | 'TODOS'
-  | 'ROUTINES'
-  | 'MEAL_PLANNING'
-  | 'RECIPES'
-  | 'INVENTORY'
-  | 'HEALTH'
-  | 'PROJECTS'
-  | 'COMMUNICATION'
-  | 'TRANSPORT'
-  | 'PETS'
-  | 'MAINTENANCE'
-  | 'DOCUMENTS'
-  | 'FINANCIAL'
-  | 'LEADERBOARD'
-  | 'RULES_ENGINE'
-
-// All modules that should be enabled by default
-const DEFAULT_ENABLED_MODULES: ModuleId[] = [
-  'CHORES',
-  'SCREEN_TIME',
-  'CREDITS',
-  'SHOPPING',
-  'CALENDAR',
-  'TODOS',
-  'ROUTINES',
-  'MEAL_PLANNING',
-  'RECIPES',
-  'INVENTORY',
-  'HEALTH',
-  'PROJECTS',
-  'COMMUNICATION',
-  'TRANSPORT',
-  'PETS',
-  'MAINTENANCE',
-  'DOCUMENTS',
-  'FINANCIAL',
-  'LEADERBOARD',
-]
+import {
+  DEFAULT_ENABLED_PARENT_CONFIGURATION_MODULE_IDS,
+  type ParentConfigurationModuleId,
+} from '@/types/parent-configuration-lifecycle'
 
 /**
  * Get all enabled modules for a specific family
  * @param familyId - The family ID to get enabled modules for
  * @returns Array of enabled module IDs
  */
-export async function getEnabledModules(familyId: string): Promise<ModuleId[]> {
+export async function getEnabledModules(
+  familyId: string
+): Promise<ParentConfigurationModuleId[]> {
   const supabase = await createClient()
   
   // Get all configured modules for this family
@@ -61,18 +22,20 @@ export async function getEnabledModules(familyId: string): Promise<ModuleId[]> {
 
   // If no configurations exist, return all defaults
   if (!allConfigs || allConfigs.length === 0) {
-    return DEFAULT_ENABLED_MODULES
+    return DEFAULT_ENABLED_PARENT_CONFIGURATION_MODULE_IDS
   }
 
   const configuredModuleIds = new Set(allConfigs.map((c) => c.module_id))
   const enabledConfiguredIds = allConfigs
     .filter((c) => c.is_enabled)
-    .map((c) => c.module_id as ModuleId)
+    .map((c) => c.module_id as ParentConfigurationModuleId)
 
   // Combine enabled configured + default unconfigured
   return [
     ...enabledConfiguredIds,
-    ...DEFAULT_ENABLED_MODULES.filter((m) => !configuredModuleIds.has(m)),
+    ...DEFAULT_ENABLED_PARENT_CONFIGURATION_MODULE_IDS.filter(
+      (moduleId) => !configuredModuleIds.has(moduleId)
+    ),
   ]
 }
 
@@ -84,7 +47,7 @@ export async function getEnabledModules(familyId: string): Promise<ModuleId[]> {
  */
 export async function isModuleEnabledForFamily(
   familyId: string,
-  moduleId: ModuleId
+  moduleId: ParentConfigurationModuleId
 ): Promise<boolean> {
   const supabase = await createClient()
   
@@ -98,7 +61,7 @@ export async function isModuleEnabledForFamily(
 
   // If no config exists, check if it's in default enabled list
   if (!config) {
-    return DEFAULT_ENABLED_MODULES.includes(moduleId)
+    return DEFAULT_ENABLED_PARENT_CONFIGURATION_MODULE_IDS.includes(moduleId)
   }
 
   return config.is_enabled
@@ -125,7 +88,7 @@ export async function getModuleConfigurations(familyId: string) {
  */
 export async function updateModuleConfiguration(
   familyId: string,
-  moduleId: ModuleId,
+  moduleId: ParentConfigurationModuleId,
   updates: {
     is_enabled?: boolean
   }

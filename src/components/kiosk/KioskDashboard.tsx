@@ -1,10 +1,13 @@
 'use client';
 
+import { useMemo } from 'react';
+import { useDashboardWidgets } from '@/hooks/useDashboardWidgets';
 import TransportWidget from '@/components/dashboard/widgets/TransportWidget';
 import MedicationWidget from '@/components/dashboard/widgets/MedicationWidget';
 import MaintenanceWidget from '@/components/dashboard/widgets/MaintenanceWidget';
 import InventoryWidget from '@/components/dashboard/widgets/InventoryWidget';
 import WeatherWidget from '@/components/dashboard/widgets/WeatherWidget';
+import type { DashboardWidgetKind } from '@/types/dashboard-widget-collection';
 
 interface KioskDashboardProps {
   memberId?: string;
@@ -62,27 +65,59 @@ export default function KioskDashboard({
     { key: 'inventory', module: 'INVENTORY', title: 'Inventory', description: 'Check low-stock items', href: '/dashboard/inventory' },
   ];
 
+  const requestedWidgets = useMemo<DashboardWidgetKind[]>(
+    () =>
+      (['transport', 'weather', 'medication', 'maintenance', 'inventory'] as DashboardWidgetKind[]).filter(
+        (widgetName) => isWidgetEnabled(widgetName) && isModuleEnabled(widgetName)
+      ),
+    [enabledWidgets, enabledModules]
+  );
+
+  const widgetCollection = useDashboardWidgets({
+    widgets: requestedWidgets,
+    memberId,
+  });
+  const widgetCollectionError = widgetCollection.error?.message ?? null;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Transport Widget */}
         {isWidgetEnabled('transport') && isModuleEnabled('transport') && (
           <div className="md:col-span-2 lg:col-span-2">
-            <TransportWidget memberId={memberId} />
+            <TransportWidget
+              memberId={memberId}
+              widget={widgetCollection.data.transport}
+              collectionEnabled={requestedWidgets.includes('transport')}
+              collectionLoading={widgetCollection.loading}
+              collectionError={widgetCollectionError}
+            />
           </div>
         )}
 
         {/* Weather Widget */}
         {isWidgetEnabled('weather') && isModuleEnabled('weather') && (
           <div className="md:col-span-1 lg:col-span-1">
-            <WeatherWidget />
+            <WeatherWidget
+              widget={widgetCollection.data.weather}
+              collectionEnabled={requestedWidgets.includes('weather')}
+              collectionLoading={widgetCollection.loading}
+              collectionError={widgetCollectionError}
+            />
           </div>
         )}
 
         {/* Medication Widget */}
         {isWidgetEnabled('medication') && isModuleEnabled('medication') && (
           <div className="md:col-span-1 lg:col-span-1">
-            <MedicationWidget memberId={memberId} />
+            <MedicationWidget
+              memberId={memberId}
+              widget={widgetCollection.data.medication}
+              collectionEnabled={requestedWidgets.includes('medication')}
+              collectionLoading={widgetCollection.loading}
+              collectionError={widgetCollectionError}
+              onRefresh={widgetCollection.refetch}
+            />
           </div>
         )}
 
@@ -90,14 +125,24 @@ export default function KioskDashboard({
         {/* Maintenance Widget */}
         {isWidgetEnabled('maintenance') && isModuleEnabled('maintenance') && (
           <div className="md:col-span-1 lg:col-span-1">
-            <MaintenanceWidget />
+            <MaintenanceWidget
+              widget={widgetCollection.data.maintenance}
+              collectionEnabled={requestedWidgets.includes('maintenance')}
+              collectionLoading={widgetCollection.loading}
+              collectionError={widgetCollectionError}
+            />
           </div>
         )}
 
         {/* Inventory Widget */}
         {isWidgetEnabled('inventory') && isModuleEnabled('inventory') && (
           <div className="md:col-span-1 lg:col-span-1">
-            <InventoryWidget />
+            <InventoryWidget
+              widget={widgetCollection.data.inventory}
+              collectionEnabled={requestedWidgets.includes('inventory')}
+              collectionLoading={widgetCollection.loading}
+              collectionError={widgetCollectionError}
+            />
           </div>
         )}
       </div>

@@ -68,7 +68,7 @@ describe('FinancialDashboardPage', () => {
     render(<FinancialDashboardPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Financial Dashboard')).toBeInTheDocument()
+      expect(screen.getByText('Total Income')).toBeInTheDocument()
     })
 
     // Check summary cards
@@ -113,7 +113,7 @@ describe('FinancialDashboardPage', () => {
     render(<FinancialDashboardPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Financial Dashboard')).toBeInTheDocument()
+      expect(screen.getByText('Total Income')).toBeInTheDocument()
     })
 
     // Initial call should be for monthly

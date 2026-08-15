@@ -458,12 +458,12 @@ describe('PATCH /api/projects/[id]', () => {
       expect(dbMock.auditLog.create).toHaveBeenCalledWith({
         data: {
           familyId: 'family-test-123',
-          actorId: 'parent-test-123',
+          memberId: 'parent-test-123',
           action: 'PROJECT_UPDATED',
           result: 'SUCCESS',
           entityType: 'PROJECT',
           entityId: 'project-1',
-          details: {
+          metadata: {
             projectId: 'project-1',
             updates: { status: 'COMPLETED' },
           },
@@ -621,12 +621,12 @@ describe('DELETE /api/projects/[id]', () => {
       expect(dbMock.auditLog.create).toHaveBeenCalledWith({
         data: {
           familyId: 'family-test-123',
-          actorId: 'parent-test-123',
+          memberId: 'parent-test-123',
           action: 'PROJECT_DELETED',
           result: 'SUCCESS',
           entityType: 'PROJECT',
           entityId: 'project-1',
-          details: {
+          metadata: {
             projectId: 'project-1',
             name: 'Test Project',
           },

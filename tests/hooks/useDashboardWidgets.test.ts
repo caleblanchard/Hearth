@@ -10,22 +10,27 @@ describe('useDashboardWidgets', () => {
     (global.fetch as jest.Mock).mockClear();
   });
 
-  const mockWidgetData = {
-    transport: {
-      success: true,
-      data: { todaySchedules: [] },
-    },
-    weather: {
-      success: true,
-      data: { current: { temp: 65 } },
+  const mockCollection = {
+    capturedAt: '2026-05-19T15:00:00.000Z',
+    partial: false,
+    requested: ['transport', 'weather'],
+    issues: [],
+    widgets: {
+      transport: {
+        kind: 'transport',
+        state: 'ready',
+        data: { schedules: [] },
+      },
+      weather: {
+        kind: 'weather',
+        state: 'ready',
+        data: { current: { temp: 65 } },
+      },
     },
   };
 
   it('should initialize with loading state', () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => mockWidgetData,
-    });
+    (global.fetch as jest.Mock).mockImplementation(() => new Promise(() => {}));
 
     const { result } = renderHook(() =>
       useDashboardWidgets({ widgets: ['transport', 'weather'] })
@@ -36,10 +41,10 @@ describe('useDashboardWidgets', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('should fetch widget data on mount', async () => {
+  it('should fetch widget collection on mount', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => mockWidgetData,
+      json: async () => mockCollection,
     });
 
     const { result } = renderHook(() =>
@@ -50,7 +55,9 @@ describe('useDashboardWidgets', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.data).toEqual(mockWidgetData);
+    expect(result.current.data).toEqual(mockCollection.widgets);
+    expect(result.current.partial).toBe(false);
+    expect(result.current.capturedAt).toBe(mockCollection.capturedAt);
     expect(result.current.error).toBeNull();
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/dashboard/widgets?widgets')
@@ -60,7 +67,7 @@ describe('useDashboardWidgets', () => {
   it('should pass memberId in query if provided', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => mockWidgetData,
+      json: async () => mockCollection,
     });
 
     renderHook(() =>
@@ -76,6 +83,43 @@ describe('useDashboardWidgets', () => {
       expect(lastCall).toContain('/api/dashboard/widgets');
       expect(lastCall).toContain('transport');
       expect(lastCall).toContain('memberId=member-123');
+    });
+  });
+
+  it('should expose partial results and issues', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...mockCollection,
+        partial: true,
+        issues: [{ kind: 'weather', message: 'Weather unavailable' }],
+        widgets: {
+          ...mockCollection.widgets,
+          weather: {
+            kind: 'weather',
+            state: 'unavailable',
+            error: 'Weather unavailable',
+          },
+        },
+      }),
+    });
+
+    const { result } = renderHook(() =>
+      useDashboardWidgets({ widgets: ['transport', 'weather'] })
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.partial).toBe(true);
+    expect(result.current.issues).toEqual([
+      { kind: 'weather', message: 'Weather unavailable' },
+    ]);
+    expect(result.current.data.weather).toEqual({
+      kind: 'weather',
+      state: 'unavailable',
+      error: 'Weather unavailable',
     });
   });
 
@@ -116,7 +160,7 @@ describe('useDashboardWidgets', () => {
   it('should refetch data when refetch is called', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => mockWidgetData,
+      json: async () => mockCollection,
     });
 
     const { result } = renderHook(() =>
@@ -141,13 +185,13 @@ describe('useDashboardWidgets', () => {
 
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => mockWidgetData,
+      json: async () => mockCollection,
     });
 
     renderHook(() =>
       useDashboardWidgets({
         widgets: ['transport'],
-        refreshInterval: 10000, // 10 seconds
+        refreshInterval: 10000,
       })
     );
 
@@ -157,7 +201,6 @@ describe('useDashboardWidgets', () => {
 
     const initialCalls = (global.fetch as jest.Mock).mock.calls.length;
 
-    // Advance time by 10 seconds
     act(() => {
       jest.advanceTimersByTime(10000);
     });
@@ -174,7 +217,7 @@ describe('useDashboardWidgets', () => {
 
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => mockWidgetData,
+      json: async () => mockCollection,
     });
 
     renderHook(() => useDashboardWidgets({ widgets: ['transport'] }));
@@ -185,7 +228,6 @@ describe('useDashboardWidgets', () => {
 
     const initialCalls = (global.fetch as jest.Mock).mock.calls.length;
 
-    // Advance time by 5 minutes
     act(() => {
       jest.advanceTimersByTime(5 * 60 * 1000);
     });
@@ -202,7 +244,7 @@ describe('useDashboardWidgets', () => {
 
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => mockWidgetData,
+      json: async () => mockCollection,
     });
 
     const { unmount } = renderHook(() =>
@@ -220,12 +262,10 @@ describe('useDashboardWidgets', () => {
 
     unmount();
 
-    // Advance time after unmount
     act(() => {
       jest.advanceTimersByTime(20000);
     });
 
-    // Should not fetch again after unmount
     expect((global.fetch as jest.Mock).mock.calls.length).toBe(callsBeforeUnmount);
 
     jest.useRealTimers();
@@ -234,11 +274,12 @@ describe('useDashboardWidgets', () => {
   it('should refetch when widgets array changes', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => mockWidgetData,
+      json: async () => mockCollection,
     });
 
     const { rerender } = renderHook(
-      ({ widgets }) => useDashboardWidgets({ widgets }),
+      ({ widgets }: { widgets: Array<'transport' | 'weather'> }) =>
+        useDashboardWidgets({ widgets }),
       {
         initialProps: { widgets: ['transport'] },
       }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { fetchProjectLifecycleProjectsClient } from '@/lib/project-lifecycle-client';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
@@ -48,18 +49,8 @@ export default function ProjectsPage() {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const url = statusFilter === 'all'
-        ? '/api/projects'
-        : `/api/projects?status=${statusFilter}`;
-
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        // Handle pagination response structure: { data: Project[], pagination: {...} }
-        // or legacy structure: { projects: Project[] }
-        const projectsArray = data.data || data.projects || [];
-        setProjects(Array.isArray(projectsArray) ? projectsArray : []);
-      }
+      const projects = await fetchProjectLifecycleProjectsClient(statusFilter);
+      setProjects(Array.isArray(projects) ? (projects as Project[]) : []);
     } catch (error) {
       console.error('Error fetching projects:', error);
     } finally {

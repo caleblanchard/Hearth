@@ -322,6 +322,7 @@ export async function getProjectTask(taskId: string) {
     .single()
 
   if (error) throw error
+  if (!task) return null
 
   let assignee: { id: string; name: string; avatar_url: string | null } | null = null
   if (task.assignee_id) {

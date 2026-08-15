@@ -3,6 +3,14 @@
 import { useEffect, useState } from 'react';
 import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import { PencilIcon, TrashIcon, PauseIcon, PlayIcon } from '@heroicons/react/24/outline';
+import { useCurrentFamilyMembers } from '@/hooks/useCurrentFamilyMembers';
+import {
+  createAllowanceScheduleLifecycleScheduleClient,
+  deactivateAllowanceScheduleLifecycleScheduleClient,
+  fetchAllowanceScheduleLifecycleSchedulesClient,
+  setAllowanceScheduleLifecyclePausedClient,
+  updateAllowanceScheduleLifecycleScheduleClient,
+} from '@/lib/allowance-schedule-lifecycle-client';
 
 const FREQUENCIES = [
   { value: 'DAILY', label: 'Daily' },
@@ -42,17 +50,22 @@ interface AllowanceSchedule {
   member: {
     id: string;
     name: string;
-    email?: string;
+    email?: string | null;
   };
 }
 
 export default function ManageAllowancePage() {
+  const { familyMembers, loading: membersLoading } = useCurrentFamilyMembers();
   const [schedules, setSchedules] = useState<AllowanceSchedule[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingSchedules, setLoadingSchedules] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<AllowanceSchedule | null>(null);
+  const members = familyMembers.map((member) => ({
+    id: member.id,
+    name: member.name,
+    avatarUrl: member.avatarUrl ?? undefined,
+  })) satisfies Member[];
 
   const [newSchedule, setNewSchedule] = useState({
     memberId: '',
@@ -79,37 +92,33 @@ export default function ManageAllowancePage() {
 
   const fetchSchedules = async () => {
     try {
-      const response = await fetch('/api/allowance');
-      if (response.ok) {
-        const data = await response.json();
-        setSchedules(data.schedules || []);
-      }
+      setLoadingSchedules(true);
+      setSchedules(await fetchAllowanceScheduleLifecycleSchedulesClient());
     } catch (error) {
       console.error('Failed to fetch schedules:', error);
-    }
-  };
-
-  const fetchMembers = async () => {
-    try {
-      const response = await fetch('/api/children');
-      if (response.ok) {
-        const data = await response.json();
-        setMembers(data || []);
-        if (data && data.length > 0 && !newSchedule.memberId) {
-          setNewSchedule({ ...newSchedule, memberId: data[0].id });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch members:', error);
     } finally {
-      setLoading(false);
+      setLoadingSchedules(false);
     }
   };
 
   useEffect(() => {
-    fetchSchedules();
-    fetchMembers();
+    if (members.length > 0) {
+      setNewSchedule((current) =>
+        current.memberId
+          ? current
+          : {
+              ...current,
+              memberId: members[0].id,
+            }
+      );
+    }
+  }, [members]);
+
+  useEffect(() => {
+    void fetchSchedules();
   }, []);
+
+  const loading = membersLoading || loadingSchedules;
 
   const handleAddSchedule = async () => {
     if (!newSchedule.memberId) {
@@ -148,47 +157,32 @@ export default function ManageAllowancePage() {
         payload.dayOfMonth = newSchedule.dayOfMonth;
       }
 
-      const response = await fetch('/api/allowance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      await createAllowanceScheduleLifecycleScheduleClient(payload);
+      setAlertModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Success!',
+        message: 'Allowance schedule created successfully!',
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: data.message || 'Allowance schedule created successfully!',
-        });
-        setNewSchedule({
-          memberId: members[0]?.id || '',
-          amount: 10,
-          frequency: 'WEEKLY',
-          dayOfWeek: 0,
-          dayOfMonth: 1,
-          startDate: '',
-          endDate: '',
-        });
-        setShowAddForm(false);
-        await fetchSchedules();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to create allowance schedule',
-        });
-      }
+      setNewSchedule({
+        memberId: members[0]?.id || '',
+        amount: 10,
+        frequency: 'WEEKLY',
+        dayOfWeek: 0,
+        dayOfMonth: 1,
+        startDate: '',
+        endDate: '',
+      });
+      setShowAddForm(false);
+      await fetchSchedules();
     } catch (error) {
       console.error('Error creating schedule:', error);
       setAlertModal({
         isOpen: true,
         type: 'error',
         title: 'Error',
-        message: 'Failed to create allowance schedule',
+        message:
+          error instanceof Error ? error.message : 'Failed to create allowance schedule',
       });
     } finally {
       setAdding(false);
@@ -237,48 +231,33 @@ export default function ManageAllowancePage() {
         payload.dayOfMonth = newSchedule.dayOfMonth;
       }
 
-      const response = await fetch(`/api/allowance/${editingSchedule.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      await updateAllowanceScheduleLifecycleScheduleClient(editingSchedule.id, payload);
+      setAlertModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Success!',
+        message: 'Allowance schedule updated successfully!',
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: data.message || 'Allowance schedule updated successfully!',
-        });
-        setNewSchedule({
-          memberId: members[0]?.id || '',
-          amount: 10,
-          frequency: 'WEEKLY',
-          dayOfWeek: 0,
-          dayOfMonth: 1,
-          startDate: '',
-          endDate: '',
-        });
-        setShowAddForm(false);
-        setEditingSchedule(null);
-        await fetchSchedules();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to update allowance schedule',
-        });
-      }
+      setNewSchedule({
+        memberId: members[0]?.id || '',
+        amount: 10,
+        frequency: 'WEEKLY',
+        dayOfWeek: 0,
+        dayOfMonth: 1,
+        startDate: '',
+        endDate: '',
+      });
+      setShowAddForm(false);
+      setEditingSchedule(null);
+      await fetchSchedules();
     } catch (error) {
       console.error('Error updating schedule:', error);
       setAlertModal({
         isOpen: true,
         type: 'error',
         title: 'Error',
-        message: 'Failed to update allowance schedule',
+        message:
+          error instanceof Error ? error.message : 'Failed to update allowance schedule',
       });
     } finally {
       setAdding(false);
@@ -312,64 +291,38 @@ export default function ManageAllowancePage() {
     setConfirmModal({ ...confirmModal, isOpen: false });
 
     try {
-      const response = await fetch(`/api/allowance/${scheduleId}`, {
-        method: 'DELETE',
+      await deactivateAllowanceScheduleLifecycleScheduleClient(scheduleId);
+      setAlertModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Success!',
+        message: 'Allowance schedule deleted successfully',
       });
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: 'Allowance schedule deleted successfully',
-        });
-        await fetchSchedules();
-      } else {
-        const data = await response.json();
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to delete allowance schedule',
-        });
-      }
+      await fetchSchedules();
     } catch (error) {
       console.error('Error deleting schedule:', error);
       setAlertModal({
         isOpen: true,
         type: 'error',
         title: 'Error',
-        message: 'Failed to delete allowance schedule',
+        message:
+          error instanceof Error ? error.message : 'Failed to delete allowance schedule',
       });
     }
   };
 
   const handleTogglePause = async (scheduleId: string, isPaused: boolean) => {
     try {
-      const response = await fetch(`/api/allowance/${scheduleId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isPaused: !isPaused }),
-      });
-
-      if (response.ok) {
-        await fetchSchedules();
-      } else {
-        const data = await response.json();
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to update allowance schedule',
-        });
-      }
+      await setAllowanceScheduleLifecyclePausedClient(scheduleId, !isPaused);
+      await fetchSchedules();
     } catch (error) {
       console.error('Error updating schedule:', error);
       setAlertModal({
         isOpen: true,
         type: 'error',
         title: 'Error',
-        message: 'Failed to update allowance schedule',
+        message:
+          error instanceof Error ? error.message : 'Failed to update allowance schedule',
       });
     }
   };

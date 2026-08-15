@@ -3,17 +3,22 @@
 import { useState, useEffect } from 'react';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import {
+  fetchParentFamilyConfiguration,
+  updateParentFamilyConfigurationClient,
+} from '@/lib/parent-configuration-lifecycle-client';
+import type { ParentConfigurationMealType } from '@/types/parent-configuration-lifecycle';
 
 const ALL_MEAL_TYPES = [
   { id: 'BREAKFAST', label: 'Breakfast' },
   { id: 'LUNCH', label: 'Lunch' },
   { id: 'DINNER', label: 'Dinner' },
   { id: 'SNACK', label: 'Snack' },
-];
+] as Array<{ id: ParentConfigurationMealType; label: string }>;
 
 export default function MealSettingsPage() {
   const { isParent, loading: memberLoading } = useCurrentMember();
-  const [plannedMealTypes, setPlannedMealTypes] = useState<string[]>([]);
+  const [plannedMealTypes, setPlannedMealTypes] = useState<ParentConfigurationMealType[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -28,16 +33,13 @@ export default function MealSettingsPage() {
 
     async function fetchSettings() {
       try {
-        const res = await fetch('/api/family-data');
-        if (res.ok) {
-          const data = await res.json();
-          const types = data.family?.settings?.plannedMealTypes;
-          setPlannedMealTypes(
-            Array.isArray(types) && types.length > 0
-              ? types
-              : ALL_MEAL_TYPES.map(m => m.id)
-          );
-        }
+        const data = await fetchParentFamilyConfiguration();
+        const types = data.settings.plannedMealTypes;
+        setPlannedMealTypes(
+          Array.isArray(types) && types.length > 0
+            ? types
+            : ALL_MEAL_TYPES.map(m => m.id)
+        );
       } catch {
         // use defaults
         setPlannedMealTypes(ALL_MEAL_TYPES.map(m => m.id));
@@ -48,7 +50,7 @@ export default function MealSettingsPage() {
     fetchSettings();
   }, [isParent, memberLoading]);
 
-  const toggle = (id: string) => {
+  const toggle = (id: ParentConfigurationMealType) => {
     setPlannedMealTypes(prev => {
       if (prev.includes(id)) {
         if (prev.length === 1) return prev; // keep at least one
@@ -68,15 +70,7 @@ export default function MealSettingsPage() {
     setSaving(true);
     setError('');
     try {
-      const res = await fetch('/api/family-data', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plannedMealTypes }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to save');
-      }
+      await updateParentFamilyConfigurationClient({ plannedMealTypes });
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');

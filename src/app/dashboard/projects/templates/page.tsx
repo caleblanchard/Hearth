@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  createProjectLifecycleProjectFromTemplateClient,
+  fetchProjectLifecycleTemplatesClient,
+} from '@/lib/project-lifecycle-client';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
@@ -48,11 +52,18 @@ export default function TemplatesPage() {
 
   const fetchTemplates = async () => {
     try {
-      const res = await fetch('/api/projects/templates');
-      if (res.ok) {
-        const data = await res.json();
-        setTemplates(data.templates);
-      }
+      const projectTemplates = await fetchProjectLifecycleTemplatesClient();
+      setTemplates(
+        projectTemplates.map((template) => ({
+          ...template,
+          description: template.description ?? '',
+          tasks: template.tasks.map((task) => ({
+            name: task.name,
+            description: task.description ?? '',
+            estimatedHours: task.estimatedHours ?? 0,
+          })),
+        }))
+      );
     } catch (error) {
       console.error('Error fetching templates:', error);
     } finally {
@@ -65,23 +76,15 @@ export default function TemplatesPage() {
 
     try {
       setCreating(true);
-      const res = await fetch('/api/projects/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          templateId: selectedTemplate.id,
-          customizations: {
-            name: customizations.name || selectedTemplate.name,
-            budget: customizations.budget ? parseFloat(customizations.budget) : undefined,
-            startDate: customizations.startDate || undefined,
-          },
-        }),
+      const project = await createProjectLifecycleProjectFromTemplateClient({
+        templateId: selectedTemplate.id,
+        customizations: {
+          name: customizations.name || selectedTemplate.name,
+          budget: customizations.budget ? parseFloat(customizations.budget) : undefined,
+          startDate: customizations.startDate || undefined,
+        },
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        router.push(`/dashboard/projects/${data.project.id}`);
-      }
+      router.push(`/dashboard/projects/${project.id}`);
     } catch (error) {
       console.error('Error creating project:', error);
     } finally {

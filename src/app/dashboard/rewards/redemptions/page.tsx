@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { AlertModal } from '@/components/ui/Modal';
 import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  approveRewardRedemption,
+  fetchPendingRewardRedemptions,
+  rejectRewardRedemption,
+} from '@/lib/approval-request-lifecycle-client';
 
 interface Redemption {
   id: string;
@@ -25,7 +29,6 @@ interface Redemption {
 }
 
 export default function RedemptionsPage() {
-  const router = useRouter();
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
@@ -41,11 +44,8 @@ export default function RedemptionsPage() {
 
   const fetchRedemptions = async () => {
     try {
-      const response = await fetch('/api/rewards/redemptions');
-      if (response.ok) {
-        const data = await response.json();
-        setRedemptions(data.redemptions || []);
-      }
+      const data = await fetchPendingRewardRedemptions();
+      setRedemptions(data.redemptions || []);
     } catch (error) {
       console.error('Failed to fetch redemptions:', error);
     } finally {
@@ -60,28 +60,14 @@ export default function RedemptionsPage() {
   const handleApprove = async (redemptionId: string) => {
     setProcessing(redemptionId);
     try {
-      const response = await fetch(`/api/rewards/redemptions/${redemptionId}/approve`, {
-        method: 'POST',
+      const data = await approveRewardRedemption(redemptionId);
+      setAlertModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Success!',
+        message: data.message || 'Redemption approved successfully',
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: data.message || 'Redemption approved successfully',
-        });
-        await fetchRedemptions();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to approve redemption',
-        });
-      }
+      await fetchRedemptions();
     } catch (error) {
       console.error('Error approving redemption:', error);
       setAlertModal({
@@ -108,32 +94,16 @@ export default function RedemptionsPage() {
 
     setProcessing(redemptionId);
     try {
-      const response = await fetch(`/api/rewards/redemptions/${redemptionId}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: rejectReason }),
+      const data = await rejectRewardRedemption(redemptionId, rejectReason);
+      setAlertModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Success!',
+        message: data.message || 'Redemption rejected successfully',
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: data.message || 'Redemption rejected successfully',
-        });
-        setRejectReason('');
-        setRejectingId(null);
-        await fetchRedemptions();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to reject redemption',
-        });
-      }
+      setRejectReason('');
+      setRejectingId(null);
+      await fetchRedemptions();
     } catch (error) {
       console.error('Error rejecting redemption:', error);
       setAlertModal({

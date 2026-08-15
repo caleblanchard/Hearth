@@ -1,15 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type {
+  DashboardWidgetCollection,
+  DashboardWidgetKind,
+  DashboardWidgetResults,
+  DashboardWidgetIssue,
+} from '@/types/dashboard-widget-collection';
 
 interface UseDashboardWidgetsParams {
-  widgets: string[];
+  widgets: DashboardWidgetKind[];
   memberId?: string;
   refreshInterval?: number; // default: 300000 (5 min)
 }
 
 interface UseDashboardWidgetsReturn {
-  data: Record<string, any>;
+  data: DashboardWidgetResults;
   loading: boolean;
   error: Error | null;
+  partial: boolean;
+  capturedAt: string | null;
+  issues: DashboardWidgetIssue[];
   refetch: () => Promise<void>;
 }
 
@@ -18,7 +27,7 @@ export function useDashboardWidgets({
   memberId,
   refreshInterval = 300000, // 5 minutes default
 }: UseDashboardWidgetsParams): UseDashboardWidgetsReturn {
-  const [data, setData] = useState<Record<string, any>>({});
+  const [collection, setCollection] = useState<DashboardWidgetCollection | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -31,6 +40,8 @@ export function useDashboardWidgets({
 
     // Don't fetch if no widgets specified
     if (!widgetsArray || widgetsArray.length === 0) {
+      setCollection(null);
+      setError(null);
       setLoading(false);
       return;
     }
@@ -53,12 +64,12 @@ export function useDashboardWidgets({
         throw new Error(errorData.error || 'Failed to fetch widgets');
       }
 
-      const widgetData = await response.json();
-      setData(widgetData);
+      const widgetData = (await response.json()) as DashboardWidgetCollection;
+      setCollection(widgetData);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
-      setData({});
+      setCollection(null);
     } finally {
       setLoading(false);
     }
@@ -89,9 +100,12 @@ export function useDashboardWidgets({
   }, [widgetsKey, refreshInterval, fetchWidgets]);
 
   return {
-    data,
+    data: collection?.widgets ?? {},
     loading,
     error,
+    partial: collection?.partial ?? false,
+    capturedAt: collection?.capturedAt ?? null,
+    issues: collection?.issues ?? [],
     refetch: fetchWidgets,
   };
 }

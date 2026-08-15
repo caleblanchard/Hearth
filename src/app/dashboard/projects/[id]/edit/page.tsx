@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  fetchProjectLifecycleProjectClient,
+  updateProjectLifecycleProjectClient,
+} from '@/lib/project-lifecycle-client';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
@@ -35,25 +39,22 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
 
   const fetchProject = async () => {
     try {
-      const res = await fetch(`/api/projects/${resolvedParams?.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        const project = data.project;
-
-        setFormData({
-          name: project.name || '',
-          description: project.description || '',
-          status: project.status || 'ACTIVE',
-          startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
-          dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split('T')[0] : '',
-          budget: project.budget !== null ? project.budget.toString() : '',
-          notes: project.notes || '',
-        });
-      } else if (res.status === 404) {
-        router.push('/dashboard/projects');
-      }
+      const project = await fetchProjectLifecycleProjectClient(String(resolvedParams?.id));
+      setFormData({
+        name: project.name || '',
+        description: project.description || '',
+        status: project.status || 'ACTIVE',
+        startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
+        dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split('T')[0] : '',
+        budget: project.budget !== null ? project.budget.toString() : '',
+        notes: project.notes || '',
+      });
     } catch (error) {
-      console.error('Error fetching project:', error);
+      if (error instanceof Error && error.message === 'Project not found') {
+        router.push('/dashboard/projects');
+      } else {
+        console.error('Error fetching project:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -70,28 +71,18 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
 
     try {
       setSaving(true);
-      const res = await fetch(`/api/projects/${resolvedParams?.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          description: formData.description || undefined,
-          status: formData.status,
-          startDate: formData.startDate || undefined,
-          dueDate: formData.dueDate || undefined,
-          budget: formData.budget ? parseFloat(formData.budget) : undefined,
-          notes: formData.notes || undefined,
-        }),
+      await updateProjectLifecycleProjectClient(String(resolvedParams?.id), {
+        name: formData.name,
+        description: formData.description || undefined,
+        status: formData.status,
+        startDate: formData.startDate || undefined,
+        dueDate: formData.dueDate || undefined,
+        budget: formData.budget ? parseFloat(formData.budget) : undefined,
+        notes: formData.notes || undefined,
       });
-
-      if (res.ok) {
-        router.push(`/dashboard/projects/${resolvedParams?.id}`);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to update project');
-      }
+      router.push(`/dashboard/projects/${resolvedParams?.id}`);
     } catch (err) {
-      setError('An error occurred while updating the project');
+      setError(err instanceof Error ? err.message : 'An error occurred while updating the project');
     } finally {
       setSaving(false);
     }

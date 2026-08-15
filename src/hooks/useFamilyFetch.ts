@@ -1,6 +1,7 @@
 'use client';
 
 import { useActiveFamily } from '@/contexts/ActiveFamilyContext';
+import { getStoredActiveFamilyId } from '@/lib/active-family-storage';
 
 /**
  * Custom fetch hook that automatically adds the active family ID header
@@ -31,23 +32,16 @@ export function useFamilyFetch() {
  * Helper function for components that can't use hooks
  * Gets active family ID from localStorage and adds header
  */
-export function addActiveFamilyHeader(headers: HeadersInit = {}): Headers {
+export function addActiveFamilyHeader(
+  headers: HeadersInit = {},
+  userId?: string | null
+): Headers {
   const headersObj = new Headers(headers);
-  
-  // Get user ID from session to construct storage key
-  // This is a fallback - prefer using the hook when possible
-  if (typeof window !== 'undefined') {
-    // Try to get from any stored family ID (checking all potential user IDs)
-    const allKeys = Object.keys(localStorage);
-    const familyKey = allKeys.find(key => key.startsWith('hearth_active_family_id_'));
-    
-    if (familyKey) {
-      const familyId = localStorage.getItem(familyKey);
-      if (familyId) {
-        headersObj.set('x-active-family-id', familyId);
-      }
-    }
+
+  const familyId = getStoredActiveFamilyId(userId);
+  if (familyId) {
+    headersObj.set('x-active-family-id', familyId);
   }
-  
+
   return headersObj;
 }

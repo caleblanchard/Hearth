@@ -1,50 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
-import { approveChore } from '@/lib/data/chores';
-import { logger } from '@/lib/logger';
+import { NextRequest } from 'next/server';
+import { routeHandler } from '@/lib/api-route';
+import { RouteContext } from '@/lib/api-route';
+import { approveChoreCompletionRequest } from '@/lib/data/approval-request-lifecycle';
 
-export async function POST(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authContext = await getAuthContext();
-
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
-    const memberId = authContext.activeMemberId;
-
-    if (!familyId || !memberId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
-    }
-
-    // Only parents can approve
-    const isParent = await isParentInFamily( familyId);
-    if (!isParent) {
-      return NextResponse.json({ error: 'Forbidden - Parent access required' }, { status: 403 });
-    }
-
+export const POST = routeHandler(
+  async (_request: NextRequest, { params }: RouteContext) => {
     const { id: completionId } = await params;
+    const result = await approveChoreCompletionRequest(completionId, {
+      forbiddenMessage: 'Forbidden - Parent access required',
+    });
 
-    // Use RPC function for atomic approval with credit award
-    const result = await approveChore(completionId, memberId) as any;
-
-    if (!result || !result.success) {
-      return NextResponse.json({ error: result?.error || 'Failed to approve chore' }, { status: 400 });
-    }
-
-    return NextResponse.json({
+    return {
       success: true,
       chore: result.completion,
-      creditsAwarded: result.credits_awarded,
-      message: 'Chore approved successfully',
-    });
-  } catch (error) {
-    logger.error('Error approving chore', error);
-    return NextResponse.json({ error: 'Failed to approve chore' }, { status: 500 });
-  }
-}
+      creditsAwarded: result.creditsAwarded,
+      message: result.message,
+    };
+  },
+  { errorMessage: 'Failed to approve chore' }
+);

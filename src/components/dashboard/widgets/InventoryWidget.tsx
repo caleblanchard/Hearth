@@ -2,29 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { Package } from 'lucide-react';
+import type { DashboardWidgetResult, InventoryWidgetItem } from '@/types/dashboard-widget-collection';
 
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: string;
-  currentQuantity: number;
-  lowStockThreshold: number;
-  unit: string | null;
-  location: string | null;
+interface InventoryWidgetProps {
+  widget?: DashboardWidgetResult<'inventory'>;
+  collectionEnabled?: boolean;
+  collectionLoading?: boolean;
+  collectionError?: string | null;
 }
 
-interface InventoryWidgetData {
-  items: InventoryItem[];
-}
-
-export default function InventoryWidget() {
-  const [data, setData] = useState<InventoryWidgetData | null>(null);
+export default function InventoryWidget({
+  widget,
+  collectionEnabled = false,
+  collectionLoading = false,
+  collectionError = null,
+}: InventoryWidgetProps = {}) {
+  const [data, setData] = useState<{ items: InventoryWidgetItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (collectionEnabled) {
+      return;
+    }
     fetchInventory();
-  }, []);
+  }, [collectionEnabled]);
 
   async function fetchInventory() {
     try {
@@ -52,8 +54,14 @@ export default function InventoryWidget() {
     }
   }
 
+  const resolvedData =
+    widget?.state === 'ready' ? widget.data : data;
+  const resolvedLoading = collectionEnabled ? collectionLoading : loading;
+  const resolvedError =
+    widget?.state === 'unavailable' ? widget.error : collectionEnabled ? collectionError : error;
+
   // Get urgency level based on how far below threshold
-  const getUrgencyLevel = (item: InventoryItem): 'critical' | 'low' | 'moderate' => {
+  const getUrgencyLevel = (item: InventoryWidgetItem): 'critical' | 'low' | 'moderate' => {
     if (item.currentQuantity === 0) return 'critical';
 
     const percentOfThreshold = (item.currentQuantity / item.lowStockThreshold) * 100;
@@ -73,7 +81,7 @@ export default function InventoryWidget() {
   };
 
   // Sort items by urgency (critical first)
-  const sortedItems = [...(data?.items || [])].sort((a, b) => {
+  const sortedItems = [...(resolvedData?.items || [])].sort((a, b) => {
     const urgencyOrder = { critical: 0, low: 1, moderate: 2 };
     const urgencyA = getUrgencyLevel(a);
     const urgencyB = getUrgencyLevel(b);
@@ -89,23 +97,23 @@ export default function InventoryWidget() {
         </h2>
       </div>
 
-      {loading && (
+      {resolvedLoading && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading...</div>
       )}
 
-      {error && (
+      {resolvedError && (
         <div className="text-center py-8 text-red-600 dark:text-red-400">
           Failed to load inventory
         </div>
       )}
 
-      {!loading && !error && sortedItems.length === 0 && (
+      {!resolvedLoading && !resolvedError && sortedItems.length === 0 && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           All items well stocked!
         </div>
       )}
 
-      {!loading && !error && sortedItems.length > 0 && (
+      {!resolvedLoading && !resolvedError && sortedItems.length > 0 && (
         <div className="space-y-2">
           {sortedItems.map((item) => {
             const urgency = getUrgencyLevel(item);

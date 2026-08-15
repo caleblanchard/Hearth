@@ -137,7 +137,7 @@ describe('NewRecipeForm Component', () => {
     render(<NewRecipePage />);
 
     expect(screen.getByPlaceholderText(/ingredient name/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/quantity/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/qty/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/unit/i)).toBeInTheDocument();
   });
 

@@ -15,15 +15,22 @@ export default async function KioskSettingsPage() {
     redirect('/auth/signin');
   }
 
-  // Only parents can access settings
-  const firstMembership = authContext.memberships[0];
-  if (!firstMembership || firstMembership.role !== 'PARENT') {
+  const activeMembership =
+    authContext.memberships.find(
+      (membership) => membership.id === authContext.activeMemberId
+    ) ??
+    authContext.memberships.find(
+      (membership) => membership.family_id === authContext.activeFamilyId
+    ) ??
+    authContext.memberships[0];
+
+  if (!activeMembership || activeMembership.role !== 'PARENT') {
     redirect('/dashboard');
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <KioskSettingsForm familyId={firstMembership.family_id} />
+      <KioskSettingsForm familyId={activeMembership.family_id} />
     </div>
   );
 }

@@ -1,6 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import {
+  createBudgetLifecycleBudgetClient,
+  deleteBudgetLifecycleBudgetClient,
+  fetchBudgetLifecycleBudgetsClient,
+} from '@/lib/budget-lifecycle-client';
+import { useCurrentFamilyMembers } from '@/hooks/useCurrentFamilyMembers';
 import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import { TrashIcon } from '@heroicons/react/24/outline';
 
@@ -9,7 +15,7 @@ interface Budget {
   category: string;
   limitAmount: number;
   period: string;
-  resetDay: number;
+  resetDay?: number;
   isActive: boolean;
   member: {
     id: string;
@@ -51,6 +57,7 @@ const DAYS_OF_WEEK = [
 ];
 
 export default function BudgetsPage() {
+  const { familyMembers, loading: memberLoading } = useCurrentFamilyMembers();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,37 +87,45 @@ export default function BudgetsPage() {
 
   const fetchBudgets = async () => {
     try {
-      const response = await fetch('/api/financial/budgets');
-      if (response.ok) {
-        const data = await response.json();
-        setBudgets(data.budgets || []);
-      }
+      const lifecycleBudgets = await fetchBudgetLifecycleBudgetsClient();
+      setBudgets(
+        lifecycleBudgets
+          .filter((budget) => budget.member)
+          .map((budget) => ({
+            ...budget,
+            member: {
+              id: budget.member!.id,
+              name: budget.member!.name,
+            },
+          }))
+      );
     } catch (error) {
       console.error('Failed to fetch budgets:', error);
     }
   };
 
-  const fetchMembers = async () => {
-    try {
-      const response = await fetch('/api/children');
-      if (response.ok) {
-        const data = await response.json();
-        setMembers(data || []);
-        if (data && data.length > 0 && !newBudget.memberId) {
-          setNewBudget({ ...newBudget, memberId: data[0].id });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch members:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchBudgets();
-    fetchMembers();
   }, []);
+
+  useEffect(() => {
+    if (memberLoading) {
+      return;
+    }
+
+    const childMembers = familyMembers
+      .filter((familyMember) => familyMember.role === 'CHILD')
+      .map((familyMember) => ({
+        id: familyMember.id,
+        name: familyMember.name,
+      }));
+
+    setMembers(childMembers);
+    if (childMembers.length > 0 && !newBudget.memberId) {
+      setNewBudget((current) => ({ ...current, memberId: childMembers[0].id }));
+    }
+    setLoading(false);
+  }, [familyMembers, memberLoading, newBudget.memberId]);
 
   const handleAddBudget = async () => {
     if (!newBudget.memberId) {
@@ -135,15 +150,7 @@ export default function BudgetsPage() {
 
     setAdding(true);
     try {
-      const response = await fetch('/api/financial/budgets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newBudget),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
+      const data = await createBudgetLifecycleBudgetClient(newBudget);
         setAlertModal({
           isOpen: true,
           type: 'success',
@@ -159,21 +166,13 @@ export default function BudgetsPage() {
         });
         setShowAddForm(false);
         await fetchBudgets();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to create budget',
-        });
-      }
     } catch (error) {
       console.error('Error creating budget:', error);
       setAlertModal({
         isOpen: true,
         type: 'error',
         title: 'Error',
-        message: 'Failed to create budget',
+        message: error instanceof Error ? error.message : 'Failed to create budget',
       });
     } finally {
       setAdding(false);
@@ -204,11 +203,7 @@ export default function BudgetsPage() {
     setConfirmModal({ ...confirmModal, isOpen: false });
 
     try {
-      const response = await fetch(`/api/financial/budgets/${budgetId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
+      await deleteBudgetLifecycleBudgetClient(budgetId);
         setAlertModal({
           isOpen: true,
           type: 'success',
@@ -216,22 +211,13 @@ export default function BudgetsPage() {
           message: 'Budget deleted successfully',
         });
         await fetchBudgets();
-      } else {
-        const data = await response.json();
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to delete budget',
-        });
-      }
     } catch (error) {
       console.error('Error deleting budget:', error);
       setAlertModal({
         isOpen: true,
         type: 'error',
         title: 'Error',
-        message: 'Failed to delete budget',
+        message: error instanceof Error ? error.message : 'Failed to delete budget',
       });
     }
   };

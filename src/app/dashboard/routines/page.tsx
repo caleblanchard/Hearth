@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlusIcon, PencilIcon, TrashIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
-import { useCurrentMember } from '@/hooks/useCurrentMember';
+import {
+  deleteRoutineLifecycleRoutineClient,
+  fetchRoutineLifecycleRoutinesClient,
+} from '@/lib/routine-lifecycle-client';
+import { useCurrentFamilyMembers } from '@/hooks/useCurrentFamilyMembers';
 import RoutineExecutionView from '@/components/routines/RoutineExecutionView';
 import RoutineBuilder from '@/components/routines/RoutineBuilder';
 import { ConfirmModal, AlertModal } from '@/components/ui/Modal';
@@ -53,9 +57,8 @@ const TYPE_COLORS: Record<string, string> = {
 
 export default function RoutinesPage() {
   const router = useRouter();
-  const { isParent, member, loading: memberLoading } = useCurrentMember();
+  const { isParent, member, familyMembers, loading: memberLoading } = useCurrentFamilyMembers();
   const [routines, setRoutines] = useState<Routine[]>([]);
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeRoutine, setActiveRoutine] = useState<Routine | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
@@ -68,18 +71,14 @@ export default function RoutinesPage() {
   useEffect(() => {
     if (!memberLoading) {
       fetchRoutines();
-      if (isParent) fetchFamilyMembers();
     }
   }, [memberLoading, isParent]);
 
   const fetchRoutines = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/routines');
-      if (res.ok) {
-        const data = await res.json();
-        setRoutines(data.routines || []);
-      }
+      const data = await fetchRoutineLifecycleRoutinesClient();
+      setRoutines(data || []);
     } catch (err) {
       console.error('Error fetching routines:', err);
     } finally {
@@ -87,28 +86,18 @@ export default function RoutinesPage() {
     }
   };
 
-  const fetchFamilyMembers = async () => {
-    try {
-      const res = await fetch('/api/family/members');
-      if (res.ok) {
-        const data = await res.json();
-        setFamilyMembers(data.members || []);
-      }
-    } catch (err) {
-      console.error('Error fetching family members:', err);
-    }
-  };
+  const routineFamilyMembers = familyMembers.map((familyMember) => ({
+    id: familyMember.id,
+    name: familyMember.name,
+    role: familyMember.role,
+  })) satisfies FamilyMember[];
 
   const handleDelete = async () => {
     if (!confirmDelete.routineId) return;
     try {
-      const res = await fetch(`/api/routines/${confirmDelete.routineId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setRoutines(prev => prev.filter(r => r.id !== confirmDelete.routineId));
-        setAlert({ isOpen: true, title: 'Deleted', message: 'Routine deleted successfully.', type: 'success' });
-      } else {
-        setAlert({ isOpen: true, title: 'Error', message: 'Failed to delete routine.', type: 'error' });
-      }
+      await deleteRoutineLifecycleRoutineClient(confirmDelete.routineId);
+      setRoutines(prev => prev.filter(r => r.id !== confirmDelete.routineId));
+      setAlert({ isOpen: true, title: 'Deleted', message: 'Routine deleted successfully.', type: 'success' });
     } catch {
       setAlert({ isOpen: true, title: 'Error', message: 'Failed to delete routine.', type: 'error' });
     } finally {
@@ -175,7 +164,7 @@ export default function RoutinesPage() {
         </button>
         <RoutineBuilder
           routine={editingRoutine || undefined}
-          familyMembers={familyMembers}
+          familyMembers={routineFamilyMembers}
           onSave={handleSave}
           onCancel={() => { setShowBuilder(false); setEditingRoutine(null); }}
         />

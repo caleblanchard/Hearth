@@ -7,8 +7,8 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface ApprovalCardProps {
   approval: ApprovalItem;
-  onApprove: (id: string) => void | Promise<void>;
-  onDeny: (id: string) => void | Promise<void>;
+  onApprove?: (id: string) => void | Promise<void>;
+  onDeny?: (id: string) => void | Promise<void>;
   onSelect?: (id: string, selected: boolean) => void;
   isSelected?: boolean;
 }
@@ -25,6 +25,7 @@ export function ApprovalCard({
   const [isApproving, setIsApproving] = useState(false);
 
   const handleApprove = async () => {
+    if (!onApprove) return
     setIsProcessing(true);
     setIsApproving(true);
     try {
@@ -36,6 +37,7 @@ export function ApprovalCard({
   };
 
   const handleDeny = async () => {
+    if (!onDeny) return
     setIsProcessing(true);
     try {
       await onDeny(approval.id);
@@ -90,8 +92,13 @@ export function ApprovalCard({
     return null;
   };
 
+  const getPhotoUrl = () => {
+    const value = approval.metadata?.photoUrl;
+    return typeof value === 'string' ? value : null;
+  };
+
   // Format timestamp for display
-  const getFormattedDate = (date: Date) => {
+  const getFormattedDate = (date: string | Date) => {
     return new Date(date).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -106,13 +113,14 @@ export function ApprovalCard({
   });
 
   const creditInfo = getCreditInfo();
+  const photoUrl = getPhotoUrl();
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
       <div className="p-4">
         <div className="flex items-start gap-3">
           {/* Bulk selection checkbox */}
-          {onSelect && (
+          {onSelect && approval.actionable !== false && (
             <div className="flex items-center pt-1">
               <input
                 type="checkbox"
@@ -176,42 +184,50 @@ export function ApprovalCard({
             </div>
 
             {/* Photo preview for chores */}
-            {approval.type === 'CHORE_COMPLETION' && approval.metadata?.photoUrl && (
-              <div className="mt-3">
-                <Image
-                  src={approval.metadata.photoUrl}
-                  alt="Chore photo proof"
-                  width={300}
-                  height={200}
+             {approval.type === 'CHORE_COMPLETION' && photoUrl && (
+               <div className="mt-3">
+                 <Image
+                   src={photoUrl}
+                   alt="Chore photo proof"
+                   width={300}
+                   height={200}
                   className="rounded-lg object-cover"
                 />
               </div>
             )}
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 mt-4">
-              <button
-                onClick={handleApprove}
-                disabled={isProcessing}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                {isApproving ? 'Approving...' : 'Approve'}
-              </button>
-              <button
-                onClick={handleDeny}
-                disabled={isProcessing}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                Deny
-              </button>
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
-              >
-                {isExpanded ? '▲' : '▼'}
-              </button>
-            </div>
+             {/* Action buttons */}
+             <div className="flex items-center gap-2 mt-4">
+               {approval.actionable !== false ? (
+                 <>
+                   <button
+                     onClick={handleApprove}
+                     disabled={isProcessing}
+                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+                   >
+                     {isApproving ? 'Approving...' : 'Approve'}
+                   </button>
+                   <button
+                     onClick={handleDeny}
+                     disabled={isProcessing}
+                     className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+                   >
+                     Deny
+                   </button>
+                 </>
+               ) : (
+                 <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-600">
+                   Read-only request
+                 </div>
+               )}
+               <button
+                 onClick={() => setIsExpanded(!isExpanded)}
+                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                 aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
+               >
+                 {isExpanded ? '▲' : '▼'}
+               </button>
+             </div>
 
             {/* Expanded details */}
             {isExpanded && (

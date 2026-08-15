@@ -39,8 +39,8 @@ describe('screentime-grace', () => {
         createdAt: new Date(),
       });
 
-      // Mock grace log count (0 uses today, 0 uses this week)
-      dbMock.gracePeriodLog.count.mockResolvedValue(0);
+      // Mock grace log fetch (no pending uses this week)
+      dbMock.gracePeriodLog.findMany.mockResolvedValue([]);
 
       const result = await checkGraceEligibility('member-1', mockSettings);
 
@@ -60,7 +60,7 @@ describe('screentime-grace', () => {
         createdAt: new Date(),
       });
 
-      dbMock.gracePeriodLog.count.mockResolvedValue(0);
+      dbMock.gracePeriodLog.findMany.mockResolvedValue([]);
 
       const result = await checkGraceEligibility('member-1', mockSettings);
 
@@ -80,10 +80,20 @@ describe('screentime-grace', () => {
         createdAt: new Date(),
       });
 
-      // Mock 1 use today (daily limit is 1)
-      dbMock.gracePeriodLog.count
-        .mockResolvedValueOnce(1) // Today's count
-        .mockResolvedValueOnce(1); // Week's count
+      // Mock 1 pending use today (daily limit is 1)
+      dbMock.gracePeriodLog.findMany.mockResolvedValue([
+        {
+          id: 'log-1',
+          memberId: 'member-1',
+          minutesGranted: 15,
+          requestedAt: new Date(),
+          reason: null,
+          approvedById: null,
+          repaymentStatus: RepaymentStatus.PENDING,
+          repaidAt: null,
+          relatedTransactionId: null,
+        },
+      ]);
 
       const result = await checkGraceEligibility('member-1', mockSettings);
 
@@ -104,9 +114,42 @@ describe('screentime-grace', () => {
       });
 
       // Mock 0 uses today, but 3 uses this week (weekly limit is 3)
-      dbMock.gracePeriodLog.count
-        .mockResolvedValueOnce(0) // Today's count
-        .mockResolvedValueOnce(3); // Week's count
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      dbMock.gracePeriodLog.findMany.mockResolvedValue([
+        {
+          id: 'log-1',
+          memberId: 'member-1',
+          minutesGranted: 15,
+          requestedAt: yesterday,
+          reason: null,
+          approvedById: null,
+          repaymentStatus: RepaymentStatus.PENDING,
+          repaidAt: null,
+          relatedTransactionId: null,
+        },
+        {
+          id: 'log-2',
+          memberId: 'member-1',
+          minutesGranted: 15,
+          requestedAt: yesterday,
+          reason: null,
+          approvedById: null,
+          repaymentStatus: RepaymentStatus.PENDING,
+          repaidAt: null,
+          relatedTransactionId: null,
+        },
+        {
+          id: 'log-3',
+          memberId: 'member-1',
+          minutesGranted: 15,
+          requestedAt: yesterday,
+          reason: null,
+          approvedById: null,
+          repaymentStatus: RepaymentStatus.PENDING,
+          repaidAt: null,
+          relatedTransactionId: null,
+        },
+      ]);
 
       const result = await checkGraceEligibility('member-1', mockSettings);
 
@@ -127,9 +170,31 @@ describe('screentime-grace', () => {
       });
 
       // Used 0 today, 2 this week
-      dbMock.gracePeriodLog.count
-        .mockResolvedValueOnce(0) // Today
-        .mockResolvedValueOnce(2); // Week
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      dbMock.gracePeriodLog.findMany.mockResolvedValue([
+        {
+          id: 'log-1',
+          memberId: 'member-1',
+          minutesGranted: 15,
+          requestedAt: yesterday,
+          reason: null,
+          approvedById: null,
+          repaymentStatus: RepaymentStatus.PENDING,
+          repaidAt: null,
+          relatedTransactionId: null,
+        },
+        {
+          id: 'log-2',
+          memberId: 'member-1',
+          minutesGranted: 15,
+          requestedAt: yesterday,
+          reason: null,
+          approvedById: null,
+          repaymentStatus: RepaymentStatus.PENDING,
+          repaidAt: null,
+          relatedTransactionId: null,
+        },
+      ]);
 
       const result = await checkGraceEligibility('member-1', mockSettings);
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAutomationRuleHistory } from '@/hooks/useAutomationRuleLifecycle';
 
 interface RuleExecution {
   id: string;
@@ -19,71 +20,35 @@ interface Rule {
   isEnabled: boolean;
 }
 
+const getExecutionSummary = (result: RuleExecution['result']) => {
+  if (!result || typeof result !== 'object') {
+    return null;
+  }
+
+  const record = result as Record<string, unknown>;
+  const actionsCompleted =
+    typeof record.actionsCompleted === 'number' ? record.actionsCompleted : null;
+  const actionsFailed =
+    typeof record.actionsFailed === 'number' ? record.actionsFailed : 0;
+
+  return {
+    actionsCompleted,
+    actionsFailed,
+  };
+};
+
 export default function ExecutionHistoryPage() {
   const params = useParams();
   const ruleId = params.id as string;
-
-  const [rule, setRule] = useState<Rule | null>(null);
-  const [executions, setExecutions] = useState<RuleExecution[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
-  const [total, setTotal] = useState(0);
-
-  useEffect(() => {
-    if (ruleId) {
-      fetchRule();
-      fetchExecutions();
-    }
-  }, [ruleId, filter, offset]);
-
-  const fetchRule = async () => {
-    try {
-      const response = await fetch(`/api/rules/${ruleId}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch rule');
-      }
-
-      const data = await response.json();
-      setRule(data.rule);
-    } catch (err) {
-      console.error('Error fetching rule:', err);
-    }
-  };
-
-  const fetchExecutions = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const params = new URLSearchParams({
-        ruleId,
-        limit: limit.toString(),
-        offset: offset.toString(),
-      });
-
-      if (filter !== 'all') {
-        params.append('success', filter === 'success' ? 'true' : 'false');
-      }
-
-      const response = await fetch(`/api/rules/executions?${params}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch execution history');
-      }
-
-      const data = await response.json();
-      setExecutions(data.executions || []);
-      setTotal(data.total || 0);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load execution history');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { rule, executions, stats, totalExecutions: total, loading, error } =
+    useAutomationRuleHistory(ruleId, {
+      filter,
+      limit,
+      offset,
+    });
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -164,22 +129,18 @@ export default function ExecutionHistoryPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
-            <div className="text-2xl font-bold text-slate-900 dark:text-white">{total}</div>
-            <div className="text-sm text-slate-600 dark:text-slate-400">Total Executions</div>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
-            <div className="text-2xl font-bold text-success">
-              {executions.filter(e => e.success).length}
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+              <div className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalExecutions}</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">Total Executions</div>
             </div>
-            <div className="text-sm text-slate-600 dark:text-slate-400">Successful</div>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
-            <div className="text-2xl font-bold text-error">
-              {executions.filter(e => !e.success).length}
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+              <div className="text-2xl font-bold text-success">{stats.successfulExecutions}</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">Successful</div>
             </div>
-            <div className="text-sm text-slate-600 dark:text-slate-400">Failed</div>
-          </div>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+              <div className="text-2xl font-bold text-error">{stats.failedExecutions}</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">Failed</div>
+            </div>
         </div>
 
         {/* Filter */}
@@ -236,6 +197,10 @@ export default function ExecutionHistoryPage() {
         ) : (
           <div className="space-y-4">
             {executions.map((execution, idx) => (
+              (() => {
+                const summary = getExecutionSummary(execution.result);
+
+                return (
               <div
                 key={execution.id}
                 className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border-2 p-6 ${
@@ -279,13 +244,13 @@ export default function ExecutionHistoryPage() {
                   <div className="mb-3">
                     <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Result</div>
                     <div className="bg-canvas-100 dark:bg-slate-700 rounded-lg p-3 text-sm">
-                      {execution.result.actionsCompleted !== undefined && (
+                      {summary?.actionsCompleted !== null && (
                         <div className="text-slate-700 dark:text-slate-300">
                           <span className="font-medium">Actions Completed:</span>{' '}
-                          {execution.result.actionsCompleted}
-                          {execution.result.actionsFailed > 0 && (
+                          {summary?.actionsCompleted}
+                          {summary && summary.actionsFailed > 0 && (
                             <span className="text-error ml-2">
-                              ({execution.result.actionsFailed} failed)
+                              ({summary.actionsFailed} failed)
                             </span>
                           )}
                         </div>
@@ -318,6 +283,8 @@ export default function ExecutionHistoryPage() {
                   </details>
                 )}
               </div>
+                );
+              })()
             ))}
           </div>
         )}

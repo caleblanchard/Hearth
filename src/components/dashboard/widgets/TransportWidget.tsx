@@ -2,42 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import { Car } from 'lucide-react';
+import type { DashboardWidgetResult } from '@/types/dashboard-widget-collection';
 
-interface TransportSchedule {
-  id: string;
-  time: string;
-  type: string;
-  member: {
-    id: string;
-    name: string;
-  };
-  location: {
-    id: string;
-    name: string;
-    address: string;
-  };
-  driver: {
-    id: string;
-    name: string;
-    phone: string;
-    relationship: string;
-  } | null;
-  carpool: {
-    id: string;
-    name: string;
-  } | null;
+interface TransportWidgetProps {
+  memberId?: string;
+  widget?: DashboardWidgetResult<'transport'>;
+  collectionEnabled?: boolean;
+  collectionLoading?: boolean;
+  collectionError?: string | null;
 }
 
-interface TransportWidgetData {
-  schedules: TransportSchedule[];
-}
-
-export default function TransportWidget({ memberId }: { memberId?: string } = {}) {
-  const [data, setData] = useState<TransportWidgetData | null>(null);
+export default function TransportWidget({
+  memberId,
+  widget,
+  collectionEnabled = false,
+  collectionLoading = false,
+  collectionError = null,
+}: TransportWidgetProps = {}) {
+  const [data, setData] = useState<{ schedules: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (collectionEnabled) {
+      return;
+    }
+
     async function fetchTransport() {
       try {
         setLoading(true);
@@ -72,7 +62,13 @@ export default function TransportWidget({ memberId }: { memberId?: string } = {}
     }
 
     fetchTransport();
-  }, [memberId]);
+  }, [collectionEnabled, memberId]);
+
+  const resolvedData =
+    widget?.state === 'ready' ? widget.data : data;
+  const resolvedLoading = collectionEnabled ? collectionLoading : loading;
+  const resolvedError =
+    widget?.state === 'unavailable' ? widget.error : collectionEnabled ? collectionError : error;
 
   // Format time from HH:mm:ss to h:mm AM/PM
   const formatTime = (time: string): string => {
@@ -115,25 +111,25 @@ export default function TransportWidget({ memberId }: { memberId?: string } = {}
         </h2>
       </div>
 
-      {loading && (
+      {resolvedLoading && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading...</div>
       )}
 
-      {error && (
+      {resolvedError && (
         <div className="text-center py-8 text-red-600 dark:text-red-400">
           Failed to load transport
         </div>
       )}
 
-      {!loading && !error && data && data.schedules.length === 0 && (
+      {!resolvedLoading && !resolvedError && resolvedData && resolvedData.schedules.length === 0 && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           No transport scheduled today
         </div>
       )}
 
-      {!loading && !error && data && data.schedules.length > 0 && (
+      {!resolvedLoading && !resolvedError && resolvedData && resolvedData.schedules.length > 0 && (
         <div className="space-y-3">
-          {data.schedules.map((schedule) => (
+          {resolvedData.schedules.map((schedule) => (
             <div
               key={schedule.id}
               className="border border-gray-200 dark:border-gray-700 rounded-lg p-3"

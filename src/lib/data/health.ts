@@ -533,14 +533,7 @@ export async function getSickModeSettings(familyId: string) {
  */
 export async function updateSickModeSettings(
   familyId: string,
-  settings: {
-    pause_chores?: boolean
-    pause_screen_time_tracking?: boolean
-    screen_time_bonus?: number
-    skip_morning_routine?: boolean
-    skip_bedtime_routine?: boolean
-    mute_non_essential_notifs?: boolean
-  }
+  settings: Database['public']['Tables']['sick_mode_settings']['Update']
 ) {
   const supabase = await createClient()
 

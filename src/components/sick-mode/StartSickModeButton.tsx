@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Heart, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { startSickModeLifecycleClient } from '@/lib/sick-mode-lifecycle-client';
 
 interface StartSickModeButtonProps {
   memberId: string;
@@ -24,25 +25,18 @@ export default function StartSickModeButton({
     setLoading(true);
 
     try {
-      const response = await fetch('/api/family/sick-mode/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          memberId,
-          healthEventId,
-          notes: `Started from health event view`,
-        }),
+      await startSickModeLifecycleClient({
+        memberId,
+        healthEventId,
+        notes: 'Started from health event view',
       });
-
-      if (response.ok) {
-        showToast('success', `Sick mode activated for ${memberName} 🩹`);
-        onStarted?.();
-      } else {
-        const error = await response.json();
-        showToast('error', error.error || 'Failed to start sick mode');
-      }
+      showToast('success', `Sick mode activated for ${memberName} 🩹`);
+      onStarted?.();
     } catch (error) {
-      showToast('error', 'An error occurred while starting sick mode');
+      showToast(
+        'error',
+        error instanceof Error ? error.message : 'An error occurred while starting sick mode'
+      );
     } finally {
       setLoading(false);
     }

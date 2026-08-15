@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentFamilyMembers } from '@/hooks/useCurrentFamilyMembers';
 import { useRouter } from 'next/navigation';
 import {
   PlusIcon,
@@ -11,6 +11,14 @@ import {
   CheckIcon,
 } from '@heroicons/react/24/outline';
 import { ConfirmModal } from '@/components/ui/Modal';
+import {
+  archiveScreenTimeLifecycleTypeClient,
+  createScreenTimeLifecycleTypeClient,
+  fetchScreenTimeLifecycleAllowancesClient,
+  fetchScreenTimeLifecycleTypesClient,
+  saveScreenTimeLifecycleAllowanceClient,
+  updateScreenTimeLifecycleTypeClient,
+} from '@/lib/screen-time-lifecycle-client';
 
 interface ScreenTimeType {
   id: string;
@@ -19,8 +27,8 @@ interface ScreenTimeType {
   isActive: boolean;
   isArchived: boolean;
   _count?: {
-    transactions: number;
-    allowances: number;
+    transactions?: number;
+    allowances?: number;
   };
 }
 
@@ -38,18 +46,23 @@ interface ScreenTimeAllowance {
   period: 'DAILY' | 'WEEKLY';
   rolloverEnabled: boolean;
   rolloverCapMinutes: number | null;
-  member: {
+  member?: {
     id: string;
     name: string;
   };
-  screenTimeType: {
+  screenTimeType?: {
     id: string;
     name: string;
   };
 }
 
 export default function ScreenTimeManagePage() {
-  const { user, loading: authLoading } = useSupabaseSession();
+  const {
+    user,
+    familyMembers,
+    isParent,
+    loading: memberLoading,
+  } = useCurrentFamilyMembers();
   const router = useRouter();
   const [types, setTypes] = useState<ScreenTimeType[]>([]);
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -89,40 +102,43 @@ export default function ScreenTimeManagePage() {
   });
 
   useEffect(() => {
-    // Wait for auth to load before fetching data
-    if (authLoading) {
+    if (memberLoading) {
       return;
     }
-    
-    if (!user) {
+
+    if (user && !isParent) {
       router.push('/dashboard/screentime');
       return;
     }
-    
-    loadData();
-  }, [user, authLoading, router]);
+
+    if (isParent) {
+      void loadData();
+    }
+  }, [isParent, memberLoading, router, user]);
+
+  useEffect(() => {
+    setMembers(
+      familyMembers
+        .filter((member) => member.isActive)
+        .map((member) => ({
+          id: member.id,
+          name: member.name,
+          role: member.role,
+        }))
+    );
+  }, [familyMembers]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [typesRes, familyRes, allowancesRes] = await Promise.all([
-        fetch('/api/screentime/types'),
-        fetch('/api/family-data'),
-        fetch('/api/screentime/allowances'),
+      const [typesData, allowancesData] = await Promise.all([
+        fetchScreenTimeLifecycleTypesClient(),
+        fetchScreenTimeLifecycleAllowancesClient(),
       ]);
 
-      if (!typesRes.ok || !familyRes.ok || !allowancesRes.ok) {
-        throw new Error('Failed to load data');
-      }
-
-      const typesData = await typesRes.json();
-      const familyData = await familyRes.json();
-      const allowancesData = await allowancesRes.json();
-
-      setTypes(typesData.types || []);
-      setMembers(familyData.family?.members?.filter((m: any) => m.isActive) || []);
+      setTypes(typesData || []);
       setAllowances(allowancesData.allowances || []);
     } catch (err) {
       console.error('Error loading data:', err);
@@ -156,25 +172,17 @@ export default function ScreenTimeManagePage() {
 
     try {
       setError(null);
-      const url = editingType
-        ? `/api/screentime/types/${editingType.id}`
-        : '/api/screentime/types';
-      const method = editingType ? 'PATCH' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (editingType) {
+        await updateScreenTimeLifecycleTypeClient(editingType.id, {
           name: typeForm.name.trim(),
           description: typeForm.description.trim() || null,
           isActive: typeForm.isActive,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to save type');
+        });
+      } else {
+        await createScreenTimeLifecycleTypeClient({
+          name: typeForm.name.trim(),
+          description: typeForm.description.trim() || null,
+        });
       }
 
       setSuccess(editingType ? 'Type updated successfully' : 'Type created successfully');
@@ -198,15 +206,7 @@ export default function ScreenTimeManagePage() {
     try {
       setError(null);
       setArchiveConfirmModal({ isOpen: false, type: null });
-      const response = await fetch(`/api/screentime/types/${type.id}`, {
-        method: 'DELETE',
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to archive type');
-      }
+      await archiveScreenTimeLifecycleTypeClient(type.id);
 
       setSuccess('Type archived successfully');
       await loadData();
@@ -264,26 +264,16 @@ export default function ScreenTimeManagePage() {
 
     try {
       setError(null);
-      const response = await fetch('/api/screentime/allowances', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          memberId: allowanceForm.memberId,
-          screenTimeTypeId: allowanceForm.screenTimeTypeId,
-          allowanceMinutes: allowanceForm.allowanceMinutes,
-          period: allowanceForm.period,
-          rolloverEnabled: allowanceForm.rolloverEnabled,
-          rolloverCapMinutes: allowanceForm.rolloverCapMinutes
-            ? parseInt(allowanceForm.rolloverCapMinutes)
-            : null,
-        }),
+      await saveScreenTimeLifecycleAllowanceClient({
+        memberId: allowanceForm.memberId,
+        screenTimeTypeId: allowanceForm.screenTimeTypeId,
+        allowanceMinutes: allowanceForm.allowanceMinutes,
+        period: allowanceForm.period,
+        rolloverEnabled: allowanceForm.rolloverEnabled,
+        rolloverCapMinutes: allowanceForm.rolloverCapMinutes
+          ? parseInt(allowanceForm.rolloverCapMinutes)
+          : null,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to save allowance');
-      }
 
       setSuccess(editingAllowance ? 'Allowance updated successfully' : 'Allowance created successfully');
       setShowAllowanceModal(false);
@@ -529,10 +519,10 @@ export default function ScreenTimeManagePage() {
                   {allowances.map((allowance) => (
                     <tr key={allowance.id}>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                        {allowance.member.name}
+                        {allowance.member?.name || 'Unknown'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                        {allowance.screenTimeType.name}
+                        {allowance.screenTimeType?.name || 'Unknown'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                         {formatTime(allowance.allowanceMinutes)}

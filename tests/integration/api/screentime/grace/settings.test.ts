@@ -1,9 +1,5 @@
-import { NextRequest } from 'next/server';
-import { GET, PATCH } from '@/app/api/screentime/grace/settings/route';
-import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
-import { GraceRepaymentMode } from '@/lib/enums';
+import { NextRequest } from 'next/server'
 
-// Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
     error: jest.fn(),
@@ -11,150 +7,135 @@ jest.mock('@/lib/logger', () => ({
     info: jest.fn(),
     debug: jest.fn(),
   },
-}));
+}))
 
-// Mock data module
-jest.mock('@/lib/data/screentime', () => ({
-  getGraceSettings: jest.fn(),
-  updateGraceSettings: jest.fn(),
-}));
+jest.mock('@/lib/data/screen-time-lifecycle', () => {
+  class MockScreenTimeLifecycleError extends Error {
+    status: number
 
-// Mock Supabase
-jest.mock('@/lib/supabase/server', () => {
-  const { getMockSession } = require('@/lib/test-utils/auth-mock');
-  
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+
   return {
-    createClient: jest.fn(() => ({
-      from: jest.fn((table) => {
-        if (table === 'family_members') {
-          return {
-            select: jest.fn(() => ({
-              eq: jest.fn(() => ({
-                eq: jest.fn(() => ({
-                  single: jest.fn().mockResolvedValue({
-                    data: {
-                      auth_user_id: 'child-1',
-                      family_id: 'family-test-123',
-                      role: 'CHILD'
-                    }
-                  })
-                }))
-              }))
-            }))
-          };
-        }
-        return { select: jest.fn() };
-      }),
-    })),
-    getAuthContext: jest.fn(async () => {
-      const session = getMockSession();
-      if (!session) return null;
-      return {
-        user: session.user,
-        activeFamilyId: session.user.familyId,
-        activeMemberId: session.user.id,
-      };
-    }),
-    isParentInFamily: jest.fn(async (familyId) => {
-      const session = getMockSession();
-      // Default parent session role is PARENT, child is CHILD
-      return session?.user?.role === 'PARENT';
-    }),
-  };
-});
+    ScreenTimeLifecycleError: MockScreenTimeLifecycleError,
+    isScreenTimeLifecycleError: (error: unknown) =>
+      error instanceof MockScreenTimeLifecycleError,
+    getScreenTimeLifecycleGraceSettings: jest.fn(),
+    updateScreenTimeLifecycleGraceSettings: jest.fn(),
+  }
+})
 
-import { getGraceSettings, updateGraceSettings } from '@/lib/data/screentime';
+const {
+  ScreenTimeLifecycleError,
+  getScreenTimeLifecycleGraceSettings: mockGetScreenTimeLifecycleGraceSettings,
+  updateScreenTimeLifecycleGraceSettings: mockUpdateScreenTimeLifecycleGraceSettings,
+} = jest.requireMock('@/lib/data/screen-time-lifecycle')
+const { GET, PATCH, PUT } = require('@/app/api/screentime/grace/settings/route')
 
-describe('/api/screentime/grace/settings', () => {
+describe('/api/screentime/grace/settings route', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-  });
+    jest.clearAllMocks()
+  })
 
-  const mockSettings = {
-    id: 'settings-1',
-    family_id: 'family-test-123',
-    max_daily_grace_periods: 3,
-    require_reason: true,
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    // Enums and other fields mapped by route
-    grace_period_minutes: 15,
-    max_grace_per_day: 3,
-    max_grace_per_week: 10,
-    grace_repayment_mode: 'DEDUCT_NEXT_WEEK',
-    low_balance_warning_minutes: 10,
-    requires_approval: false,
-  };
+  it('delegates grace setting reads to Screen Time Lifecycle', async () => {
+    mockGetScreenTimeLifecycleGraceSettings.mockResolvedValue({
+      id: 'settings-1',
+      memberId: 'child-1',
+      gracePeriodMinutes: 15,
+      maxGracePerDay: 1,
+      maxGracePerWeek: 3,
+      graceRepaymentMode: 'DEDUCT_NEXT_WEEK',
+      lowBalanceWarningMinutes: 10,
+      requiresApproval: false,
+    })
 
-  describe('GET', () => {
-    it('should return settings for family', async () => {
-      const session = mockParentSession();
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/screentime/grace/settings?memberId=child-1')
+    )
+    const data = await response.json()
 
-      (getGraceSettings as jest.Mock).mockResolvedValue(mockSettings);
+    expect(response.status).toBe(200)
+    expect(data.settings.memberId).toBe('child-1')
+    expect(mockGetScreenTimeLifecycleGraceSettings).toHaveBeenCalledWith('child-1')
+  })
 
-      const request = new NextRequest('http://localhost/api/screentime/grace/settings');
-      const response = await GET(request);
-      const data = await response.json();
+  it('delegates grace setting updates to Screen Time Lifecycle for PATCH', async () => {
+    mockUpdateScreenTimeLifecycleGraceSettings.mockResolvedValue({
+      id: 'settings-1',
+      memberId: 'child-1',
+      gracePeriodMinutes: 20,
+      maxGracePerDay: 2,
+      maxGracePerWeek: 4,
+      graceRepaymentMode: 'DEDUCT_NEXT_WEEK',
+      lowBalanceWarningMinutes: 10,
+      requiresApproval: true,
+    })
 
-      expect(response.status).toBe(200);
-      // Route maps snake_case to camelCase
-      expect(data.settings.max_daily_grace_periods).toBe(3);
-      expect(getGraceSettings).toHaveBeenCalledWith(session.user.familyId);
-    });
-
-    it('should return null if not configured', async () => {
-      const session = mockParentSession();
-
-      (getGraceSettings as jest.Mock).mockResolvedValue(null);
-
-      const request = new NextRequest('http://localhost/api/screentime/grace/settings');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.settings).toBeNull();
-    });
-  });
-
-  describe('PATCH', () => {
-    it('should return 403 if not parent', async () => {
-      const session = mockChildSession();
-
-      const request = new NextRequest('http://localhost/api/screentime/grace/settings', {
+    const response = await PATCH(
+      new NextRequest('http://localhost:3000/api/screentime/grace/settings', {
         method: 'PATCH',
-        body: JSON.stringify({ max_daily_grace_periods: 5 }),
-      });
+        body: JSON.stringify({
+          memberId: 'child-1',
+          gracePeriodMinutes: 20,
+          maxGracePerDay: 2,
+          maxGracePerWeek: 4,
+          requiresApproval: true,
+        }),
+      })
+    )
+    const data = await response.json()
 
-      const response = await PATCH(request);
-      const data = await response.json();
+    expect(response.status).toBe(200)
+    expect(data.settings.gracePeriodMinutes).toBe(20)
+    expect(mockUpdateScreenTimeLifecycleGraceSettings).toHaveBeenCalledWith({
+      memberId: 'child-1',
+      gracePeriodMinutes: 20,
+      maxGracePerDay: 2,
+      maxGracePerWeek: 4,
+      requiresApproval: true,
+    })
+  })
 
-      expect(response.status).toBe(403);
-      expect(data.error).toBe('Only parents can update grace settings');
-    });
+  it('supports PUT for the Grace Settings panel caller', async () => {
+    mockUpdateScreenTimeLifecycleGraceSettings.mockResolvedValue({
+      id: 'settings-1',
+      memberId: 'child-1',
+      gracePeriodMinutes: 15,
+      maxGracePerDay: 1,
+      maxGracePerWeek: 3,
+      graceRepaymentMode: 'DEDUCT_NEXT_WEEK',
+      lowBalanceWarningMinutes: 10,
+      requiresApproval: false,
+    })
 
-    it('should update settings', async () => {
-      const session = mockParentSession();
+    const response = await PUT(
+      new NextRequest('http://localhost:3000/api/screentime/grace/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          memberId: 'child-1',
+          gracePeriodMinutes: 15,
+        }),
+      })
+    )
 
-      (updateGraceSettings as jest.Mock).mockResolvedValue({
-        ...mockSettings,
-        max_daily_grace_periods: 5,
-      });
+    expect(response.status).toBe(200)
+    expect(mockUpdateScreenTimeLifecycleGraceSettings).toHaveBeenCalled()
+  })
 
-      const request = new NextRequest('http://localhost/api/screentime/grace/settings', {
-        method: 'PATCH',
-        body: JSON.stringify({ max_daily_grace_periods: 5 }),
-      });
+  it('maps lifecycle errors to HTTP responses', async () => {
+    mockGetScreenTimeLifecycleGraceSettings.mockRejectedValue(
+      new ScreenTimeLifecycleError(403, 'Cannot view other members settings')
+    )
 
-      const response = await PATCH(request);
-      const data = await response.json();
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/screentime/grace/settings?memberId=child-2')
+    )
+    const data = await response.json()
 
-      expect(response.status).toBe(200);
-      expect(data.settings.max_daily_grace_periods).toBe(5);
-      expect(updateGraceSettings).toHaveBeenCalledWith(
-        session.user.familyId,
-        expect.objectContaining({ max_daily_grace_periods: 5 })
-      );
-    });
-  });
-});
+    expect(response.status).toBe(403)
+    expect(data.error).toBe('Cannot view other members settings')
+  })
+})

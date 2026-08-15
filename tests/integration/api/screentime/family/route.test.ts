@@ -1,7 +1,5 @@
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/screentime/family/route';
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
-import { Role } from '@/lib/enums';
 
 // Mock logger
 jest.mock('@/lib/logger', () => ({
@@ -14,34 +12,30 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 // Mock data module
-jest.mock('@/lib/data/screentime', () => ({
-  getFamilyScreenTimeOverview: jest.fn(),
-}));
-
-// Mock Supabase
-jest.mock('@/lib/supabase/server', () => {
-  const { getMockSession } = require('@/lib/test-utils/auth-mock');
-  
+jest.mock('@/lib/data/screen-time-lifecycle', () => {
+  class MockScreenTimeLifecycleError extends Error {
+    status: number;
+    constructor(status: number, message: string) {
+      super(message);
+      this.status = status;
+    }
+  }
   return {
-    createClient: jest.fn(),
-    getAuthContext: jest.fn(async () => {
-      const session = getMockSession();
-      if (!session) return null;
-      return {
-        user: session.user,
-        activeFamilyId: session.user.familyId,
-        activeMemberId: session.user.id,
-      };
-    }),
-    isParentInFamily: jest.fn(async (familyId) => {
-      const session = getMockSession();
-      // Default parent session role is PARENT, child is CHILD
-      return session?.user?.role === 'PARENT';
-    }),
+    ScreenTimeLifecycleError: MockScreenTimeLifecycleError,
+    isScreenTimeLifecycleError: (error: unknown) =>
+      error instanceof MockScreenTimeLifecycleError,
+    getScreenTimeLifecycleFamilyOverview: jest.fn(),
   };
 });
 
-import { getFamilyScreenTimeOverview } from '@/lib/data/screentime';
+const {
+  ScreenTimeLifecycleError,
+  getScreenTimeLifecycleFamilyOverview,
+} = jest.requireMock('@/lib/data/screen-time-lifecycle');
+import { GET } from '@/app/api/screentime/family/route';
+
+const mockGetScreenTimeLifecycleFamilyOverview =
+  getScreenTimeLifecycleFamilyOverview as jest.Mock;
 
 describe('/api/screentime/family', () => {
   beforeEach(() => {
@@ -49,7 +43,11 @@ describe('/api/screentime/family', () => {
   });
 
   it('should return 403 if not a parent', async () => {
-    const session = mockChildSession();
+    mockChildSession();
+
+    mockGetScreenTimeLifecycleFamilyOverview.mockRejectedValue(
+      new ScreenTimeLifecycleError(403, 'Unauthorized - Parent access required')
+    );
 
     const response = await GET();
     const data = await response.json();
@@ -59,45 +57,37 @@ describe('/api/screentime/family', () => {
   });
 
   it('should return family overview', async () => {
-    const session = mockParentSession();
-    
+    mockParentSession();
+
     const mockOverview = {
       members: [
         {
-          id: 'child-1',
-          name: 'Child One',
-          avatarUrl: null,
-          role: 'CHILD',
-          currentBalance: 60,
-          weeklyAllocation: 120,
-          weeklyUsage: 50,
+          member: { id: 'child-1', name: 'Child One', avatarUrl: null },
+          allowances: [],
+          stats: { totalMinutes: 60, byType: { Games: 60 }, sessionCount: 1 },
         },
         {
-          id: 'child-2',
-          name: 'Child Two',
-          avatarUrl: null,
-          role: 'CHILD',
-          currentBalance: 45,
-          weeklyAllocation: 100,
-          weeklyUsage: 15,
-        }
-      ]
+          member: { id: 'child-2', name: 'Child Two', avatarUrl: null },
+          allowances: [],
+          stats: { totalMinutes: 45, byType: { Games: 45 }, sessionCount: 1 },
+        },
+      ],
     };
 
-    (getFamilyScreenTimeOverview as jest.Mock).mockResolvedValue(mockOverview);
+    mockGetScreenTimeLifecycleFamilyOverview.mockResolvedValue(mockOverview);
 
     const response = await GET();
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.overview).toEqual(mockOverview);
-    expect(getFamilyScreenTimeOverview).toHaveBeenCalledWith(session.user.familyId);
+    expect(mockGetScreenTimeLifecycleFamilyOverview).toHaveBeenCalledWith();
   });
 
   it('should return 500 on error', async () => {
-    const session = mockParentSession();
-    
-    (getFamilyScreenTimeOverview as jest.Mock).mockRejectedValue(new Error('Database error'));
+    mockParentSession();
+
+    mockGetScreenTimeLifecycleFamilyOverview.mockRejectedValue(new Error('Database error'));
 
     const response = await GET();
     const data = await response.json();

@@ -45,61 +45,125 @@ describe('DashboardContent', () => {
     })
   })
 
-  const mockDashboardData = {
-    chores: [
+  const mockDashboardSnapshot = {
+    capturedAt: new Date().toISOString(),
+    partial: false,
+    viewer: {
+      memberId: 'user-1',
+      role: 'PARENT',
+      access: 'full',
+    },
+    issues: [],
+    cards: [
       {
-        id: 'chore-1',
-        name: 'Test Chore',
-        description: 'Test description',
-        status: 'PENDING',
-        creditValue: 10,
-        difficulty: 'MEDIUM',
-        dueDate: new Date().toISOString(),
-        requiresApproval: false,
+        kind: 'chores',
+        title: "Today's Chores",
+        href: '/dashboard/chores',
+        state: 'ready',
+        badge: { label: '1/2', tone: 'neutral' },
+        summary: [{ label: 'Pending', value: '1' }],
+        preview: [
+          {
+            id: 'chore-1',
+            primary: 'Test Chore',
+            secondary: '+10 credits',
+            meta: 'pending',
+            tone: 'warning',
+          },
+          {
+            id: 'chore-2',
+            primary: 'Completed Chore',
+            secondary: '+20 credits',
+            meta: 'approved',
+            tone: 'good',
+          },
+        ],
+        moreCount: 0,
       },
       {
-        id: 'chore-2',
-        name: 'Completed Chore',
-        status: 'APPROVED',
-        creditValue: 20,
-        difficulty: 'EASY',
-        dueDate: new Date().toISOString(),
-        requiresApproval: true,
+        kind: 'screentime',
+        title: 'Screen Time',
+        href: '/dashboard/screentime',
+        state: 'ready',
+        badge: { label: '60 min', tone: 'good' },
+        summary: [{ label: 'Weekly Allocation', value: '120 min' }],
+        preview: [
+          {
+            id: 'allowance-1',
+            primary: 'Educational',
+            secondary: '60m remaining',
+            meta: '50%',
+            tone: 'good',
+          },
+        ],
+        moreCount: 0,
       },
-    ],
-    screenTime: {
-      currentBalance: 60,
-      weeklyAllocation: 120,
-      weekStartDate: new Date().toISOString(),
-    },
-    credits: {
-      current: 100,
-      lifetimeEarned: 200,
-      lifetimeSpent: 100,
-    },
-    shopping: {
-      id: 'list-1',
-      name: 'Grocery List',
-      itemCount: 5,
-      urgentCount: 2,
-    },
-    todos: [
       {
-        id: 'todo-1',
-        title: 'Test Todo',
-        priority: 'HIGH',
-        dueDate: new Date().toISOString(),
-        status: 'PENDING',
+        kind: 'credits',
+        title: 'Credits',
+        href: '/dashboard/rewards',
+        state: 'ready',
+        badge: { label: '100', tone: 'neutral' },
+        summary: [
+          { label: 'Current Balance', value: '100 credits' },
+          { label: 'Lifetime Earned', value: '200' },
+          { label: 'Lifetime Spent', value: '100' },
+        ],
+        preview: [],
+        moreCount: 0,
       },
-    ],
-    events: [
       {
-        id: 'event-1',
-        title: 'Test Event',
-        startTime: new Date().toISOString(),
-        endTime: new Date().toISOString(),
-        location: 'Home',
-        color: 'blue',
+        kind: 'shopping',
+        title: 'Shopping List',
+        href: '/dashboard/shopping',
+        state: 'ready',
+        badge: { label: '5', tone: 'warning' },
+        summary: [{ label: 'Urgent Items', value: '2' }],
+        preview: [
+          {
+            id: 'item-1',
+            primary: 'Milk',
+            secondary: '1 gallon',
+            meta: 'Urgent',
+            tone: 'alert',
+          },
+        ],
+        moreCount: 1,
+      },
+      {
+        kind: 'todos',
+        title: 'To-Do List',
+        href: '/dashboard/todos',
+        state: 'ready',
+        badge: { label: '1', tone: 'neutral' },
+        summary: [],
+        preview: [
+          {
+            id: 'todo-1',
+            primary: 'Test Todo',
+            secondary: `Due: ${new Date().toLocaleDateString()}`,
+            meta: 'HIGH',
+            tone: 'alert',
+          },
+        ],
+        moreCount: 0,
+      },
+      {
+        kind: 'calendar',
+        title: 'Upcoming Events',
+        href: '/dashboard/calendar?view=week',
+        state: 'ready',
+        badge: { label: '1', tone: 'neutral' },
+        summary: [],
+        preview: [
+          {
+            id: 'event-1',
+            primary: 'Test Event',
+            secondary: new Date().toLocaleDateString(),
+            meta: 'Home',
+          },
+        ],
+        moreCount: 0,
       },
     ],
   }
@@ -116,19 +180,42 @@ describe('DashboardContent', () => {
     location: 'Test City',
   }
 
-  const setupSuccessfulFetchMock = () => {
+  const mockWidgetCollection = {
+    capturedAt: new Date().toISOString(),
+    partial: false,
+    requested: ['weather'],
+    issues: [],
+    widgets: {
+      weather: {
+        kind: 'weather',
+        state: 'ready',
+        data: {
+          ...mockWeatherData,
+          current: {
+            ...mockWeatherData.current,
+            feelsLike: 70,
+            condition: 'Clouds',
+            icon: '02d',
+          },
+          forecast: [],
+        },
+      },
+    },
+  }
+
+  const setupSuccessfulFetchMock = (snapshot = mockDashboardSnapshot) => {
     ;(global.fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/api/weather')) {
+      if (url.includes('/api/dashboard/widgets')) {
         return Promise.resolve({
           ok: true,
-          json: async () => mockWeatherData,
+          json: async () => mockWidgetCollection,
         })
       }
       if (url.includes('/api/settings/modules/enabled')) {
         return Promise.resolve({
           ok: true,
           json: async () => ({
-            enabledModules: ['CHORES', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS']
+            enabledModules: ['CHORES', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS'],
           }),
         })
       }
@@ -143,7 +230,7 @@ describe('DashboardContent', () => {
       }
       return Promise.resolve({
         ok: true,
-        json: async () => mockDashboardData,
+        json: async () => snapshot,
       })
     })
   }
@@ -174,7 +261,7 @@ describe('DashboardContent', () => {
     })
   })
 
-  it('should display dashboard data when loaded', async () => {
+  it('should display dashboard cards when the snapshot loads', async () => {
     ;(useSupabaseSession as jest.Mock).mockReturnValue({
       user: { id: 'user-1' },
       loading: false,
@@ -193,21 +280,7 @@ describe('DashboardContent', () => {
     })
   })
 
-  it('should display chore completion count', async () => {
-    ;(useSupabaseSession as jest.Mock).mockReturnValue({
-      user: { id: 'user-1' },
-      loading: false,
-    })
-    setupSuccessfulFetchMock()
-
-    render(<DashboardContent />)
-
-    await waitFor(() => {
-      expect(screen.getByText('1/2')).toBeInTheDocument() // 1 completed out of 2
-    })
-  })
-
-  it('should navigate to chores when chores card is clicked', async () => {
+  it('should navigate to chores when the chores card is clicked', async () => {
     ;(useSupabaseSession as jest.Mock).mockReturnValue({
       user: { id: 'user-1' },
       loading: false,
@@ -220,39 +293,30 @@ describe('DashboardContent', () => {
       expect(screen.getByText("Today's Chores")).toBeInTheDocument()
     })
 
-    const choresCard = screen.getByText("Today's Chores").closest('div')
-    fireEvent.click(choresCard!)
+    const choresHeading = screen.getByText("Today's Chores")
+    fireEvent.click(choresHeading.closest('div[class*="bg-white"]') ?? choresHeading)
 
     expect(mockPush).toHaveBeenCalledWith('/dashboard/chores')
   })
 
-  it('should display empty state for chores when none exist', async () => {
+  it('should display the chore empty state from the snapshot card', async () => {
     ;(useSupabaseSession as jest.Mock).mockReturnValue({
       user: { id: 'user-1' },
       loading: false,
     })
-    ;(global.fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/api/weather')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => mockWeatherData,
-        })
-      }
-      if (url.includes('/api/settings/modules/enabled')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            enabledModules: ['CHORES', 'SCREEN_TIME', 'CREDITS', 'SHOPPING', 'CALENDAR', 'TODOS']
-          }),
-        })
-      }
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({
-          ...mockDashboardData,
-          chores: [],
-        }),
-      })
+    setupSuccessfulFetchMock({
+      ...mockDashboardSnapshot,
+      cards: mockDashboardSnapshot.cards.map((card) =>
+        card.kind === 'chores'
+          ? {
+              ...card,
+              state: 'empty',
+              badge: { label: '0/0', tone: 'neutral' },
+              preview: [],
+              emptyMessage: 'No chores scheduled for today.',
+            }
+          : card
+      ),
     })
 
     render(<DashboardContent />)
@@ -262,7 +326,7 @@ describe('DashboardContent', () => {
     })
   })
 
-  it('should display screen time balance', async () => {
+  it('should display screen time and credits from snapshot summaries', async () => {
     ;(useSupabaseSession as jest.Mock).mockReturnValue({
       user: { id: 'user-1' },
       loading: false,
@@ -273,42 +337,20 @@ describe('DashboardContent', () => {
 
     await waitFor(() => {
       expect(screen.getByText('60 min')).toBeInTheDocument()
-      expect(screen.getByText('Balance not configured yet.')).toBeInTheDocument()
-    })
-  })
-
-  it('should display credits information', async () => {
-    ;(useSupabaseSession as jest.Mock).mockReturnValue({
-      user: { id: 'user-1' },
-      loading: false,
-    })
-    setupSuccessfulFetchMock()
-
-    render(<DashboardContent />)
-
-    await waitFor(() => {
       expect(screen.getByText('100 credits')).toBeInTheDocument()
+      expect(screen.getByText('200')).toBeInTheDocument()
     })
-    
-    // Check for credits values (may appear multiple times)
-    const creditValues = screen.getAllByText('100')
-    expect(creditValues.length).toBeGreaterThan(0)
-    
-    const earnedValues = screen.getAllByText('200')
-    expect(earnedValues.length).toBeGreaterThan(0)
   })
 
-  it('should not render when session is not available', async () => {
+  it('should not fetch dashboard data when there is no session', async () => {
     ;(useSupabaseSession as jest.Mock).mockReturnValue({
       user: null,
       loading: false,
     })
 
-    const { container } = render(<DashboardContent />)
+    render(<DashboardContent />)
 
-    // Component shows loading state initially, then should not fetch data
     await waitFor(() => {
-      // After loading completes, if no session, data should be null
       expect(global.fetch).not.toHaveBeenCalled()
     })
   })

@@ -1,8 +1,5 @@
-import { NextRequest } from 'next/server';
-import { GET, PATCH, DELETE } from '@/app/api/screentime/types/[id]/route';
-import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
+import { NextRequest } from 'next/server'
 
-// Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
     error: jest.fn(),
@@ -10,142 +7,116 @@ jest.mock('@/lib/logger', () => ({
     info: jest.fn(),
     debug: jest.fn(),
   },
-}));
+}))
 
-// Mock data module
-jest.mock('@/lib/data/screentime', () => ({
-  updateScreenTimeType: jest.fn(),
-  deleteScreenTimeType: jest.fn(),
-}));
+jest.mock('@/lib/data/screen-time-lifecycle', () => {
+  class MockScreenTimeLifecycleError extends Error {
+    status: number
 
-// Mock Supabase
-jest.mock('@/lib/supabase/server', () => {
-  const { getMockSession } = require('@/lib/test-utils/auth-mock');
-  
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+
   return {
-    createClient: jest.fn(() => ({
-      from: jest.fn((table) => {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn((col, val) => ({
-              eq: jest.fn((col2, val2) => ({
-                single: jest.fn().mockResolvedValue({
-                  data: {
-                    id: 'type-1',
-                    family_id: 'family-test-123',
-                    name: 'Educational',
-                    description: 'Educational content',
-                    is_active: true,
-                    is_archived: false,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                  },
-                  error: null
-                })
-              })),
-              single: jest.fn().mockResolvedValue({
-                data: {
-                  id: 'type-1',
-                  family_id: 'family-test-123',
-                  name: 'Educational',
-                  is_active: true,
-                  is_archived: false,
-                },
-                error: null
-              })
-            }))
-          }))
-        };
-      }),
-    })),
-    getAuthContext: jest.fn(async () => {
-      const session = getMockSession();
-      if (!session) return null;
-      return {
-        user: session.user,
-        activeFamilyId: session.user.familyId,
-        activeMemberId: session.user.id,
-      };
-    }),
-  };
-});
+    ScreenTimeLifecycleError: MockScreenTimeLifecycleError,
+    isScreenTimeLifecycleError: (error: unknown) =>
+      error instanceof MockScreenTimeLifecycleError,
+    getScreenTimeLifecycleType: jest.fn(),
+    updateScreenTimeLifecycleType: jest.fn(),
+    archiveScreenTimeLifecycleType: jest.fn(),
+  }
+})
 
-import { updateScreenTimeType, deleteScreenTimeType } from '@/lib/data/screentime';
+const {
+  ScreenTimeLifecycleError,
+  getScreenTimeLifecycleType: mockGetScreenTimeLifecycleType,
+  updateScreenTimeLifecycleType: mockUpdateScreenTimeLifecycleType,
+  archiveScreenTimeLifecycleType: mockArchiveScreenTimeLifecycleType,
+} = jest.requireMock('@/lib/data/screen-time-lifecycle')
+const { DELETE, GET, PATCH } = require('@/app/api/screentime/types/[id]/route')
 
-describe('/api/screentime/types/[id]', () => {
+describe('/api/screentime/types/[id] route', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-  });
+    jest.clearAllMocks()
+  })
 
-  describe('GET', () => {
-    it('should return 401 if not authenticated', async () => {
-      // Setup handled by global mock state
-      const request = new NextRequest('http://localhost/api/screentime/types/type-1');
-      // @ts-ignore
-      const response = await GET(request, { params: Promise.resolve({ id: 'type-1' }) });
-      // Response handling for unauth is typically handled by middleware or early checks, 
-      // but here we mock getAuthContext to return null if needed.
-      // However, mockParentSession defaults to authorized.
-      // To test unauth, we'd need to manipulate getAuthContext return.
-      // Since we mocked getAuthContext to use getMockSession, we can use setMockSession(null).
-      // But let's skip this for now as we want to fix failures.
-    });
+  it('delegates single type reads to Screen Time Lifecycle', async () => {
+    mockGetScreenTimeLifecycleType.mockResolvedValue({
+      id: 'type-1',
+      familyId: 'family-1',
+      name: 'Educational',
+      description: 'Educational content',
+      isActive: true,
+      isArchived: false,
+    })
 
-    it('should return type successfully', async () => {
-      const session = mockParentSession();
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/screentime/types/type-1'),
+      { params: Promise.resolve({ id: 'type-1' }) }
+    )
+    const data = await response.json()
 
-      const request = new NextRequest('http://localhost/api/screentime/types/type-1');
-      const response = await GET(request, { params: Promise.resolve({ id: 'type-1' }) });
-      const data = await response.json();
+    expect(response.status).toBe(200)
+    expect(data.type.name).toBe('Educational')
+    expect(mockGetScreenTimeLifecycleType).toHaveBeenCalledWith('type-1')
+  })
 
-      expect(response.status).toBe(200);
-      expect(data.type.name).toBe('Educational');
-      expect(data.type.isActive).toBe(true);
-    });
-  });
+  it('delegates type updates to Screen Time Lifecycle', async () => {
+    mockUpdateScreenTimeLifecycleType.mockResolvedValue({
+      id: 'type-1',
+      familyId: 'family-1',
+      name: 'Updated Name',
+      description: null,
+      isActive: true,
+      isArchived: false,
+    })
 
-  describe('PATCH', () => {
-    it('should update type name', async () => {
-      const session = mockParentSession();
-
-      (updateScreenTimeType as jest.Mock).mockResolvedValue({
-        id: 'type-1',
-        family_id: session.user.familyId,
-        name: 'Updated Name',
-        is_active: true,
-        is_archived: false,
-      });
-
-      const request = new NextRequest('http://localhost/api/screentime/types/type-1', {
+    const response = await PATCH(
+      new NextRequest('http://localhost:3000/api/screentime/types/type-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Updated Name' }),
-      });
+      }),
+      { params: Promise.resolve({ id: 'type-1' }) }
+    )
+    const data = await response.json()
 
-      const response = await PATCH(request, { params: Promise.resolve({ id: 'type-1' }) });
-      const data = await response.json();
+    expect(response.status).toBe(200)
+    expect(data.type.name).toBe('Updated Name')
+    expect(mockUpdateScreenTimeLifecycleType).toHaveBeenCalledWith('type-1', {
+      name: 'Updated Name',
+    })
+  })
 
-      expect(response.status).toBe(200);
-      expect(data.type.name).toBe('Updated Name');
-      expect(updateScreenTimeType).toHaveBeenCalledWith('type-1', expect.objectContaining({
-        name: 'Updated Name'
-      }));
-    });
-  });
+  it('delegates type archiving to Screen Time Lifecycle', async () => {
+    mockArchiveScreenTimeLifecycleType.mockResolvedValue(undefined)
 
-  describe('DELETE', () => {
-    it('should delete (archive) type', async () => {
-      const session = mockParentSession();
-
-      const request = new NextRequest('http://localhost/api/screentime/types/type-1', {
+    const response = await DELETE(
+      new NextRequest('http://localhost:3000/api/screentime/types/type-1', {
         method: 'DELETE',
-      });
+      }),
+      { params: Promise.resolve({ id: 'type-1' }) }
+    )
+    const data = await response.json()
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'type-1' }) });
-      const data = await response.json();
+    expect(response.status).toBe(200)
+    expect(data.success).toBe(true)
+    expect(mockArchiveScreenTimeLifecycleType).toHaveBeenCalledWith('type-1')
+  })
 
-      expect(response.status).toBe(200);
-      expect(data.success).toBe(true);
-      expect(deleteScreenTimeType).toHaveBeenCalledWith('type-1');
-    });
-  });
-});
+  it('maps lifecycle errors to HTTP responses', async () => {
+    mockGetScreenTimeLifecycleType.mockRejectedValue(
+      new ScreenTimeLifecycleError(404, 'Screen time type not found')
+    )
+
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/screentime/types/missing'),
+      { params: Promise.resolve({ id: 'missing' }) }
+    )
+    const data = await response.json()
+
+    expect(response.status).toBe(404)
+    expect(data.error).toBe('Screen time type not found')
+  })
+})

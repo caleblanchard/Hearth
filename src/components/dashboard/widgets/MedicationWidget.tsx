@@ -4,30 +4,30 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Pill, AlertCircle } from 'lucide-react';
 import { AlertModal } from '@/components/ui/Modal';
+import type {
+  DashboardWidgetResult,
+  MedicationWidgetItem,
+} from '@/types/dashboard-widget-collection';
 
-interface Medication {
-  id: string;
-  medicationName: string;
-  activeIngredient: string | null;
-  minIntervalHours: number;
-  maxDosesPerDay: number | null;
-  lastDoseAt: string | null;
-  nextDoseAvailableAt: string | null;
-  notifyWhenReady: boolean;
-  member: {
-    id: string;
-    name: string;
-  };
-  doses: any[];
+interface MedicationWidgetProps {
+  memberId?: string;
+  widget?: DashboardWidgetResult<'medication'>;
+  collectionEnabled?: boolean;
+  collectionLoading?: boolean;
+  collectionError?: string | null;
+  onRefresh?: () => Promise<void>;
 }
 
-interface MedicationWidgetData {
-  medications: Medication[];
-}
-
-export default function MedicationWidget({ memberId }: { memberId?: string } = {}) {
+export default function MedicationWidget({
+  memberId,
+  widget,
+  collectionEnabled = false,
+  collectionLoading = false,
+  collectionError = null,
+  onRefresh,
+}: MedicationWidgetProps = {}) {
   const router = useRouter();
-  const [data, setData] = useState<MedicationWidgetData | null>(null);
+  const [data, setData] = useState<{ medications: MedicationWidgetItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [markingDose, setMarkingDose] = useState<string | null>(null);
@@ -44,8 +44,11 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
   });
 
   useEffect(() => {
+    if (collectionEnabled) {
+      return;
+    }
     fetchMedications();
-  }, [memberId]);
+  }, [collectionEnabled, memberId]);
 
   async function fetchMedications() {
     try {
@@ -79,7 +82,7 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
     }
   }
 
-  async function handleMarkAsTaken(medication: Medication) {
+  async function handleMarkAsTaken(medication: MedicationWidgetItem) {
     try {
       setMarkingDose(medication.id);
 
@@ -111,8 +114,11 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
         throw new Error(errorData.error || 'Failed to log dose');
       }
 
-      // Refresh medications after logging dose
-      await fetchMedications();
+      if (collectionEnabled && onRefresh) {
+        await onRefresh();
+      } else {
+        await fetchMedications();
+      }
     } catch (err) {
       console.error('Error marking medication as taken:', err);
       setAlertModal({
@@ -126,8 +132,14 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
     }
   }
 
+  const resolvedData =
+    widget?.state === 'ready' ? widget.data : data;
+  const resolvedLoading = collectionEnabled ? collectionLoading : loading;
+  const resolvedError =
+    widget?.state === 'unavailable' ? widget.error : collectionEnabled ? collectionError : error;
+
   // Filter medications to show only upcoming (within 24 hours) or overdue
-  const relevantMedications = data?.medications.filter((med) => {
+  const relevantMedications = resolvedData?.medications.filter((med) => {
     if (!med.nextDoseAvailableAt || !med.notifyWhenReady) return false;
 
     const nextDose = new Date(med.nextDoseAvailableAt);
@@ -175,23 +187,23 @@ export default function MedicationWidget({ memberId }: { memberId?: string } = {
         </h2>
       </div>
 
-      {loading && (
+      {resolvedLoading && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading...</div>
       )}
 
-      {error && (
+      {resolvedError && (
         <div className="text-center py-8 text-red-600 dark:text-red-400">
           Failed to load medications
         </div>
       )}
 
-      {!loading && !error && sortedMedications.length === 0 && (
+      {!resolvedLoading && !resolvedError && sortedMedications.length === 0 && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           No medications scheduled
         </div>
       )}
 
-      {!loading && !error && sortedMedications.length > 0 && (
+      {!resolvedLoading && !resolvedError && sortedMedications.length > 0 && (
         <div className="space-y-3">
           {sortedMedications.map((medication) => {
             const { text: timeText, isOverdue } = formatTime(medication.nextDoseAvailableAt!);

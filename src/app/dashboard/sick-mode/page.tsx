@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSupabaseSession } from '@/hooks/useSupabaseSession';
-import { useCurrentMember } from '@/hooks/useCurrentMember';
+import { useState } from 'react';
+import { useCurrentFamilyMembers } from '@/hooks/useCurrentFamilyMembers';
 import { useRouter } from 'next/navigation';
 import { Heart, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { startSickModeLifecycleClient } from '@/lib/sick-mode-lifecycle-client';
 
 interface FamilyMember {
   id: string;
@@ -14,50 +14,27 @@ interface FamilyMember {
 }
 
 export default function StartSickModePage() {
-  const { user } = useSupabaseSession();
-  const { isParent, loading: memberLoading } = useCurrentMember();
+  const { familyMembers, isParent, loading: memberLoading } = useCurrentFamilyMembers();
   const router = useRouter();
   const { showToast } = useToast();
-  const [members, setMembers] = useState<FamilyMember[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    loadFamilyMembers();
-  }, []);
-
-  const loadFamilyMembers = async () => {
-    try {
-      const response = await fetch('/api/family/members');
-      if (response.ok) {
-        const data = await response.json();
-        setMembers(data.members || []);
-      }
-    } catch (err) {
-      console.error('Failed to load family members:', err);
-    }
-  };
+  const members = familyMembers.map((member) => ({
+    id: member.id,
+    name: member.name,
+    role: member.role,
+  })) satisfies FamilyMember[];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const response = await fetch('/api/family/sick-mode/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          memberId: selectedMemberId,
-          notes: notes || null,
-        }),
+      await startSickModeLifecycleClient({
+        memberId: selectedMemberId,
+        notes: notes || null,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to start sick mode');
-      }
 
       const memberName = members.find(m => m.id === selectedMemberId)?.name || 'Family member';
       showToast('success', `Sick mode activated for ${memberName} 🩹`);

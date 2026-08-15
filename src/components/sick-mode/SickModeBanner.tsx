@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AlertCircle, X } from 'lucide-react';
+import { fetchSickModeLifecycleStatusClient } from '@/lib/sick-mode-lifecycle-client';
 
 interface SickModeInstance {
   id: string;
@@ -11,7 +12,7 @@ interface SickModeInstance {
   member: {
     id: string;
     name: string;
-  };
+  } | null;
 }
 
 export default function SickModeBanner() {
@@ -20,16 +21,13 @@ export default function SickModeBanner() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchActiveSickMode();
+    void fetchActiveSickMode();
   }, []);
 
   const fetchActiveSickMode = async () => {
     try {
-      const response = await fetch('/api/family/sick-mode/status');
-      if (response.ok) {
-        const data = await response.json();
-        setInstances(data.instances || []);
-      }
+      const data = await fetchSickModeLifecycleStatusClient();
+      setInstances(data.instances || []);
     } catch (error) {
       console.error('Failed to fetch sick mode status:', error);
     } finally {
@@ -64,7 +62,7 @@ export default function SickModeBanner() {
                   Sick Mode Active
                 </h3>
                 <p className="text-sm text-amber-700">
-                  {instance.member.name} is in sick mode. Chores are paused, routines skipped, and screen time tracking is disabled.
+                  {instance.member?.name ?? 'A family member'} is in sick mode. Chores are paused, routines skipped, and screen time tracking is disabled.
                 </p>
               </div>
             </div>

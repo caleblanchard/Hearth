@@ -2,12 +2,31 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import ManageAllowancePage from '@/app/dashboard/allowance/manage/page'
 
+jest.mock('@/hooks/useCurrentFamilyMembers', () => ({
+  useCurrentFamilyMembers: jest.fn(),
+}))
+
 // Mock fetch
 global.fetch = jest.fn()
+
+const { useCurrentFamilyMembers: mockUseCurrentFamilyMembers } = jest.requireMock(
+  '@/hooks/useCurrentFamilyMembers'
+)
 
 describe('ManageAllowancePage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockUseCurrentFamilyMembers.mockReturnValue({
+      familyMembers: [
+        { id: 'child-1', name: 'Alice', avatarUrl: null, role: 'CHILD' },
+        { id: 'child-2', name: 'Bob', avatarUrl: null, role: 'CHILD' },
+      ],
+      loading: false,
+      error: null,
+      isParent: true,
+      isChild: false,
+      refresh: jest.fn(),
+    })
   })
 
   const mockSchedules = [
@@ -375,7 +394,7 @@ describe('ManageAllowancePage', () => {
 
   it('should toggle pause status when clicking pause/resume button', async () => {
     ;(global.fetch as jest.Mock).mockImplementation((url, options) => {
-      if (url === '/api/allowance' && !options) {
+      if (url === '/api/allowance') {
         return Promise.resolve({
           ok: true,
           json: async () => ({ schedules: mockSchedules }),

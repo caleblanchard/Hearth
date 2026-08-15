@@ -293,8 +293,8 @@ describe('/api/financial/budgets', () => {
       const response = await POST(request)
       const data = await response.json()
 
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('Failed to create budget')
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Invalid JSON')
     })
   })
 })

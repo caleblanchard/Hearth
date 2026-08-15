@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AlertModal, ConfirmModal } from '@/components/ui/Modal';
+import { useAutomationRules } from '@/hooks/useAutomationRuleLifecycle';
 
 interface AutomationRule {
   id: string;
@@ -24,10 +25,8 @@ interface AutomationRule {
 
 export default function RulesPage() {
   const router = useRouter();
-  const [rules, setRules] = useState<AutomationRule[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { rules, loading, error, toggleRule, deleteRule } = useAutomationRules();
   const [filter, setFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
-  const [error, setError] = useState<string | null>(null);
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -47,43 +46,13 @@ export default function RulesPage() {
     ruleId: null,
   });
 
-  useEffect(() => {
-    fetchRules();
-  }, []);
-
-  const fetchRules = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch('/api/rules');
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch rules');
-      }
-
-      const data = await response.json();
-      setRules(data.rules || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load rules');
-    } finally {
-      setLoading(false);
-    }
+  const handleDeleteClick = (ruleId: string) => {
+    setDeleteConfirmModal({ isOpen: true, ruleId });
   };
 
-  const toggleRule = async (ruleId: string, currentState: boolean) => {
+  const handleToggleRule = async (ruleId: string) => {
     try {
-      const response = await fetch(`/api/rules/${ruleId}/toggle`, {
-        method: 'PATCH',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle rule');
-      }
-
-      // Update local state
-      setRules(rules.map(rule =>
-        rule.id === ruleId ? { ...rule, isEnabled: !currentState } : rule
-      ));
+      await toggleRule(ruleId);
     } catch (err) {
       setAlertModal({
         isOpen: true,
@@ -94,22 +63,9 @@ export default function RulesPage() {
     }
   };
 
-  const handleDeleteClick = (ruleId: string) => {
-    setDeleteConfirmModal({ isOpen: true, ruleId });
-  };
-
-  const deleteRule = async (ruleId: string) => {
+  const handleDeleteRule = async (ruleId: string) => {
     try {
-      const response = await fetch(`/api/rules/${ruleId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete rule');
-      }
-
-      // Remove from local state
-      setRules(rules.filter(rule => rule.id !== ruleId));
+      await deleteRule(ruleId);
       setDeleteConfirmModal({ isOpen: false, ruleId: null });
     } catch (err) {
       setAlertModal({
@@ -300,16 +256,16 @@ export default function RulesPage() {
                       {getActionCount(rule.actions)}
                     </td>
                     <td className="px-6 py-4">
-                      <Link
-                        href={`/dashboard/rules/${rule.id}/history`}
-                        className="text-sm text-ember-700 dark:text-ember-400 hover:text-ember-500 dark:hover:text-ember-300"
-                      >
-                        {rule._count?.executions || 0}
-                      </Link>
-                    </td>
+                       <Link
+                         href={`/dashboard/rules/${rule.id}/history`}
+                         className="text-sm text-ember-700 dark:text-ember-400 hover:text-ember-500 dark:hover:text-ember-300"
+                       >
+                         {rule.executionCount || 0}
+                       </Link>
+                     </td>
                     <td className="px-6 py-4">
                       <button
-                        onClick={() => toggleRule(rule.id, rule.isEnabled)}
+                        onClick={() => handleToggleRule(rule.id)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                           rule.isEnabled ? 'bg-success' : 'bg-slate-200 dark:bg-slate-600'
                         }`}
@@ -356,7 +312,7 @@ export default function RulesPage() {
       <ConfirmModal
         isOpen={deleteConfirmModal.isOpen}
         onClose={() => setDeleteConfirmModal({ isOpen: false, ruleId: null })}
-        onConfirm={() => deleteConfirmModal.ruleId && deleteRule(deleteConfirmModal.ruleId)}
+        onConfirm={() => deleteConfirmModal.ruleId && handleDeleteRule(deleteConfirmModal.ruleId)}
         title="Delete Rule"
         message="Are you sure you want to delete this rule? This action cannot be undone."
         confirmText="Delete"

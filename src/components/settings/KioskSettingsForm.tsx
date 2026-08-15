@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
-interface KioskSettings {
-  isEnabled: boolean;
-  autoLockMinutes: number;
-  enabledWidgets: string[];
-  allowGuestView: boolean;
-  requirePinForSwitch: boolean;
-}
+import {
+  fetchParentKioskConfiguration,
+  updateParentKioskConfigurationClient,
+} from '@/lib/parent-configuration-lifecycle-client';
+import type {
+  ParentConfigurationKioskWidget,
+  ParentKioskConfiguration,
+} from '@/types/parent-configuration-lifecycle';
 
 interface DeviceInfo {
   id: string;
@@ -23,7 +23,11 @@ const AVAILABLE_WIDGETS = [
   { id: 'maintenance', name: 'Maintenance', description: 'Home maintenance tasks' },
   { id: 'inventory', name: 'Inventory', description: 'Low stock items' },
   { id: 'weather', name: 'Weather', description: 'Current weather and forecast' },
-];
+] as Array<{
+  id: ParentConfigurationKioskWidget;
+  name: string;
+  description: string;
+}>;
 
 export default function KioskSettingsForm({ familyId }: { familyId: string }) {
   const router = useRouter();
@@ -38,7 +42,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
     error?: string;
   } | null>(null);
 
-  const [settings, setSettings] = useState<KioskSettings>({
+  const [settings, setSettings] = useState<ParentKioskConfiguration>({
     isEnabled: true,
     autoLockMinutes: 15,
     enabledWidgets: ['transport', 'medication', 'maintenance', 'inventory', 'weather'],
@@ -51,26 +55,20 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
   }, []);
 
   async function fetchSettings() {
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        setLoading(true);
+        setError(null);
 
-      const response = await fetch(`/api/kiosk/settings?familyId=${familyId}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch settings');
-      }
-
-      const data = await response.json();
+      const data = await fetchParentKioskConfiguration(familyId);
       if (data.settings) {
         setSettings(data.settings);
       }
       if (Array.isArray(data.devices)) {
         setDevices(
-          data.devices.map((d: any) => ({
-            id: d.id,
-            deviceId: d.device_id || d.deviceId || d.id,
-            lastUsedAt: d.last_used_at || d.lastUsedAt || null,
+          data.devices.map((device) => ({
+            id: device.id,
+            deviceId: device.deviceId || device.id,
+            lastUsedAt: device.lastUsedAt || null,
           }))
         );
       }
@@ -104,23 +102,16 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    try {
-      setSaving(true);
-      setError(null);
-      setSuccess(false);
+      try {
+        setSaving(true);
+        setError(null);
+        setSuccess(false);
 
-      const response = await fetch('/api/kiosk/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ familyId, ...settings }),
+      const updated = await updateParentKioskConfigurationClient({
+        familyId,
+        ...settings,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save settings');
-      }
+      setSettings(updated);
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -131,7 +122,7 @@ export default function KioskSettingsForm({ familyId }: { familyId: string }) {
     }
   }
 
-  function toggleWidget(widgetId: string) {
+  function toggleWidget(widgetId: ParentConfigurationKioskWidget) {
     setSettings((prev) => ({
       ...prev,
       enabledWidgets: prev.enabledWidgets.includes(widgetId)

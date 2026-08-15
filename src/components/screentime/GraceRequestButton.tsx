@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ClockIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { requestScreenTimeLifecycleGraceClient } from '@/lib/screen-time-lifecycle-client';
 
 interface GraceStatus {
   canRequestGrace: boolean;
@@ -45,43 +46,32 @@ export default function GraceRequestButton({
     setMessage(null);
 
     try {
-      const response = await fetch('/api/screentime/grace/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: reason || undefined }),
+      const data = await requestScreenTimeLifecycleGraceClient({
+        reason: reason || undefined,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        if (data.pendingApproval) {
-          setMessage({
-            type: 'info',
-            text: 'Your request is pending approval from a parent.',
-          });
-        } else {
-          setMessage({
-            type: 'success',
-            text: `Grace period granted! You received ${status.settings.gracePeriodMinutes} minutes.`,
-          });
-          onGraceGranted(data.newBalance);
-        }
-        setReason('');
-        setTimeout(() => {
-          setShowModal(false);
-          setMessage(null);
-        }, 3000);
+      if (data.pendingApproval) {
+        setMessage({
+          type: 'info',
+          text: 'Your request is pending approval from a parent.',
+        });
       } else {
         setMessage({
-          type: 'error',
-          text: data.error || 'Failed to request grace period',
+          type: 'success',
+          text: `Grace period granted! You received ${status.settings.gracePeriodMinutes} minutes.`,
         });
+        onGraceGranted(data.newBalance);
       }
+      setReason('');
+      setTimeout(() => {
+        setShowModal(false);
+        setMessage(null);
+      }, 3000);
     } catch (error) {
       console.error('Error requesting grace:', error);
       setMessage({
         type: 'error',
-        text: 'Failed to request grace period',
+        text: error instanceof Error ? error.message : 'Failed to request grace period',
       });
     } finally {
       setRequesting(false);

@@ -34,7 +34,7 @@ describe('RulesList Component', () => {
       isEnabled: true,
       createdAt: '2024-01-01T00:00:00Z',
       creator: { id: 'user-1', name: 'Parent' },
-      _count: { executions: 5 },
+      executionCount: 5,
     },
     {
       id: 'rule-2',
@@ -48,7 +48,7 @@ describe('RulesList Component', () => {
       isEnabled: false,
       createdAt: '2024-01-02T00:00:00Z',
       creator: { id: 'user-1', name: 'Parent' },
-      _count: { executions: 12 },
+      executionCount: 12,
     },
   ];
 
@@ -83,7 +83,7 @@ describe('RulesList Component', () => {
       expect(screen.getByText('Chore Streak Bonus')).toBeInTheDocument();
     });
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/rules');
+    expect(global.fetch).toHaveBeenCalledWith('/api/rules', expect.anything());
   });
 
   it('should display rule details correctly', async () => {
@@ -278,6 +278,7 @@ describe('RulesList Component', () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 500,
+      json: async () => ({ error: 'Failed to fetch rules' }),
     });
 
     render(<RulesPage />);

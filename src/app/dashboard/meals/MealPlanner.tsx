@@ -3,35 +3,70 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { MealType } from '@/lib/enums';
+import {
+  createMealPlanLifecycleDishClient,
+  createMealPlanLifecycleEntryClient,
+  deleteMealPlanLifecycleDishClient,
+  deleteMealPlanLifecycleEntryClient,
+  fetchMealPlanLifecyclePlanClient,
+  updateMealPlanLifecycleDishClient,
+  updateMealPlanLifecycleEntryClient,
+} from '@/lib/meal-plan-lifecycle-client';
 import RecipeAutocomplete from '@/components/meals/RecipeAutocomplete';
 import { PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import type { MealPlanLifecycleDishRecord, MealPlanLifecycleEntryRecord, MealPlanLifecycleRecord } from '@/types/meal-plan-lifecycle';
 
-interface MealPlanDish {
-  id: string;
-  dishName: string;
-  recipeId: string | null;
-  sortOrder: number;
-}
+type MealPlanDish = MealPlanLifecycleDishRecord
+type MealPlanEntry = MealPlanLifecycleEntryRecord
+type MealPlan = MealPlanLifecycleRecord
 
-interface MealPlanEntry {
-  id: string;
-  date: Date;
-  mealType: string;
-  customName: string | null;
-  notes: string | null;
-  recipeId: string | null;
-  dishes: MealPlanDish[];
-}
+const normalizeClientMealPlan = (mealPlan: MealPlan | null): MealPlan | null => {
+  if (!mealPlan) {
+    return null
+  }
 
-interface MealPlan {
-  id: string;
-  weekStart: Date;
-  meals: MealPlanEntry[];
-}
-
-interface MealPlanResponse {
-  mealPlan: MealPlan | null;
-  weekStart: string;
+  const rawWeekStart = mealPlan.weekStart as unknown
+  return {
+    ...mealPlan,
+    weekStart:
+      rawWeekStart instanceof Date ? rawWeekStart.toISOString().split('T')[0] : mealPlan.weekStart,
+    meals: Array.isArray(mealPlan.meals)
+      ? mealPlan.meals.map((meal) => ({
+          ...meal,
+          date:
+            (meal.date as unknown) instanceof Date
+              ? (meal.date as unknown as Date).toISOString().split('T')[0]
+              : meal.date,
+          mealType: (meal as MealPlanEntry & { meal_type?: string }).mealType ?? (meal as MealPlanEntry & { meal_type?: string }).meal_type ?? '',
+          customName:
+            meal.customName ??
+            (meal as MealPlanEntry & { custom_name?: string | null }).custom_name ??
+            null,
+          notes: meal.notes ?? null,
+          recipeId:
+            meal.recipeId ??
+            (meal as MealPlanEntry & { recipe_id?: string | null }).recipe_id ??
+            null,
+          dishes: Array.isArray(meal.dishes)
+            ? meal.dishes.map((dish) => ({
+                ...dish,
+                dishName:
+                  dish.dishName ??
+                  (dish as MealPlanDish & { dish_name?: string | null }).dish_name ??
+                  null,
+                recipeId:
+                  dish.recipeId ??
+                  (dish as MealPlanDish & { recipe_id?: string | null }).recipe_id ??
+                  null,
+                sortOrder:
+                  dish.sortOrder ??
+                  (dish as MealPlanDish & { sort_order?: number | null }).sort_order ??
+                  0,
+              }))
+            : [],
+        }))
+      : [],
+  }
 }
 
 export default function MealPlanner() {
@@ -106,20 +141,9 @@ export default function MealPlanner() {
     console.log('[MealPlanner] Loading meal plan for week:', week);
 
     try {
-      const response = await fetch(`/api/meals/plan?week=${week}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load meal plan');
-      }
-
-      const data: MealPlanResponse = await response.json();
+      const data = await fetchMealPlanLifecyclePlanClient(week);
       console.log('[MealPlanner] Received meal plan:', data);
-      setMealPlan(data.mealPlan);
+      setMealPlan(normalizeClientMealPlan(data.mealPlan));
       setWeekStart(data.weekStart);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load meal plan');
@@ -272,30 +296,20 @@ export default function MealPlanner() {
   // Create new meal entry
   const handleCreateMeal = async () => {
     try {
-      const response = await fetch('/api/meals/plan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: selectedDate,
-          mealType: selectedMealType,
-          weekStart: weekStart,
-          notes: formData.notes || null,
-          dishes: formData.customName.trim()
-            ? [
-                {
-                  dishName: formData.customName.trim(),
-                  recipeId: selectedRecipe?.id || null,
-                },
-              ]
-            : [],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create meal');
-      }
+      await createMealPlanLifecycleEntryClient({
+        date: selectedDate,
+        mealType: selectedMealType,
+        weekStart,
+        notes: formData.notes || null,
+        dishes: formData.customName.trim()
+          ? [
+              {
+                dishName: formData.customName.trim(),
+                recipeId: selectedRecipe?.id || null,
+              },
+            ]
+          : [],
+      })
 
       setShowAddDialog(false);
       setSelectedRecipe(null);
@@ -311,20 +325,10 @@ export default function MealPlanner() {
     if (!selectedEntry) return;
 
     try {
-      const response = await fetch(`/api/meals/plan/${selectedEntry.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customName: formData.customName,
-          notes: formData.notes || null,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update meal');
-      }
+      await updateMealPlanLifecycleEntryClient(selectedEntry.id, {
+        customName: formData.customName,
+        notes: formData.notes || null,
+      })
 
       setShowEditDialog(false);
       loadMealPlan(weekStart);
@@ -338,13 +342,7 @@ export default function MealPlanner() {
     if (!selectedEntry) return;
 
     try {
-      const response = await fetch(`/api/meals/plan/${selectedEntry.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete meal');
-      }
+      await deleteMealPlanLifecycleEntryClient(selectedEntry.id)
 
       setShowDeleteConfirm(false);
       setShowEditDialog(false);
@@ -359,21 +357,11 @@ export default function MealPlanner() {
     if (!newDishName.trim()) return;
 
     try {
-      const response = await fetch('/api/meals/plan/dishes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mealEntryId: entryId,
-          dishName: newDishName.trim(),
-          recipeId: selectedRecipe?.id || null,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add dish');
-      }
+      await createMealPlanLifecycleDishClient({
+        mealEntryId: entryId,
+        dishName: newDishName.trim(),
+        recipeId: selectedRecipe?.id || null,
+      })
 
       setAddingDishToEntry(null);
       setNewDishName('');
@@ -387,13 +375,7 @@ export default function MealPlanner() {
   // Delete dish
   const handleDeleteDish = async (dishId: string) => {
     try {
-      const response = await fetch(`/api/meals/plan/dishes/${dishId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete dish');
-      }
+      await deleteMealPlanLifecycleDishClient(dishId)
 
       loadMealPlan(weekStart);
     } catch (err) {
@@ -409,18 +391,8 @@ export default function MealPlanner() {
     const prevDish = entry.dishes[dishIndex - 1];
 
     try {
-      // Swap sort orders
-      await fetch(`/api/meals/plan/dishes/${dish.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sortOrder: dishIndex - 1 }),
-      });
-
-      await fetch(`/api/meals/plan/dishes/${prevDish.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sortOrder: dishIndex }),
-      });
+      await updateMealPlanLifecycleDishClient(dish.id, { sortOrder: dishIndex - 1 })
+      await updateMealPlanLifecycleDishClient(prevDish.id, { sortOrder: dishIndex })
 
       loadMealPlan(weekStart);
     } catch (err) {
@@ -436,18 +408,8 @@ export default function MealPlanner() {
     const nextDish = entry.dishes[dishIndex + 1];
 
     try {
-      // Swap sort orders
-      await fetch(`/api/meals/plan/dishes/${dish.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sortOrder: dishIndex + 1 }),
-      });
-
-      await fetch(`/api/meals/plan/dishes/${nextDish.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sortOrder: dishIndex }),
-      });
+      await updateMealPlanLifecycleDishClient(dish.id, { sortOrder: dishIndex + 1 })
+      await updateMealPlanLifecycleDishClient(nextDish.id, { sortOrder: dishIndex })
 
       loadMealPlan(weekStart);
     } catch (err) {
@@ -526,7 +488,7 @@ export default function MealPlanner() {
                   const isSelected = index === selectedDayIndex;
                   const hasMeals = mealTypes.some(mt => {
                     const e = getMealEntry(index, mt);
-                    return e && (e.dishes.length > 0 || e.customName);
+                    return e && ((e.dishes?.length ?? 0) > 0 || e.customName);
                   });
                   return (
                     <button
@@ -582,7 +544,7 @@ export default function MealPlanner() {
                           <>
                             {entry.dishes && entry.dishes.length > 0 && (
                               <div className="space-y-1.5">
-                                {entry.dishes.sort((a, b) => a.sortOrder - b.sortOrder).map((dish) => (
+                                {[...entry.dishes].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)).map((dish) => (
                                   <div
                                     key={dish.id}
                                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700/60 border-l-4 ${colors.border}${dish.recipeId ? ' cursor-pointer' : ''}`}
@@ -590,7 +552,7 @@ export default function MealPlanner() {
                                     role={dish.recipeId ? 'link' : undefined}
                                   >
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug">{dish.dishName}</p>
+                                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug">{dish.dishName ?? 'Unnamed dish'}</p>
                                       {dish.recipeId && <p className="text-xs text-info mt-0.5">Recipe →</p>}
                                     </div>
                                     <button
@@ -618,7 +580,7 @@ export default function MealPlanner() {
                                   <button onClick={() => { setAddingDishToEntry(null); setNewDishName(''); setSelectedRecipe(null); }} className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
                                 </div>
                               </div>
-                            ) : entry.dishes.length === 0 ? (
+                            ) : (entry.dishes?.length ?? 0) === 0 ? (
                               <button
                                 onClick={() => setAddingDishToEntry(entry.id)}
                                 className="w-full py-3 text-sm text-gray-400 dark:text-gray-500 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-600 hover:border-ember-300 dark:hover:border-ember-600 hover:text-ember-600 dark:hover:text-ember-400 transition-colors flex items-center justify-center gap-1.5"
@@ -689,7 +651,7 @@ export default function MealPlanner() {
                                 <div className="space-y-1.5">
                                   {entry.dishes && entry.dishes.length > 0 ? (
                                     <div className="space-y-1">
-                                      {entry.dishes.sort((a, b) => a.sortOrder - b.sortOrder).map((dish, dishIndex) => (
+                                      {[...entry.dishes].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)).map((dish, dishIndex) => (
                                         <div
                                           key={dish.id}
                                           className={`group relative flex items-start gap-1 p-1.5 rounded-lg bg-gray-50 dark:bg-gray-700/60 border-l-4 ${colors.border}${dish.recipeId ? ' cursor-pointer' : ''}`}
@@ -697,12 +659,12 @@ export default function MealPlanner() {
                                           role={dish.recipeId ? 'link' : undefined}
                                         >
                                           <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium text-gray-900 dark:text-gray-100 line-clamp-2" title={dish.dishName}>{dish.dishName}</p>
+                                            <p className="text-xs font-medium text-gray-900 dark:text-gray-100 line-clamp-2" title={dish.dishName ?? undefined}>{dish.dishName ?? 'Unnamed dish'}</p>
                                             {dish.recipeId && <p className="text-xs text-info mt-0.5">recipe</p>}
                                           </div>
                                           <div className="opacity-0 group-hover:opacity-100 flex flex-col gap-0.5 flex-shrink-0">
                                             {dishIndex > 0 && <button onClick={(e) => { e.stopPropagation(); handleMoveDishUp(entry, dishIndex); }} className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded" title="Move up"><ChevronUpIcon className="h-2.5 w-2.5" /></button>}
-                                            {dishIndex < entry.dishes.length - 1 && <button onClick={(e) => { e.stopPropagation(); handleMoveDishDown(entry, dishIndex); }} className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded" title="Move down"><ChevronDownIcon className="h-2.5 w-2.5" /></button>}
+                                            {dishIndex < (entry.dishes?.length ?? 0) - 1 && <button onClick={(e) => { e.stopPropagation(); handleMoveDishDown(entry, dishIndex); }} className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded" title="Move down"><ChevronDownIcon className="h-2.5 w-2.5" /></button>}
                                             <button onClick={(e) => { e.stopPropagation(); handleDeleteDish(dish.id); }} className="p-0.5 hover:bg-red-200 dark:hover:bg-red-600 rounded" title="Delete"><TrashIcon className="h-2.5 w-2.5" /></button>
                                           </div>
                                         </div>

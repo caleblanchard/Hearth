@@ -1,173 +1,66 @@
-// Set up mocks BEFORE any imports
-import { dbMock, resetDbMock } from '@/lib/test-utils/db-mock';
+import { GET } from '@/app/api/approvals/stats/route'
 
-jest.mock('@/lib/auth', () => ({
-  auth: jest.fn(),
-}));
+jest.mock('@/lib/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}))
 
-// NOW import after mocks are set up
-import { GET } from '@/app/api/approvals/stats/route';
-import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
+jest.mock('@/lib/data/approval-request-lifecycle', () => ({
+  getApprovalRequestStats: jest.fn(),
+  isApprovalRequestLifecycleError: jest.fn(
+    (error: unknown) =>
+      Boolean(error && typeof error === 'object' && 'status' in error)
+  ),
+}))
+
+const { getApprovalRequestStats } = jest.requireMock(
+  '@/lib/data/approval-request-lifecycle'
+)
 
 describe('GET /api/approvals/stats', () => {
   beforeEach(() => {
-    resetDbMock();
-    jest.clearAllMocks();
-  });
+    jest.clearAllMocks()
+  })
 
-  it('should reject unauthenticated requests', async () => {
-
-    const request = new Request('http://localhost/api/approvals/stats');
-    const response = await GET(request as any);
-    const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.error).toBe('Unauthorized');
-  });
-
-  it('should reject child users', async () => {
-
-    const request = new Request('http://localhost/api/approvals/stats');
-    const response = await GET(request as any);
-    const data = await response.json();
-
-    expect(response.status).toBe(403);
-    expect(data.error).toBe('Only parents can view approval statistics');
-  });
-
-  it('should return stats when no pending approvals exist', async () => {
-
-    dbMock.choreInstance.count.mockResolvedValueOnce(0);
-    dbMock.rewardRedemption.count.mockResolvedValueOnce(0);
-    dbMock.choreInstance.findFirst.mockResolvedValueOnce(null);
-    dbMock.rewardRedemption.findFirst.mockResolvedValueOnce(null);
-
-    const request = new Request('http://localhost/api/approvals/stats');
-    const response = await GET(request as any);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data).toEqual({
-      total: 0,
+  it('delegates approval stats to Approval Request Lifecycle', async () => {
+    getApprovalRequestStats.mockResolvedValue({
+      total: 3,
       byType: {
-        choreCompletions: 0,
-        rewardRedemptions: 0,
-        shoppingRequests: 0,
-        calendarRequests: 0
+        choreCompletions: 1,
+        rewardRedemptions: 1,
+        shoppingRequests: 1,
+        calendarRequests: 0,
       },
       byPriority: {
-        high: 0,
-        normal: 0,
-        low: 0
+        high: 1,
+        normal: 2,
+        low: 0,
       },
-      oldestPending: undefined
-    });
-  });
+      oldestPending: '2026-05-19T12:00:00.000Z',
+    })
 
-  it('should return correct counts for chores and rewards', async () => {
+    const response = await GET(new Request('http://localhost/api/approvals/stats') as any)
+    const data = await response.json()
 
-    dbMock.choreInstance.count.mockResolvedValue(5);
-    dbMock.rewardRedemption.count.mockResolvedValue(3);
-    dbMock.choreInstance.findFirst.mockResolvedValue({
-      id: 'chore-1',
-      completedAt: new Date('2024-01-05T10:00:00Z')
-    } as any);
-    dbMock.rewardRedemption.findFirst.mockResolvedValue({
-      id: 'reward-1',
-      requestedAt: new Date('2024-01-06T12:00:00Z')
-    } as any);
+    expect(response.status).toBe(200)
+    expect(data.total).toBe(3)
+    expect(getApprovalRequestStats).toHaveBeenCalledWith()
+  })
 
-    const request = new Request('http://localhost/api/approvals/stats');
-    const response = await GET(request as any);
-    const data = await response.json();
+  it('maps lifecycle authorization errors', async () => {
+    getApprovalRequestStats.mockRejectedValue({
+      status: 403,
+      message: 'Only parents can view approval statistics',
+    })
 
-    expect(response.status).toBe(200);
-    expect(data.total).toBe(8);
-    expect(data.byType.choreCompletions).toBe(5);
-    expect(data.byType.rewardRedemptions).toBe(3);
-    expect(data.byType.shoppingRequests).toBe(0);
-    expect(data.byType.calendarRequests).toBe(0);
-  });
+    const response = await GET(new Request('http://localhost/api/approvals/stats') as any)
+    const data = await response.json()
 
-  it('should return oldest pending chore when it is older than oldest reward', async () => {
-
-    const oldChore = {
-      completedAt: new Date('2024-01-01T10:00:00Z')
-    };
-
-    dbMock.choreInstance.count.mockResolvedValue(2);
-    dbMock.rewardRedemption.count.mockResolvedValue(1);
-    dbMock.choreInstance.findFirst.mockResolvedValue(oldChore as any);
-    dbMock.rewardRedemption.findFirst.mockResolvedValue({
-      requestedAt: new Date('2024-01-03T12:00:00Z')
-    } as any);
-
-    const request = new Request('http://localhost/api/approvals/stats');
-    const response = await GET(request as any);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.total).toBe(3);
-    expect(new Date(data.oldestPending).toISOString()).toEqual('2024-01-01T10:00:00.000Z');
-  });
-
-  it('should return oldest pending reward when it is older than oldest chore', async () => {
-
-    const oldReward = {
-      requestedAt: new Date('2024-01-01T08:00:00Z')
-    };
-
-    dbMock.choreInstance.count.mockResolvedValue(1);
-    dbMock.rewardRedemption.count.mockResolvedValue(2);
-    dbMock.choreInstance.findFirst.mockResolvedValue({
-      completedAt: new Date('2024-01-02T10:00:00Z')
-    } as any);
-    dbMock.rewardRedemption.findFirst.mockResolvedValue(oldReward as any);
-
-    const request = new Request('http://localhost/api/approvals/stats');
-    const response = await GET(request as any);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.total).toBe(3);
-    expect(new Date(data.oldestPending).toISOString()).toEqual('2024-01-01T08:00:00.000Z');
-  });
-
-  it('should enforce family isolation for chore counts', async () => {
-    const session = mockParentSession();
-
-    dbMock.choreInstance.count.mockResolvedValue(3);
-    dbMock.rewardRedemption.count.mockResolvedValue(0);
-    dbMock.choreInstance.findFirst.mockResolvedValue(null);
-    dbMock.rewardRedemption.findFirst.mockResolvedValue(null);
-
-    const request = new Request('http://localhost/api/approvals/stats');
-    const response = await GET(request as any);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.total).toBe(3);
-
-    // Just verify the count was called - we're testing family isolation in route.test.ts
-    expect(dbMock.choreInstance.count).toHaveBeenCalled();
-  });
-
-  it('should enforce family isolation for reward counts', async () => {
-    const session = mockParentSession();
-
-    dbMock.choreInstance.count.mockResolvedValue(0);
-    dbMock.rewardRedemption.count.mockResolvedValue(2);
-    dbMock.choreInstance.findFirst.mockResolvedValue(null);
-    dbMock.rewardRedemption.findFirst.mockResolvedValue(null);
-
-    const request = new Request('http://localhost/api/approvals/stats');
-    const response = await GET(request as any);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.total).toBe(2);
-
-    // Just verify the count was called - we're testing family isolation in route.test.ts
-    expect(dbMock.rewardRedemption.count).toHaveBeenCalled();
-  });
-});
+    expect(response.status).toBe(403)
+    expect(data.error).toBe('Only parents can view approval statistics')
+  })
+})

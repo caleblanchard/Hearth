@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecipesList from '@/app/dashboard/meals/RecipesList';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 
 const mockPush = jest.fn();
 
@@ -8,6 +9,10 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+}));
+
+jest.mock('@/hooks/useCurrentMember', () => ({
+  useCurrentMember: jest.fn(),
 }));
 
 global.fetch = jest.fn();
@@ -29,27 +34,27 @@ const mockRecipe = {
   _count: { ratings: 0 },
 };
 
-function mockFetchResponses({ role = 'CHILD', recipes = [] as any[] } = {}) {
+function mockFetchResponses({ recipes = [] as any[] } = {}) {
   (global.fetch as jest.Mock).mockImplementation((url: string) => {
-    if (url.includes('/api/user/role')) {
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({ role }),
-      });
-    }
     if (url.includes('/api/meals/recipes') && !url.includes('/api/meals/recipes/')) {
       return Promise.resolve({
         ok: true,
         json: async () => ({ recipes }),
       });
     }
-    return Promise.resolve({ ok: true, json: async () => ({}) });
+    throw new Error(`Unexpected fetch: ${url}`);
   });
 }
 
 describe('RecipesList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useCurrentMember as jest.Mock).mockReturnValue({
+      isParent: false,
+      loading: false,
+      member: null,
+      error: null,
+    });
     mockFetchResponses();
   });
 
@@ -83,7 +88,7 @@ describe('RecipesList', () => {
   });
 
   it('does not show edit/delete buttons for non-parent users', async () => {
-    mockFetchResponses({ role: 'CHILD', recipes: [mockRecipe] });
+    mockFetchResponses({ recipes: [mockRecipe] });
 
     render(<RecipesList />);
 
@@ -94,7 +99,19 @@ describe('RecipesList', () => {
   });
 
   it('shows edit/delete buttons for parent users', async () => {
-    mockFetchResponses({ role: 'PARENT', recipes: [mockRecipe] });
+    (useCurrentMember as jest.Mock).mockReturnValue({
+      isParent: true,
+      loading: false,
+      member: {
+        id: 'member-1',
+        name: 'Parent One',
+        email: 'parent@example.com',
+        role: 'PARENT',
+        familyId: 'family-1',
+      },
+      error: null,
+    });
+    mockFetchResponses({ recipes: [mockRecipe] });
 
     render(<RecipesList />);
 
@@ -104,7 +121,19 @@ describe('RecipesList', () => {
 
   it('navigates to edit page when edit button is clicked', async () => {
     const user = userEvent.setup();
-    mockFetchResponses({ role: 'PARENT', recipes: [mockRecipe] });
+    (useCurrentMember as jest.Mock).mockReturnValue({
+      isParent: true,
+      loading: false,
+      member: {
+        id: 'member-1',
+        name: 'Parent One',
+        email: 'parent@example.com',
+        role: 'PARENT',
+        familyId: 'family-1',
+      },
+      error: null,
+    });
+    mockFetchResponses({ recipes: [mockRecipe] });
 
     render(<RecipesList />);
 
@@ -116,7 +145,19 @@ describe('RecipesList', () => {
 
   it('opens delete confirmation modal when delete button is clicked', async () => {
     const user = userEvent.setup();
-    mockFetchResponses({ role: 'PARENT', recipes: [mockRecipe] });
+    (useCurrentMember as jest.Mock).mockReturnValue({
+      isParent: true,
+      loading: false,
+      member: {
+        id: 'member-1',
+        name: 'Parent One',
+        email: 'parent@example.com',
+        role: 'PARENT',
+        familyId: 'family-1',
+      },
+      error: null,
+    });
+    mockFetchResponses({ recipes: [mockRecipe] });
 
     render(<RecipesList />);
 
@@ -128,7 +169,19 @@ describe('RecipesList', () => {
 
   it('calls DELETE API and refreshes list when delete is confirmed', async () => {
     const user = userEvent.setup();
-    mockFetchResponses({ role: 'PARENT', recipes: [mockRecipe] });
+    (useCurrentMember as jest.Mock).mockReturnValue({
+      isParent: true,
+      loading: false,
+      member: {
+        id: 'member-1',
+        name: 'Parent One',
+        email: 'parent@example.com',
+        role: 'PARENT',
+        familyId: 'family-1',
+      },
+      error: null,
+    });
+    mockFetchResponses({ recipes: [mockRecipe] });
 
     render(<RecipesList />);
 
@@ -139,9 +192,6 @@ describe('RecipesList', () => {
     (global.fetch as jest.Mock).mockImplementation((url: string, opts?: any) => {
       if (opts?.method === 'DELETE') {
         return Promise.resolve({ ok: true, json: async () => ({}) });
-      }
-      if (url.includes('/api/user/role')) {
-        return Promise.resolve({ ok: true, json: async () => ({ role: 'PARENT' }) });
       }
       return Promise.resolve({ ok: true, json: async () => ({ recipes: [] }) });
     });

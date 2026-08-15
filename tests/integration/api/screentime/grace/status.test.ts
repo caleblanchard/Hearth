@@ -1,8 +1,5 @@
-import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/screentime/grace/status/route';
-import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock';
+import { NextRequest } from 'next/server'
 
-// Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
     error: jest.fn(),
@@ -10,108 +7,75 @@ jest.mock('@/lib/logger', () => ({
     info: jest.fn(),
     debug: jest.fn(),
   },
-}));
+}))
 
-// Mock data module
-jest.mock('@/lib/data/screentime', () => ({
-  checkGraceEligibility: jest.fn(),
-}));
+jest.mock('@/lib/data/screen-time-lifecycle', () => {
+  class MockScreenTimeLifecycleError extends Error {
+    status: number
 
-// Mock Supabase
-const mockSupabase = {
-  from: jest.fn((table) => {
-    if (table === 'family_members') {
-      return {
-        select: jest.fn(() => ({
-          eq: jest.fn(() => ({
-            single: jest.fn().mockResolvedValue({
-              data: { id: 'child-1', family_id: 'family-test-123' }
-            })
-          }))
-        }))
-      };
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
     }
-    return { select: jest.fn() };
-  })
-};
+  }
 
-jest.mock('@/lib/supabase/server', () => {
-  const { getMockSession } = require('@/lib/test-utils/auth-mock');
-  
   return {
-    createClient: jest.fn(() => mockSupabase),
-    getAuthContext: jest.fn(async () => {
-      const session = getMockSession();
-      if (!session) return null;
-      return {
-        user: session.user,
-        activeFamilyId: session.user.familyId,
-        activeMemberId: session.user.id,
-      };
-    }),
-    isParentInFamily: jest.fn(async (familyId) => {
-      const session = getMockSession();
-      // Default parent session role is PARENT, child is CHILD
-      return session?.user?.role === 'PARENT';
-    }),
-  };
-});
+    ScreenTimeLifecycleError: MockScreenTimeLifecycleError,
+    isScreenTimeLifecycleError: (error: unknown) =>
+      error instanceof MockScreenTimeLifecycleError,
+    getScreenTimeLifecycleGraceStatus: jest.fn(),
+  }
+})
 
-import { checkGraceEligibility } from '@/lib/data/screentime';
+const {
+  ScreenTimeLifecycleError,
+  getScreenTimeLifecycleGraceStatus: mockGetScreenTimeLifecycleGraceStatus,
+} = jest.requireMock('@/lib/data/screen-time-lifecycle')
+const { GET } = require('@/app/api/screentime/grace/status/route')
 
-describe('GET /api/screentime/grace/status', () => {
+describe('/api/screentime/grace/status route', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-  });
+    jest.clearAllMocks()
+  })
 
-  it('should return 401 if not authenticated', async () => {
-    // This is handled by getAuthContext returning null if no session
-    // But our mock always returns session from auth-mock.
-    // So we'd need to mock getMockSession to return null.
-    // Skip for now or assume logic holds.
-  });
+  it('delegates grace status reads to Screen Time Lifecycle', async () => {
+    mockGetScreenTimeLifecycleGraceStatus.mockResolvedValue({
+      canRequestGrace: true,
+      currentBalance: 8,
+      borrowedMinutes: 0,
+      lowBalanceWarning: true,
+      remainingDailyRequests: 1,
+      remainingWeeklyRequests: 3,
+      nextResetTime: '2026-05-29T00:00:00.000Z',
+      settings: {
+        gracePeriodMinutes: 15,
+        maxGracePerDay: 1,
+        maxGracePerWeek: 3,
+        requiresApproval: false,
+      },
+    })
 
-  it('should return eligibility status for current user', async () => {
-    const session = mockChildSession();
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/screentime/grace/status?memberId=child-1')
+    )
+    const data = await response.json()
 
-    (checkGraceEligibility as jest.Mock).mockResolvedValue({
-      eligible: true
-    });
+    expect(response.status).toBe(200)
+    expect(data.status.canRequestGrace).toBe(true)
+    expect(mockGetScreenTimeLifecycleGraceStatus).toHaveBeenCalledWith('child-1')
+  })
 
-    const request = new NextRequest('http://localhost/api/screentime/grace/status');
-    const response = await GET(request);
-    const data = await response.json();
+  it('maps lifecycle errors to HTTP responses', async () => {
+    mockGetScreenTimeLifecycleGraceStatus.mockRejectedValue(
+      new ScreenTimeLifecycleError(403, 'Cannot view other members status')
+    )
 
-    expect(response.status).toBe(200);
-    expect(data.status.eligible).toBe(true);
-    expect(checkGraceEligibility).toHaveBeenCalledWith(session.user.id);
-  });
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/screentime/grace/status?memberId=child-2')
+    )
+    const data = await response.json()
 
-  it('should allow parents to check child status', async () => {
-    const session = mockParentSession();
-
-    (checkGraceEligibility as jest.Mock).mockResolvedValue({
-      eligible: false,
-      reason: 'Daily limit reached'
-    });
-
-    const request = new NextRequest('http://localhost/api/screentime/grace/status?memberId=child-1');
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.status.eligible).toBe(false);
-    expect(data.status.reason).toBe('Daily limit reached');
-  });
-
-  it('should return 403 if child checks other member', async () => {
-    const session = mockChildSession();
-    
-    const request = new NextRequest('http://localhost/api/screentime/grace/status?memberId=child-2');
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(403);
-    expect(data.error).toBe('Cannot view other members status');
-  });
-});
+    expect(response.status).toBe(403)
+    expect(data.error).toBe('Cannot view other members status')
+  })
+})

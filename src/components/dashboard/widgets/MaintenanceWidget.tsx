@@ -2,30 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { Wrench, AlertCircle } from 'lucide-react';
+import type { DashboardWidgetResult } from '@/types/dashboard-widget-collection';
 
-interface MaintenanceItem {
-  id: string;
-  title: string;
-  description: string | null;
-  category: string;
-  nextDueAt: string | null;
-  lastCompletedAt: string | null;
-  intervalDays: number | null;
-  assignedTo: string | null;
+interface MaintenanceWidgetProps {
+  widget?: DashboardWidgetResult<'maintenance'>;
+  collectionEnabled?: boolean;
+  collectionLoading?: boolean;
+  collectionError?: string | null;
 }
 
-interface MaintenanceWidgetData {
-  items: MaintenanceItem[];
-}
-
-export default function MaintenanceWidget() {
-  const [data, setData] = useState<MaintenanceWidgetData | null>(null);
+export default function MaintenanceWidget({
+  widget,
+  collectionEnabled = false,
+  collectionLoading = false,
+  collectionError = null,
+}: MaintenanceWidgetProps = {}) {
+  const [data, setData] = useState<{ items: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (collectionEnabled) {
+      return;
+    }
     fetchMaintenance();
-  }, []);
+  }, [collectionEnabled]);
 
   async function fetchMaintenance() {
     try {
@@ -47,6 +48,12 @@ export default function MaintenanceWidget() {
       setLoading(false);
     }
   }
+
+  const resolvedData =
+    widget?.state === 'ready' ? widget.data : data;
+  const resolvedLoading = collectionEnabled ? collectionLoading : loading;
+  const resolvedError =
+    widget?.state === 'unavailable' ? widget.error : collectionEnabled ? collectionError : error;
 
   // Format due date display
   const formatDueDate = (dateString: string): { text: string; isOverdue: boolean } => {
@@ -92,7 +99,7 @@ export default function MaintenanceWidget() {
   };
 
   // Sort items: overdue first, then by due date
-  const sortedItems = [...(data?.items || [])].sort((a, b) => {
+  const sortedItems = [...(resolvedData?.items || [])].sort((a, b) => {
     if (!a.nextDueAt) return 1;
     if (!b.nextDueAt) return -1;
 
@@ -110,23 +117,23 @@ export default function MaintenanceWidget() {
         </h2>
       </div>
 
-      {loading && (
+      {resolvedLoading && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading...</div>
       )}
 
-      {error && (
+      {resolvedError && (
         <div className="text-center py-8 text-red-600 dark:text-red-400">
           Failed to load maintenance
         </div>
       )}
 
-      {!loading && !error && sortedItems.length === 0 && (
+      {!resolvedLoading && !resolvedError && sortedItems.length === 0 && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           No maintenance scheduled
         </div>
       )}
 
-      {!loading && !error && sortedItems.length > 0 && (
+      {!resolvedLoading && !resolvedError && sortedItems.length > 0 && (
         <div className="space-y-3">
           {sortedItems.map((item) => {
             const { text: dueText, isOverdue } = item.nextDueAt

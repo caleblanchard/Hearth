@@ -58,23 +58,24 @@ describe('ExecutionHistory Component', () => {
     jest.clearAllMocks();
     (useParams as jest.Mock).mockReturnValue({ id: 'rule-1' });
 
-    // Mock fetch for both rule and executions
+    // Mock fetch for rule history
     (global.fetch as jest.Mock)
       .mockImplementation((url: string) => {
         if (url.includes('/api/rules/rule-1')) {
           return Promise.resolve({
             ok: true,
-            json: async () => ({ rule: mockRule }),
-          });
-        }
-        if (url.includes('/api/rules/executions')) {
-          return Promise.resolve({
-            ok: true,
             json: async () => ({
+              rule: mockRule,
               executions: mockExecutions,
-              total: 3,
               limit: 50,
               offset: 0,
+              totalExecutions: 3,
+              stats: {
+                totalExecutions: 3,
+                successfulExecutions: 2,
+                failedExecutions: 1,
+                successRate: 2 / 3,
+              },
             }),
           });
         }
@@ -100,9 +101,10 @@ describe('ExecutionHistory Component', () => {
       expect(screen.getByText('Execution Failed')).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/rules/rule-1');
+    expect(global.fetch).toHaveBeenCalledWith('/api/rules/rule-1?limit=50&offset=0', expect.anything());
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/rules/executions?ruleId=rule-1')
+      expect.stringContaining('/api/rules/rule-1'),
+      expect.anything()
     );
   });
 
@@ -167,7 +169,8 @@ describe('ExecutionHistory Component', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('success=true')
+        expect.stringContaining('success=true'),
+        expect.anything()
       );
     });
   });
@@ -185,7 +188,8 @@ describe('ExecutionHistory Component', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('success=false')
+        expect.stringContaining('success=false'),
+        expect.anything()
       );
     });
   });
@@ -220,17 +224,18 @@ describe('ExecutionHistory Component', () => {
         if (url.includes('/api/rules/rule-1')) {
           return Promise.resolve({
             ok: true,
-            json: async () => ({ rule: mockRule }),
-          });
-        }
-        if (url.includes('/api/rules/executions')) {
-          return Promise.resolve({
-            ok: true,
             json: async () => ({
+              rule: mockRule,
               executions: [],
-              total: 0,
               limit: 50,
               offset: 0,
+              totalExecutions: 0,
+              stats: {
+                totalExecutions: 0,
+                successfulExecutions: 0,
+                failedExecutions: 0,
+                successRate: 0,
+              },
             }),
           });
         }

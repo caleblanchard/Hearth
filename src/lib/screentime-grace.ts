@@ -57,11 +57,37 @@ export async function checkGraceEligibility(
     };
   }
 
+  // Fetch this week's pending grace logs once and derive today's and the
+  // week's counts in memory (today's window is a subset of the week's), so
+  // eligibility checks run a single query instead of up to five.
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+  const { data: weekLogs } = await supabase
+    .from('grace_period_logs')
+    .select('*')
+    .eq('member_id', memberId)
+    .gte('requested_at', startOfWeek.toISOString())
+    .lte('requested_at', endOfWeek.toISOString())
+    .eq('repayment_status', 'PENDING');
+
+  const todayStartMs = startOfToday.getTime();
+  const dailyUses = (weekLogs ?? []).filter((log) => {
+    const requestedAt = new Date(log.requested_at);
+    return requestedAt.getTime() >= todayStartMs;
+  }).length;
+  const weeklyUses = weekLogs?.length ?? 0;
+
   // Check if balance is low enough
   if (balance.current_balance_minutes >= settings.low_balance_warning_minutes) {
-    const dailyUses = await countGraceUsesToday(memberId);
-    const weeklyUses = await countGraceUsesThisWeek(memberId);
-
     // Ensure we don't return negative remaining counts
     const remainingDaily = Math.max(0, settings.max_grace_per_day - dailyUses);
     const remainingWeekly = Math.max(0, settings.max_grace_per_week - weeklyUses);
@@ -74,10 +100,7 @@ export async function checkGraceEligibility(
     };
   }
 
-  // Count today's grace uses
-  const dailyUses = await countGraceUsesToday(memberId);
   if (dailyUses >= settings.max_grace_per_day) {
-    const weeklyUses = await countGraceUsesThisWeek(memberId);
     const remainingWeekly = Math.max(0, settings.max_grace_per_week - weeklyUses);
 
     return {
@@ -88,8 +111,6 @@ export async function checkGraceEligibility(
     };
   }
 
-  // Count this week's grace uses
-  const weeklyUses = await countGraceUsesThisWeek(memberId);
   if (weeklyUses >= settings.max_grace_per_week) {
     const remainingDaily = Math.max(0, settings.max_grace_per_day - dailyUses);
 
@@ -109,33 +130,6 @@ export async function checkGraceEligibility(
     remainingDaily: isNaN(remainingDaily) ? 0 : remainingDaily,
     remainingWeekly: isNaN(remainingWeekly) ? 0 : remainingWeekly,
   };
-}
-
-/**
- * Count grace period uses for today
- */
-async function countGraceUsesToday(memberId: string): Promise<number> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  return await countGraceUses(memberId, today, tomorrow);
-}
-
-/**
- * Count grace period uses for this week
- */
-async function countGraceUsesThisWeek(memberId: string): Promise<number> {
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 7);
-
-  return await countGraceUses(memberId, startOfWeek, endOfWeek);
 }
 
 /**

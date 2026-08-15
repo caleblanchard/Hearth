@@ -1,143 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
-import { getDocuments, createDocument } from '@/lib/data/documents';
-import { logger } from '@/lib/logger';
+import {
+  createDocumentLifecycleDocument,
+  getDocumentLifecycleDocuments,
+} from '@/lib/data/document-lifecycle';
+import { readJsonBody, routeHandler } from '@/lib/api-route';
 
-const normalizeDocument = (doc: any) => ({
-  ...doc,
-  fileSize: doc.file_size ?? doc.fileSize,
-  mimeType: doc.mime_type ?? doc.mimeType,
-  documentNumber: doc.document_number ?? doc.documentNumber ?? null,
-  issuedDate: doc.issued_date ?? doc.issuedDate ?? null,
-  expiresAt: doc.expires_at ?? doc.expiresAt ?? null,
-  createdAt: doc.created_at ?? doc.createdAt,
-  familyId: doc.family_id ?? doc.familyId,
-  uploadedBy: doc.uploaded_by ?? doc.uploadedBy,
-  accessList: doc.access_list ?? doc.accessList ?? [],
-  uploader: doc.uploader,
-});
+export const GET = routeHandler(async (request: NextRequest) => {
+  const { searchParams } = new URL(request.url);
+  const documents = await getDocumentLifecycleDocuments({
+    category: searchParams.get('category'),
+  });
+  return { documents };
+}, { errorMessage: 'Failed to fetch documents' });
 
-const VALID_CATEGORIES = [
-  'IDENTITY', 'MEDICAL', 'FINANCIAL', 'HOUSEHOLD',
-  'EDUCATION', 'LEGAL', 'PETS', 'OTHER'
-];
-
-export async function GET(request: NextRequest) {
-  try {
-    const authContext = await getAuthContext();
-
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
-    if (!familyId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-
-    const documents = await getDocuments(familyId, category ? { category } : undefined);
-
-    return NextResponse.json({ documents: documents.map(normalizeDocument) });
-  } catch (error) {
-    logger.error('Error fetching documents:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch documents' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const authContext = await getAuthContext();
-
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
-    const memberId = authContext.activeMemberId;
-
-    if (!familyId || !memberId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
-    }
-
-    const body = await request.json();
-    const {
-      name,
-      category,
-      fileUrl,
-      fileSize,
-      mimeType,
-      documentNumber,
-      issuedDate,
-      expiresAt,
-      tags,
-      notes,
-      accessList,
-    } = body;
-
-    // Validate required fields
-    if (!name || !category || !fileUrl || !fileSize || !mimeType) {
-      return NextResponse.json(
-        { error: 'Name, category, fileUrl, fileSize, and mimeType are required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate category
-    if (!VALID_CATEGORIES.includes(category)) {
-      return NextResponse.json(
-        { error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}` },
-        { status: 400 }
-      );
-    }
-
-    const resolvedAccessList =
-      accessList && Array.isArray(accessList) && accessList.length > 0
-        ? accessList
-        : [memberId];
-
-    const document = await createDocument({
-      family_id: familyId,
-      name,
-      category,
-      file_url: fileUrl,
-      file_size: fileSize,
-      mime_type: mimeType,
-      document_number: documentNumber || null,
-      issued_date: issuedDate ? new Date(issuedDate).toISOString() : null,
-      expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
-      tags: tags || null,
-      notes: notes || null,
-      uploaded_by: memberId,
-      access_list: resolvedAccessList,
-    });
-
-    // Audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
-      action: 'DOCUMENT_UPLOADED',
-      result: 'SUCCESS',
-      metadata: { documentId: document.id, name, category },
-    });
-
-    return NextResponse.json(
-      {
-        success: true,
-        document: normalizeDocument(document),
-        message: 'Document uploaded successfully',
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    logger.error('Error creating document:', error);
-    return NextResponse.json({ error: 'Failed to create document' }, { status: 500 });
-  }
-}
+export const POST = routeHandler(async (request: NextRequest) => {
+  const body = await readJsonBody<Record<string, unknown>>(request);
+  const document = await createDocumentLifecycleDocument(body);
+  return NextResponse.json(
+    {
+      success: true,
+      document,
+      message: 'Document uploaded successfully',
+    },
+    { status: 201 }
+  );
+}, { errorMessage: 'Failed to create document' });

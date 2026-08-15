@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  deleteProjectLifecycleProjectClient,
+  fetchProjectLifecycleProjectClient,
+} from '@/lib/project-lifecycle-client';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
@@ -54,6 +58,40 @@ interface Project {
   tasks: Task[];
 }
 
+const normalizeProjectForPage = (project: import('@/types/project-lifecycle').ProjectLifecycleRecord): Project => ({
+  id: project.id,
+  name: project.name,
+  description: project.description,
+  status: project.status,
+  startDate: project.startDate,
+  dueDate: project.dueDate,
+  budget: project.budget,
+  notes: project.notes ?? null,
+  createdAt: project.createdAt ?? '',
+  creator: {
+    id: project.creator?.id ?? '',
+    name: project.creator?.name ?? '',
+  },
+  tasks: (project.tasks ?? []).map((task) => ({
+    id: task.id,
+    name: task.name,
+    description: task.description ?? null,
+    status: task.status,
+    assigneeId: task.assignee?.id ?? null,
+    dueDate: task.dueDate,
+    estimatedHours: task.estimatedHours ?? null,
+    actualHours: task.actualHours ?? null,
+    sortOrder: task.sortOrder ?? 0,
+    assignee: task.assignee ?? null,
+    _count: task._count
+      ? {
+          dependencies: task._count.dependencies ?? 0,
+          dependents: task._count.dependents ?? 0,
+        }
+      : undefined,
+  })),
+})
+
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { user } = useSupabaseSession();
@@ -75,15 +113,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const fetchProject = async () => {
     try {
-      const res = await fetch(`/api/projects/${resolvedParams?.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setProject(data.project);
-      } else if (res.status === 404) {
-        router.push('/dashboard/projects');
-      }
+      const currentProject = await fetchProjectLifecycleProjectClient(String(resolvedParams?.id));
+      setProject(normalizeProjectForPage(currentProject));
     } catch (error) {
+      if (error instanceof Error && error.message === 'Project not found') {
+        router.push('/dashboard/projects');
+      } else {
       console.error('Error fetching project:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -95,15 +132,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const confirmDeleteProject = async () => {
     try {
-      const res = await fetch(`/api/projects/${resolvedParams?.id}`, {
-        method: 'DELETE',
-      });
-
-      if (res.ok) {
-        router.push('/dashboard/projects');
-      } else {
-        setDeleteConfirmModal({ isOpen: false });
-      }
+      await deleteProjectLifecycleProjectClient(String(resolvedParams?.id));
+      router.push('/dashboard/projects');
     } catch (error) {
       console.error('Error deleting project:', error);
       setDeleteConfirmModal({ isOpen: false });

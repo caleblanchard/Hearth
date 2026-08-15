@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { createAutomationLifecycleRuleRequest } from '@/lib/automation-rule-lifecycle-client';
 
 const TRIGGER_TYPES = [
   { value: 'chore_completed', label: 'Chore Completed' },
@@ -220,29 +221,18 @@ function CreateRuleContent() {
     try {
       setLoading(true);
 
-      const response = await fetch('/api/rules', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      await createAutomationLifecycleRuleRequest({
+        name: name.trim(),
+        description: description.trim() || null,
+        trigger: {
+          type: triggerType,
+          config: triggerConfig,
         },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || null,
-          trigger: {
-            type: triggerType,
-            config: triggerConfig,
-          },
-          actions: actions.map(a => ({
-            type: a.type,
-            config: a.config,
-          })),
-        }),
+        actions: actions.map(a => ({
+          type: a.type,
+          config: a.config,
+        })),
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create rule');
-      }
 
       router.push('/dashboard/rules');
     } catch (err) {

@@ -1,141 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
-import { getDocument, updateDocument, deleteDocument } from '@/lib/data/documents';
-import { logger } from '@/lib/logger';
+import {
+  deleteDocumentLifecycleDocument,
+  getDocumentLifecycleDocument,
+  updateDocumentLifecycleDocument,
+} from '@/lib/data/document-lifecycle';
+import { readJsonBody, routeHandler } from '@/lib/api-route';
+import type { RouteContext } from '@/lib/api-route';
 
-const normalizeDocument = (doc: any) => ({
-  ...doc,
-  fileSize: doc.file_size ?? doc.fileSize,
-  mimeType: doc.mime_type ?? doc.mimeType,
-  documentNumber: doc.document_number ?? doc.documentNumber ?? null,
-  issuedDate: doc.issued_date ?? doc.issuedDate ?? null,
-  expiresAt: doc.expires_at ?? doc.expiresAt ?? null,
-  createdAt: doc.created_at ?? doc.createdAt,
-  familyId: doc.family_id ?? doc.familyId,
-  uploadedBy: doc.uploaded_by ?? doc.uploadedBy,
-  accessList: doc.access_list ?? doc.accessList ?? [],
-  uploader: doc.uploader,
-});
+export const GET = routeHandler(
+  async (_request: NextRequest, { params }: RouteContext) => {
+    const { id } = await params;
+    const document = await getDocumentLifecycleDocument(id);
+    return { document };
+  },
+  { errorMessage: 'Failed to fetch document' }
+);
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-  try {
-    const authContext = await getAuthContext();
-
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
-    if (!familyId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
-    }
-
-    const document = await getDocument(id);
-
-    if (!document) {
-      return NextResponse.json(
-        { error: 'Document not found' },
-        { status: 404 }
-      );
-    }
-
-    // Verify family ownership
-    if (document.family_id !== familyId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    return NextResponse.json({ document: normalizeDocument(document) });
-  } catch (error) {
-    logger.error('Error fetching document:', error);
-    return NextResponse.json({ error: 'Failed to fetch document' }, { status: 500 });
-  }
-}
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-  try {
-    const authContext = await getAuthContext();
-
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
-    if (!familyId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
-    }
-
-    // Only parents can update documents
-    const isParent = await isParentInFamily(familyId);
-    if (!isParent) {
-      return NextResponse.json({ error: 'Only parents can update documents' }, { status: 403 });
-    }
-
-    // Verify document exists
-    const existing = await getDocument(id);
-    if (!existing || existing.family_id !== familyId) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
-    }
-
-    const body = await request.json();
-    const document = await updateDocument(id, body);
-
-    return NextResponse.json({
+export const PATCH = routeHandler(
+  async (request: NextRequest, { params }: RouteContext) => {
+    const { id } = await params;
+    const body = await readJsonBody<Record<string, unknown>>(request);
+    const document = await updateDocumentLifecycleDocument(id, body);
+    return {
       success: true,
-      document: normalizeDocument(document),
+      document,
       message: 'Document updated successfully',
-    });
-  } catch (error) {
-    logger.error('Error updating document:', error);
-    return NextResponse.json({ error: 'Failed to update document' }, { status: 500 });
-  }
-}
+    };
+  },
+  { errorMessage: 'Failed to update document' }
+);
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-  try {
-    const authContext = await getAuthContext();
-
-    if (!authContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const familyId = authContext.activeFamilyId;
-    if (!familyId) {
-      return NextResponse.json({ error: 'No family found' }, { status: 400 });
-    }
-
-    // Only parents can delete documents
-    const isParent = await isParentInFamily(familyId);
-    if (!isParent) {
-      return NextResponse.json({ error: 'Only parents can delete documents' }, { status: 403 });
-    }
-
-    // Verify document exists
-    const existing = await getDocument(id);
-    if (!existing || existing.family_id !== familyId) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
-    }
-
-    await deleteDocument(id);
-
-    return NextResponse.json({
+export const DELETE = routeHandler(
+  async (_request: NextRequest, { params }: RouteContext) => {
+    const { id } = await params;
+    await deleteDocumentLifecycleDocument(id);
+    return {
       success: true,
       message: 'Document deleted successfully',
-    });
-  } catch (error) {
-    logger.error('Error deleting document:', error);
-    return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 });
-  }
-}
+    };
+  },
+  { errorMessage: 'Failed to delete document' }
+);

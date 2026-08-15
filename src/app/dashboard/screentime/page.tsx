@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { AlertModal } from '@/components/ui/Modal';
 import GraceRequestButton from '@/components/screentime/GraceRequestButton';
 import {
@@ -11,6 +12,11 @@ import {
   ArrowTrendingUpIcon,
   DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
+import {
+  fetchScreenTimeLifecycleAllowancesForMemberClient,
+  fetchScreenTimeLifecycleGraceStatusClient,
+  fetchScreenTimeLifecycleTypesClient,
+} from '@/lib/screen-time-lifecycle-client';
 
 const QUICK_TIMES = [15, 30, 60, 120];
 
@@ -88,7 +94,7 @@ interface AllowanceWithRemaining {
   period: 'DAILY' | 'WEEKLY';
   rolloverEnabled: boolean;
   rolloverCapMinutes: number | null;
-  screenTimeType: ScreenTimeType;
+  screenTimeType?: ScreenTimeType;
   remaining: {
     remainingMinutes: number;
     usedMinutes: number;
@@ -100,6 +106,7 @@ interface AllowanceWithRemaining {
 
 export default function ScreenTimePage() {
   const { user } = useSupabaseSession();
+  const { member, loading: memberLoading } = useCurrentMember();
   const router = useRouter();
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,27 +135,6 @@ export default function ScreenTimePage() {
     message: string;
   }>({ isOpen: false, type: 'success', title: '', message: '' });
 
-  const fetchBalance = async () => {
-    try {
-      // Balance is now calculated from allowances, so we'll get it from allowances
-      // This function is kept for backward compatibility but balance is calculated from allowances
-      const response = await fetch('/api/dashboard');
-      if (response.ok) {
-        const data = await response.json();
-        // Calculate total remaining from allowances
-        const totalRemaining = data.screenTime?.allowances?.reduce(
-          (sum: number, a: any) => sum + (a.remainingMinutes || 0),
-          0
-        ) || 0;
-        setBalance(totalRemaining);
-      }
-    } catch (error) {
-      console.error('Failed to fetch balance:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchHistory = async () => {
     try {
       const response = await fetch('/api/screentime/history?limit=20');
@@ -175,11 +161,8 @@ export default function ScreenTimePage() {
 
   const fetchGraceStatus = async () => {
     try {
-      const response = await fetch('/api/screentime/grace/status');
-      if (response.ok) {
-        const data = await response.json();
-        setGraceStatus(data);
-      }
+      const data = await fetchScreenTimeLifecycleGraceStatusClient();
+      setGraceStatus(data);
     } catch (error) {
       console.error('Failed to fetch grace status:', error);
     }
@@ -199,46 +182,68 @@ export default function ScreenTimePage() {
 
   const fetchAllowances = async () => {
     try {
-      const memberId = user?.id;
+      const memberId = member?.id;
       if (!memberId) return;
 
-      // Fetch both allowances and available types
-      const [memberAllowancesRes, typesRes] = await Promise.all([
-        fetch(`/api/screentime/allowances/${memberId}`),
-        fetch('/api/screentime/types'),
+      const [memberData, typesData] = await Promise.all([
+        fetchScreenTimeLifecycleAllowancesForMemberClient(memberId),
+        fetchScreenTimeLifecycleTypesClient(),
       ]);
 
-      let memberData = { allowances: [] };
-      if (memberAllowancesRes.ok) {
-        memberData = await memberAllowancesRes.json();
-        setAllowances(memberData.allowances || []);
-      }
+      const normalizedAllowances: AllowanceWithRemaining[] = (memberData.allowances || []).map(
+        (allowance) => ({
+          ...allowance,
+          screenTimeType: allowance.screenTimeType
+            ? {
+                id: allowance.screenTimeType.id,
+                name: allowance.screenTimeType.name,
+                description:
+                  'description' in allowance.screenTimeType
+                    ? allowance.screenTimeType.description ?? null
+                    : null,
+                isActive:
+                  'isActive' in allowance.screenTimeType
+                    ? allowance.screenTimeType.isActive ?? true
+                    : true,
+                isArchived:
+                  'isArchived' in allowance.screenTimeType
+                    ? allowance.screenTimeType.isArchived ?? false
+                    : false,
+              }
+            : undefined,
+        })
+      );
 
-      if (typesRes.ok) {
-        const typesData = await typesRes.json();
-        const activeTypes = (typesData.types || []).filter((t: ScreenTimeType) => t.isActive && !t.isArchived);
-        setAvailableTypes(activeTypes);
-        
-        // Set first type as default if none selected
-        if (!selectedScreenTimeType && activeTypes.length > 0) {
-          // Prefer first type with allowance, otherwise first type
-          const firstWithAllowance = activeTypes.find((t: ScreenTimeType) => 
-            memberData.allowances?.some((a: AllowanceWithRemaining) => a.screenTimeTypeId === t.id)
-          );
-          setSelectedScreenTimeType(firstWithAllowance?.id || activeTypes[0].id);
-        }
+      setAllowances(normalizedAllowances);
+      const totalRemaining = normalizedAllowances.reduce(
+        (sum, allowance) => sum + (allowance.remaining?.remainingMinutes || 0),
+        0
+      );
+      setBalance(totalRemaining);
+
+      const activeTypes = (typesData || []).filter(
+        (t: ScreenTimeType) => t.isActive && !t.isArchived
+      );
+      setAvailableTypes(activeTypes);
+
+      if (!selectedScreenTimeType && activeTypes.length > 0) {
+        const firstWithAllowance = activeTypes.find((t: ScreenTimeType) =>
+          normalizedAllowances.some((allowance) => allowance.screenTimeTypeId === t.id)
+        );
+        setSelectedScreenTimeType(firstWithAllowance?.id || activeTypes[0].id);
       }
     } catch (error) {
       console.error('Failed to fetch allowances:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || memberLoading || !member?.id) return;
     
     const loadData = async () => {
       await Promise.all([
-        fetchBalance(),
         fetchHistory(),
         fetchStats(),
         fetchGraceStatus(),
@@ -246,8 +251,8 @@ export default function ScreenTimePage() {
         fetchAllowances(),
       ]);
     };
-    loadData();
-  }, [user]);
+    void loadData();
+  }, [member?.id, memberLoading, user?.id]);
 
   const handleLogTime = async (minutes: number, override: boolean = false) => {
     if (minutes <= 0) {
@@ -303,15 +308,13 @@ export default function ScreenTimePage() {
           title: 'Time Logged',
           message: data.message,
         });
-        // Balance is now calculated from allowances, refresh allowances to get updated balance
-        // setBalance is handled by fetchBalance which calculates from allowances
+        // Balance is derived from allowances, so refreshing allowances refreshes balance too.
         setCustomMinutes('');
         setOverrideReason('');
         setShowOverrideModal(false);
         setPendingLog(null);
         // Refresh all data
         await Promise.all([
-          fetchBalance(),
           fetchHistory(),
           fetchStats(),
           fetchAllowances(),
@@ -348,7 +351,7 @@ export default function ScreenTimePage() {
     setBalance(newBalance);
     // Refresh all data to reflect the grace period
     await Promise.all([
-      fetchBalance(),
+      fetchAllowances(),
       fetchHistory(),
       fetchStats(),
       fetchGraceStatus(),
@@ -488,7 +491,7 @@ export default function ScreenTimePage() {
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <h3 className="font-semibold text-gray-900 dark:text-white">
-                          {allowance.screenTimeType.name}
+                          {allowance.screenTimeType?.name || 'Unknown'}
                         </h3>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
                           {allowance.period === 'DAILY' ? 'Daily' : 'Weekly'} allowance
@@ -705,7 +708,7 @@ export default function ScreenTimePage() {
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {allowance.screenTimeType.name}
+                          {allowance.screenTimeType?.name || 'Unknown'}
                         </span>
                       </div>
                       <span className="text-sm text-gray-600 dark:text-gray-400">

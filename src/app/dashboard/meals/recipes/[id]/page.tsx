@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSupabaseSession } from '@/hooks/useSupabaseSession';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import {
   ArrowLeftIcon,
   HeartIcon,
@@ -110,7 +110,7 @@ const DIETARY_TAG_LABELS: Record<string, string> = {
 
 export default function RecipeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const { user } = useSupabaseSession();
+  const { isParent } = useCurrentMember();
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,7 +120,6 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false });
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title?: string; message?: string; type?: 'error' | 'success' }>({ isOpen: false });
   const [showAddToMealModal, setShowAddToMealModal] = useState(false);
-  const [isParent, setIsParent] = useState(false);
   const [scaleFactor, setScaleFactor] = useState(1);
 
   const scaleQty = (quantity: number | undefined): string | undefined => {
@@ -139,27 +138,6 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
       fetchRecipe();
     }
   }, [recipeId]);
-
-  useEffect(() => {
-    // Fetch user role to check if parent
-    const fetchUserRole = async () => {
-      if (!user) return;
-      
-      try {
-        const res = await fetch('/api/user/role');
-        if (res.ok) {
-          const data = await res.json();
-          setIsParent(data.role === 'PARENT');
-        }
-      } catch (err) {
-        console.error('Error fetching user role:', err);
-        // Default to false on error
-        setIsParent(false);
-      }
-    };
-
-    fetchUserRole();
-  }, [user]);
 
   const fetchRecipe = async () => {
     if (!recipeId) return;

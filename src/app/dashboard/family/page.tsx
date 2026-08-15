@@ -8,6 +8,7 @@ import { useFamilyFetch } from '@/hooks/useFamilyFetch';
 import { format } from 'date-fns';
 import { Modal, ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
+import { updateParentFamilyConfigurationClient } from '@/lib/parent-configuration-lifecycle-client';
 
 const TIMEZONES = [
   'America/New_York',
@@ -285,47 +286,31 @@ export default function FamilyPage() {
   const handleSaveSettings = async () => {
     setSavingSettings(true);
     try {
-      // Use /api/family-data instead of /api/family due to Next.js routing bug
-      const response = await fetch('/api/family-data', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: familySettings.name,
-          timezone: familySettings.timezone,
-          currency: familySettings.currency,
-          weekStartDay: familySettings.weekStartDay,
-          location: familySettings.location || null,
-          latitude: familySettings.latitude || null,
-          longitude: familySettings.longitude || null,
-        }),
+      await updateParentFamilyConfigurationClient({
+        name: familySettings.name,
+        timezone: familySettings.timezone,
+        currency: familySettings.currency,
+        weekStartDay: familySettings.weekStartDay,
+        location: familySettings.location || null,
+        latitude: familySettings.latitude || null,
+        longitude: familySettings.longitude || null,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlertModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Success!',
-          message: 'Family settings updated successfully',
-        });
-        setEditingSettings(false);
-        await fetchFamily();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Error',
-          message: data.error || 'Failed to update settings',
-        });
-      }
+      setAlertModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Success!',
+        message: 'Family settings updated successfully',
+      });
+      setEditingSettings(false);
+      await fetchFamily();
     } catch (error) {
       console.error('Error updating settings:', error);
       setAlertModal({
         isOpen: true,
         type: 'error',
         title: 'Error',
-        message: 'Failed to update settings',
+        message: error instanceof Error ? error.message : 'Failed to update settings',
       });
     } finally {
       setSavingSettings(false);

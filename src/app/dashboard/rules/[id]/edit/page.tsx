@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertModal } from '@/components/ui/Modal';
+import { useAutomationRuleEditor } from '@/hooks/useAutomationRuleLifecycle';
 
 const TRIGGER_TYPES = [
   { value: 'chore_completed', label: 'Chore Completed' },
@@ -106,10 +107,9 @@ export default function EditRulePage() {
   const router = useRouter();
   const params = useParams();
   const ruleId = params.id as string;
+  const { rule, loading, saveRule } = useAutomationRuleEditor(ruleId);
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [rule, setRule] = useState<Rule | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [trigger, setTrigger] = useState<any>(null);
@@ -124,66 +124,34 @@ export default function EditRulePage() {
   }>({ isOpen: false, title: '', message: '', type: 'error' });
 
   useEffect(() => {
-    fetchRule();
-  }, [ruleId]);
-
-  const fetchRule = async () => {
-    try {
-      const response = await fetch(`/api/rules/${ruleId}`);
-      if (response.ok) {
-        const data = await response.json();
-        const ruleData = data.rule;
-        setRule(ruleData);
-        setName(ruleData.name);
-        setDescription(ruleData.description || '');
-        setTrigger(ruleData.trigger);
-        setActions(ruleData.actions);
-        setConditions(ruleData.conditions);
-        setIsActive(ruleData.is_enabled ?? true);
-      } else {
-        console.error('Failed to fetch rule');
-        router.push('/dashboard/rules');
-      }
-    } catch (error) {
-      console.error('Error fetching rule:', error);
-      router.push('/dashboard/rules');
-    } finally {
-      setLoading(false);
+    if (!rule) {
+      return;
     }
-  };
+
+    setName(rule.name);
+    setDescription(rule.description || '');
+    setTrigger(rule.trigger);
+    setActions(rule.actions);
+    setConditions(rule.conditions);
+    setIsActive(rule.isEnabled ?? true);
+  }, [rule]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
-      const response = await fetch(`/api/rules/${ruleId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          description: description || null,
-          is_enabled: isActive,
-        }),
+      await saveRule({
+        name,
+        description: description || null,
+        isEnabled: isActive,
       });
-
-      if (response.ok) {
-        router.push('/dashboard/rules');
-      } else {
-        const data = await response.json();
-        setAlertModal({
-          isOpen: true,
-          title: 'Error',
-          message: data.error || 'Failed to update rule',
-          type: 'error',
-        });
-      }
+      router.push('/dashboard/rules');
     } catch (error) {
-      console.error('Error updating rule:', error);
       setAlertModal({
         isOpen: true,
         title: 'Error',
-        message: 'Failed to update rule',
+        message: error instanceof Error ? error.message : 'Failed to update rule',
         type: 'error',
       });
     } finally {

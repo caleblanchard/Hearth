@@ -5003,6 +5003,7 @@ export type Database = {
         | "CREDITS_DEDUCTED"
         | "REWARD_REDEEMED"
         | "REWARD_APPROVED"
+        | "REWARD_REJECTED"
         | "SCREENTIME_LOGGED"
         | "SCREENTIME_ADJUSTED"
         | "GRACE_PERIOD_USED"

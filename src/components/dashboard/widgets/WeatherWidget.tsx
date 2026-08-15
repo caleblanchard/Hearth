@@ -2,38 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { Cloud } from 'lucide-react';
+import type { DashboardWidgetResult } from '@/types/dashboard-widget-collection';
 
-interface WeatherData {
-  location: string;
-  current: {
-    temp: number;
-    feelsLike: number;
-    condition: string;
-    description: string;
-    icon: string;
-  };
-  today: {
-    high: number;
-    low: number;
-  };
-  forecast: {
-    date: string;
-    high: number;
-    low: number;
-    condition: string;
-    description: string;
-    icon: string;
-  }[];
+interface WeatherWidgetProps {
+  widget?: DashboardWidgetResult<'weather'>;
+  collectionEnabled?: boolean;
+  collectionLoading?: boolean;
+  collectionError?: string | null;
 }
 
-export default function WeatherWidget() {
-  const [data, setData] = useState<WeatherData | null>(null);
+export default function WeatherWidget({
+  widget,
+  collectionEnabled = false,
+  collectionLoading = false,
+  collectionError = null,
+}: WeatherWidgetProps = {}) {
+  const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (collectionEnabled) {
+      return;
+    }
     fetchWeather();
-  }, []);
+  }, [collectionEnabled]);
 
   async function fetchWeather() {
     try {
@@ -66,6 +59,11 @@ export default function WeatherWidget() {
     }
   }
 
+  const resolvedData = widget?.state === 'ready' ? widget.data : data;
+  const resolvedLoading = collectionEnabled ? collectionLoading : loading;
+  const resolvedError =
+    widget?.state === 'unavailable' ? widget.error : collectionEnabled ? collectionError : error;
+
   // Format date for forecast
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -92,41 +90,41 @@ export default function WeatherWidget() {
         </h2>
       </div>
 
-      {loading && (
+      {resolvedLoading && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading...</div>
       )}
 
-      {error && (
+      {resolvedError && (
         <div className="text-center py-8 text-red-600 dark:text-red-400">
-          {error}
+          {resolvedError}
         </div>
       )}
 
-      {!loading && !error && data && data.current && (
+      {!resolvedLoading && !resolvedError && resolvedData && resolvedData.current && (
         <div>
           {/* Current Weather */}
           <div className="text-center mb-4">
             <div className="text-5xl font-bold text-gray-900 dark:text-white mb-2">
-              {data.current.temp}°
+              {resolvedData.current.temp}°
             </div>
             <div className="text-gray-600 dark:text-gray-400 capitalize mb-1">
-              {data.current.description}
+              {resolvedData.current.description}
             </div>
-            {data.today && (
+            {resolvedData.today && (
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                H: {data.today.high}° L: {data.today.low}°
+                H: {resolvedData.today.high}° L: {resolvedData.today.low}°
               </div>
             )}
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              {data.location}
+              {resolvedData.location}
             </div>
           </div>
 
           {/* Forecast */}
-          {data.forecast && data.forecast.length > 0 && (
+          {resolvedData.forecast && resolvedData.forecast.length > 0 && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <div className="grid grid-cols-3 gap-2">
-                {data.forecast.slice(0, 3).map((day, index) => (
+                {resolvedData.forecast.slice(0, 3).map((day: any, index: number) => (
                   <div
                     key={index}
                     className="text-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"

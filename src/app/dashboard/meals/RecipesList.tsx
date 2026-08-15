@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { ConfirmModal } from '@/components/ui/Modal';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 
 interface Creator {
   id: string;
@@ -52,13 +53,13 @@ interface RecipesResponse {
 
 export default function RecipesList() {
   const router = useRouter();
+  const { isParent } = useCurrentMember();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isParent, setIsParent] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; recipeId?: string; recipeName?: string }>({ isOpen: false });
 
   const loadRecipes = async () => {
@@ -98,21 +99,6 @@ export default function RecipesList() {
   useEffect(() => {
     loadRecipes();
   }, [categoryFilter, favoritesOnly, searchQuery]);
-
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      try {
-        const res = await fetch('/api/user/role');
-        if (res.ok) {
-          const data = await res.json();
-          setIsParent(data.role === 'PARENT');
-        }
-      } catch {
-        setIsParent(false);
-      }
-    };
-    fetchUserRole();
-  }, []);
 
   const toggleFavorite = async (id: string, currentStatus: boolean) => {
     try {

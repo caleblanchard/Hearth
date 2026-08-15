@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { createDocumentLifecycleDocumentClient } from '@/lib/document-lifecycle-client';
 
 const CATEGORIES = [
   { value: 'IDENTITY', label: 'Identity' },
@@ -60,31 +61,21 @@ export default function UploadDocumentPage() {
       const fileSize = selectedFile.size;
       const mimeType = selectedFile.type;
 
-      const res = await fetch('/api/documents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          category: formData.category,
-          fileUrl,
-          fileSize,
-          mimeType,
-          documentNumber: formData.documentNumber || null,
-          issuedDate: formData.issuedDate || null,
-          expiresAt: formData.expiresAt || null,
-          tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : [],
-          notes: formData.notes || null,
-        }),
+      await createDocumentLifecycleDocumentClient({
+        name: formData.name,
+        category: formData.category,
+        fileUrl,
+        fileSize,
+        mimeType,
+        documentNumber: formData.documentNumber || null,
+        issuedDate: formData.issuedDate || null,
+        expiresAt: formData.expiresAt || null,
+        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : [],
+        notes: formData.notes || null,
       });
-
-      if (res.ok) {
-        router.push('/dashboard/documents');
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to upload document');
-      }
+      router.push('/dashboard/documents');
     } catch (err) {
-      setError('Failed to upload document');
+      setError(err instanceof Error ? err.message : 'Failed to upload document');
     } finally {
       setSubmitting(false);
     }

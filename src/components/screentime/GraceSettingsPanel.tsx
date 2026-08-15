@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import {
+  fetchScreenTimeLifecycleGraceSettingsClient,
+  updateScreenTimeLifecycleGraceSettingsClient,
+} from '@/lib/screen-time-lifecycle-client';
 
 interface GraceSettings {
   id?: string;
@@ -65,13 +69,8 @@ export default function GraceSettingsPanel({
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch(
-        `/api/screentime/grace/settings?memberId=${memberId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data.settings);
-      }
+      const data = await fetchScreenTimeLifecycleGraceSettingsClient(memberId);
+      setSettings(data);
     } catch (error) {
       console.error('Failed to fetch grace settings:', error);
     } finally {
@@ -84,32 +83,18 @@ export default function GraceSettingsPanel({
     setMessage(null);
 
     try {
-      const response = await fetch('/api/screentime/grace/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
+      await updateScreenTimeLifecycleGraceSettingsClient(settings);
+      setMessage({
+        type: 'success',
+        text: 'Grace settings saved successfully!',
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage({
-          type: 'success',
-          text: 'Grace settings saved successfully!',
-        });
-        onSettingsSaved?.();
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        setMessage({
-          type: 'error',
-          text: data.error || 'Failed to save settings',
-        });
-      }
+      onSettingsSaved?.();
+      setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error('Error saving grace settings:', error);
       setMessage({
         type: 'error',
-        text: 'Failed to save settings',
+        text: error instanceof Error ? error.message : 'Failed to save settings',
       });
     } finally {
       setSaving(false);

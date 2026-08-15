@@ -1,8 +1,5 @@
-import { NextRequest } from 'next/server';
-import { POST } from '@/app/api/screentime/grace/request/route';
-import { mockChildSession } from '@/lib/test-utils/auth-mock';
+import { NextRequest } from 'next/server'
 
-// Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
     error: jest.fn(),
@@ -10,116 +7,79 @@ jest.mock('@/lib/logger', () => ({
     info: jest.fn(),
     debug: jest.fn(),
   },
-}));
+}))
 
-// Mock data module
-jest.mock('@/lib/data/screentime', () => ({
-  requestGracePeriod: jest.fn(),
-}));
+jest.mock('@/lib/data/screen-time-lifecycle', () => {
+  class MockScreenTimeLifecycleError extends Error {
+    status: number
 
-// Mock Supabase
-jest.mock('@/lib/supabase/server', () => {
-  const { getMockSession } = require('@/lib/test-utils/auth-mock');
-  
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+
   return {
-    createClient: jest.fn(),
-    getAuthContext: jest.fn(async () => {
-      const session = getMockSession();
-      if (!session) return null;
-      return {
-        user: session.user,
-        activeFamilyId: session.user.familyId,
-        activeMemberId: session.user.id,
-      };
-    }),
-  };
-});
+    ScreenTimeLifecycleError: MockScreenTimeLifecycleError,
+    isScreenTimeLifecycleError: (error: unknown) =>
+      error instanceof MockScreenTimeLifecycleError,
+    requestScreenTimeLifecycleGrace: jest.fn(),
+  }
+})
 
-import { requestGracePeriod } from '@/lib/data/screentime';
+const {
+  ScreenTimeLifecycleError,
+  requestScreenTimeLifecycleGrace: mockRequestScreenTimeLifecycleGrace,
+} = jest.requireMock('@/lib/data/screen-time-lifecycle')
+const { POST } = require('@/app/api/screentime/grace/request/route')
 
-describe('POST /api/screentime/grace/request', () => {
+describe('/api/screentime/grace/request route', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-  });
+    jest.clearAllMocks()
+  })
 
-  it('should return 400 if allowanceId is missing', async () => {
-    const session = mockChildSession();
+  it('delegates grace requests to Screen Time Lifecycle', async () => {
+    mockRequestScreenTimeLifecycleGrace.mockResolvedValue({
+      pendingApproval: false,
+      newBalance: 20,
+      graceLog: {
+        id: 'log-1',
+        minutesGranted: 15,
+      },
+    })
 
-    const request = new NextRequest('http://localhost/api/screentime/grace/request', {
-      method: 'POST',
-      body: JSON.stringify({ minutes: 15, reason: 'Test' }),
-    });
+    const response = await POST(
+      new NextRequest('http://localhost:3000/api/screentime/grace/request', {
+        method: 'POST',
+        body: JSON.stringify({ reason: 'Middle of a game' }),
+      })
+    )
+    const data = await response.json()
 
-    const response = await POST(request);
-    const data = await response.json();
+    expect(response.status).toBe(200)
+    expect(data.success).toBe(true)
+    expect(data.newBalance).toBe(20)
+    expect(mockRequestScreenTimeLifecycleGrace).toHaveBeenCalledWith({
+      reason: 'Middle of a game',
+      allowanceId: undefined,
+      minutes: undefined,
+    })
+  })
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('Allowance ID is required');
-  });
+  it('maps lifecycle errors to HTTP responses', async () => {
+    mockRequestScreenTimeLifecycleGrace.mockRejectedValue(
+      new ScreenTimeLifecycleError(400, 'Daily grace limit exceeded')
+    )
 
-  it('should return 400 if minutes are missing', async () => {
-    const session = mockChildSession();
+    const response = await POST(
+      new NextRequest('http://localhost:3000/api/screentime/grace/request', {
+        method: 'POST',
+        body: JSON.stringify({ reason: 'Too many requests' }),
+      })
+    )
+    const data = await response.json()
 
-    const request = new NextRequest('http://localhost/api/screentime/grace/request', {
-      method: 'POST',
-      body: JSON.stringify({ allowanceId: 'allowance-1', reason: 'Test' }),
-    });
-
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('Minutes are required');
-  });
-
-  it('should request grace period successfully', async () => {
-    const session = mockChildSession();
-    
-    (requestGracePeriod as jest.Mock).mockResolvedValue({
-      id: 'grace-1',
-      minutesGranted: 15,
-      status: 'PENDING'
-    });
-
-    const request = new NextRequest('http://localhost/api/screentime/grace/request', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        allowanceId: 'allowance-1', 
-        minutes: 15, 
-        reason: 'Test reason' 
-      }),
-    });
-
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(requestGracePeriod).toHaveBeenCalledWith(
-      'allowance-1',
-      session.user.id,
-      15,
-      'Test reason'
-    );
-  });
-
-  it('should handle errors', async () => {
-    const session = mockChildSession();
-    
-    (requestGracePeriod as jest.Mock).mockRejectedValue(new Error('Limit reached'));
-
-    const request = new NextRequest('http://localhost/api/screentime/grace/request', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        allowanceId: 'allowance-1', 
-        minutes: 15 
-      }),
-    });
-
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(data.error).toBe('Failed to request grace period');
-  });
-});
+    expect(response.status).toBe(400)
+    expect(data.error).toBe('Daily grace limit exceeded')
+  })
+})
