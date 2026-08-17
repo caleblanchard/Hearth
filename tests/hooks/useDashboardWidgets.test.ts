@@ -59,9 +59,10 @@ describe('useDashboardWidgets', () => {
     expect(result.current.partial).toBe(false);
     expect(result.current.capturedAt).toBe(mockCollection.capturedAt);
     expect(result.current.error).toBeNull();
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/dashboard/widgets?widgets')
-    );
+    const firstCallUrl = (global.fetch as jest.Mock).mock.calls[0][0];
+    expect(firstCallUrl).toContain('/api/dashboard/widgets?widgets');
+    expect(firstCallUrl).toContain('transport');
+    expect(firstCallUrl).toContain('weather');
   });
 
   it('should pass memberId in query if provided', async () => {

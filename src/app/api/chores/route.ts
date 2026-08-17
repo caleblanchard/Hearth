@@ -5,7 +5,7 @@ import { getChoreDefinitions } from '@/lib/data/chores';
 import { logger } from '@/lib/logger';
 import { sanitizeString } from '@/lib/input-sanitization';
 import { getNextDueDates, getNextAssignee, startOfDay, endOfDay } from '@/lib/chore-scheduler';
-import { isMemberInSickMode } from '@/lib/sick-mode';
+import { isMemberInSickMode } from '@/lib/data/sick-mode';
 
 export async function GET(request: NextRequest) {
   try {

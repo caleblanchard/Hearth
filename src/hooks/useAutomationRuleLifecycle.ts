@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import {
   deleteAutomationLifecycleRuleRequest,
   fetchAutomationLifecycleRule,
@@ -6,6 +6,7 @@ import {
   toggleAutomationLifecycleRuleRequest,
   updateAutomationLifecycleRuleRequest,
 } from '@/lib/automation-rule-lifecycle-client'
+import { useRemoteResource } from '@/hooks/useRemoteResource'
 import type {
   AutomationRuleExecutionRecord,
   AutomationRuleExecutionStats,
@@ -21,40 +22,41 @@ function historyFilterToSuccess(filter: AutomationRuleHistoryFilter): boolean | 
 }
 
 export function useAutomationRules() {
-  const [rules, setRules] = useState<AutomationRuleRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const loader = useCallback(() => fetchAutomationLifecycleRules(), [])
+  const { data, loading, error, refetch, setData } = useRemoteResource(loader, {
+    errorMessage: 'Failed to load rules',
+  })
+  const rules = data?.rules ?? []
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const toggleRule = useCallback(
+    async (ruleId: string) => {
+      const updated = await toggleAutomationLifecycleRuleRequest(ruleId)
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              rules: current.rules.map((rule) =>
+                rule.id === ruleId ? { ...rule, ...updated } : rule
+              ),
+            }
+          : current
+      )
+      return updated
+    },
+    [setData]
+  )
 
-    try {
-      const result = await fetchAutomationLifecycleRules()
-      setRules(result.rules)
-    } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load rules')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void refetch()
-  }, [refetch])
-
-  const toggleRule = useCallback(async (ruleId: string) => {
-    const updated = await toggleAutomationLifecycleRuleRequest(ruleId)
-    setRules((current) =>
-      current.map((rule) => (rule.id === ruleId ? { ...rule, ...updated } : rule))
-    )
-    return updated
-  }, [])
-
-  const deleteRule = useCallback(async (ruleId: string) => {
-    await deleteAutomationLifecycleRuleRequest(ruleId)
-    setRules((current) => current.filter((rule) => rule.id !== ruleId))
-  }, [])
+  const deleteRule = useCallback(
+    async (ruleId: string) => {
+      await deleteAutomationLifecycleRuleRequest(ruleId)
+      setData((current) =>
+        current
+          ? { ...current, rules: current.rules.filter((rule) => rule.id !== ruleId) }
+          : current
+      )
+    },
+    [setData]
+  )
 
   return {
     rules,
@@ -67,34 +69,18 @@ export function useAutomationRules() {
 }
 
 export function useAutomationRuleEditor(ruleId: string | null | undefined) {
-  const [rule, setRule] = useState<AutomationRuleRecord | null>(null)
-  const [loading, setLoading] = useState(Boolean(ruleId))
-  const [error, setError] = useState<string | null>(null)
-
-  const refetch = useCallback(async () => {
+  const enabled = Boolean(ruleId)
+  const loader = useCallback(async () => {
     if (!ruleId) {
-      setRule(null)
-      setLoading(false)
-      return
+      throw new Error('Missing rule id')
     }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const result = await fetchAutomationLifecycleRule(ruleId)
-      setRule(result.rule)
-    } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load rule')
-      setRule(null)
-    } finally {
-      setLoading(false)
-    }
+    const result = await fetchAutomationLifecycleRule(ruleId)
+    return result.rule
   }, [ruleId])
-
-  useEffect(() => {
-    void refetch()
-  }, [refetch])
+  const { data, loading, error, refetch, setData } = useRemoteResource(loader, {
+    enabled,
+    errorMessage: 'Failed to load rule',
+  })
 
   const saveRule = useCallback(
     async (input: UpdateAutomationRuleInput) => {
@@ -103,14 +89,14 @@ export function useAutomationRuleEditor(ruleId: string | null | undefined) {
       }
 
       const updated = await updateAutomationLifecycleRuleRequest(ruleId, input)
-      setRule(updated)
+      setData(updated)
       return updated
     },
-    [ruleId]
+    [ruleId, setData]
   )
 
   return {
-    rule,
+    rule: data,
     loading,
     error,
     refetch,
@@ -126,63 +112,39 @@ export function useAutomationRuleHistory(
     offset?: number
   } = {}
 ) {
-  const [rule, setRule] = useState<AutomationRuleRecord | null>(null)
-  const [executions, setExecutions] = useState<AutomationRuleExecutionRecord[]>([])
-  const [stats, setStats] = useState<AutomationRuleExecutionStats>({
-    totalExecutions: 0,
-    successfulExecutions: 0,
-    failedExecutions: 0,
-    successRate: 0,
-  })
-  const [totalExecutions, setTotalExecutions] = useState(0)
-  const [loading, setLoading] = useState(Boolean(ruleId))
-  const [error, setError] = useState<string | null>(null)
-
+  const enabled = Boolean(ruleId)
   const filter = options.filter ?? 'all'
   const limit = options.limit ?? 50
   const offset = options.offset ?? 0
 
-  const refetch = useCallback(async () => {
+  const loader = useCallback(async () => {
     if (!ruleId) {
-      setRule(null)
-      setExecutions([])
-      setLoading(false)
-      return
+      throw new Error('Missing rule id')
     }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const result = await fetchAutomationLifecycleRule(ruleId, {
-        limit,
-        offset,
-        success: historyFilterToSuccess(filter),
-      })
-      setRule(result.rule)
-      setExecutions(result.executions)
-      setStats(result.stats)
-      setTotalExecutions(result.totalExecutions)
-    } catch (fetchError) {
-      setError(
-        fetchError instanceof Error ? fetchError.message : 'Failed to load execution history'
-      )
-      setRule(null)
-      setExecutions([])
-    } finally {
-      setLoading(false)
-    }
+    return fetchAutomationLifecycleRule(ruleId, {
+      limit,
+      offset,
+      success: historyFilterToSuccess(filter),
+    })
   }, [filter, limit, offset, ruleId])
+  const { data, loading, error, refetch } = useRemoteResource(loader, {
+    enabled,
+    errorMessage: 'Failed to load execution history',
+  })
 
-  useEffect(() => {
-    void refetch()
-  }, [refetch])
+  const executions: AutomationRuleExecutionRecord[] = data?.executions ?? []
+  const stats: AutomationRuleExecutionStats = data?.stats ?? {
+    totalExecutions: 0,
+    successfulExecutions: 0,
+    failedExecutions: 0,
+    successRate: 0,
+  }
 
   return {
-    rule,
+    rule: data?.rule ?? null,
     executions,
     stats,
-    totalExecutions,
+    totalExecutions: data?.totalExecutions ?? 0,
     loading,
     error,
     refetch,

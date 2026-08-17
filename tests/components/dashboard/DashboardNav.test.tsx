@@ -1,13 +1,13 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import DashboardNav from '@/components/dashboard/DashboardNav'
-import { useMemberContext } from '@/hooks/useMemberContext'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 import { signOut } from '@/hooks/useSupabaseSession'
 import { useRouter, usePathname } from 'next/navigation'
 import { ActiveFamilyContext } from '@/contexts/ActiveFamilyContext'
 
-jest.mock('@/hooks/useMemberContext', () => ({
-  useMemberContext: jest.fn(),
+jest.mock('@/hooks/useCurrentMember', () => ({
+  useCurrentMember: jest.fn(),
 }))
 
 jest.mock('@/hooks/useSupabaseSession', () => ({
@@ -59,7 +59,7 @@ describe('DashboardNav', () => {
   })
 
   it('should render navigation links', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderDashboardNav()
 
@@ -70,7 +70,7 @@ describe('DashboardNav', () => {
   })
 
   it('should highlight active route', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
     ;(usePathname as jest.Mock).mockReturnValue('/dashboard/chores')
 
     renderDashboardNav()
@@ -89,7 +89,7 @@ describe('DashboardNav', () => {
   })
 
   it('should show parent-only navigation items for parents', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('PARENT'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('PARENT'))
 
     renderDashboardNav()
 
@@ -98,7 +98,7 @@ describe('DashboardNav', () => {
   })
 
   it('should not show parent-only items for children', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderDashboardNav()
 
@@ -107,7 +107,7 @@ describe('DashboardNav', () => {
   })
 
   it('should navigate when nav item is clicked', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderDashboardNav()
 
@@ -118,7 +118,7 @@ describe('DashboardNav', () => {
   })
 
   it('should call signOut when sign out button is clicked', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderDashboardNav()
 
@@ -129,7 +129,7 @@ describe('DashboardNav', () => {
   })
 
   it('should display user name and role', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderDashboardNav()
 
@@ -138,7 +138,7 @@ describe('DashboardNav', () => {
   })
 
   it('should navigate to dashboard when logo is clicked', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderDashboardNav()
 

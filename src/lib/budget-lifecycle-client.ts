@@ -1,23 +1,25 @@
-import type { BudgetLifecycleRecord } from '@/types/budget-lifecycle'
-import { apiRequest } from '@/lib/api-client'
+import { createLifecycleClient } from '@/lib/lifecycle-client'
+import type { BudgetLifecycleRecord, CreateBudgetLifecycleInput } from '@/types/budget-lifecycle'
 
-export async function fetchBudgetLifecycleBudgetsClient() {
-  const data = await apiRequest<{ budgets: BudgetLifecycleRecord[] }>('/api/financial/budgets')
-  return data.budgets
+const budgetClient = createLifecycleClient<BudgetLifecycleRecord>({
+  basePath: '/api/financial/budgets',
+  listKey: 'budgets',
+})
+
+export function fetchBudgetLifecycleBudgetsClient(): Promise<BudgetLifecycleRecord[]> {
+  return budgetClient.list()
 }
 
-export async function createBudgetLifecycleBudgetClient(input: Record<string, unknown>) {
-  return apiRequest<{ success: true; budget: BudgetLifecycleRecord; message?: string }>(
-    '/api/financial/budgets',
-    {
-      method: 'POST',
-      body: JSON.stringify(input),
-    }
+export function createBudgetLifecycleBudgetClient(
+  input: CreateBudgetLifecycleInput,
+): Promise<{ success: true; budget: BudgetLifecycleRecord; message?: string }> {
+  return budgetClient.action<{ success: true; budget: BudgetLifecycleRecord; message?: string }>(
+    '',
+    'POST',
+    input,
   )
 }
 
-export async function deleteBudgetLifecycleBudgetClient(budgetId: string) {
-  await apiRequest<{ success: true }>(`/api/financial/budgets/${budgetId}`, {
-    method: 'DELETE',
-  })
+export function deleteBudgetLifecycleBudgetClient(budgetId: string): Promise<void> {
+  return budgetClient.remove(budgetId)
 }

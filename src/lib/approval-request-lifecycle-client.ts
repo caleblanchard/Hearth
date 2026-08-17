@@ -1,3 +1,4 @@
+import { createLifecycleClient } from '@/lib/lifecycle-client'
 import type {
   ApprovalRequestDecisionResult,
   ApprovalRequestListQuery,
@@ -5,67 +6,54 @@ import type {
   PendingRewardRedemptionRecord,
   RewardRedemptionDecisionResult,
 } from '@/types/approval-request-lifecycle'
-import { apiRequest } from '@/lib/api-client'
 
-export async function fetchApprovalRequests(
-  query: ApprovalRequestListQuery = {}
+const approvalsClient = createLifecycleClient({ basePath: '/api/approvals' })
+
+const bulkApproveClient = createLifecycleClient({ basePath: '/api/approvals/bulk-approve' })
+
+const bulkDenyClient = createLifecycleClient({ basePath: '/api/approvals/bulk-deny' })
+
+const redemptionsClient = createLifecycleClient({ basePath: '/api/rewards/redemptions' })
+
+export function fetchApprovalRequests(
+  query: ApprovalRequestListQuery = {},
 ): Promise<ApprovalRequestListResult> {
-  const params = new URLSearchParams()
-
-  if (query.type && query.type !== 'ALL') {
-    params.set('type', query.type)
-  }
-
-  if (query.memberId) {
-    params.set('memberId', query.memberId)
-  }
-
-  const suffix = params.toString()
-  return apiRequest<ApprovalRequestListResult>(suffix ? `/api/approvals?${suffix}` : '/api/approvals')
-}
-
-export async function approveApprovalRequests(
-  itemIds: string[]
-): Promise<ApprovalRequestDecisionResult> {
-  return apiRequest<ApprovalRequestDecisionResult>('/api/approvals/bulk-approve', {
-    method: 'POST',
-    body: JSON.stringify({ itemIds }),
+  return approvalsClient.action<ApprovalRequestListResult>('', 'GET', undefined, undefined, {
+    type: query.type === 'ALL' ? undefined : query.type,
+    memberId: query.memberId,
   })
 }
 
-export async function denyApprovalRequests(
-  itemIds: string[]
-): Promise<ApprovalRequestDecisionResult> {
-  return apiRequest<ApprovalRequestDecisionResult>('/api/approvals/bulk-deny', {
-    method: 'POST',
-    body: JSON.stringify({ itemIds }),
-  })
+export function approveApprovalRequests(itemIds: string[]): Promise<ApprovalRequestDecisionResult> {
+  return bulkApproveClient.action<ApprovalRequestDecisionResult>('', 'POST', { itemIds })
 }
 
-export async function fetchPendingRewardRedemptions(): Promise<{
+export function denyApprovalRequests(itemIds: string[]): Promise<ApprovalRequestDecisionResult> {
+  return bulkDenyClient.action<ApprovalRequestDecisionResult>('', 'POST', { itemIds })
+}
+
+export function fetchPendingRewardRedemptions(): Promise<{
   redemptions: PendingRewardRedemptionRecord[]
 }> {
-  return apiRequest<{ redemptions: PendingRewardRedemptionRecord[] }>('/api/rewards/redemptions')
+  return redemptionsClient.action<{ redemptions: PendingRewardRedemptionRecord[] }>('', 'GET')
 }
 
-export async function approveRewardRedemption(
-  redemptionId: string
+export function approveRewardRedemption(
+  redemptionId: string,
 ): Promise<{ success: true } & RewardRedemptionDecisionResult> {
-  return apiRequest<{ success: true } & RewardRedemptionDecisionResult>(
-    `/api/rewards/redemptions/${redemptionId}/approve`,
-    { method: 'POST' }
+  return redemptionsClient.action<{ success: true } & RewardRedemptionDecisionResult>(
+    `/${redemptionId}/approve`,
+    'POST',
   )
 }
 
-export async function rejectRewardRedemption(
+export function rejectRewardRedemption(
   redemptionId: string,
-  reason?: string
+  reason?: string,
 ): Promise<{ success: true } & RewardRedemptionDecisionResult> {
-  return apiRequest<{ success: true } & RewardRedemptionDecisionResult>(
-    `/api/rewards/redemptions/${redemptionId}/reject`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ reason }),
-    }
+  return redemptionsClient.action<{ success: true } & RewardRedemptionDecisionResult>(
+    `/${redemptionId}/reject`,
+    'POST',
+    { reason },
   )
 }

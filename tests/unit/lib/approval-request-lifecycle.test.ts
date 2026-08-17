@@ -137,7 +137,7 @@ describe('approval-request-lifecycle', () => {
     })
 
     expect(result).toEqual({
-      success: ['chore-chore-1'],
+      approved: ['chore-chore-1'],
       failed: [
         {
           itemId: 'shopping-shopping-1',
@@ -147,6 +147,28 @@ describe('approval-request-lifecycle', () => {
       total: 2,
     })
     expect(approveChore).toHaveBeenCalledWith('chore-1', 'parent-test-123')
+  })
+
+  it('rejects unprefixed bulk ids cleanly without fallback dispatch', async () => {
+    approveChore.mockResolvedValue({
+      success: true,
+      completion: { id: 'chore-1', status: 'APPROVED' },
+      credits_awarded: 10,
+    })
+
+    const result = await processApprovalRequests({
+      decision: 'APPROVE',
+      itemIds: ['raw-approval-1'],
+    })
+
+    expect(result.approved).toEqual([])
+    expect(result.failed).toEqual([
+      {
+        itemId: 'raw-approval-1',
+        reason: 'Unknown approval item: raw-approval-1',
+      },
+    ])
+    expect(approveChore).not.toHaveBeenCalled()
   })
 
   it('approves a reward redemption through the shared lifecycle', async () => {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useActiveFamily } from '@/contexts/ActiveFamilyContext'
-import { useCurrentFamilyMember } from './useCurrentFamilyMember'
+import { useCurrentMember } from './useCurrentMember'
 import {
   fetchCurrentFamilyApiMembers,
   getCurrentFamilyKioskChildToken,
@@ -11,7 +11,7 @@ import {
 } from '@/lib/current-family-member-client'
 
 export interface UseCurrentFamilyMembersResult {
-  user: ReturnType<typeof useCurrentFamilyMember>['user']
+  user: ReturnType<typeof useCurrentMember>['user']
   member: CurrentFamilyMemberRecord | null
   familyMembers: CurrentFamilyMemberRecord[]
   loading: boolean
@@ -23,7 +23,7 @@ export interface UseCurrentFamilyMembersResult {
 
 export function useCurrentFamilyMembers(): UseCurrentFamilyMembersResult {
   const { activeFamilyId, setActiveFamilyId, loading: familyLoading } = useActiveFamily()
-  const { user, member, loading: memberLoading, error: memberError } = useCurrentFamilyMember({
+  const { user, member, loading: memberLoading, error: memberError } = useCurrentMember({
     activeFamilyId,
     familyLoading,
     kioskFallbackName: 'Current Member',

@@ -1,12 +1,12 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import Sidebar from '@/components/dashboard/Sidebar'
-import { useMemberContext } from '@/hooks/useMemberContext'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 import { useRouter, usePathname } from 'next/navigation'
 import { ActiveFamilyContext } from '@/contexts/ActiveFamilyContext'
 
-jest.mock('@/hooks/useMemberContext', () => ({
-  useMemberContext: jest.fn(),
+jest.mock('@/hooks/useCurrentMember', () => ({
+  useCurrentMember: jest.fn(),
 }))
 
 // Mock next/navigation
@@ -76,7 +76,7 @@ describe('Sidebar', () => {
   })
 
   it('should render sidebar with navigation groups', async () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     const { container } = renderSidebar()
 
@@ -92,7 +92,7 @@ describe('Sidebar', () => {
   })
 
   it('should show parent-only settings group for parents', async () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('PARENT'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('PARENT'))
 
     renderSidebar()
 
@@ -106,7 +106,7 @@ describe('Sidebar', () => {
   })
 
   it('should toggle group expansion', async () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderSidebar()
 
@@ -124,7 +124,7 @@ describe('Sidebar', () => {
   })
 
   it('should toggle sidebar open/closed state', async () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderSidebar()
 
@@ -143,7 +143,7 @@ describe('Sidebar', () => {
   })
 
   it('should navigate when nav item is clicked', async () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderSidebar()
 
@@ -158,7 +158,7 @@ describe('Sidebar', () => {
   })
 
   it('should highlight active route', async () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
     ;(usePathname as jest.Mock).mockReturnValue('/dashboard/chores')
 
     renderSidebar()
@@ -182,7 +182,7 @@ describe('Sidebar', () => {
   })
 
   it('should display user info in footer', async () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderSidebar()
 
@@ -195,7 +195,7 @@ describe('Sidebar', () => {
   })
 
   it('should show mobile menu button on mobile', async () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderSidebar()
 
@@ -207,7 +207,7 @@ describe('Sidebar', () => {
   })
 
   it('should close mobile sidebar when overlay is clicked', async () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('CHILD'))
 
     renderSidebar()
 

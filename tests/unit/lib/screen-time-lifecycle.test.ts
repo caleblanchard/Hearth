@@ -25,7 +25,7 @@ jest.mock('@/lib/supabase/server', () => ({
   getAuthContext: jest.fn(),
 }))
 
-jest.mock('@/lib/screentime-grace', () => ({
+jest.mock('@/lib/data/screentime-grace', () => ({
   checkGraceEligibility: jest.fn(),
   getOrCreateGraceSettings: jest.fn(),
 }))
@@ -53,7 +53,7 @@ const {
 const {
   checkGraceEligibility: mockCheckGraceEligibility,
   getOrCreateGraceSettings: mockGetOrCreateGraceSettings,
-} = jest.requireMock('@/lib/screentime-grace')
+} = jest.requireMock('@/lib/data/screentime-grace')
 const { calculateRemainingTime: mockCalculateRemainingTime } = jest.requireMock(
   '@/lib/screentime-utils'
 )
@@ -367,6 +367,80 @@ describe('screen-time-lifecycle', () => {
       expect.objectContaining({
         id: 'log-1',
         minutesGranted: 15,
+      })
+    )
+  })
+
+  it('queues grace requests for parent approval when approval is required', async () => {
+    const balanceQuery = createSelectChain({
+      data: {
+        member_id: 'child-1',
+        current_balance_minutes: 8,
+      },
+      error: null,
+    })
+
+    const graceLog = {
+      id: 'log-1',
+      member_id: 'child-1',
+      minutes_granted: 15,
+      approved_by_id: null,
+      repayment_status: 'PENDING',
+      reason: 'Middle of a game',
+      requested_at: '2026-05-28T10:00:00.000Z',
+    }
+
+    mockCreateClient.mockResolvedValue({
+      from: jest.fn((table: string) => {
+        if (table === 'screen_time_balances') {
+          return {
+            select: jest.fn(() => balanceQuery),
+          }
+        }
+
+        if (table === 'grace_period_logs') {
+          return {
+            insert: jest.fn(() => ({
+              select: jest.fn(() => ({
+                single: jest.fn().mockResolvedValue({ data: graceLog, error: null }),
+              })),
+            })),
+          }
+        }
+
+        throw new Error(`Unexpected table ${table}`)
+      }),
+    })
+
+    mockGetOrCreateGraceSettings.mockResolvedValue({
+      id: 'grace-settings-1',
+      member_id: 'child-1',
+      grace_period_minutes: 15,
+      max_grace_per_day: 2,
+      max_grace_per_week: 5,
+      grace_repayment_mode: 'DEDUCT_NEXT_WEEK',
+      low_balance_warning_minutes: 10,
+      requires_approval: true,
+      created_at: '2026-05-28T00:00:00.000Z',
+      updated_at: '2026-05-28T00:00:00.000Z',
+    })
+    mockCheckGraceEligibility.mockResolvedValue({
+      eligible: true,
+      remainingDaily: 1,
+      remainingWeekly: 4,
+    })
+
+    const result = await requestScreenTimeLifecycleGrace({
+      reason: 'Middle of a game',
+    })
+
+    expect(result.pendingApproval).toBe(true)
+    expect(result.newBalance).toBe(8)
+    expect(result.graceLog).toEqual(
+      expect.objectContaining({
+        id: 'log-1',
+        minutesGranted: 15,
+        approvedById: null,
       })
     )
   })

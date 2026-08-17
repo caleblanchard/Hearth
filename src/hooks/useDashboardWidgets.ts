@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { apiRequest, buildQueryString } from '@/lib/api-client';
 import type {
   DashboardWidgetCollection,
   DashboardWidgetKind,
@@ -32,11 +33,12 @@ export function useDashboardWidgets({
   const [error, setError] = useState<Error | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Stringify widgets array to avoid reference comparison issues
-  const widgetsKey = JSON.stringify(widgets);
+  // Stringify widgets array to get a stable identity that survives
+  // new array references from the caller between renders.
+  const widgetsKey = useMemo(() => JSON.stringify(widgets), [widgets]);
 
   const fetchWidgets = useCallback(async () => {
-    const widgetsArray = JSON.parse(widgetsKey);
+    const widgetsArray = JSON.parse(widgetsKey) as DashboardWidgetKind[];
 
     // Don't fetch if no widgets specified
     if (!widgetsArray || widgetsArray.length === 0) {
@@ -50,21 +52,10 @@ export function useDashboardWidgets({
     setError(null);
 
     try {
-      // Build query string
-      const params = new URLSearchParams();
-      widgetsArray.forEach((widget: string) => params.append('widgets[]', widget));
-      if (memberId) {
-        params.append('memberId', memberId);
-      }
-
-      const response = await fetch(`/api/dashboard/widgets?${params.toString()}`);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch widgets');
-      }
-
-      const widgetData = (await response.json()) as DashboardWidgetCollection;
+      const query = buildQueryString({ 'widgets[]': widgetsArray, memberId });
+      const widgetData = await apiRequest<DashboardWidgetCollection>(
+        `/api/dashboard/widgets${query}`
+      );
       setCollection(widgetData);
       setError(null);
     } catch (err) {
@@ -82,7 +73,7 @@ export function useDashboardWidgets({
 
   // Set up auto-refresh interval
   useEffect(() => {
-    const widgetsArray = JSON.parse(widgetsKey);
+    const widgetsArray = JSON.parse(widgetsKey) as DashboardWidgetKind[];
     if (!widgetsArray || widgetsArray.length === 0 || !refreshInterval) {
       return;
     }

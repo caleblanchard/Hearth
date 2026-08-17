@@ -174,7 +174,7 @@ describe('/api/auth/guest/[code]', () => {
         memberId: null,
         action: 'GUEST_SESSION_STARTED',
         entityType: 'GUEST_SESSION',
-        entityId: 'invite-1',
+        entityId: 'session-1',
         result: 'SUCCESS',
         metadata: {
           guestName: 'Grandma',

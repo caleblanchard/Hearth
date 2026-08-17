@@ -33,7 +33,6 @@ describe('GET /api/approvals/stats', () => {
         choreCompletions: 1,
         rewardRedemptions: 1,
         shoppingRequests: 1,
-        calendarRequests: 0,
       },
       byPriority: {
         high: 1,

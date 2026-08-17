@@ -1,13 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import {
-  insertAuditLog,
   LifecycleError,
   readString,
   readNullableString,
   readBoolean,
   requireParentContext,
   requireViewerContext,
+  writeAuditLog,
 } from '@/lib/data/lifecycle-core'
 import type { Database } from '@/lib/database.types'
 import type {
@@ -177,21 +177,6 @@ async function getOrCreateSickModeSettings(
   return normalizeSickModeSettings(inserted)
 }
 
-async function recordSickModeAudit(input: {
-  familyId: string
-  memberId: string
-  action: Database['public']['Enums']['audit_action']
-  entityType: string
-  entityId: string
-  metadata: Record<string, unknown>
-}) {
-  try {
-    await insertAuditLog(input)
-  } catch (error) {
-    logger.warn('Failed to write sick mode lifecycle audit log', { error })
-  }
-}
-
 export async function listSickModeLifecycleInstances(
   query: ListSickModeLifecycleInstancesQuery = {}
 ): Promise<ListSickModeLifecycleInstancesResult> {
@@ -287,11 +272,11 @@ export async function startSickModeLifecycle(
     throw new LifecycleError(500, 'Failed to start sick mode')
   }
 
-  await recordSickModeAudit({
+  await writeAuditLog({
     familyId: viewer.familyId,
     memberId: viewer.memberId,
     action: 'SICK_MODE_STARTED',
-    entityType: 'SickModeInstance',
+    entityType: 'SICK_MODE_INSTANCE',
     entityId: instance.id,
     metadata: {
       sickMemberId: input.memberId,
@@ -341,11 +326,11 @@ export async function endSickModeLifecycle(
     throw new LifecycleError(500, 'Failed to end sick mode')
   }
 
-  await recordSickModeAudit({
+  await writeAuditLog({
     familyId: viewer.familyId,
     memberId: viewer.memberId,
     action: 'SICK_MODE_ENDED',
-    entityType: 'SickModeInstance',
+    entityType: 'SICK_MODE_INSTANCE',
     entityId: instanceId,
     metadata: {
       sickMemberId: current.member_id,

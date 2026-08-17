@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { updateCommunicationPost, deleteCommunicationPost } from '@/lib/data/communication';
-import { insertAuditLog } from '@/lib/data/lifecycle-core';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
@@ -73,25 +73,21 @@ export async function PATCH(
     const updatedPost = await updateCommunicationPost(id, body);
 
     // Create audit log
-    if (isPinned !== undefined) {
-      await insertAuditLog({
-        familyId,
-        memberId,
-        action: isPinned ? 'POST_PINNED' : 'POST_UNPINNED',
-        entityType: 'COMMUNICATION_POST',
-        entityId: id,
-        metadata: { title: updatedPost.title }
-      });
-    } else {
-      await insertAuditLog({
-        familyId,
-        memberId,
-        action: 'POST_UPDATED',
-        entityType: 'COMMUNICATION_POST',
-        entityId: id,
-        metadata: { changes: Object.keys(body) }
-      });
-    }
+    const isPinChange = isPinned !== undefined;
+    await writeAuditLog({
+      familyId,
+      memberId,
+      action: isPinChange
+        ? isPinned
+          ? 'POST_PINNED'
+          : 'POST_UNPINNED'
+        : 'POST_UPDATED',
+      entityType: 'COMMUNICATION_POST',
+      entityId: id,
+      metadata: isPinChange
+        ? { title: updatedPost.title }
+        : { changes: Object.keys(body) },
+    });
 
     return NextResponse.json({
       success: true,
@@ -153,7 +149,7 @@ export async function DELETE(
     await deleteCommunicationPost(id);
 
     // Create audit log
-    await insertAuditLog({
+    await writeAuditLog({
       familyId,
       memberId,
       action: 'POST_DELETED',

@@ -1,13 +1,13 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import TopBar from '@/components/dashboard/TopBar'
-import { useMemberContext } from '@/hooks/useMemberContext'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 import { useGuestSession } from '@/hooks/useGuestSession'
 import { signOut } from '@/hooks/useSupabaseSession'
 import { usePathname, useRouter } from 'next/navigation'
 
-jest.mock('@/hooks/useMemberContext', () => ({
-  useMemberContext: jest.fn(),
+jest.mock('@/hooks/useCurrentMember', () => ({
+  useCurrentMember: jest.fn(),
 }))
 
 jest.mock('@/hooks/useGuestSession', () => ({
@@ -64,7 +64,7 @@ describe('TopBar', () => {
   })
 
   it('should display page title', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
 
     render(<TopBar />)
 
@@ -72,7 +72,7 @@ describe('TopBar', () => {
   })
 
   it('should display correct page title for different routes', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
     ;(usePathname as jest.Mock).mockReturnValue('/dashboard/chores')
 
     const { rerender } = render(<TopBar />)
@@ -86,7 +86,7 @@ describe('TopBar', () => {
   })
 
   it('should display NotificationBell component', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
 
     render(<TopBar />)
 
@@ -94,7 +94,7 @@ describe('TopBar', () => {
   })
 
   it('should display user info', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
 
     render(<TopBar />)
 
@@ -102,7 +102,7 @@ describe('TopBar', () => {
   })
 
   it('should call signOut when sign out button is clicked', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
 
     render(<TopBar />)
 
@@ -113,7 +113,7 @@ describe('TopBar', () => {
   })
 
   it('should display user avatar initial', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext('Test User'))
 
     render(<TopBar />)
 
@@ -122,7 +122,7 @@ describe('TopBar', () => {
   })
 
   it('should handle missing user name gracefully', () => {
-    ;(useMemberContext as jest.Mock).mockReturnValue(mockMemberContext(null))
+    ;(useCurrentMember as jest.Mock).mockReturnValue(mockMemberContext(null))
 
     render(<TopBar />)
 

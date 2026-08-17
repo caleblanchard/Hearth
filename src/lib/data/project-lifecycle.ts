@@ -1,5 +1,5 @@
 
-import { insertAuditLog, LifecycleError, requireParentContext } from '@/lib/data/lifecycle-core'
+import { writeAuditLog, LifecycleError, requireParentContext } from '@/lib/data/lifecycle-core'
 import {
   createProject,
   createProjectFromTemplate,
@@ -151,7 +151,7 @@ export async function createProjectLifecycleProject(body: Record<string, unknown
     status: status as 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED',
   })
 
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'PROJECT_CREATED',
@@ -220,7 +220,7 @@ export async function updateProjectLifecycleProject(
   }
 
   const project = await updateProject(projectId, updates)
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'PROJECT_UPDATED',
@@ -240,7 +240,7 @@ export async function deleteProjectLifecycleProject(projectId: string) {
   const existing = await readProjectForFamily(projectId, familyId)
   await deleteProject(projectId)
 
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'PROJECT_DELETED',
@@ -307,7 +307,7 @@ export async function createProjectLifecycleProjectFromTemplate(
       description,
     })
 
-    await insertAuditLog({
+    await writeAuditLog({
       familyId,
       memberId,
       action: 'PROJECT_CREATED',

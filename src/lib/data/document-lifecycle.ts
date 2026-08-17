@@ -1,5 +1,5 @@
 import {
-  insertAuditLog,
+  writeAuditLog,
   LifecycleError,
   requireParentContext,
   requireViewerContext,
@@ -110,7 +110,7 @@ export async function createDocumentLifecycleDocument(body: Record<string, unkno
     access_list: resolvedAccessList,
   })
 
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'DOCUMENT_UPLOADED',

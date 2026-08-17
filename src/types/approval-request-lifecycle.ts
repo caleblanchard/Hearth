@@ -37,7 +37,6 @@ export interface ApprovalRequestStats {
     choreCompletions: number
     rewardRedemptions: number
     shoppingRequests: number
-    calendarRequests: number
   }
   byPriority: {
     high: number
@@ -58,7 +57,7 @@ export interface ApprovalRequestDecisionFailure {
 }
 
 export interface ApprovalRequestDecisionResult {
-  success: string[]
+  approved: string[]
   failed: ApprovalRequestDecisionFailure[]
   total: number
 }

@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
 import {
   ParentAuthorizationContext,
@@ -6,6 +8,29 @@ import {
   requireParentAuthorizationContext,
   resolveParentAuthorizationContext,
 } from '@/lib/auth/parent-authorization-context'
+import {
+  readBoolean,
+  readDateString,
+  readNullableNumber,
+  readNullableObject,
+  readNullableString,
+  readNumber,
+  readObject,
+  readString,
+} from '@/lib/readers'
+
+export type DatabaseClient = SupabaseClient<Database>
+
+export {
+  readBoolean,
+  readDateString,
+  readNullableNumber,
+  readNullableObject,
+  readNullableString,
+  readNumber,
+  readObject,
+  readString,
+}
 
 /**
  * LifecycleError is the single error type for every *-lifecycle data module.
@@ -37,6 +62,7 @@ export function isLifecycleError(error: unknown): error is LifecycleError {
 export interface LifecycleViewerContext {
   familyId: string
   memberId: string
+  memberName: string | null
   role: string | null
   isParent: boolean
   isChild: boolean
@@ -47,6 +73,7 @@ function toViewerContext(context: ParentAuthorizationContext): LifecycleViewerCo
   return {
     familyId: context.familyId,
     memberId: context.memberId,
+    memberName: context.activeMembership?.name ?? null,
     role: context.role,
     isParent: context.isParent,
     isChild: context.isChild,
@@ -89,58 +116,37 @@ export async function requireParentContext(
   }
 }
 
-export function readString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback
-}
-
-export function readNullableString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null
-}
-
-export function readBoolean(value: unknown, fallback = false): boolean {
-  return typeof value === 'boolean' ? value : fallback
-}
-
-export function readNumber(value: unknown, fallback = 0): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-export function readNullableNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
-}
-
-export function readObject(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
-}
-
-export function readNullableObject(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null
-}
-
-export function readDateString(value: unknown): string {
-  if (typeof value === 'string') {
-    return new Date(value).toISOString()
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString()
-  }
-
-  return new Date(0).toISOString()
-}
-
 export type AuditAction = Database['public']['Enums']['audit_action']
 export type AuditResult = Database['public']['Enums']['audit_result']
+
+/**
+ * Canonical audit entity vocabulary. Every audit_logs write through
+ * `insertAuditLog` must name its entity with one of these values so the
+ * vocabulary stays consistent across the old and lifecycle layers.
+ */
+export type AuditEntityType =
+  | 'SCREENTIME_ALLOWANCE'
+  | 'SCREEN_TIME'
+  | 'ROUTINE'
+  | 'PROJECT'
+  | 'MEAL_PLAN'
+  | 'DOCUMENT'
+  | 'COMMUNICATION_POST'
+  | 'GUEST_SESSION'
+  | 'GUEST_INVITE'
+  | 'PET'
+  | 'HEALTH_EVENT'
+  | 'SICK_MODE_INSTANCE'
+  | 'SICK_MODE_SETTINGS'
+  | 'AUTOMATION_RULE'
+  | 'REWARD'
+  | 'KIOSK_SETTINGS'
 
 export interface AuditLogInput {
   familyId: string
   memberId: string | null
   action: AuditAction
-  entityType: string
+  entityType: AuditEntityType
   entityId?: string | null
   result?: AuditResult
   metadata?: unknown | null
@@ -156,8 +162,11 @@ export interface AuditLogInput {
  * the single place that touches the `metadata` / `previous_value` / `new_value`
  * Json columns.
  */
-export async function insertAuditLog(input: AuditLogInput): Promise<void> {
-  const supabase = await createClient()
+export async function insertAuditLog(
+  input: AuditLogInput,
+  client?: DatabaseClient
+): Promise<void> {
+  const supabase = client ?? (await createClient())
   const payload: Database['public']['Tables']['audit_logs']['Insert'] = {
     family_id: input.familyId,
     member_id: input.memberId,
@@ -182,4 +191,23 @@ export async function insertAuditLog(input: AuditLogInput): Promise<void> {
 
   const { error } = await supabase.from('audit_logs').insert(payload)
   if (error) throw error
+}
+
+/**
+ * Best-effort audit write.
+ *
+ * Every audit_logs insert happens AFTER the primary mutation it describes, so a
+ * failed audit must never retroactively fail an already-succeeded operation.
+ * All audit call sites (old and lifecycle layers) go through this wrapper so the
+ * swallow-and-log policy is decided once, and the error is always logged.
+ */
+export async function writeAuditLog(
+  input: AuditLogInput,
+  client?: DatabaseClient
+): Promise<void> {
+  try {
+    await insertAuditLog(input, client)
+  } catch (error) {
+    logger.warn('Failed to write audit log', { error })
+  }
 }

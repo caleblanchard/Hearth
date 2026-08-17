@@ -1,28 +1,31 @@
-import type { DocumentLifecycleRecord } from '@/types/document-lifecycle'
-import { apiRequest } from '@/lib/api-client'
+import { createLifecycleClient } from '@/lib/lifecycle-client'
+import type {
+  CreateDocumentLifecycleInput,
+  DocumentLifecycleRecord,
+} from '@/types/document-lifecycle'
 
-export async function fetchDocumentLifecycleDocumentsClient(category?: string) {
-  const suffix = category && category !== 'all' ? `?category=${category}` : ''
-  const data = await apiRequest<{ documents: DocumentLifecycleRecord[] }>(
-    `/api/documents${suffix}`
-  )
-  return data.documents
+const documentsClient = createLifecycleClient<DocumentLifecycleRecord>({
+  basePath: '/api/documents',
+  itemKey: 'document',
+  listKey: 'documents',
+})
+
+export function fetchDocumentLifecycleDocumentsClient(
+  category?: string,
+): Promise<DocumentLifecycleRecord[]> {
+  return documentsClient.list(category && category !== 'all' ? { category } : undefined)
 }
 
-export async function fetchDocumentLifecycleExpiringDocumentsClient(days = 90) {
-  const data = await apiRequest<{ documents: DocumentLifecycleRecord[] }>(
-    `/api/documents/expiring?days=${days}`
-  )
-  return data.documents
+export function fetchDocumentLifecycleExpiringDocumentsClient(
+  days = 90,
+): Promise<DocumentLifecycleRecord[]> {
+  return documentsClient.action<DocumentLifecycleRecord[]>('/expiring', 'GET', undefined, 'documents', {
+    days,
+  })
 }
 
-export async function createDocumentLifecycleDocumentClient(input: Record<string, unknown>) {
-  const data = await apiRequest<{ success: true; document: DocumentLifecycleRecord }>(
-    '/api/documents',
-    {
-      method: 'POST',
-      body: JSON.stringify(input),
-    }
-  )
-  return data.document
+export function createDocumentLifecycleDocumentClient(
+  input: CreateDocumentLifecycleInput,
+): Promise<DocumentLifecycleRecord> {
+  return documentsClient.create(input)
 }

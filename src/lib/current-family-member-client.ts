@@ -1,37 +1,16 @@
-import { addActiveFamilyHeader } from '@/hooks/useFamilyFetch'
+import { apiRequest } from '@/lib/api-client'
+import type {
+  CurrentFamilyMemberApiRecord,
+  CurrentFamilyMemberRecord,
+  CurrentFamilyMemberRoleResponse,
+} from '@/types/current-family-member-lifecycle'
 
-export type CurrentFamilyMemberRole = 'PARENT' | 'CHILD'
-
-export interface CurrentFamilyMemberRecord {
-  id: string
-  name: string
-  email: string | null
-  role: CurrentFamilyMemberRole
-  familyId: string
-  avatarUrl: string | null
-  birthDate: string | null
-  isActive: boolean
-}
-
-export interface CurrentFamilyMemberRoleResponse {
-  role?: CurrentFamilyMemberRole
-  memberId?: string
-  familyId?: string
-  authUserId?: string
-}
-
-export interface CurrentFamilyMemberApiRecord {
-  id: string
-  familyId: string
-  userId?: string | null
-  authUserId?: string | null
-  name: string
-  email?: string | null
-  role: CurrentFamilyMemberRole
-  birthDate?: string | null
-  avatarUrl?: string | null
-  isActive?: boolean
-}
+export type {
+  CurrentFamilyMemberApiRecord,
+  CurrentFamilyMemberRecord,
+  CurrentFamilyMemberRole,
+  CurrentFamilyMemberRoleResponse,
+} from '@/types/current-family-member-lifecycle'
 
 export function getCurrentFamilyKioskChildToken() {
   if (typeof window === 'undefined') {
@@ -41,20 +20,9 @@ export function getCurrentFamilyKioskChildToken() {
   return localStorage.getItem('kioskChildToken')
 }
 
-export function createCurrentFamilyRequestHeaders(userId?: string | null) {
-  const headers = addActiveFamilyHeader({}, userId)
-  const kioskChildToken = getCurrentFamilyKioskChildToken()
-
-  if (kioskChildToken) {
-    headers.set('X-Kiosk-Child', kioskChildToken)
-  }
-
-  return headers
-}
-
 export function mapCurrentFamilyApiMember(
   member: CurrentFamilyMemberApiRecord,
-  resolvedRole?: CurrentFamilyMemberRole
+  resolvedRole?: CurrentFamilyMemberRoleResponse['role']
 ): CurrentFamilyMemberRecord {
   return {
     id: member.id,
@@ -69,33 +37,16 @@ export function mapCurrentFamilyApiMember(
 }
 
 export async function fetchCurrentFamilyRole(
-  userId?: string | null
+  _userId?: string | null
 ): Promise<CurrentFamilyMemberRoleResponse> {
-  const response = await fetch('/api/user/role', {
-    headers: createCurrentFamilyRequestHeaders(userId),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch member role: ${response.status}`)
-  }
-
-  return (await response.json()) as CurrentFamilyMemberRoleResponse
+  return apiRequest<CurrentFamilyMemberRoleResponse>('/api/user/role')
 }
 
 export async function fetchCurrentFamilyApiMembers(
-  userId?: string | null
+  _userId?: string | null
 ): Promise<CurrentFamilyMemberApiRecord[]> {
-  const response = await fetch('/api/family/members', {
-    headers: createCurrentFamilyRequestHeaders(userId),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch family members: ${response.status}`)
-  }
-
-  const data = (await response.json()) as {
-    members?: CurrentFamilyMemberApiRecord[]
-  }
-
+  const data = await apiRequest<{ members?: CurrentFamilyMemberApiRecord[] }>(
+    '/api/family/members'
+  )
   return data.members ?? []
 }

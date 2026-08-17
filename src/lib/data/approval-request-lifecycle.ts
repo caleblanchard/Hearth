@@ -1,15 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
-import { requireParentAuthorizationContext } from '@/lib/auth/parent-authorization-context'
 import {
-  insertAuditLog,
   LifecycleError,
+  LifecycleViewerContext,
   readDateString,
   readNullableString,
   readNumber,
   readObject,
   readString,
+  requireParentContext,
+  writeAuditLog,
 } from '@/lib/data/lifecycle-core'
-import type { AuditAction, AuditResult } from '@/lib/data/lifecycle-core'
 import { approveChore, rejectChore } from '@/lib/data/chores'
 import {
   approveRedemption,
@@ -20,7 +20,6 @@ import {
   approveScreenTimeLifecycleGrace,
   rejectScreenTimeLifecycleGrace,
 } from '@/lib/data/screen-time-lifecycle'
-import { logger } from '@/lib/logger'
 import type {
   ApprovalRequestDecisionInput,
   ApprovalRequestDecisionResult,
@@ -37,12 +36,6 @@ import type {
   PendingRewardRedemptionRecord,
   RewardRedemptionDecisionResult,
 } from '@/types/approval-request-lifecycle'
-
-type LifecycleContext = {
-  familyId: string
-  memberId: string
-  memberName: string | null
-}
 
 type ApprovalIdDescriptor = {
   originalId: string
@@ -64,6 +57,12 @@ const APPROVAL_ID_PREFIXES: Record<ApprovalRequestType, string> = {
   SHOPPING_ITEM: 'shopping',
 }
 
+const PREFIX_TO_TYPE: Record<string, ApprovalRequestType> = Object.fromEntries(
+  (Object.entries(APPROVAL_ID_PREFIXES) as Array<[ApprovalRequestType, string]>).map(
+    ([type, prefix]) => [prefix, type]
+  )
+)
+
 function readFamilyId(record: Record<string, unknown>): string {
   return readString(record.family_id ?? record.familyId)
 }
@@ -73,11 +72,9 @@ function createApprovalRequestId(type: ApprovalRequestType, sourceId: string): s
 }
 
 function parseApprovalRequestId(itemId: string): ApprovalIdDescriptor {
-  const match = (Object.entries(APPROVAL_ID_PREFIXES) as Array<
-    [ApprovalRequestType, string]
-  >).find(([, prefix]) => itemId.startsWith(`${prefix}-`))
+  const separatorIndex = itemId.indexOf('-')
 
-  if (!match) {
+  if (separatorIndex === -1) {
     return {
       originalId: itemId,
       sourceId: itemId,
@@ -85,30 +82,29 @@ function parseApprovalRequestId(itemId: string): ApprovalIdDescriptor {
     }
   }
 
-  const [type, prefix] = match
   return {
     originalId: itemId,
-    sourceId: itemId.slice(prefix.length + 1),
-    type,
+    sourceId: itemId.slice(separatorIndex + 1),
+    type: PREFIX_TO_TYPE[itemId.slice(0, separatorIndex)] ?? null,
   }
 }
 
 async function requireLifecycleContext(
   options: ApprovalRequestLifecycleOptions = {}
-): Promise<LifecycleContext> {
-  const context = await requireParentAuthorizationContext(options)
+): Promise<LifecycleViewerContext> {
+  return requireParentContext(
+    options.forbiddenMessage ?? 'Forbidden - Parent access required'
+  )
+}
 
-  return {
-    familyId: context.familyId,
-    memberId: context.memberId,
-    memberName: context.activeMembership?.name ?? null,
-  }
+function readChoreDefinition(row: RawApprovalRow): RawApprovalRow {
+  const schedule = readObject(row.choreSchedule ?? row.chore_schedule)
+  return readObject(schedule.choreDefinition ?? schedule.chore_definition)
 }
 
 function mapChoreApprovalItem(row: RawApprovalRow): ApprovalRequestItem | null {
   const assignedTo = readObject(row.assignedTo ?? row.assigned_to)
-  const schedule = readObject(row.choreSchedule ?? row.chore_schedule)
-  const definition = readObject(schedule.choreDefinition ?? schedule.chore_definition)
+  const definition = readChoreDefinition(row)
   const sourceId = readString(row.id)
 
   if (!sourceId) return null
@@ -191,7 +187,7 @@ function mapShoppingApprovalItem(row: RawApprovalRow): ApprovalRequestItem | nul
 }
 
 async function fetchPendingChoreRows(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('chore_instances')
     .select(`
       *,
@@ -216,11 +212,11 @@ async function fetchPendingRewardRows(
 async function fetchPendingShoppingRows(
   supabase: Awaited<ReturnType<typeof createClient>>
 ) {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('shopping_items')
     .select(`
       *,
-      requestedBy:family_members(id, name, avatar_url)
+      requestedBy:family_members!shopping_items_requested_by_id_fkey(id, name, avatar_url)
     `)
     .eq('status', 'PENDING')
 
@@ -251,12 +247,7 @@ async function buildApprovalQueue(
 
   const approvals = [
     ...filterByFamily(choreRows, familyId, (row) =>
-      readFamilyId(
-        readObject(
-          readObject(row.choreSchedule ?? row.chore_schedule).choreDefinition ??
-            readObject(row.choreSchedule ?? row.chore_schedule).chore_definition
-        )
-      )
+      readFamilyId(readChoreDefinition(row))
     )
       .map((row) => mapChoreApprovalItem(row))
       .filter((row): row is ApprovalRequestItem => Boolean(row)),
@@ -282,12 +273,12 @@ async function loadRewardRedemptionRow(
   supabase: Awaited<ReturnType<typeof createClient>>,
   redemptionId: string
 ) {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('reward_redemptions')
     .select(`
       *,
-      reward:reward_items!inner(*),
-      member:family_members!member_id(id, name, avatar_url)
+      reward:reward_items!reward_redemptions_reward_id_fkey(*),
+      member:family_members!reward_redemptions_member_id_fkey(id, name, avatar_url)
     `)
     .eq('id', redemptionId)
     .single()
@@ -300,11 +291,11 @@ async function loadPendingGraceRows(
   supabase: Awaited<ReturnType<typeof createClient>>,
   familyId: string
 ) {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('grace_period_logs')
     .select(`
       *,
-      member:family_members(id, name, family_id)
+      member:family_members!grace_period_logs_member_id_fkey(id, name, family_id)
     `)
     .is('approved_by_id', null)
     .eq('repayment_status', 'PENDING')
@@ -320,7 +311,7 @@ async function loadPendingGraceRows(
   return Promise.all(
     filtered.map(async (row) => {
       const memberId = readString(row.member_id ?? row.memberId)
-      const { data: balance } = await (supabase as any)
+      const { data: balance } = await supabase
         .from('screen_time_balances')
         .select('*')
         .eq('member_id', memberId)
@@ -341,22 +332,6 @@ async function loadPendingGraceRows(
       } satisfies PendingGraceApprovalRecord
     })
   )
-}
-
-async function writeAuditLog(entry: {
-  familyId: string
-  memberId: string
-  action: AuditAction
-  entityType: string
-  entityId: string
-  result?: AuditResult
-  metadata?: Record<string, unknown>
-}) {
-  try {
-    await insertAuditLog(entry)
-  } catch (error) {
-    logger.warn('Failed to write approval lifecycle audit log')
-  }
 }
 
 function assertFamilyOwnership(
@@ -426,7 +401,6 @@ export async function getApprovalRequestStats(): Promise<ApprovalRequestStats> {
       shoppingRequests: approvals.filter(
         (approval) => approval.type === 'SHOPPING_ITEM'
       ).length,
-      calendarRequests: 0,
     },
     byPriority,
     oldestPending: approvals[0]
@@ -436,7 +410,7 @@ export async function getApprovalRequestStats(): Promise<ApprovalRequestStats> {
 }
 
 async function approveQueueChoreRequest(
-  context: LifecycleContext,
+  context: LifecycleViewerContext,
   itemId: string,
   sourceId: string
 ) {
@@ -453,7 +427,7 @@ async function approveQueueChoreRequest(
 }
 
 async function denyQueueChoreRequest(
-  context: LifecycleContext,
+  context: LifecycleViewerContext,
   itemId: string,
   sourceId: string
 ) {
@@ -462,7 +436,7 @@ async function denyQueueChoreRequest(
 }
 
 async function approveQueueRewardRequest(
-  context: LifecycleContext,
+  context: LifecycleViewerContext,
   itemId: string,
   sourceId: string
 ) {
@@ -473,7 +447,7 @@ async function approveQueueRewardRequest(
 }
 
 async function denyQueueRewardRequest(
-  context: LifecycleContext,
+  context: LifecycleViewerContext,
   itemId: string,
   sourceId: string
 ) {
@@ -481,6 +455,28 @@ async function denyQueueRewardRequest(
     forbiddenMessage: 'Only parents can deny items',
   })
   return itemId
+}
+
+type QueueDecisionHandler = (
+  context: LifecycleViewerContext,
+  itemId: string,
+  sourceId: string
+) => Promise<string>
+
+function resolveDecisionHandler(
+  type: ApprovalRequestType,
+  decision: ApprovalRequestDecisionInput['decision']
+): QueueDecisionHandler {
+  if (type === 'SHOPPING_ITEM') {
+    return () =>
+      Promise.reject(new LifecycleError(400, 'Shopping requests are read-only'))
+  }
+
+  const isApprove = decision === 'APPROVE'
+  if (type === 'CHORE_COMPLETION') {
+    return isApprove ? approveQueueChoreRequest : denyQueueChoreRequest
+  }
+  return isApprove ? approveQueueRewardRequest : denyQueueRewardRequest
 }
 
 export async function processApprovalRequests(
@@ -493,67 +489,19 @@ export async function processApprovalRequests(
         : 'Only parents can deny items',
   })
 
-  const success: string[] = []
+  const approved: string[] = []
   const failed: ApprovalRequestDecisionResult['failed'] = []
 
   for (const itemId of input.itemIds) {
     const descriptor = parseApprovalRequestId(itemId)
 
     try {
-      if (descriptor.type === 'SHOPPING_ITEM') {
-        throw new LifecycleError(
-          400,
-          'Shopping requests are read-only'
-        )
+      if (descriptor.type === null) {
+        throw new LifecycleError(400, `Unknown approval item: ${itemId}`)
       }
 
-      if (descriptor.type === 'CHORE_COMPLETION') {
-        success.push(
-          input.decision === 'APPROVE'
-            ? await approveQueueChoreRequest(
-                context,
-                descriptor.originalId,
-                descriptor.sourceId
-              )
-            : await denyQueueChoreRequest(
-                context,
-                descriptor.originalId,
-                descriptor.sourceId
-              )
-        )
-        continue
-      }
-
-      if (descriptor.type === 'REWARD_REDEMPTION') {
-        success.push(
-          input.decision === 'APPROVE'
-            ? await approveQueueRewardRequest(
-                context,
-                descriptor.originalId,
-                descriptor.sourceId
-              )
-            : await denyQueueRewardRequest(
-                context,
-                descriptor.originalId,
-                descriptor.sourceId
-              )
-        )
-        continue
-      }
-
-      try {
-        success.push(
-          input.decision === 'APPROVE'
-            ? await approveQueueChoreRequest(context, itemId, itemId)
-            : await denyQueueChoreRequest(context, itemId, itemId)
-        )
-      } catch {
-        success.push(
-          input.decision === 'APPROVE'
-            ? await approveQueueRewardRequest(context, itemId, itemId)
-            : await denyQueueRewardRequest(context, itemId, itemId)
-        )
-      }
+      const handle = resolveDecisionHandler(descriptor.type, input.decision)
+      approved.push(await handle(context, descriptor.originalId, descriptor.sourceId))
     } catch (error) {
       failed.push({
         itemId,
@@ -564,7 +512,7 @@ export async function processApprovalRequests(
   }
 
   return {
-    success,
+    approved,
     failed,
     total: input.itemIds.length,
   }
@@ -629,7 +577,7 @@ export async function approveRewardRedemptionRequest(
 
   const approved = await approveRedemption(redemptionId, context.memberId)
 
-  await (supabase as any).from('notifications').insert({
+  await supabase.from('notifications').insert({
     user_id: readString(redemptionRecord.memberId ?? redemptionRecord.member_id),
     type: 'REWARD_APPROVED',
     title: 'Reward approved!',
@@ -694,7 +642,7 @@ export async function rejectRewardRedemptionRequest(
     rejectionReason
   )
 
-  await (supabase as any).from('notifications').insert({
+  await supabase.from('notifications').insert({
     user_id: readString(redemptionRecord.memberId ?? redemptionRecord.member_id),
     type: 'REWARD_REJECTED',
     title: 'Reward declined',
@@ -780,12 +728,7 @@ export async function listPendingChoreCompletionRequests(
   const rows = await fetchPendingChoreRows(supabase)
 
   return filterByFamily(rows, context.familyId, (row) =>
-    readFamilyId(
-      readObject(
-        readObject(row.choreSchedule ?? row.chore_schedule).choreDefinition ??
-          readObject(row.choreSchedule ?? row.chore_schedule).chore_definition
-      )
-    )
+    readFamilyId(readChoreDefinition(row))
   )
 }
 

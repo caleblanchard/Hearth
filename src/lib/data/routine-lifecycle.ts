@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import {
-  insertAuditLog,
+  writeAuditLog,
   LifecycleError,
   requireParentContext,
   requireViewerContext,
@@ -13,6 +13,12 @@ import {
   updateRoutine,
   wasRoutineCompletedToday,
 } from '@/lib/data/routines'
+import type { Database } from '@/lib/database.types'
+import type { RoutineLifecycleStepRecord } from '@/types/routine-lifecycle'
+
+type RoutineRow = Database['public']['Tables']['routines']['Row']
+type RoutineRowWithSteps = RoutineRow & { steps: RoutineLifecycleStepRecord[] }
+type RoutineUpdateRow = Database['public']['Tables']['routines']['Update']
 
 async function readRoutineForFamily(routineId: string, familyId: string) {
   const routine = await getRoutine(routineId)
@@ -44,7 +50,7 @@ export async function getRoutineLifecycleRoutines(query: {
     .eq('family_id', familyId)
     .order('name')
 
-  if (type) routinesQuery = routinesQuery.eq('type', type as any)
+  if (type) routinesQuery = routinesQuery.eq('type', type as Database['public']['Enums']['routine_type'])
   if (assignedTo) routinesQuery = routinesQuery.eq('assigned_to', assignedTo)
   if (role === 'CHILD') {
     routinesQuery = routinesQuery.or(`assigned_to.eq.${memberId},assigned_to.is.null`)
@@ -132,7 +138,7 @@ export async function createRoutineLifecycleRoutine(body: Record<string, unknown
     }))
 
     const { data: insertedSteps } = await supabase.from('routine_steps').insert(itemsPayload).select()
-    ;(routine as any).steps = (insertedSteps && insertedSteps.length > 0 ? insertedSteps : itemsPayload).map((step: any) => ({
+    ;(routine as RoutineRowWithSteps).steps = (insertedSteps && insertedSteps.length > 0 ? insertedSteps : itemsPayload).map((step: any) => ({
       id: step.id,
       name: step.name,
       icon: step.icon,
@@ -141,7 +147,7 @@ export async function createRoutineLifecycleRoutine(body: Record<string, unknown
     }))
   }
 
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'ROUTINE_CREATED',
@@ -186,14 +192,14 @@ export async function updateRoutineLifecycleRoutine(routineId: string, body: Rec
       await supabase.from('routine_steps').insert(itemsPayload)
     }
 
-    ;(routine as any).steps = itemsPayload.map((step: any) => ({
+    ;(routine as RoutineRowWithSteps).steps = itemsPayload.map((step: any) => ({
       ...step,
       sortOrder: step.sort_order,
       estimatedMinutes: step.estimated_minutes,
     }))
   }
 
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'ROUTINE_UPDATED',
@@ -215,16 +221,16 @@ export async function deleteRoutineLifecycleRoutine(routineId: string) {
     throw new LifecycleError(403, 'Forbidden')
   }
 
-  await updateRoutine(routineId, { isActive: false } as any)
-  await insertAuditLog({
+  await updateRoutine(routineId, { isActive: false } as RoutineUpdateRow)
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'ROUTINE_DELETED',
     entityType: 'ROUTINE',
     entityId: routineId,
     metadata: {
-      name: (existing as any).name,
-      type: (existing as any).type,
+      name: existing.name,
+      type: existing.type,
     },
   })
 }
@@ -284,7 +290,7 @@ export async function completeRoutineLifecycleRoutine(
     }
     throw error
   }
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'ROUTINE_COMPLETED',

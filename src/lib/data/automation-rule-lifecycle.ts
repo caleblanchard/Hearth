@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import {
-  insertAuditLog,
   LifecycleError,
   readString,
   readNullableString,
@@ -8,6 +7,7 @@ import {
   readObject,
   readNullableObject,
   requireParentContext,
+  writeAuditLog,
 } from '@/lib/data/lifecycle-core'
 import { dryRunRule } from '@/lib/rules-engine'
 import { validateRuleConfiguration } from '@/lib/rules-engine/validation'
@@ -32,8 +32,6 @@ import type {
 type AutomationRuleInsert = Database['public']['Tables']['automation_rules']['Insert']
 type AutomationRuleUpdate = Database['public']['Tables']['automation_rules']['Update']
 type AutomationRuleRow = Database['public']['Tables']['automation_rules']['Row']
-type AuditAction = Database['public']['Enums']['audit_action']
-type AuditResult = Database['public']['Enums']['audit_result']
 
 type LifecycleContext = {
   familyId: string
@@ -225,24 +223,6 @@ function validateRuleInput(
       error instanceof Error ? error.message : 'Invalid rule configuration'
     )
   }
-}
-
-async function writeAuditLog(
-  context: LifecycleContext,
-  action: AuditAction,
-  entityId: string,
-  metadata: Record<string, unknown>,
-  result: AuditResult = 'SUCCESS'
-) {
-  await insertAuditLog({
-    familyId: context.familyId,
-    memberId: context.memberId,
-    action,
-    entityType: 'AutomationRule',
-    entityId,
-    metadata,
-    result,
-  })
 }
 
 function normalizeCreateInput(
@@ -460,9 +440,16 @@ export async function createAutomationLifecycleRule(
 
   const rule = normalizeRule(data as RuleRowLike)
 
-  await writeAuditLog(context, 'RULE_CREATED', rule.id, {
-    name: rule.name,
-    triggerType: rule.trigger.type,
+  await writeAuditLog({
+    familyId: context.familyId,
+    memberId: context.memberId,
+    action: 'RULE_CREATED',
+    entityType: 'AUTOMATION_RULE',
+    entityId: rule.id,
+    metadata: {
+      name: rule.name,
+      triggerType: rule.trigger.type,
+    },
   })
 
   return rule
@@ -493,9 +480,16 @@ export async function updateAutomationLifecycleRule(
 
   const rule = normalizeRule(data as RuleRowLike)
 
-  await writeAuditLog(context, 'RULE_UPDATED', rule.id, {
-    name: rule.name,
-    triggerType: rule.trigger.type,
+  await writeAuditLog({
+    familyId: context.familyId,
+    memberId: context.memberId,
+    action: 'RULE_UPDATED',
+    entityType: 'AUTOMATION_RULE',
+    entityId: rule.id,
+    metadata: {
+      name: rule.name,
+      triggerType: rule.trigger.type,
+    },
   })
 
   return rule
@@ -512,9 +506,16 @@ export async function deleteAutomationLifecycleRule(ruleId: string): Promise<voi
   }
 
   const normalized = normalizeRule(existing)
-  await writeAuditLog(context, 'RULE_DELETED', normalized.id, {
-    ruleName: normalized.name,
-    triggerType: normalized.trigger.type,
+  await writeAuditLog({
+    familyId: context.familyId,
+    memberId: context.memberId,
+    action: 'RULE_DELETED',
+    entityType: 'AUTOMATION_RULE',
+    entityId: normalized.id,
+    metadata: {
+      ruleName: normalized.name,
+      triggerType: normalized.trigger.type,
+    },
   })
 }
 
@@ -542,14 +543,16 @@ export async function toggleAutomationLifecycleRule(
 
   const rule = normalizeRule(data as RuleRowLike)
 
-  await writeAuditLog(
-    context,
-    rule.isEnabled ? 'RULE_ENABLED' : 'RULE_DISABLED',
-    rule.id,
-    {
+  await writeAuditLog({
+    familyId: context.familyId,
+    memberId: context.memberId,
+    action: rule.isEnabled ? 'RULE_ENABLED' : 'RULE_DISABLED',
+    entityType: 'AUTOMATION_RULE',
+    entityId: rule.id,
+    metadata: {
       previousState: !rule.isEnabled,
-    }
-  )
+    },
+  })
 
   return rule
 }
@@ -570,10 +573,17 @@ export async function testAutomationLifecycleRule(
     familyId: context.familyId,
   })
 
-  await writeAuditLog(context, 'RULE_TEST_RUN', ruleId, {
-    context: {
-      ...contextInput,
-      familyId: context.familyId,
+  await writeAuditLog({
+    familyId: context.familyId,
+    memberId: context.memberId,
+    action: 'RULE_TEST_RUN',
+    entityType: 'AUTOMATION_RULE',
+    entityId: ruleId,
+    metadata: {
+      context: {
+        ...contextInput,
+        familyId: context.familyId,
+      },
     },
   })
 

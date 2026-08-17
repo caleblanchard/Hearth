@@ -6,7 +6,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { shouldMuteNonEssentialNotifications } from '@/lib/sick-mode';
+import { shouldMuteNonEssentialNotifications } from '@/lib/data/sick-mode';
 import { logger } from '@/lib/logger';
 
 export type NotificationType =

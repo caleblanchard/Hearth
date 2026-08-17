@@ -1,141 +1,123 @@
+import { createLifecycleClient } from '@/lib/lifecycle-client'
 import type {
   AdjustScreenTimeLifecycleBalanceInput,
-  RequestScreenTimeLifecycleGraceInput,
+  CreateScreenTimeLifecycleTypeInput,
   SaveScreenTimeLifecycleAllowanceInput,
   ScreenTimeLifecycleAdjustmentResult,
   ScreenTimeLifecycleAllowanceListQuery,
   ScreenTimeLifecycleAllowanceListResult,
+  ScreenTimeLifecycleAllowanceRecord,
   ScreenTimeLifecycleGraceRequestResult,
   ScreenTimeLifecycleGraceSettings,
   ScreenTimeLifecycleGraceStatus,
   ScreenTimeLifecycleMemberAllowanceResult,
   ScreenTimeLifecycleTypeRecord,
+  RequestScreenTimeLifecycleGraceInput,
   UpdateScreenTimeLifecycleGraceSettingsInput,
   UpdateScreenTimeLifecycleTypeInput,
 } from '@/types/screen-time-lifecycle'
-import { apiRequest, buildQueryString } from '@/lib/api-client'
 
-export async function fetchScreenTimeLifecycleTypesClient() {
-  const data = await apiRequest<{ types: ScreenTimeLifecycleTypeRecord[] }>('/api/screentime/types')
-  return data.types
+const typesClient = createLifecycleClient<ScreenTimeLifecycleTypeRecord>({
+  basePath: '/api/screentime/types',
+  itemKey: 'type',
+  listKey: 'types',
+})
+
+const allowancesClient = createLifecycleClient({ basePath: '/api/screentime/allowances' })
+
+const screenTimeClient = createLifecycleClient({ basePath: '/api/screentime' })
+
+const graceSettingsClient = createLifecycleClient<ScreenTimeLifecycleGraceSettings>({
+  basePath: '/api/screentime/grace/settings',
+  itemKey: 'settings',
+})
+
+const graceStatusClient = createLifecycleClient<ScreenTimeLifecycleGraceStatus>({
+  basePath: '/api/screentime/grace/status',
+  itemKey: 'status',
+})
+
+const graceRequestClient = createLifecycleClient({ basePath: '/api/screentime/grace/request' })
+
+export function fetchScreenTimeLifecycleTypesClient(): Promise<ScreenTimeLifecycleTypeRecord[]> {
+  return typesClient.list()
 }
 
-export async function createScreenTimeLifecycleTypeClient(input: {
-  name: string
-  description?: string | null
-}) {
-  const data = await apiRequest<{
-    success: true
-    type: ScreenTimeLifecycleTypeRecord
-  }>('/api/screentime/types', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-  return data.type
+export function createScreenTimeLifecycleTypeClient(
+  input: CreateScreenTimeLifecycleTypeInput,
+): Promise<ScreenTimeLifecycleTypeRecord> {
+  return typesClient.create(input)
 }
 
-export async function updateScreenTimeLifecycleTypeClient(
+export function updateScreenTimeLifecycleTypeClient(
   typeId: string,
-  input: UpdateScreenTimeLifecycleTypeInput
-) {
-  const data = await apiRequest<{
-    success: true
-    type: ScreenTimeLifecycleTypeRecord
-  }>(`/api/screentime/types/${typeId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(input),
-  })
-  return data.type
+  input: UpdateScreenTimeLifecycleTypeInput,
+): Promise<ScreenTimeLifecycleTypeRecord> {
+  return typesClient.update(typeId, input)
 }
 
-export async function archiveScreenTimeLifecycleTypeClient(typeId: string) {
-  await apiRequest<{ success: true }>(`/api/screentime/types/${typeId}`, {
-    method: 'DELETE',
-  })
+export function archiveScreenTimeLifecycleTypeClient(typeId: string): Promise<void> {
+  return typesClient.remove(typeId)
 }
 
-export async function fetchScreenTimeLifecycleAllowancesClient(
-  query: ScreenTimeLifecycleAllowanceListQuery = {}
-) {
-  const suffix = buildQueryString({
-    memberId: query.memberId ?? null,
-    screenTimeTypeId: query.screenTimeTypeId ?? null,
-  })
-  return apiRequest<ScreenTimeLifecycleAllowanceListResult>(
-    `/api/screentime/allowances${suffix}`
+export function fetchScreenTimeLifecycleAllowancesClient(
+  query: ScreenTimeLifecycleAllowanceListQuery = {},
+): Promise<ScreenTimeLifecycleAllowanceListResult> {
+  return allowancesClient.action<ScreenTimeLifecycleAllowanceListResult>(
+    '',
+    'GET',
+    undefined,
+    undefined,
+    { memberId: query.memberId ?? null, screenTimeTypeId: query.screenTimeTypeId ?? null },
   )
 }
 
-export async function fetchScreenTimeLifecycleAllowancesForMemberClient(
-  memberId: string
-) {
-  return apiRequest<ScreenTimeLifecycleMemberAllowanceResult>(
-    `/api/screentime/allowances/${memberId}`
+export function fetchScreenTimeLifecycleAllowancesForMemberClient(
+  memberId: string,
+): Promise<ScreenTimeLifecycleMemberAllowanceResult> {
+  return allowancesClient.action<ScreenTimeLifecycleMemberAllowanceResult>(`/${memberId}`, 'GET')
+}
+
+export function saveScreenTimeLifecycleAllowanceClient(
+  input: SaveScreenTimeLifecycleAllowanceInput,
+): Promise<ScreenTimeLifecycleAllowanceRecord> {
+  return allowancesClient.action<ScreenTimeLifecycleAllowanceRecord>('', 'POST', input, 'allowance')
+}
+
+export function adjustScreenTimeLifecycleBalanceClient(
+  input: AdjustScreenTimeLifecycleBalanceInput,
+): Promise<{ success: true; message: string } & ScreenTimeLifecycleAdjustmentResult> {
+  return screenTimeClient.action<{ success: true; message: string } & ScreenTimeLifecycleAdjustmentResult>(
+    '/adjust',
+    'POST',
+    input,
   )
 }
 
-export async function saveScreenTimeLifecycleAllowanceClient(
-  input: SaveScreenTimeLifecycleAllowanceInput
-) {
-  const data = await apiRequest<{
-    success: true
-    allowance: ScreenTimeLifecycleAllowanceListResult['allowances'][number]
-  }>('/api/screentime/allowances', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-  return data.allowance
+export function fetchScreenTimeLifecycleGraceSettingsClient(
+  memberId?: string,
+): Promise<ScreenTimeLifecycleGraceSettings> {
+  return graceSettingsClient.action('', 'GET', undefined, 'settings', { memberId })
 }
 
-export async function adjustScreenTimeLifecycleBalanceClient(
-  input: AdjustScreenTimeLifecycleBalanceInput
-) {
-  return apiRequest<{ success: true; message: string } & ScreenTimeLifecycleAdjustmentResult>(
-    '/api/screentime/adjust',
-    {
-      method: 'POST',
-      body: JSON.stringify(input),
-    }
-  )
+export function updateScreenTimeLifecycleGraceSettingsClient(
+  input: UpdateScreenTimeLifecycleGraceSettingsInput,
+): Promise<ScreenTimeLifecycleGraceSettings> {
+  return graceSettingsClient.action('', 'PUT', input, 'settings')
 }
 
-export async function fetchScreenTimeLifecycleGraceSettingsClient(memberId?: string) {
-  const suffix = buildQueryString({ memberId })
-  const data = await apiRequest<{ settings: ScreenTimeLifecycleGraceSettings }>(
-    `/api/screentime/grace/settings${suffix}`
-  )
-  return data.settings
+export function fetchScreenTimeLifecycleGraceStatusClient(
+  memberId?: string,
+): Promise<ScreenTimeLifecycleGraceStatus> {
+  return graceStatusClient.action('', 'GET', undefined, 'status', { memberId })
 }
 
-export async function updateScreenTimeLifecycleGraceSettingsClient(
-  input: UpdateScreenTimeLifecycleGraceSettingsInput
-) {
-  const data = await apiRequest<{
-    success: true
-    settings: ScreenTimeLifecycleGraceSettings
-  }>('/api/screentime/grace/settings', {
-    method: 'PUT',
-    body: JSON.stringify(input),
-  })
-  return data.settings
-}
-
-export async function fetchScreenTimeLifecycleGraceStatusClient(memberId?: string) {
-  const suffix = buildQueryString({ memberId })
-  const data = await apiRequest<{ status: ScreenTimeLifecycleGraceStatus }>(
-    `/api/screentime/grace/status${suffix}`
-  )
-  return data.status
-}
-
-export async function requestScreenTimeLifecycleGraceClient(
-  input: RequestScreenTimeLifecycleGraceInput
-) {
-  return apiRequest<{ success: true; message: string } & ScreenTimeLifecycleGraceRequestResult>(
-    '/api/screentime/grace/request',
-    {
-      method: 'POST',
-      body: JSON.stringify(input),
-    }
+export function requestScreenTimeLifecycleGraceClient(
+  input: RequestScreenTimeLifecycleGraceInput,
+): Promise<{ success: true; message: string } & ScreenTimeLifecycleGraceRequestResult> {
+  return graceRequestClient.action<{ success: true; message: string } & ScreenTimeLifecycleGraceRequestResult>(
+    '',
+    'POST',
+    input,
   )
 }

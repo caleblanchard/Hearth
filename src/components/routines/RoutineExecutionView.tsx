@@ -4,26 +4,10 @@ import { useState } from 'react';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { CheckCircleIcon as CheckCircleOutlineIcon } from '@heroicons/react/24/outline';
 import { completeRoutineLifecycleRoutineClient } from '@/lib/routine-lifecycle-client';
-
-interface RoutineStep {
-  id: string;
-  name: string;
-  icon?: string | null;
-  estimatedMinutes?: number | null;
-  sortOrder: number;
-}
-
-interface Routine {
-  id: string;
-  name: string;
-  type: string;
-  steps: RoutineStep[];
-  completedToday?: boolean;
-  completedAt?: string;
-}
+import type { RoutineLifecycleRecord } from '@/types/routine-lifecycle';
 
 interface RoutineExecutionViewProps {
-  routine: Routine;
+  routine: RoutineLifecycleRecord;
   onComplete: () => void;
 }
 

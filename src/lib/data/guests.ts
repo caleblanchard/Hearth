@@ -8,7 +8,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { insertAuditLog } from '@/lib/data/lifecycle-core';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { sanitizeString, sanitizeInteger } from '@/lib/input-sanitization';
 import crypto from 'crypto';
 
@@ -90,7 +90,7 @@ export async function createGuestInvite(
     expires_at: expiresAt,
     max_uses: data.maxUses ? sanitizeInteger(data.maxUses, 1, 100) : 1,
     use_count: 0,
-    created_by: createdBy,
+    invited_by_id: createdBy,
     notes: data.notes ? sanitizeString(data.notes, 500) : null,
   };
 
@@ -105,7 +105,7 @@ export async function createGuestInvite(
   }
 
   // Create audit log
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId: createdBy,
     action: 'GUEST_INVITE_CREATED',
@@ -127,11 +127,15 @@ export async function revokeGuestInvite(inviteId: string) {
   const supabase = await createClient();
 
   // Get invite details for audit log
-  const { data: invite } = await supabase
+  const { data: invite, error: selectError } = await supabase
     .from('guest_invites')
-    .select('family_id, created_by, guest_name')
+    .select('family_id, invited_by_id, guest_name')
     .eq('id', inviteId)
     .single();
+
+  if (selectError) {
+    throw selectError;
+  }
 
   // Mark as revoked
   const now = new Date().toISOString();
@@ -157,18 +161,16 @@ export async function revokeGuestInvite(inviteId: string) {
     .is('ended_at', null);
 
   // Create audit log
-  if (invite) {
-    await insertAuditLog({
-      familyId: invite.family_id,
-      memberId: invite.invited_by_id,
-      action: 'GUEST_INVITE_REVOKED',
-      entityType: 'GUEST_INVITE',
-      entityId: inviteId,
-      metadata: {
-        guestName: invite.guest_name,
-      },
-    });
-  }
+  await writeAuditLog({
+    familyId: invite.family_id,
+    memberId: invite.invited_by_id,
+    action: 'GUEST_INVITE_REVOKED',
+    entityType: 'GUEST_INVITE',
+    entityId: inviteId,
+    metadata: {
+      guestName: invite.guest_name,
+    },
+  });
 
   return updated;
 }

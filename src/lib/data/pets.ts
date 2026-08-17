@@ -1,6 +1,6 @@
 // @ts-nocheck - Supabase generated types cause unavoidable type errors
 import { createClient } from '@/lib/supabase/server'
-import { insertAuditLog } from '@/lib/data/lifecycle-core'
+import { writeAuditLog } from '@/lib/data/lifecycle-core'
 // Note: Some complex Supabase generated type errors are suppressed below
 // These do not affect runtime correctness - all code is tested
 import type { Database } from '@/lib/database.types'
@@ -406,7 +406,7 @@ export async function addPetWeight(
   if (error) throw error
 
   // Create audit log
-  await insertAuditLog({
+  await writeAuditLog({
     familyId: pet.family_id,
     memberId: recordedBy,
     action: 'PET_WEIGHT_LOGGED',

@@ -1,31 +1,37 @@
-import { apiRequest } from '@/lib/api-client'
+import { createLifecycleClient } from '@/lib/lifecycle-client'
+import type {
+  RoutineLifecycleCompletion,
+  RoutineLifecycleRecord,
+  RoutineLifecycleSaveInput,
+} from '@/types/routine-lifecycle'
 
-export async function fetchRoutineLifecycleRoutinesClient() {
-  const data = await apiRequest<{ routines: any[] }>('/api/routines')
-  return data.routines
+const routineClient = createLifecycleClient<RoutineLifecycleRecord>({
+  basePath: '/api/routines',
+  itemKey: 'routine',
+  listKey: 'routines',
+})
+
+export function fetchRoutineLifecycleRoutinesClient(): Promise<RoutineLifecycleRecord[]> {
+  return routineClient.list()
 }
 
-export async function saveRoutineLifecycleRoutineClient(
-  input: Record<string, unknown>,
-  routineId?: string
-) {
-  const data = await apiRequest<{ routine: any }>(
-    routineId ? `/api/routines/${routineId}` : '/api/routines',
-    {
-      method: routineId ? 'PATCH' : 'POST',
-      body: JSON.stringify(input),
-    }
-  )
-  return data.routine
+export function saveRoutineLifecycleRoutineClient(
+  input: RoutineLifecycleSaveInput,
+  routineId?: string,
+): Promise<RoutineLifecycleRecord> {
+  return routineId ? routineClient.update(routineId, input) : routineClient.create(input)
 }
 
-export async function deleteRoutineLifecycleRoutineClient(routineId: string) {
-  await apiRequest<{ success: true }>(`/api/routines/${routineId}`, { method: 'DELETE' })
+export function deleteRoutineLifecycleRoutineClient(routineId: string): Promise<void> {
+  return routineClient.remove(routineId)
 }
 
-export async function completeRoutineLifecycleRoutineClient(routineId: string) {
-  return apiRequest<{ success: true; message: string; completion: any }>(
-    `/api/routines/${routineId}/complete`,
-    { method: 'POST' }
-  )
+export function completeRoutineLifecycleRoutineClient(
+  routineId: string,
+): Promise<{ success: true; message: string; completion: RoutineLifecycleCompletion }> {
+  return routineClient.action<{
+    success: true
+    message: string
+    completion: RoutineLifecycleCompletion
+  }>(`/${routineId}/complete`, 'POST')
 }

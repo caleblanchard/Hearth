@@ -129,7 +129,7 @@ describe('/api/family/guests/invite', () => {
     expect(dbMock.guestInvite.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         familyId: 'family-test-123',
-        createdBy: 'parent-test-123',
+        invitedById: 'parent-test-123',
         guestName: 'Grandma',
         accessLevel: 'VIEW_ONLY',
         inviteCode: expect.any(String),

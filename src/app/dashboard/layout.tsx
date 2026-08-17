@@ -2,7 +2,6 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import GuestStatusBanner from '@/components/dashboard/GuestStatusBanner';
 import { ActiveFamilyProvider } from '@/contexts/ActiveFamilyContext';
-import FetchInterceptor from '@/components/FetchInterceptor';
 import { cookies } from 'next/headers';
 
 export default function DashboardLayout({
@@ -13,7 +12,6 @@ export default function DashboardLayout({
   cookies(); // opt into dynamic rendering so kiosk headers/cookies are honored
   return (
     <ActiveFamilyProvider>
-      <FetchInterceptor />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
         {/* Sidebar */}
         <Sidebar />

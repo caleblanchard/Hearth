@@ -11,7 +11,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { insertAuditLog } from '@/lib/data/lifecycle-core';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { evaluateTrigger } from './triggers';
 import { executeAction } from './actions';
 import {
@@ -126,7 +126,7 @@ export async function evaluateRules(
   const results: RuleExecutionResult[] = [];
 
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Find all enabled rules for this family and trigger type
     const { data: rules } = await supabase
@@ -206,8 +206,6 @@ export async function evaluateRules(
 
       const success = actionsFailed === 0;
 
-      const supabase = createClient();
-
       // Log execution to database
       await supabase
         .from('rule_execution_logs')
@@ -232,11 +230,11 @@ export async function evaluateRules(
         });
 
       // Create audit log
-      await insertAuditLog({
+      await writeAuditLog({
         familyId: context.familyId,
         memberId: context.memberId || null,
         action: 'RULE_EXECUTED',
-        entityType: 'AutomationRule',
+        entityType: 'AUTOMATION_RULE',
         entityId: rule.id,
         result: success ? 'SUCCESS' : 'FAILURE',
         metadata: {
@@ -280,7 +278,7 @@ export async function dryRunRule(
   simulatedContext: RuleContext
 ): Promise<DryRunResult> {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     const { data: rule } = await supabase
       .from('automation_rules')
@@ -402,7 +400,7 @@ export async function getRuleExecutionHistory(
   limit: number = 50,
   offset: number = 0
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const { data } = await supabase
     .from('rule_execution_logs')
@@ -418,7 +416,7 @@ export async function getRuleExecutionHistory(
  * Get execution statistics for a rule
  */
 export async function getRuleExecutionStats(ruleId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const [
     { count: totalExecutions },
@@ -465,7 +463,7 @@ export async function getRuleExecutionStats(ruleId: string) {
  * Auto-disable rule after consecutive failures
  */
 export async function checkAndDisableFailingRule(ruleId: string): Promise<boolean> {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   // Get last 3 executions
   const { data: recentExecutions } = await supabase

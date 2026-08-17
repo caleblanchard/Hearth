@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemberContext } from '@/hooks/useMemberContext';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { signOut } from '@/hooks/useSupabaseSession';
 import { useRouter, usePathname } from 'next/navigation';
 import { FamilySwitcher } from '@/components/FamilySwitcher';
@@ -19,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function DashboardNav() {
-  const { user, member } = useMemberContext();
+  const { user, member } = useCurrentMember();
   const router = useRouter();
   const pathname = usePathname();
 

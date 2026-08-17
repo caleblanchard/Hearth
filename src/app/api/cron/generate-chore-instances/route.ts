@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getNextDueDates, getNextAssignee, startOfDay, endOfDay } from '@/lib/chore-scheduler';
 import { logger } from '@/lib/logger';
-import { isMemberInSickMode } from '@/lib/sick-mode';
+import { isMemberInSickMode } from '@/lib/data/sick-mode';
 
 // This endpoint is called by Vercel Cron daily to generate chore instances
 export async function GET(request: Request) {

@@ -1,56 +1,56 @@
-import type { ProjectLifecycleRecord, ProjectLifecycleTemplateRecord } from '@/types/project-lifecycle'
-import { apiRequest, buildQueryString } from '@/lib/api-client'
+import { createLifecycleClient } from '@/lib/lifecycle-client'
+import type {
+  CreateProjectFromTemplateInput,
+  CreateProjectLifecycleInput,
+  ProjectLifecycleRecord,
+  ProjectLifecycleTemplateRecord,
+  UpdateProjectLifecycleInput,
+} from '@/types/project-lifecycle'
 
-export async function fetchProjectLifecycleProjectsClient(status?: string) {
-  const suffix = buildQueryString({ status: status && status !== 'all' ? status : null })
-  const data = await apiRequest<{
-    projects?: ProjectLifecycleRecord[]
-    data?: ProjectLifecycleRecord[]
-  }>(`/api/projects${suffix}`)
-  return Array.isArray(data.data) ? data.data : data.projects ?? []
+const projectsClient = createLifecycleClient<ProjectLifecycleRecord>({
+  basePath: '/api/projects',
+  itemKey: 'project',
+  listKey: 'projects',
+})
+
+const templatesClient = createLifecycleClient<ProjectLifecycleRecord>({
+  basePath: '/api/projects/templates',
+  itemKey: 'project',
+})
+
+export function fetchProjectLifecycleProjectsClient(
+  status?: string,
+): Promise<ProjectLifecycleRecord[]> {
+  return projectsClient.list(status && status !== 'all' ? { status } : undefined)
 }
 
-export async function fetchProjectLifecycleProjectClient(projectId: string) {
-  const data = await apiRequest<{ project: ProjectLifecycleRecord }>(`/api/projects/${projectId}`)
-  return data.project
+export function fetchProjectLifecycleProjectClient(projectId: string): Promise<ProjectLifecycleRecord> {
+  return projectsClient.get(projectId)
 }
 
-export async function createProjectLifecycleProjectClient(input: Record<string, unknown>) {
-  const data = await apiRequest<{ project: ProjectLifecycleRecord }>('/api/projects', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-  return data.project
+export function createProjectLifecycleProjectClient(
+  input: CreateProjectLifecycleInput,
+): Promise<ProjectLifecycleRecord> {
+  return projectsClient.create(input)
 }
 
-export async function updateProjectLifecycleProjectClient(
+export function updateProjectLifecycleProjectClient(
   projectId: string,
-  input: Record<string, unknown>
-) {
-  const data = await apiRequest<{ project: ProjectLifecycleRecord }>(`/api/projects/${projectId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(input),
-  })
-  return data.project
+  input: UpdateProjectLifecycleInput,
+): Promise<ProjectLifecycleRecord> {
+  return projectsClient.update(projectId, input)
 }
 
-export async function deleteProjectLifecycleProjectClient(projectId: string) {
-  await apiRequest<{ success: true }>(`/api/projects/${projectId}`, {
-    method: 'DELETE',
-  })
+export function deleteProjectLifecycleProjectClient(projectId: string): Promise<void> {
+  return projectsClient.remove(projectId)
 }
 
-export async function fetchProjectLifecycleTemplatesClient() {
-  const data = await apiRequest<{ templates: ProjectLifecycleTemplateRecord[] }>(
-    '/api/projects/templates'
-  )
-  return data.templates
+export function fetchProjectLifecycleTemplatesClient(): Promise<ProjectLifecycleTemplateRecord[]> {
+  return templatesClient.action<ProjectLifecycleTemplateRecord[]>('', 'GET', undefined, 'templates')
 }
 
-export async function createProjectLifecycleProjectFromTemplateClient(input: Record<string, unknown>) {
-  const data = await apiRequest<{ project: ProjectLifecycleRecord }>('/api/projects/templates', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-  return data.project
+export function createProjectLifecycleProjectFromTemplateClient(
+  input: CreateProjectFromTemplateInput,
+): Promise<ProjectLifecycleRecord> {
+  return templatesClient.create(input)
 }

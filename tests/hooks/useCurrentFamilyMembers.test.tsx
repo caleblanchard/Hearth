@@ -1,10 +1,10 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { useCurrentFamilyMembers } from '@/hooks/useCurrentFamilyMembers'
-import { useCurrentFamilyMember } from '@/hooks/useCurrentFamilyMember'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 import { useActiveFamily } from '@/contexts/ActiveFamilyContext'
 
-jest.mock('@/hooks/useCurrentFamilyMember', () => ({
-  useCurrentFamilyMember: jest.fn(),
+jest.mock('@/hooks/useCurrentMember', () => ({
+  useCurrentMember: jest.fn(),
 }))
 
 jest.mock('@/contexts/ActiveFamilyContext', () => ({
@@ -30,7 +30,7 @@ describe('useCurrentFamilyMembers', () => {
   })
 
   it('loads the active family member list around the shared Current Family Member seam', async () => {
-    ;(useCurrentFamilyMember as jest.Mock).mockReturnValue({
+    ;(useCurrentMember as jest.Mock).mockReturnValue({
       user: { id: 'user-1', email: 'parent@example.com' },
       member: {
         id: 'member-1',
@@ -99,7 +99,7 @@ describe('useCurrentFamilyMembers', () => {
   })
 
   it('includes the kiosk header when loading family members for kiosk viewers', async () => {
-    ;(useCurrentFamilyMember as jest.Mock).mockReturnValue({
+    ;(useCurrentMember as jest.Mock).mockReturnValue({
       user: null,
       member: {
         id: 'child-1',
@@ -128,7 +128,7 @@ describe('useCurrentFamilyMembers', () => {
       expect(global.fetch).toHaveBeenCalled()
     })
 
-    const headers = (global.fetch as jest.Mock).mock.calls[0][1]?.headers as Headers
-    expect(headers.get('X-Kiosk-Child')).toBe('kiosk-token')
+    const headers = (global.fetch as jest.Mock).mock.calls[0][1]?.headers as Record<string, string>
+    expect(headers['X-Kiosk-Child']).toBe('kiosk-token')
   })
 })

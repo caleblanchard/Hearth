@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { getStoredActiveFamilyId } from '@/lib/active-family-storage';
 
 /**
  * Component that installs the global fetch interceptor
@@ -28,9 +29,7 @@ export default function FetchInterceptor() {
         const headers = new Headers(options.headers);
 
         // Active family ID
-        const allKeys = Object.keys(localStorage);
-        const familyKey = allKeys.find(key => key.startsWith('hearth_active_family_id_'));
-        const familyId = familyKey ? localStorage.getItem(familyKey) : null;
+        const familyId = getStoredActiveFamilyId();
         if (familyId) {
           headers.set('x-active-family-id', familyId);
           if (!isInstalled) {

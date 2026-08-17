@@ -43,7 +43,7 @@ describe('bulk approval adapters', () => {
 
   it('delegates bulk approval decisions to Approval Request Lifecycle', async () => {
     processApprovalRequests.mockResolvedValue({
-      success: ['chore-chore-1'],
+      approved: ['chore-chore-1'],
       failed: [],
       total: 1,
     })
@@ -57,7 +57,7 @@ describe('bulk approval adapters', () => {
     const data = await response.json()
 
     expect(response.status).toBe(200)
-    expect(data.success).toEqual(['chore-chore-1'])
+    expect(data.approved).toEqual(['chore-chore-1'])
     expect(processApprovalRequests).toHaveBeenCalledWith({
       decision: 'APPROVE',
       itemIds: ['chore-chore-1'],
@@ -66,7 +66,7 @@ describe('bulk approval adapters', () => {
 
   it('delegates bulk deny decisions to Approval Request Lifecycle', async () => {
     processApprovalRequests.mockResolvedValue({
-      success: ['reward-reward-1'],
+      approved: ['reward-reward-1'],
       failed: [],
       total: 1,
     })
@@ -80,7 +80,7 @@ describe('bulk approval adapters', () => {
     const data = await response.json()
 
     expect(response.status).toBe(200)
-    expect(data.success).toEqual(['reward-reward-1'])
+    expect(data.approved).toEqual(['reward-reward-1'])
     expect(processApprovalRequests).toHaveBeenCalledWith({
       decision: 'DENY',
       itemIds: ['reward-reward-1'],

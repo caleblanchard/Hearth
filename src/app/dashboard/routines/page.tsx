@@ -30,7 +30,7 @@ interface Routine {
   isWeekend: boolean;
   steps: RoutineStep[];
   completedToday?: boolean;
-  completedAt?: string;
+  completedAt?: string | null;
 }
 
 interface FamilyMember {

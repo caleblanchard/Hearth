@@ -17,7 +17,7 @@ import { GET, POST } from '@/app/api/chores/route'
 import { mockParentSession, mockChildSession } from '@/lib/test-utils/auth-mock'
 import { Frequency, AssignmentType, Difficulty } from '@/lib/enums'
 
-jest.mock('@/lib/sick-mode', () => ({
+jest.mock('@/lib/data/sick-mode', () => ({
   isMemberInSickMode: jest.fn().mockResolvedValue(false),
 }));
 

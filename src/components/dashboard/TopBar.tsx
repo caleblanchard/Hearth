@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useMemberContext } from '@/hooks/useMemberContext';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { signOut } from '@/hooks/useSupabaseSession';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import NotificationBell from '@/components/notifications/NotificationBell';
@@ -49,7 +49,7 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 export default function TopBar() {
-  const { user, member } = useMemberContext();
+  const { user, member } = useCurrentMember();
   const { guestSession, endSession } = useGuestSession();
   const pathname = usePathname();
 

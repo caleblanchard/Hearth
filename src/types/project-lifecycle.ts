@@ -59,3 +59,24 @@ export interface ProjectLifecycleTemplateRecord {
   tasks: ProjectLifecycleTemplateTaskRecord[]
 }
 
+export interface CreateProjectLifecycleInput {
+  name: string
+  description?: string
+  status?: string
+  startDate?: string
+  dueDate?: string
+  budget?: number
+  notes?: string
+}
+
+export type UpdateProjectLifecycleInput = Partial<CreateProjectLifecycleInput>
+
+export interface CreateProjectFromTemplateInput {
+  templateId: string
+  customizations?: {
+    name?: string
+    budget?: number
+    startDate?: string
+  }
+}
+

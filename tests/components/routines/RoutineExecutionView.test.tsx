@@ -15,6 +15,9 @@ describe('RoutineExecutionView', () => {
     id: 'routine-1',
     name: 'Morning Routine',
     type: 'MORNING',
+    assignedTo: null,
+    isWeekday: true,
+    isWeekend: true,
     steps: [
       { id: 'step-1', name: 'Brush teeth', icon: '🪥', estimatedMinutes: 2, sortOrder: 0 },
       { id: 'step-2', name: 'Get dressed', icon: '👕', estimatedMinutes: 5, sortOrder: 1 },
@@ -222,6 +225,9 @@ describe('RoutineExecutionView', () => {
       id: 'routine-2',
       name: 'Simple Routine',
       type: 'CUSTOM',
+      assignedTo: null,
+      isWeekday: true,
+      isWeekend: true,
       steps: [],
     };
 

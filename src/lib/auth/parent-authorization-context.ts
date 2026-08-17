@@ -1,4 +1,5 @@
 import { getAuthContext } from '@/lib/supabase/server'
+import { readNullableString } from '@/lib/readers'
 
 type AuthContextLike = Awaited<ReturnType<typeof getAuthContext>>
 
@@ -45,10 +46,6 @@ export function isParentAuthorizationContextError(
   error: unknown
 ): error is ParentAuthorizationContextError {
   return error instanceof ParentAuthorizationContextError
-}
-
-function readNullableString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null
 }
 
 function normalizeMembership(membership: unknown): FamilyAuthorizationMembership | null {

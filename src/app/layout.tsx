@@ -65,6 +65,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        {/* Legacy catch-all: injects family/kiosk headers on raw window.fetch calls.
+            New code should go through apiRequest (src/lib/api-client.ts), which is the
+            canonical header source. Remove once all /api fetch sites are migrated. */}
         <FetchInterceptor />
         <ServiceWorkerRegistration />
         <ToastProvider>

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import {
-  insertAuditLog,
+  writeAuditLog,
   LifecycleError,
   readObject,
   readString,
@@ -387,7 +387,7 @@ export async function updateParentKioskConfiguration(
       : {}),
   })
 
-  await insertAuditLog({
+  await writeAuditLog({
     familyId: managed.familyId,
     memberId: managed.memberId,
     action: 'KIOSK_SETTINGS_UPDATED',
@@ -469,11 +469,11 @@ export async function updateFamilySickModeConfiguration(
       : {}),
   })
 
-  await insertAuditLog({
+  await writeAuditLog({
     familyId: context.familyId,
     memberId: context.memberId,
     action: 'SICK_MODE_SETTINGS_UPDATED',
-    entityType: 'SickModeSettings',
+    entityType: 'SICK_MODE_SETTINGS',
     entityId: nextSettings.id,
     previousValue: currentSettings ?? null,
     newValue: nextSettings,

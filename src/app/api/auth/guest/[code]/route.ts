@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { insertAuditLog } from '@/lib/data/lifecycle-core';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import crypto from 'crypto';
 import { logger } from '@/lib/logger';
 
@@ -79,13 +79,12 @@ export async function POST(
       .eq('id', invite.id);
 
     // Create audit log
-    await insertAuditLog({
+    await writeAuditLog({
       familyId: invite.family_id,
       memberId: null, // Guest is not a family member
       action: 'GUEST_SESSION_STARTED',
       entityType: 'GUEST_SESSION',
-      entityId: invite.id,
-      result: 'SUCCESS',
+      entityId: session?.id ?? invite.id,
       metadata: {
         guestName: invite.guest_name,
         accessLevel: invite.access_level,

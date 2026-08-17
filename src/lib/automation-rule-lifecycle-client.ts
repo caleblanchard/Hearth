@@ -1,3 +1,4 @@
+import { createLifecycleClient } from '@/lib/lifecycle-client'
 import type {
   AutomationRuleExecutionsQuery,
   AutomationRuleExecutionsResult,
@@ -9,92 +10,72 @@ import type {
   CreateAutomationRuleInput,
   UpdateAutomationRuleInput,
 } from '@/types/automation-rule-lifecycle'
-import { apiRequest, buildQueryString } from '@/lib/api-client'
 
-export async function fetchAutomationLifecycleRules(
-  query: AutomationRuleListQuery = {}
+const rulesClient = createLifecycleClient<AutomationRuleRecord>({
+  basePath: '/api/rules',
+  itemKey: 'rule',
+})
+
+const executionsClient = createLifecycleClient({ basePath: '/api/rules/executions' })
+
+export function fetchAutomationLifecycleRules(
+  query: AutomationRuleListQuery = {},
 ): Promise<AutomationRuleListResult> {
-  const suffix = buildQueryString({
-    enabled: query.enabled === undefined ? undefined : String(query.enabled),
-    limit: query.limit === undefined ? undefined : String(query.limit),
-    offset: query.offset === undefined ? undefined : String(query.offset),
+  return rulesClient.action<AutomationRuleListResult>('', 'GET', undefined, undefined, {
+    enabled: query.enabled,
+    limit: query.limit,
+    offset: query.offset,
   })
-
-  return apiRequest<AutomationRuleListResult>(`/api/rules${suffix}`)
 }
 
-export async function fetchAutomationLifecycleRule(
+export function fetchAutomationLifecycleRule(
   ruleId: string,
-  query: AutomationRuleHistoryQuery = {}
+  query: AutomationRuleHistoryQuery = {},
 ): Promise<AutomationRuleHistoryResult> {
-  const suffix = buildQueryString({
-    limit: query.limit === undefined ? undefined : String(query.limit),
-    offset: query.offset === undefined ? undefined : String(query.offset),
-    success: query.success === undefined ? undefined : String(query.success),
+  return rulesClient.action<AutomationRuleHistoryResult>(`/${ruleId}`, 'GET', undefined, undefined, {
+    limit: query.limit,
+    offset: query.offset,
+    success: query.success,
   })
-
-  return apiRequest<AutomationRuleHistoryResult>(`/api/rules/${ruleId}${suffix}`)
 }
 
-export async function createAutomationLifecycleRuleRequest(
-  input: CreateAutomationRuleInput
+export function createAutomationLifecycleRuleRequest(
+  input: CreateAutomationRuleInput,
 ): Promise<AutomationRuleRecord> {
-  const data = await apiRequest<{ rule: AutomationRuleRecord }>('/api/rules', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-  return data.rule
+  return rulesClient.create(input)
 }
 
-export async function updateAutomationLifecycleRuleRequest(
+export function updateAutomationLifecycleRuleRequest(
   ruleId: string,
-  input: UpdateAutomationRuleInput
+  input: UpdateAutomationRuleInput,
 ): Promise<AutomationRuleRecord> {
-  const data = await apiRequest<{ rule: AutomationRuleRecord }>(`/api/rules/${ruleId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(input),
-  })
-  return data.rule
+  return rulesClient.update(ruleId, input)
 }
 
-export async function deleteAutomationLifecycleRuleRequest(ruleId: string): Promise<void> {
-  await apiRequest<{ success: true }>(`/api/rules/${ruleId}`, {
-    method: 'DELETE',
-  })
+export function deleteAutomationLifecycleRuleRequest(ruleId: string): Promise<void> {
+  return rulesClient.remove(ruleId)
 }
 
-export async function toggleAutomationLifecycleRuleRequest(
-  ruleId: string
-): Promise<AutomationRuleRecord> {
-  const data = await apiRequest<{ rule: AutomationRuleRecord }>(
-    `/api/rules/${ruleId}/toggle`,
-    { method: 'PATCH' }
-  )
-  return data.rule
+export function toggleAutomationLifecycleRuleRequest(ruleId: string): Promise<AutomationRuleRecord> {
+  return rulesClient.action(`/${ruleId}/toggle`, 'PATCH', undefined, 'rule')
 }
 
-export async function testAutomationLifecycleRuleRequest(
+export function testAutomationLifecycleRuleRequest(
   ruleId: string,
-  context: Record<string, unknown>
-) {
-  const data = await apiRequest<{ result: unknown }>(`/api/rules/${ruleId}/test`, {
-    method: 'POST',
-    body: JSON.stringify({ context }),
-  })
-  return data.result
+  context: Record<string, unknown>,
+): Promise<unknown> {
+  return rulesClient.action<unknown>(`/${ruleId}/test`, 'POST', { context }, 'result')
 }
 
-export async function fetchAutomationLifecycleExecutions(
-  query: AutomationRuleExecutionsQuery
+export function fetchAutomationLifecycleExecutions(
+  query: AutomationRuleExecutionsQuery,
 ): Promise<AutomationRuleExecutionsResult> {
-  const suffix = buildQueryString({
+  return executionsClient.action<AutomationRuleExecutionsResult>('', 'GET', undefined, undefined, {
     ruleId: query.ruleId,
-    limit: query.limit === undefined ? undefined : String(query.limit),
-    offset: query.offset === undefined ? undefined : String(query.offset),
-    success: query.success === undefined ? undefined : String(query.success),
+    limit: query.limit,
+    offset: query.offset,
+    success: query.success,
     startDate: query.startDate,
     endDate: query.endDate,
   })
-
-  return apiRequest<AutomationRuleExecutionsResult>(`/api/rules/executions${suffix}`)
 }

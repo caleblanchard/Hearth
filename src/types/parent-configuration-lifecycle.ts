@@ -221,6 +221,22 @@ export interface ParentConfigurationFamilyUpdate {
   plannedMealTypes?: ParentConfigurationMealType[]
 }
 
+export interface ParentConfigurationFamilyPayload {
+  family: {
+    id: string
+    name: string
+    timezone: string
+    location?: string | null
+    latitude?: number | null
+    longitude?: number | null
+    settings?: {
+      currency?: string
+      weekStartDay?: string
+      plannedMealTypes?: string[]
+    }
+  }
+}
+
 export interface ParentConfigurationModuleRecord {
   moduleId: ParentConfigurationModuleId
   name: string
@@ -231,6 +247,10 @@ export interface ParentConfigurationModuleRecord {
   disabledAt: string | null
   updatedAt: string | null
 }
+
+export type ParentConfigurationFamilyRow = Database['public']['Tables']['families']['Row']
+
+export type ParentConfigurationModuleRow = Database['public']['Tables']['module_configurations']['Row']
 
 export interface ParentConfigurationModuleListResult {
   modules: ParentConfigurationModuleRecord[]

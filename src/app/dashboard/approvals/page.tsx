@@ -35,7 +35,7 @@ export default function ApprovalsPage() {
     try {
       const result = await approveOne(id);
       
-      if (result.success.length > 0) {
+      if (result.approved.length > 0) {
         showToast('success', 'Approved successfully! ✓');
       } else if (result.failed.length > 0) {
         showToast('error', result.failed[0].reason);
@@ -50,7 +50,7 @@ export default function ApprovalsPage() {
     try {
       const result = await denyOne(id);
       
-      if (result.success.length > 0) {
+      if (result.approved.length > 0) {
         showToast('success', 'Denied successfully');
       } else if (result.failed.length > 0) {
         showToast('error', result.failed[0].reason);
@@ -71,7 +71,7 @@ export default function ApprovalsPage() {
     try {
       const result = await approveSelected();
       
-      showToast('success', `Approved ${result.success.length} item(s) ✓`);
+      showToast('success', `Approved ${result.approved.length} item(s) ✓`);
       
       if (result.failed.length > 0) {
         showToast('error', `${result.failed.length} item(s) failed to approve`);
@@ -88,7 +88,7 @@ export default function ApprovalsPage() {
     try {
       const result = await denySelected();
       
-      showToast('success', `Denied ${result.success.length} item(s)`);
+      showToast('success', `Denied ${result.approved.length} item(s)`);
       
       if (result.failed.length > 0) {
         showToast('error', `${result.failed.length} item(s) failed to deny`);

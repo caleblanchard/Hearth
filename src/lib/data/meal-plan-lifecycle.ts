@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { insertAuditLog, LifecycleError, requireViewerContext } from '@/lib/data/lifecycle-core'
+import { writeAuditLog, LifecycleError, requireViewerContext } from '@/lib/data/lifecycle-core'
 import {
   addDishToMealEntry,
   createMealPlanEntry,
@@ -269,7 +269,7 @@ export async function createMealPlanLifecycleEntry(
     }
   }
 
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'MEAL_ENTRY_ADDED',
@@ -305,7 +305,7 @@ export async function updateMealPlanLifecycleEntryAction(
     recipe_id: body.recipeId,
   })
 
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'MEAL_ENTRY_UPDATED',
@@ -327,7 +327,7 @@ export async function deleteMealPlanLifecycleEntryAction(entryId: string) {
   await readMealEntryOwnership(entryId, familyId)
   await deleteMealPlanEntry(entryId)
 
-  await insertAuditLog({
+  await writeAuditLog({
     familyId,
     memberId,
     action: 'MEAL_ENTRY_DELETED',

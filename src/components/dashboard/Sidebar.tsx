@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useMemberContext } from '@/hooks/useMemberContext';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { useDashboardCustomize } from '@/contexts/DashboardCustomizeContext';
 import { FamilySwitcher } from '@/components/FamilySwitcher';
 import {
@@ -54,7 +54,7 @@ interface NavGroup {
 }
 
 export default function Sidebar() {
-  const { user, member, loading: memberLoading } = useMemberContext();
+  const { user, member, loading: memberLoading } = useCurrentMember();
   const kioskChild = typeof window !== 'undefined' ? localStorage.getItem('kioskChildToken') : null;
   const router = useRouter();
   const pathname = usePathname();
@@ -322,7 +322,7 @@ export default function Sidebar() {
           
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-ember-700 dark:bg-ember-500 rounded-full flex items-center justify-center text-white font-bold">
-              {user.name?.charAt(0) || 'U'}
+              {member?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">

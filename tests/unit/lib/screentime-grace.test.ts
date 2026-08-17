@@ -5,7 +5,7 @@ import {
   countGraceUses,
   processGraceRepayment,
   getOrCreateGraceSettings,
-} from '@/lib/screentime-grace';
+} from '@/lib/data/screentime-grace';
 import { GraceRepaymentMode, RepaymentStatus } from '@/lib/enums';
 
 describe('screentime-grace', () => {

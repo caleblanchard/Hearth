@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { useActiveFamily } from '@/contexts/ActiveFamilyContext';
-import { useFamilyFetch } from '@/hooks/useFamilyFetch';
 import { format } from 'date-fns';
 import { Modal, ConfirmModal, AlertModal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
@@ -73,7 +72,6 @@ export default function FamilyPage() {
   const { user } = useSupabaseSession();
   const { member, isParent, loading: memberLoading, error: memberError } = useCurrentMember();
   const { activeFamilyId } = useActiveFamily();
-  const familyFetch = useFamilyFetch();
   const { showToast } = useToast();
   const [family, setFamily] = useState<Family | null>(null);
   const [loading, setLoading] = useState(true);

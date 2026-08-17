@@ -1,6 +1,6 @@
 // @ts-nocheck - Supabase generated types cause unavoidable type errors
 import { createClient } from '@/lib/supabase/server'
-import { insertAuditLog } from '@/lib/data/lifecycle-core'
+import { writeAuditLog } from '@/lib/data/lifecycle-core'
 // Note: Some complex Supabase generated type errors are suppressed below
 // These do not affect runtime correctness - all code is tested
 import type { Database } from '@/lib/database.types'
@@ -262,7 +262,7 @@ export async function addMedicationToHealthEvent(
   if (error) throw error
 
   // Create audit log
-  await insertAuditLog({
+  await writeAuditLog({
     familyId: event.member.family_id,
     memberId: recordedBy,
     action: 'HEALTH_MEDICATION_GIVEN',
@@ -434,13 +434,12 @@ export async function startSickMode(
   if (error) throw error
   
   // Create audit log
-  await insertAuditLog({
+  await writeAuditLog({
     familyId: member.family_id,
     memberId: startedBy,
     action: 'SICK_MODE_STARTED',
-    entityType: 'SickModeInstance',
+    entityType: 'SICK_MODE_INSTANCE',
     entityId: data.id,
-    result: 'SUCCESS',
     metadata: {
       sickMemberId: memberId,
       triggeredBy,
@@ -482,13 +481,12 @@ export async function endSickMode(instanceId: string, endedBy?: string) {
   if (error) throw error
 
   if (endedBy && current) {
-    await insertAuditLog({
+    await writeAuditLog({
       familyId: current.family_id,
       memberId: endedBy,
       action: 'SICK_MODE_ENDED',
-      entityType: 'SickModeInstance',
+      entityType: 'SICK_MODE_INSTANCE',
       entityId: instanceId,
-      result: 'SUCCESS',
       metadata: {
         sickMemberId: current.member_id
       }

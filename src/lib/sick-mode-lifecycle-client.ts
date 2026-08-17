@@ -1,3 +1,4 @@
+import { createLifecycleClient } from '@/lib/lifecycle-client'
 import type {
   EndSickModeLifecycleResult,
   ListSickModeLifecycleInstancesQuery,
@@ -5,35 +6,36 @@ import type {
   StartSickModeLifecycleInput,
   StartSickModeLifecycleResult,
 } from '@/types/sick-mode-lifecycle'
-import { apiRequest, buildQueryString } from '@/lib/api-client'
 
-export async function fetchSickModeLifecycleStatusClient(
-  query: ListSickModeLifecycleInstancesQuery = {}
-) {
-  return apiRequest<ListSickModeLifecycleInstancesResult>(
-    `/api/family/sick-mode/status${buildQueryString({
-      memberId: query.memberId,
-      includeEnded: query.includeEnded ? 'true' : undefined,
-    })}`
+const statusClient = createLifecycleClient({ basePath: '/api/family/sick-mode/status' })
+
+const startClient = createLifecycleClient({ basePath: '/api/family/sick-mode/start' })
+
+const endClient = createLifecycleClient({ basePath: '/api/family/sick-mode/end' })
+
+export function fetchSickModeLifecycleStatusClient(
+  query: ListSickModeLifecycleInstancesQuery = {},
+): Promise<ListSickModeLifecycleInstancesResult> {
+  return statusClient.action<ListSickModeLifecycleInstancesResult>('', 'GET', undefined, undefined, {
+    memberId: query.memberId,
+    includeEnded: query.includeEnded ? 'true' : undefined,
+  })
+}
+
+export function startSickModeLifecycleClient(
+  input: StartSickModeLifecycleInput,
+): Promise<{ success: true; message: string } & StartSickModeLifecycleResult> {
+  return startClient.action<{ success: true; message: string } & StartSickModeLifecycleResult>(
+    '',
+    'POST',
+    input,
   )
 }
 
-export async function startSickModeLifecycleClient(input: StartSickModeLifecycleInput) {
-  return apiRequest<{ success: true; message: string } & StartSickModeLifecycleResult>(
-    '/api/family/sick-mode/start',
-    {
-      method: 'POST',
-      body: JSON.stringify(input),
-    }
-  )
-}
-
-export async function endSickModeLifecycleClient(instanceId: string) {
-  return apiRequest<{ success: true; message: string } & EndSickModeLifecycleResult>(
-    '/api/family/sick-mode/end',
-    {
-      method: 'POST',
-      body: JSON.stringify({ instanceId }),
-    }
-  )
+export function endSickModeLifecycleClient(
+  instanceId: string,
+): Promise<{ success: true; message: string } & EndSickModeLifecycleResult> {
+  return endClient.action<{ success: true; message: string } & EndSickModeLifecycleResult>('', 'POST', {
+    instanceId,
+  })
 }

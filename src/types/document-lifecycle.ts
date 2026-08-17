@@ -21,3 +21,17 @@ export interface DocumentLifecycleRecord {
   uploader?: DocumentLifecycleUploaderSummary
 }
 
+export interface CreateDocumentLifecycleInput {
+  name: string
+  category: string
+  fileUrl: string
+  fileSize: number
+  mimeType: string
+  documentNumber?: string | null
+  issuedDate?: string | null
+  expiresAt?: string | null
+  tags?: string[]
+  notes?: string | null
+  accessList?: string[]
+}
+

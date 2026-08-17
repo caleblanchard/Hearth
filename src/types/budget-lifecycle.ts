@@ -26,3 +26,12 @@ export interface BudgetLifecycleRecord {
   member: BudgetLifecycleMemberSummary | null
   periods: BudgetLifecyclePeriodRecord[]
 }
+
+export interface CreateBudgetLifecycleInput {
+  memberId: string
+  category: string
+  limitAmount: number
+  period: string
+  resetDay?: number
+  isActive?: boolean
+}

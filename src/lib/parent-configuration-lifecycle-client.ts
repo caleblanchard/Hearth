@@ -1,39 +1,26 @@
+import { createLifecycleClient } from '@/lib/lifecycle-client'
 import type {
   FamilySickModeConfiguration,
   FamilySickModeConfigurationUpdate,
+  ParentConfigurationFamilyPayload,
   ParentConfigurationFamilyProfile,
+  ParentConfigurationFamilyRow,
   ParentConfigurationFamilyUpdate,
   ParentConfigurationMealType,
   ParentConfigurationModuleListResult,
+  ParentConfigurationModuleRow,
   ParentConfigurationModuleUpdateInput,
   ParentKioskConfiguration,
   ParentKioskConfigurationResult,
   ParentKioskConfigurationUpdate,
 } from '@/types/parent-configuration-lifecycle'
 import { VALID_PARENT_CONFIGURATION_MEAL_TYPES } from '@/types/parent-configuration-lifecycle'
-import { apiRequest } from '@/lib/api-client'
 
-function normalizeFamilyProfile(payload: {
-  family: {
-    id: string
-    name: string
-    timezone: string
-    location?: string | null
-    latitude?: number | null
-    longitude?: number | null
-    settings?: {
-      currency?: string
-      weekStartDay?: string
-      plannedMealTypes?: string[]
-    }
-  }
-}): ParentConfigurationFamilyProfile {
+function normalizeFamilyProfile(payload: ParentConfigurationFamilyPayload): ParentConfigurationFamilyProfile {
   const normalizedMealTypes = (
     payload.family.settings?.plannedMealTypes ?? []
   ).filter((mealType): mealType is ParentConfigurationMealType =>
-    VALID_PARENT_CONFIGURATION_MEAL_TYPES.includes(
-      mealType as ParentConfigurationMealType
-    )
+    VALID_PARENT_CONFIGURATION_MEAL_TYPES.includes(mealType as ParentConfigurationMealType)
   )
 
   return {
@@ -54,84 +41,71 @@ function normalizeFamilyProfile(payload: {
   }
 }
 
-export async function fetchParentFamilyConfiguration() {
-  const data = await apiRequest<{
-    family: {
-      id: string
-      name: string
-      timezone: string
-      location?: string | null
-      latitude?: number | null
-      longitude?: number | null
-      settings?: {
-        currency?: string
-        weekStartDay?: string
-        plannedMealTypes?: string[]
-      }
-    }
-  }>('/api/family-data')
+const familyDataClient = createLifecycleClient({ basePath: '/api/family-data' })
+
+const modulesClient = createLifecycleClient({ basePath: '/api/settings/modules' })
+
+const kioskClient = createLifecycleClient({ basePath: '/api/kiosk/settings' })
+
+const sickConfigClient = createLifecycleClient<FamilySickModeConfiguration>({
+  basePath: '/api/family/sick-mode/settings',
+  itemKey: 'settings',
+})
+
+export async function fetchParentFamilyConfiguration(): Promise<ParentConfigurationFamilyProfile> {
+  const data = await familyDataClient.action<ParentConfigurationFamilyPayload>('', 'GET')
 
   return normalizeFamilyProfile(data)
 }
 
 export async function updateParentFamilyConfigurationClient(
-  updates: ParentConfigurationFamilyUpdate
-) {
-  return apiRequest<{ success: true; family: unknown; message: string }>('/api/family-data', {
-    method: 'PATCH',
-    body: JSON.stringify(updates),
-  })
+  updates: ParentConfigurationFamilyUpdate,
+): Promise<{ success: true; family: ParentConfigurationFamilyRow; message: string }> {
+  return familyDataClient.action<{
+    success: true
+    family: ParentConfigurationFamilyRow
+    message: string
+  }>('', 'PATCH', updates)
 }
 
-export async function fetchParentConfigurationModules() {
-  return apiRequest<ParentConfigurationModuleListResult>('/api/settings/modules')
+export async function fetchParentConfigurationModules(): Promise<ParentConfigurationModuleListResult> {
+  return modulesClient.action<ParentConfigurationModuleListResult>('', 'GET')
 }
 
 export async function updateParentConfigurationModuleClient(
-  update: ParentConfigurationModuleUpdateInput
-) {
-  return apiRequest<{ success: true; module: unknown; message: string }>('/api/settings/modules', {
-    method: 'PATCH',
-    body: JSON.stringify(update),
-  })
+  update: ParentConfigurationModuleUpdateInput,
+): Promise<{ success: true; module: ParentConfigurationModuleRow; message: string }> {
+  return modulesClient.action<{
+    success: true
+    module: ParentConfigurationModuleRow
+    message: string
+  }>('', 'PATCH', update)
 }
 
-export async function fetchParentKioskConfiguration(familyId?: string) {
-  const params = new URLSearchParams()
-  if (familyId) params.set('familyId', familyId)
-
-  return apiRequest<ParentKioskConfigurationResult>(
-    params.toString() ? `/api/kiosk/settings?${params}` : '/api/kiosk/settings'
+export async function fetchParentKioskConfiguration(
+  familyId?: string,
+): Promise<ParentKioskConfigurationResult> {
+  return kioskClient.action<ParentKioskConfigurationResult>(
+    '',
+    'GET',
+    undefined,
+    undefined,
+    familyId ? { familyId } : undefined,
   )
 }
 
 export async function updateParentKioskConfigurationClient(
-  updates: ParentKioskConfigurationUpdate
-) {
-  const data = await apiRequest<{ settings: ParentKioskConfiguration }>('/api/kiosk/settings', {
-    method: 'PUT',
-    body: JSON.stringify(updates),
-  })
-  return data.settings
+  updates: ParentKioskConfigurationUpdate,
+): Promise<ParentKioskConfiguration> {
+  return kioskClient.action('', 'PUT', updates, 'settings')
 }
 
-export async function fetchFamilySickModeConfiguration() {
-  const data = await apiRequest<{ settings: FamilySickModeConfiguration }>(
-    '/api/family/sick-mode/settings'
-  )
-  return data.settings
+export async function fetchFamilySickModeConfiguration(): Promise<FamilySickModeConfiguration> {
+  return sickConfigClient.action('', 'GET', undefined, 'settings')
 }
 
 export async function updateFamilySickModeConfigurationClient(
-  updates: FamilySickModeConfigurationUpdate
-) {
-  const data = await apiRequest<{
-    success: true
-    settings: FamilySickModeConfiguration
-    message: string
-  }>('/api/family/sick-mode/settings', {
-    method: 'PUT',
-    body: JSON.stringify(updates),
-  })
-  return data.settings
+  updates: FamilySickModeConfigurationUpdate,
+): Promise<FamilySickModeConfiguration> {
+  return sickConfigClient.action('', 'PUT', updates, 'settings')
 }
