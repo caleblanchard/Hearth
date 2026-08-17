@@ -370,8 +370,9 @@ describe('/api/health/events/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'HEALTH_EVENT_UPDATED',
-          entityType: 'HealthEvent',
+          entityType: 'HEALTH_EVENT',
           entityId: 'event-1',
+          metadata: null,
           result: 'SUCCESS',
         },
       });
@@ -399,8 +400,9 @@ describe('/api/health/events/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'HEALTH_EVENT_ENDED',
-          entityType: 'HealthEvent',
+          entityType: 'HEALTH_EVENT',
           entityId: 'event-1',
+          metadata: null,
           result: 'SUCCESS',
         },
       });

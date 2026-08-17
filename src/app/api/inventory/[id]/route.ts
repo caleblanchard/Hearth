@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { updateInventoryItem, deleteInventoryItem } from '@/lib/data/inventory';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 const VALID_CATEGORIES = [
@@ -137,10 +138,12 @@ export async function PATCH(
     const item = await updateInventoryItem(id, body);
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: authContext.activeMemberId || null,
+    await writeAuditLog({
+      familyId,
+      memberId: authContext.activeMemberId || null,
       action: 'INVENTORY_ITEM_UPDATED',
+      entityType: 'INVENTORY_ITEM',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         itemId: id,
@@ -203,10 +206,12 @@ export async function DELETE(
     await deleteInventoryItem(id);
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: authContext.activeMemberId || null,
+    await writeAuditLog({
+      familyId,
+      memberId: authContext.activeMemberId || null,
       action: 'INVENTORY_ITEM_DELETED',
+      entityType: 'INVENTORY_ITEM',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         itemId: id,

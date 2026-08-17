@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { recordMedicationDose } from '@/lib/data/medications';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { auth } from '@/lib/auth';
 import { authenticateChildSession } from '@/lib/kiosk-auth';
 import { dbMock } from '@/lib/test-utils/db-mock';
@@ -217,10 +218,12 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      await (supabase as any).from('audit_logs').insert({
-        family_id: familyId,
-        member_id: memberId,
+      await writeAuditLog({
+        familyId,
+        memberId,
         action: override ? 'MEDICATION_DOSE_OVERRIDE' : 'MEDICATION_DOSE_LOGGED',
+        entityType: 'MEDICATION',
+        entityId: medicationSafetyId,
         result: 'SUCCESS',
         metadata: {
           medicationId: medicationSafetyId,

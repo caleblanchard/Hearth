@@ -197,6 +197,8 @@ describe('/api/inventory/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'INVENTORY_ITEM_UPDATED',
+          entityType: 'INVENTORY_ITEM',
+          entityId: 'item-1',
           result: 'SUCCESS',
           metadata: {
             itemId: 'item-1',
@@ -329,6 +331,8 @@ describe('/api/inventory/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'INVENTORY_ITEM_DELETED',
+          entityType: 'INVENTORY_ITEM',
+          entityId: 'item-1',
           result: 'SUCCESS',
           metadata: {
             itemId: 'item-1',

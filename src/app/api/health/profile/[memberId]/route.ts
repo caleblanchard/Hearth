@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getMedicalProfile, updateMedicalProfile } from '@/lib/data/health';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -132,12 +133,12 @@ async function handleUpdate(
       blood_type: bloodType,
     });
 
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: requesterId,
+    await writeAuditLog({
+      familyId,
+      memberId: requesterId,
       action: 'MEDICAL_PROFILE_UPDATED',
-      entity_type: 'MedicalProfile',
-      entity_id: profile?.id ?? memberId,
+      entityType: 'MEDICAL_PROFILE',
+      entityId: profile?.id ?? memberId,
       result: 'SUCCESS',
     });
 

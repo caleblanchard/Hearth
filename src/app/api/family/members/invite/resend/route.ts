@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import crypto from 'crypto';
 
 const INVITE_EXPIRY_DAYS = 7;
@@ -125,20 +126,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Audit log - cast since new audit action may not be in types
-    await (adminClient.from('audit_logs') as any).insert({
-      family_id: familyId,
-      member_id: resendingMemberId,
-      action: 'MEMBER_INVITE_RESENT',
-      entity_type: 'MEMBER',
-      entity_id: memberId,
-      result: 'SUCCESS',
-      metadata: {
-        invited_email: pendingMember.email,
-        invited_name: pendingMember.name,
-        expires_at: newExpiresAt.toISOString(),
+    // Audit log
+    await writeAuditLog(
+      {
+        familyId,
+        memberId: resendingMemberId,
+        action: 'MEMBER_INVITE_RESENT',
+        entityType: 'MEMBER',
+        entityId: memberId,
+        result: 'SUCCESS',
+        metadata: {
+          invited_email: pendingMember.email,
+          invited_name: pendingMember.name,
+          expires_at: newExpiresAt.toISOString(),
+        },
       },
-    });
+      adminClient as any
+    );
 
     return NextResponse.json({
       success: true,

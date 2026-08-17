@@ -1,5 +1,10 @@
 
-import { writeAuditLog, LifecycleError, requireParentContext } from '@/lib/data/lifecycle-core'
+import {
+  writeAuditLog,
+  LifecycleError,
+  pickKey,
+  requireParentContext,
+} from '@/lib/data/lifecycle-core'
 import {
   createProject,
   createProjectFromTemplate,
@@ -21,28 +26,17 @@ const VALID_UPDATE_STATUSES = ['ACTIVE', 'COMPLETED', 'ON_HOLD', 'ARCHIVED', 'PL
 
 function normalizeTask(task: Record<string, unknown>): ProjectLifecycleTaskRecord {
   return {
-    ...task,
     id: String(task.id),
     name: String(task.name ?? ''),
     status: String(task.status ?? ''),
     description: (task.description as string | null | undefined) ?? null,
-    dueDate: (task.due_date as string | null | undefined) ?? (task.dueDate as string | null | undefined) ?? null,
-    startDate:
-      (task.start_date as string | null | undefined) ??
-      (task.startDate as string | null | undefined) ??
-      null,
+    dueDate: (pickKey(task, 'dueDate', 'due_date') as string | null | undefined) ?? null,
+    startDate: (pickKey(task, 'startDate', 'start_date') as string | null | undefined) ?? null,
     estimatedHours:
-      (task.estimated_hours as number | null | undefined) ??
-      (task.estimatedHours as number | null | undefined) ??
-      null,
+      (pickKey(task, 'estimatedHours', 'estimated_hours') as number | null | undefined) ?? null,
     actualHours:
-      (task.actual_hours as number | null | undefined) ??
-      (task.actualHours as number | null | undefined) ??
-      null,
-    sortOrder:
-      (task.sort_order as number | null | undefined) ??
-      (task.sortOrder as number | null | undefined) ??
-      null,
+      (pickKey(task, 'actualHours', 'actual_hours') as number | null | undefined) ?? null,
+    sortOrder: (pickKey(task, 'sortOrder', 'sort_order') as number | null | undefined) ?? null,
     assignee: (task.assignee as ProjectLifecycleTaskRecord['assignee']) ?? null,
     _count: task._count as ProjectLifecycleTaskRecord['_count'],
   }
@@ -50,30 +44,17 @@ function normalizeTask(task: Record<string, unknown>): ProjectLifecycleTaskRecor
 
 function normalizeProject(project: Record<string, unknown>): ProjectLifecycleRecord {
   return {
-    ...project,
     id: String(project.id),
-    familyId: String(project.family_id ?? project.familyId ?? ''),
+    familyId: String(pickKey(project, 'familyId', 'family_id') ?? ''),
     name: String(project.name ?? ''),
     description: (project.description as string | null | undefined) ?? null,
     status: String(project.status ?? ''),
-    startDate:
-      (project.start_date as string | null | undefined) ??
-      (project.startDate as string | null | undefined) ??
-      null,
-    dueDate:
-      (project.due_date as string | null | undefined) ??
-      (project.dueDate as string | null | undefined) ??
-      null,
+    startDate: (pickKey(project, 'startDate', 'start_date') as string | null | undefined) ?? null,
+    dueDate: (pickKey(project, 'dueDate', 'due_date') as string | null | undefined) ?? null,
     budget: (project.budget as number | null | undefined) ?? null,
     notes: (project.notes as string | null | undefined) ?? null,
-    createdAt:
-      (project.created_at as string | null | undefined) ??
-      (project.createdAt as string | null | undefined) ??
-      null,
-    updatedAt:
-      (project.updated_at as string | null | undefined) ??
-      (project.updatedAt as string | null | undefined) ??
-      null,
+    createdAt: (pickKey(project, 'createdAt', 'created_at') as string | null | undefined) ?? null,
+    updatedAt: (pickKey(project, 'updatedAt', 'updated_at') as string | null | undefined) ?? null,
     creator: (project.creator as ProjectLifecycleRecord['creator']) ?? null,
     tasks: Array.isArray(project.tasks)
       ? project.tasks.map((task) => normalizeTask(task as Record<string, unknown>))

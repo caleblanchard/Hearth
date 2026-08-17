@@ -4,7 +4,6 @@ import {
   readString,
   readNullableString,
   readNumber,
-  readNullableNumber,
   readBoolean,
   requireParentContext,
 } from '@/lib/data/lifecycle-core'
@@ -174,27 +173,6 @@ async function getOwnedScheduleRow(
   }
 
   return schedule as ScheduleRowLike
-}
-
-async function selectNormalizedSchedule(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  scheduleId: string
-) {
-  const { data: schedule, error } = await supabase
-    .from('allowance_schedules')
-    .select(`
-      *,
-      member:family_members(id, name, email)
-    `)
-    .eq('id', scheduleId)
-    .single()
-
-  if (error || !schedule) {
-    logger.error('Error loading saved allowance schedule lifecycle record:', error)
-    throw new LifecycleError(500, 'Failed to fetch allowance schedule')
-  }
-
-  return normalizeAllowanceSchedule(schedule as ScheduleRowLike)
 }
 
 function buildCreateScheduleInsert(

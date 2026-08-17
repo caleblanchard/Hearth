@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { getRecipes, createRecipe } from '@/lib/data/recipes';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 const VALID_DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'];
@@ -295,12 +296,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'RECIPE_CREATED',
-      entity_type: 'RECIPE',
-      entity_id: recipe.id,
+      entityType: 'RECIPE',
+      entityId: recipe.id,
       result: 'SUCCESS',
       metadata: {
         recipeId: recipe.id,

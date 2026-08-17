@@ -9,6 +9,7 @@ import {
   resolveParentAuthorizationContext,
 } from '@/lib/auth/parent-authorization-context'
 import {
+  pickKey,
   readBoolean,
   readDateString,
   readNullableNumber,
@@ -22,6 +23,7 @@ import {
 export type DatabaseClient = SupabaseClient<Database>
 
 export {
+  pickKey,
   readBoolean,
   readDateString,
   readNullableNumber,
@@ -129,6 +131,8 @@ export type AuditEntityType =
   | 'SCREEN_TIME'
   | 'ROUTINE'
   | 'PROJECT'
+  | 'PROJECT_TASK'
+  | 'PROJECT_TASK_DEPENDENCY'
   | 'MEAL_PLAN'
   | 'DOCUMENT'
   | 'COMMUNICATION_POST'
@@ -136,11 +140,24 @@ export type AuditEntityType =
   | 'GUEST_INVITE'
   | 'PET'
   | 'HEALTH_EVENT'
+  | 'MEDICATION'
+  | 'MEDICAL_PROFILE'
+  | 'TEMPERATURE_LOG'
   | 'SICK_MODE_INSTANCE'
   | 'SICK_MODE_SETTINGS'
   | 'AUTOMATION_RULE'
   | 'REWARD'
   | 'KIOSK_SETTINGS'
+  | 'CHORE'
+  | 'SHOPPING_ITEM'
+  | 'CALENDAR'
+  | 'TRANSPORT_SCHEDULE'
+  | 'TODO'
+  | 'INVENTORY_ITEM'
+  | 'MAINTENANCE_ITEM'
+  | 'RECIPE'
+  | 'LEFTOVER'
+  | 'MEMBER'
 
 export interface AuditLogInput {
   familyId: string

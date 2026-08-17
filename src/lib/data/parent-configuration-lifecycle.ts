@@ -9,6 +9,7 @@ import {
   requireParentContext,
   requireViewerContext,
 } from '@/lib/data/lifecycle-core'
+import type { LifecycleViewerContext } from '@/lib/data/lifecycle-core'
 import { getFamily, updateFamily } from '@/lib/data/families'
 import {
   getModuleConfigurations as getStoredModuleConfigurations,
@@ -52,40 +53,6 @@ type ModuleConfigurationRow =
   Database['public']['Tables']['module_configurations']['Row']
 type SickModeSettingsRow = Database['public']['Tables']['sick_mode_settings']['Row']
 type KioskSettingsRow = Database['public']['Tables']['kiosk_settings']['Row']
-
-type LifecycleContext = {
-  familyId: string
-  memberId: string
-  memberships: Array<{
-    id: string
-    familyId: string
-    role: string | null
-  }>
-}
-
-const toLifecycleContext = (context: {
-  familyId: string
-  memberId: string
-  memberships: Array<{ id: string; familyId: string; role: string | null }>
-}): LifecycleContext => ({
-  familyId: context.familyId,
-  memberId: context.memberId,
-  memberships: context.memberships.map((membership) => ({
-    id: membership.id,
-    familyId: membership.familyId,
-    role: membership.role,
-  })),
-})
-
-async function resolveLifecycleContext(): Promise<LifecycleContext> {
-  return toLifecycleContext(await requireViewerContext())
-}
-
-async function requireParentLifecycleContext(
-  forbiddenMessage = 'Parent access required'
-): Promise<LifecycleContext> {
-  return toLifecycleContext(await requireParentContext(forbiddenMessage))
-}
 
 function normalizeMealTypes(
   value: unknown
@@ -233,7 +200,7 @@ function mapSickModeSettings(
 }
 
 function selectManagedFamily(
-  context: LifecycleContext,
+  context: LifecycleViewerContext,
   requestedFamilyId: string | undefined,
   forbiddenMessage: string
 ) {
@@ -260,7 +227,7 @@ function selectManagedFamily(
 }
 
 export async function listParentConfigurationModules() {
-  const context = await requireParentLifecycleContext()
+  const context = await requireParentContext()
   const configurations = await getStoredModuleConfigurations(context.familyId)
   return buildModuleConfigurationList(configurations)
 }
@@ -268,7 +235,7 @@ export async function listParentConfigurationModules() {
 export async function updateParentConfigurationModule(
   input: ParentConfigurationModuleUpdateInput
 ) {
-  const context = await requireParentLifecycleContext()
+  const context = await requireParentContext()
   const moduleId = ensureValidModuleId(readString(input.moduleId))
 
   return persistModuleConfiguration(context.familyId, moduleId, {
@@ -279,7 +246,7 @@ export async function updateParentConfigurationModule(
 export async function updateParentFamilyConfiguration(
   updates: ParentConfigurationFamilyUpdate
 ) {
-  const context = await requireParentLifecycleContext()
+  const context = await requireParentContext()
   const plannedMealTypes = ensureValidMealTypes(updates.plannedMealTypes)
   const currentFamily = await getFamily(context.familyId)
   const currentProfile = mapFamilyProfile(currentFamily)
@@ -298,13 +265,25 @@ export async function updateParentFamilyConfiguration(
 
   updateData.settings = nextSettings
 
-  return updateFamily(context.familyId, updateData)
+  const updatedFamily = await updateFamily(context.familyId, updateData)
+
+  await writeAuditLog({
+    familyId: context.familyId,
+    memberId: context.memberId,
+    action: 'SETTINGS_CHANGED',
+    entityType: 'MEMBER',
+    entityId: context.memberId,
+    previousValue: currentProfile,
+    newValue: mapFamilyProfile(updatedFamily),
+  })
+
+  return updatedFamily
 }
 
 export async function getParentKioskConfiguration(input: {
   familyId?: string
 } = {}): Promise<ParentKioskConfigurationResult> {
-  const context = await requireParentLifecycleContext(
+  const context = await requireParentContext(
     'Only parents can manage kiosk settings'
   )
   const managed = selectManagedFamily(
@@ -338,7 +317,7 @@ export async function getParentKioskConfiguration(input: {
 export async function updateParentKioskConfiguration(
   updates: ParentKioskConfigurationUpdate
 ) {
-  const context = await requireParentLifecycleContext(
+  const context = await requireParentContext(
     'Only parents can manage kiosk settings'
   )
   const managed = selectManagedFamily(
@@ -402,7 +381,7 @@ export async function updateParentKioskConfiguration(
 }
 
 export async function getFamilySickModeConfiguration() {
-  const context = await resolveLifecycleContext()
+  const context = await requireViewerContext()
   let settings = await getSickModeSettings(context.familyId)
 
   if (!settings) {
@@ -415,7 +394,7 @@ export async function getFamilySickModeConfiguration() {
 export async function updateFamilySickModeConfiguration(
   updates: FamilySickModeConfigurationUpdate
 ) {
-  const context = await requireParentLifecycleContext()
+  const context = await requireParentContext()
 
   if (
     typeof updates.temperatureThreshold !== 'undefined' &&

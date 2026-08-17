@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 
 export async function GET(
   request: NextRequest,
@@ -70,20 +71,20 @@ export async function GET(
       });
 
     // Create audit log
-    await supabase
-      .from('audit_logs')
-      .insert({
-        family_id: shareLink.document.family_id,
-        member_id: shareLink.created_by,
-        action: 'DOCUMENT_SHARE_ACCESSED',
-        result: 'SUCCESS',
-        metadata: {
-          documentId: shareLink.document_id,
-          documentName: shareLink.document.name,
-          shareLinkId: shareLink.id,
-          token: token,
-        },
-      });
+    await writeAuditLog({
+      familyId: shareLink.document.family_id,
+      memberId: shareLink.created_by,
+      action: 'DOCUMENT_SHARE_ACCESSED',
+      entityType: 'DOCUMENT',
+      entityId: shareLink.document_id,
+      result: 'SUCCESS',
+      metadata: {
+        documentId: shareLink.document_id,
+        documentName: shareLink.document.name,
+        shareLinkId: shareLink.id,
+        token: token,
+      },
+    });
 
     return NextResponse.json({
       document: {

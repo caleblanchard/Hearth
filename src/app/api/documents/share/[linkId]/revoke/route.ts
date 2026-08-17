@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function POST(
@@ -72,10 +73,12 @@ export async function POST(
       throw updateError;
     }
 
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'DOCUMENT_SHARED',
+      entityType: 'DOCUMENT',
+      entityId: shareLink.document.id,
       result: 'SUCCESS',
       metadata: {
         documentId: shareLink.document.id,

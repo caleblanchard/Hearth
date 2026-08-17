@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { getCalendarEvents, createCalendarEvent } from '@/lib/data/calendar';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: Request) {
@@ -108,12 +109,12 @@ export async function POST(request: Request) {
     });
 
     // Create audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'CALENDAR_EVENT_CREATED',
-      entity_type: 'CALENDAR',
-      entity_id: event.id,
+      entityType: 'CALENDAR',
+      entityId: event.id,
       result: 'SUCCESS',
       metadata: {
         title: event.title,

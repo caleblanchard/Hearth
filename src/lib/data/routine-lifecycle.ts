@@ -36,6 +36,39 @@ async function readRoutineForFamily(routineId: string, familyId: string) {
   return routine
 }
 
+async function replaceRoutineSteps(
+  routineId: string,
+  steps: unknown[]
+): Promise<RoutineLifecycleStepRecord[]> {
+  const supabase = await createClient()
+  await supabase.from('routine_steps').delete().eq('routine_id', routineId)
+
+  if (steps.length === 0) return []
+
+  const itemsPayload = steps.map((step: any, index: number) => ({
+    routine_id: routineId,
+    name: step.name,
+    icon: step.icon,
+    estimated_minutes: step.estimatedMinutes,
+    sort_order: typeof step.sortOrder === 'number' ? step.sortOrder : index,
+  }))
+
+  const { data: insertedSteps } = await supabase
+    .from('routine_steps')
+    .insert(itemsPayload)
+    .select()
+
+  return (insertedSteps && insertedSteps.length > 0 ? insertedSteps : itemsPayload).map(
+    (step: any) => ({
+      id: step.id,
+      name: step.name,
+      icon: step.icon,
+      sortOrder: step.sort_order,
+      estimatedMinutes: step.estimated_minutes,
+    })
+  )
+}
+
 export async function getRoutineLifecycleRoutines(query: {
   type?: string | null
   assignedTo?: string | null
@@ -129,22 +162,7 @@ export async function createRoutineLifecycleRoutine(body: Record<string, unknown
   })
 
   if (steps.length > 0) {
-    const itemsPayload = steps.map((step: any, index: number) => ({
-      routine_id: routine.id,
-      name: step.name,
-      icon: step.icon,
-      estimated_minutes: step.estimatedMinutes,
-      sort_order: typeof step.sortOrder === 'number' ? step.sortOrder : index,
-    }))
-
-    const { data: insertedSteps } = await supabase.from('routine_steps').insert(itemsPayload).select()
-    ;(routine as RoutineRowWithSteps).steps = (insertedSteps && insertedSteps.length > 0 ? insertedSteps : itemsPayload).map((step: any) => ({
-      id: step.id,
-      name: step.name,
-      icon: step.icon,
-      sortOrder: step.sort_order,
-      estimatedMinutes: step.estimated_minutes,
-    }))
+    ;(routine as RoutineRowWithSteps).steps = await replaceRoutineSteps(routine.id, steps)
   }
 
   await writeAuditLog({
@@ -168,35 +186,15 @@ export async function getRoutineLifecycleRoutine(routineId: string) {
 }
 
 export async function updateRoutineLifecycleRoutine(routineId: string, body: Record<string, unknown>) {
-  const { familyId, memberId, role } = await requireViewerContext()
+  const { familyId, memberId } = await requireParentContext('Unauthorized - Only parents can update routines')
   const existing = await readRoutineForFamily(routineId, familyId)
-  if (role !== 'PARENT') {
-    throw new LifecycleError(403, 'Forbidden')
-  }
 
   const supabase = await createClient()
   const { steps, ...updates } = body
   const routine = await updateRoutine(routineId, updates)
 
   if (Array.isArray(steps)) {
-    await supabase.from('routine_steps').delete().eq('routine_id', routineId)
-    const itemsPayload = steps.map((step: any, index: number) => ({
-      routine_id: routineId,
-      name: step.name,
-      icon: step.icon,
-      estimated_minutes: step.estimatedMinutes,
-      sort_order: typeof step.sortOrder === 'number' ? step.sortOrder : index,
-    }))
-
-    if (itemsPayload.length > 0) {
-      await supabase.from('routine_steps').insert(itemsPayload)
-    }
-
-    ;(routine as RoutineRowWithSteps).steps = itemsPayload.map((step: any) => ({
-      ...step,
-      sortOrder: step.sort_order,
-      estimatedMinutes: step.estimated_minutes,
-    }))
+    ;(routine as RoutineRowWithSteps).steps = await replaceRoutineSteps(routineId, steps)
   }
 
   await writeAuditLog({
@@ -215,11 +213,8 @@ export async function updateRoutineLifecycleRoutine(routineId: string, body: Rec
 }
 
 export async function deleteRoutineLifecycleRoutine(routineId: string) {
-  const { familyId, memberId, role } = await requireViewerContext()
+  const { familyId, memberId } = await requireParentContext('Unauthorized - Only parents can delete routines')
   const existing = await readRoutineForFamily(routineId, familyId)
-  if (role !== 'PARENT') {
-    throw new LifecycleError(403, 'Forbidden')
-  }
 
   await updateRoutine(routineId, { isActive: false } as RoutineUpdateRow)
   await writeAuditLog({
@@ -239,7 +234,7 @@ export async function completeRoutineLifecycleRoutine(
   routineId: string,
   body: { completedItems?: string[]; memberId?: string } = {}
 ) {
-  const { familyId, memberId, role } = await requireViewerContext()
+  const { familyId, memberId, isParent } = await requireViewerContext()
   const supabase = await createClient()
   const { data: routine } = await supabase
     .from('routines')
@@ -256,7 +251,7 @@ export async function completeRoutineLifecycleRoutine(
 
   const completerId = body.memberId || memberId
   if (completerId !== memberId) {
-    if (role !== 'PARENT') {
+    if (!isParent) {
       throw new LifecycleError(403, 'Only parents can complete routines for others')
     }
     const { data: targetMember } = await supabase
@@ -271,7 +266,7 @@ export async function completeRoutineLifecycleRoutine(
     }
   }
 
-  if (routine.assigned_to && routine.assigned_to !== completerId && role !== 'PARENT') {
+  if (routine.assigned_to && routine.assigned_to !== completerId && !isParent) {
     throw new LifecycleError(403, 'This routine is not assigned to you')
   }
 

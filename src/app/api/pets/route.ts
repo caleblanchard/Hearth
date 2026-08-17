@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getPets, createPet } from '@/lib/data/pets';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 const VALID_SPECIES = [
@@ -93,12 +94,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'PET_ADDED',
-      entity_type: 'PET',
-      entity_id: pet.id,
+      entityType: 'PET',
+      entityId: pet.id,
       result: 'SUCCESS',
       metadata: {
         petId: pet.id,

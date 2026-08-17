@@ -251,12 +251,12 @@ export async function addPetVetVisit(
     notes: visitData.notes,
   })
 
-  await supabase.from('audit_logs').insert({
-    family_id: pet.family_id,
-    member_id: recordedBy,
-    action: 'PET_VET_VISIT_RECORDED',
-    entity_type: 'PET',
-    entity_id: petId,
+  await writeAuditLog({
+    familyId: pet.family_id,
+    memberId: recordedBy,
+    action: 'PET_VET_VISIT_LOGGED',
+    entityType: 'PET',
+    entityId: petId,
     metadata: {
       pet_name: pet.name,
       visit_id: visit.id,
@@ -330,12 +330,12 @@ export async function addPetMedication(
 
   if (error) throw error
 
-  await supabase.from('audit_logs').insert({
-    family_id: pet.family_id,
-    member_id: recordedBy,
+  await writeAuditLog({
+    familyId: pet.family_id,
+    memberId: recordedBy,
     action: 'PET_MEDICATION_GIVEN',
-    entity_type: 'PET',
-    entity_id: petId,
+    entityType: 'PET',
+    entityId: petId,
     metadata: {
       pet_name: pet.name,
       medication_name: medicationData.medicationName,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getTransportSchedule, updateTransportSchedule, deleteTransportSchedule } from '@/lib/data/transport';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -99,13 +99,12 @@ export async function PATCH(
     const schedule = await updateTransportSchedule(id, body);
     
     // Audit log
-    const supabase = await createClient();
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'TRANSPORT_SCHEDULE_UPDATED',
-      entity_type: 'TRANSPORT_SCHEDULE',
-      entity_id: id,
+      entityType: 'TRANSPORT_SCHEDULE',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         scheduleId: id,
@@ -166,13 +165,12 @@ export async function DELETE(
     await deleteTransportSchedule(id);
 
     // Audit log
-    const supabase = await createClient();
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'TRANSPORT_SCHEDULE_DELETED',
-      entity_type: 'TRANSPORT_SCHEDULE',
-      entity_id: id,
+      entityType: 'TRANSPORT_SCHEDULE',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         scheduleId: id,

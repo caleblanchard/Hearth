@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { POST as inviteMember } from '@/app/api/family/members/invite/route';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 import { BCRYPT_ROUNDS } from '@/lib/constants';
 import bcrypt from 'bcrypt';
@@ -231,12 +232,12 @@ export async function POST(request: Request) {
     }
 
     // Audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'MEMBER_CREATED',
-      entity_type: 'MEMBER',
-      entity_id: member.id,
+      entityType: 'MEMBER',
+      entityId: member.id,
       result: 'SUCCESS',
       metadata: { name, role },
     });

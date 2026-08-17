@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { getTemperatureReadings, recordTemperatureReading, startSickMode } from '@/lib/data/health';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
@@ -124,12 +125,12 @@ export async function POST(request: NextRequest) {
       member: reading.member,
     };
 
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'TEMPERATURE_LOGGED',
-      entity_type: 'TemperatureLog', // Changed to match test expectation (implied by test failing on TEMPERATURE_LOG vs TemperatureLog)
-      entity_id: reading.id,
+      entityType: 'TEMPERATURE_LOG',
+      entityId: reading.id,
       result: 'SUCCESS',
     });
 

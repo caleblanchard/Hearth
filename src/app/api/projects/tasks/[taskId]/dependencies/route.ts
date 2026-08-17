@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { addTaskDependency, removeTaskDependency, getTaskDependencies, getProjectTask } from '@/lib/data/projects';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -188,12 +189,12 @@ export async function POST(
     if (createError) throw createError;
 
     // Audit Log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'PROJECT_DEPENDENCY_ADDED',
-      entity_type: 'PROJECT_TASK_DEPENDENCY',
-      entity_id: dependency.id,
+      entityType: 'PROJECT_TASK_DEPENDENCY',
+      entityId: dependency.id,
       result: 'SUCCESS',
       metadata: {
         projectId: dependentTaskWithProject.project_id,
@@ -274,10 +275,12 @@ export async function DELETE(
     await removeTaskDependency(dependency.id);
 
     // Audit Log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'PROJECT_DEPENDENCY_REMOVED',
+      entityType: 'PROJECT_TASK_DEPENDENCY',
+      entityId: dependency.id,
       result: 'SUCCESS',
       metadata: {
         projectId: dependency.dependent_task?.project_id, // Get from relation

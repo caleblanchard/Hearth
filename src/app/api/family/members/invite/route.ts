@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { BCRYPT_ROUNDS } from '@/lib/constants';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
@@ -225,21 +226,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // Audit log - use type casting since the new audit action may not be in types yet
-    await (adminClient.from('audit_logs') as any).insert({
-      family_id: familyId,
-      member_id: invitingMemberId,
-      action: 'MEMBER_INVITED',
-      entity_type: 'MEMBER',
-      entity_id: member.id,
-      result: 'SUCCESS',
-      metadata: {
-        invited_email: email,
-        invited_name: name,
-        role: normalizedRole,
-        expires_at: expiresAt.toISOString(),
+    // Audit log
+    await writeAuditLog(
+      {
+        familyId,
+        memberId: invitingMemberId,
+        action: 'MEMBER_INVITED',
+        entityType: 'MEMBER',
+        entityId: member.id,
+        result: 'SUCCESS',
+        metadata: {
+          invited_email: email,
+          invited_name: name,
+          role: normalizedRole,
+          expires_at: expiresAt.toISOString(),
+        },
       },
-    });
+      adminClient as any
+    );
 
     // Cast member to any since the new columns may not be in types yet
     const memberData = member as any;

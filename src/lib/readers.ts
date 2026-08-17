@@ -41,3 +41,25 @@ export function readDateString(value: unknown): string {
 
   return new Date(0).toISOString()
 }
+
+/**
+ * A DB row (snake_case) that may also carry camelCase aliases. Rows arrive in
+ * either shape depending on whether a caller passed a raw supabase row or an
+ * already-normalized record, so reads prefer camelCase and fall back to
+ * snake_case via `pickKey`.
+ */
+export type RowLike<T> = T & Record<string, unknown>
+
+/**
+ * Read a field from a loosely-typed row, preferring the camelCase key and
+ * falling back to the snake_case key. Order is canonical (camel first) so the
+ * same row shape reads consistently across every *-lifecycle module.
+ */
+export function pickKey(
+  row: Record<string, unknown>,
+  camelKey: string,
+  snakeKey: string
+): unknown {
+  const value = row[camelKey]
+  return value !== undefined ? value : row[snakeKey]
+}

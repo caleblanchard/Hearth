@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 
 /**
  * Cron job to auto-disable sick mode instances after configured duration
@@ -79,18 +80,18 @@ export async function POST(request: NextRequest) {
           .eq('id', instance.id);
 
         // Create audit log
-        await supabase
-          .from('audit_logs')
-          .insert({
-            family_id: instance.family_id,
-            member_id: instance.member_id,
-            action: 'SICK_MODE_ENDED',
-            result: 'SUCCESS',
-            metadata: {
-              reason: `Auto-disabled after ${hoursThreshold} hours`,
-              memberName: instance.member?.name,
-            },
-          });
+        await writeAuditLog({
+          familyId: instance.family_id,
+          memberId: instance.member_id,
+          action: 'SICK_MODE_ENDED',
+          entityType: 'SICK_MODE_INSTANCE',
+          entityId: instance.id,
+          result: 'SUCCESS',
+          metadata: {
+            reason: `Auto-disabled after ${hoursThreshold} hours`,
+            memberName: instance.member?.name,
+          },
+        });
 
         disabledInstances.push({
           id: instance.id,

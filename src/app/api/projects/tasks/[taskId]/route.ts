@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getProjectTask, updateProjectTask, updateProjectTaskWithAssignee, deleteProjectTask } from '@/lib/data/projects';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 const normalizeTask = (task: any) => ({
@@ -158,12 +159,12 @@ export async function PATCH(
     const task = await updateProjectTaskWithAssignee(taskId, updates);
 
     // Audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'PROJECT_TASK_UPDATED',
-      entity_type: 'PROJECT_TASK',
-      entity_id: taskId,
+      entityType: 'PROJECT_TASK',
+      entityId: taskId,
       result: 'SUCCESS',
       metadata: {
         projectId: existing.project_id,
@@ -232,12 +233,12 @@ export async function DELETE(
     await deleteProjectTask(taskId);
 
     // Audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'PROJECT_TASK_DELETED',
-      entity_type: 'PROJECT_TASK',
-      entity_id: taskId,
+      entityType: 'PROJECT_TASK',
+      entityId: taskId,
       result: 'SUCCESS',
       metadata: {
         projectId: existing.project_id,

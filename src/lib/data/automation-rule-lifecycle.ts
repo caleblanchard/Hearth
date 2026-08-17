@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import {
   LifecycleError,
+  pickKey,
   readString,
   readNullableString,
   readBoolean,
@@ -96,17 +97,17 @@ function readExecutionCount(row: RuleRowLike): number {
 function normalizeRule(row: RuleRowLike): AutomationRuleRecord {
   return {
     id: readString(row.id),
-    familyId: readString(row.family_id ?? row.familyId),
+    familyId: readString(pickKey(row, 'familyId', 'family_id')),
     name: readString(row.name),
     description: readNullableString(row.description),
     trigger: readObject(row.trigger) as AutomationRuleTrigger,
     conditions: readNullableObject(row.conditions) as AutomationRuleConditions,
     actions: readActionArray(row.actions),
-    isEnabled: readBoolean(row.is_enabled ?? row.isEnabled),
-    createdById: readString(row.created_by_id ?? row.createdById),
-    createdAt: readString(row.created_at ?? row.createdAt),
-    updatedAt: readString(row.updated_at ?? row.updatedAt),
-    createdByMember: readCreator(row.created_by_member ?? row.createdByMember),
+    isEnabled: readBoolean(pickKey(row, 'isEnabled', 'is_enabled')),
+    createdById: readString(pickKey(row, 'createdById', 'created_by_id')),
+    createdAt: readString(pickKey(row, 'createdAt', 'created_at')),
+    updatedAt: readString(pickKey(row, 'updatedAt', 'updated_at')),
+    createdByMember: readCreator(pickKey(row, 'createdByMember', 'created_by_member')),
     executionCount: readExecutionCount(row),
   }
 }
@@ -116,8 +117,8 @@ function normalizeExecution(row: ExecutionRowLike): AutomationRuleExecutionRecor
 
   return {
     id: readString(row.id),
-    ruleId: readString(row.rule_id ?? row.ruleId),
-    executedAt: readString(row.executed_at ?? row.executedAt),
+    ruleId: readString(pickKey(row, 'ruleId', 'rule_id')),
+    executedAt: readString(pickKey(row, 'executedAt', 'executed_at')),
     success: readBoolean(row.success),
     error: readNullableString(row.error),
     metadata: readNullableObject(row.metadata),
@@ -126,7 +127,7 @@ function normalizeExecution(row: ExecutionRowLike): AutomationRuleExecutionRecor
       ? {
           id: readString(rule.id),
           name: readString(rule.name),
-          familyId: readString(rule.family_id ?? rule.familyId),
+          familyId: readString(pickKey(rule, 'familyId', 'family_id')),
         }
       : null,
   }
@@ -163,7 +164,7 @@ async function requireOwnedRule(
   }
 
   const row = data as RuleRowLike
-  if (readString(row.family_id ?? row.familyId) !== familyId) {
+  if (readString(pickKey(row, 'familyId', 'family_id')) !== familyId) {
     throw new LifecycleError(403, 'Forbidden')
   }
 
@@ -385,22 +386,23 @@ export async function getAutomationLifecycleRule(
     throw error
   }
 
-  const { count: totalExecutions } = await supabase
-    .from('rule_executions')
-    .select('*', { count: 'exact', head: true })
-    .eq('rule_id', ruleId)
-
-  const { count: successfulExecutions } = await supabase
-    .from('rule_executions')
-    .select('*', { count: 'exact', head: true })
-    .eq('rule_id', ruleId)
-    .eq('success', true)
-
-  const { count: failedExecutions } = await supabase
-    .from('rule_executions')
-    .select('*', { count: 'exact', head: true })
-    .eq('rule_id', ruleId)
-    .eq('success', false)
+  const [totalExecutions, successfulExecutions, failedExecutions] =
+    await Promise.all([
+      supabase
+        .from('rule_executions')
+        .select('*', { count: 'exact', head: true })
+        .eq('rule_id', ruleId),
+      supabase
+        .from('rule_executions')
+        .select('*', { count: 'exact', head: true })
+        .eq('rule_id', ruleId)
+        .eq('success', true),
+      supabase
+        .from('rule_executions')
+        .select('*', { count: 'exact', head: true })
+        .eq('rule_id', ruleId)
+        .eq('success', false),
+    ])
 
   return {
     rule: normalizeRule(rule),
@@ -409,11 +411,11 @@ export async function getAutomationLifecycleRule(
     ),
     limit,
     offset,
-    totalExecutions: count ?? totalExecutions ?? 0,
+    totalExecutions: count ?? totalExecutions?.count ?? 0,
     stats: normalizeStats(
-      totalExecutions ?? 0,
-      successfulExecutions ?? 0,
-      failedExecutions ?? 0
+      totalExecutions?.count ?? 0,
+      successfulExecutions?.count ?? 0,
+      failedExecutions?.count ?? 0
     ),
   }
 }

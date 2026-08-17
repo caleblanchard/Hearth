@@ -365,8 +365,9 @@ describe('/api/health/temperature', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'TEMPERATURE_LOGGED',
-          entityType: 'TemperatureLog',
+          entityType: 'TEMPERATURE_LOG',
           entityId: 'temp-log-1',
+          metadata: null,
           result: 'SUCCESS',
         },
       });

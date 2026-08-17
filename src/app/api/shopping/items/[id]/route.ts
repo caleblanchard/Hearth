@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { updateShoppingItem } from '@/lib/data/shopping';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
@@ -61,12 +62,12 @@ export async function PATCH(
 
     // Log audit if status changed
     if (updates.status && updates.status !== item.status) {
-      await supabase.from('audit_logs').insert({
-        family_id: familyId,
-        member_id: memberId,
+      await writeAuditLog({
+        familyId,
+        memberId,
         action: 'SHOPPING_ITEM_UPDATED',
-        entity_type: 'SHOPPING_ITEM',
-        entity_id: id,
+        entityType: 'SHOPPING_ITEM',
+        entityId: id,
         result: 'SUCCESS',
         metadata: { itemName: item.name, oldStatus: item.status, newStatus: updates.status },
       });
@@ -140,12 +141,12 @@ export async function DELETE(
     }
 
     // Log audit
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'SHOPPING_ITEM_DELETED',
-      entity_type: 'SHOPPING_ITEM',
-      entity_id: id,
+      entityType: 'SHOPPING_ITEM',
+      entityId: id,
       result: 'SUCCESS',
       metadata: { itemName: item.name },
     });

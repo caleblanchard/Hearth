@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getTransportSchedules, createTransportSchedule } from '@/lib/data/transport';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
@@ -139,12 +140,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId, // Who performed the action
+    await writeAuditLog({
+      familyId,
+      memberId, // Who performed the action
       action: 'TRANSPORT_SCHEDULE_CREATED',
-      entity_type: 'TRANSPORT_SCHEDULE',
-      entity_id: schedule.id,
+      entityType: 'TRANSPORT_SCHEDULE',
+      entityId: schedule.id,
       result: 'SUCCESS',
       metadata: {
         scheduleId: schedule.id,

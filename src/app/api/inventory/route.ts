@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getInventoryItems, createInventoryItem } from '@/lib/data/inventory';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 const VALID_CATEGORIES = [
@@ -151,12 +152,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'INVENTORY_ITEM_ADDED',
-      entity_type: 'INVENTORY_ITEM',
-      entity_id: item.id,
+      entityType: 'INVENTORY_ITEM',
+      entityId: item.id,
       result: 'SUCCESS',
       metadata: { name, category, location },
     });

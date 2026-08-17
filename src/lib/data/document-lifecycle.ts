@@ -1,6 +1,7 @@
 import {
   writeAuditLog,
   LifecycleError,
+  pickKey,
   requireParentContext,
   requireViewerContext,
 } from '@/lib/data/lifecycle-core'
@@ -26,41 +27,28 @@ const VALID_CATEGORIES = [
 ] as const
 
 function normalizeDocument(document: Record<string, unknown>): DocumentLifecycleRecord {
+  const rawAccessList = pickKey(document, 'accessList', 'access_list')
+  const accessList = Array.isArray(rawAccessList) ? (rawAccessList as string[]) : []
+
   return {
-    ...document,
     id: String(document.id),
     name: String(document.name ?? ''),
     category: String(document.category ?? ''),
-    fileSize: Number(document.file_size ?? document.fileSize ?? 0),
-    mimeType: String(document.mime_type ?? document.mimeType ?? ''),
+    fileSize: Number(pickKey(document, 'fileSize', 'file_size') ?? 0),
+    mimeType: String(pickKey(document, 'mimeType', 'mime_type') ?? ''),
     documentNumber:
-      (document.document_number as string | null | undefined) ??
-      (document.documentNumber as string | null | undefined) ??
-      null,
+      (pickKey(document, 'documentNumber', 'document_number') as string | null | undefined) ?? null,
     issuedDate:
-      (document.issued_date as string | null | undefined) ??
-      (document.issuedDate as string | null | undefined) ??
-      null,
+      (pickKey(document, 'issuedDate', 'issued_date') as string | null | undefined) ?? null,
     expiresAt:
-      (document.expires_at as string | null | undefined) ??
-      (document.expiresAt as string | null | undefined) ??
-      null,
+      (pickKey(document, 'expiresAt', 'expires_at') as string | null | undefined) ?? null,
     tags: Array.isArray(document.tags) ? (document.tags as string[]) : [],
     notes: (document.notes as string | null | undefined) ?? null,
-    createdAt:
-      (document.created_at as string | null | undefined) ??
-      (document.createdAt as string | null | undefined) ??
-      null,
-    familyId: String(document.family_id ?? document.familyId ?? ''),
+    createdAt: (pickKey(document, 'createdAt', 'created_at') as string | null | undefined) ?? null,
+    familyId: String(pickKey(document, 'familyId', 'family_id') ?? ''),
     uploadedBy:
-      (document.uploaded_by as string | null | undefined) ??
-      (document.uploadedBy as string | null | undefined) ??
-      null,
-    accessList: Array.isArray(document.access_list)
-      ? (document.access_list as string[])
-      : Array.isArray(document.accessList)
-        ? (document.accessList as string[])
-        : [],
+      (pickKey(document, 'uploadedBy', 'uploaded_by') as string | null | undefined) ?? null,
+    accessList,
     uploader: document.uploader as DocumentLifecycleRecord['uploader'],
   }
 }
@@ -119,7 +107,7 @@ export async function createDocumentLifecycleDocument(body: Record<string, unkno
     metadata: { documentId: document.id, name: String(name), category: String(category) },
   })
 
-  return document as unknown as DocumentLifecycleRecord
+  return normalizeDocument(document as Record<string, unknown>)
 }
 
 export async function getDocumentLifecycleDocument(documentId: string) {
@@ -131,7 +119,7 @@ export async function getDocumentLifecycleDocument(documentId: string) {
   if ((document as { family_id?: string }).family_id !== familyId) {
     throw new LifecycleError(403, 'Access denied')
   }
-  return document as unknown as DocumentLifecycleRecord
+  return normalizeDocument(document as Record<string, unknown>)
 }
 
 export async function updateDocumentLifecycleDocument(documentId: string, body: Record<string, unknown>) {
@@ -143,7 +131,7 @@ export async function updateDocumentLifecycleDocument(documentId: string, body: 
   }
 
   const document = await updateDocument(documentId, body)
-  return document as unknown as DocumentLifecycleRecord
+  return normalizeDocument(document as Record<string, unknown>)
 }
 
 export async function deleteDocumentLifecycleDocument(documentId: string) {

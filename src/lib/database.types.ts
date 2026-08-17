@@ -4992,9 +4992,12 @@ export type Database = {
         | "PIN_CHANGE"
         | "SESSION_EXPIRED"
         | "MEMBER_ADDED"
+        | "MEMBER_CREATED"
         | "MEMBER_REMOVED"
         | "MEMBER_UPDATED"
+        | "MEMBER_DELETED"
         | "ROLE_CHANGED"
+        | "CHORE_CREATED"
         | "CHORE_COMPLETED"
         | "CHORE_APPROVED"
         | "CHORE_REJECTED"
@@ -5004,6 +5007,8 @@ export type Database = {
         | "REWARD_REDEEMED"
         | "REWARD_APPROVED"
         | "REWARD_REJECTED"
+        | "REWARD_UPDATED"
+        | "REWARD_DELETED"
         | "SCREENTIME_LOGGED"
         | "SCREENTIME_ADJUSTED"
         | "GRACE_PERIOD_USED"
@@ -5066,6 +5071,7 @@ export type Database = {
         | "CARPOOL_GROUP_CREATED"
         | "CARPOOL_MEMBER_ADDED"
         | "TRANSPORT_CONFIRMED"
+        | "CALENDAR_EVENT_CREATED"
         | "DOCUMENT_UPLOADED"
         | "DOCUMENT_UPDATED"
         | "DOCUMENT_DELETED"
@@ -5091,6 +5097,7 @@ export type Database = {
         | "SHOPPING_ITEM_ADDED"
         | "SHOPPING_ITEM_UPDATED"
         | "SHOPPING_ITEM_DELETED"
+        | "TODO_CREATED"
         | "RULE_CREATED"
         | "RULE_UPDATED"
         | "RULE_DELETED"
@@ -5492,9 +5499,12 @@ export const Constants = {
         "PIN_CHANGE",
         "SESSION_EXPIRED",
         "MEMBER_ADDED",
+        "MEMBER_CREATED",
         "MEMBER_REMOVED",
         "MEMBER_UPDATED",
+        "MEMBER_DELETED",
         "ROLE_CHANGED",
+        "CHORE_CREATED",
         "CHORE_COMPLETED",
         "CHORE_APPROVED",
         "CHORE_REJECTED",
@@ -5503,6 +5513,8 @@ export const Constants = {
         "CREDITS_DEDUCTED",
         "REWARD_REDEEMED",
         "REWARD_APPROVED",
+        "REWARD_UPDATED",
+        "REWARD_DELETED",
         "SCREENTIME_LOGGED",
         "SCREENTIME_ADJUSTED",
         "GRACE_PERIOD_USED",
@@ -5565,6 +5577,7 @@ export const Constants = {
         "CARPOOL_GROUP_CREATED",
         "CARPOOL_MEMBER_ADDED",
         "TRANSPORT_CONFIRMED",
+        "CALENDAR_EVENT_CREATED",
         "DOCUMENT_UPLOADED",
         "DOCUMENT_UPDATED",
         "DOCUMENT_DELETED",
@@ -5590,6 +5603,7 @@ export const Constants = {
         "SHOPPING_ITEM_ADDED",
         "SHOPPING_ITEM_UPDATED",
         "SHOPPING_ITEM_DELETED",
+        "TODO_CREATED",
         "RULE_CREATED",
         "RULE_UPDATED",
         "RULE_DELETED",

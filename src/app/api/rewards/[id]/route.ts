@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { updateRewardItem } from '@/lib/data/credits';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
@@ -57,12 +58,12 @@ export async function PATCH(
     const updatedReward = await updateRewardItem(id, updates);
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
-      action: 'REWARD_UPDATED' as any,
-      entity_type: 'REWARD',
-      entity_id: id,
+    await writeAuditLog({
+      familyId,
+      memberId,
+      action: 'REWARD_UPDATED',
+      entityType: 'REWARD',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         rewardId: id,
@@ -144,12 +145,12 @@ export async function DELETE(
     }
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
-      action: 'REWARD_DELETED' as any,
-      entity_type: 'REWARD',
-      entity_id: id,
+    await writeAuditLog({
+      familyId,
+      memberId,
+      action: 'REWARD_DELETED',
+      entityType: 'REWARD',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         rewardId: id,

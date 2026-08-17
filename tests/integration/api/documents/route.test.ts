@@ -132,7 +132,23 @@ describe('/api/documents', () => {
 
       expect(response.status).toBe(201);
       expect(data.success).toBe(true);
-      expect(data.document).toEqual(mockDoc);
+      expect(data.document).toEqual({
+        id: 'doc-1',
+        name: 'Passport.pdf',
+        category: 'IDENTITY',
+        fileSize: 1024000,
+        mimeType: 'application/pdf',
+        documentNumber: null,
+        issuedDate: null,
+        expiresAt: null,
+        tags: [],
+        notes: null,
+        createdAt: null,
+        familyId: 'family-test-123',
+        uploadedBy: session.user.id,
+        accessList: [],
+        uploader: undefined,
+      });
 
       expect(createDocument).toHaveBeenCalledWith(expect.objectContaining({
         name: 'Passport.pdf',

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { getHealthEvent, updateHealthEvent, deleteHealthEvent } from '@/lib/data/health';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -111,12 +112,12 @@ export async function PATCH(
       action = 'HEALTH_EVENT_ENDED';
     }
 
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: requesterId,
+    await writeAuditLog({
+      familyId,
+      memberId: requesterId,
       action: action as any,
-      entity_type: 'HealthEvent',
-      entity_id: id,
+      entityType: 'HEALTH_EVENT',
+      entityId: id,
       result: 'SUCCESS',
     });
 

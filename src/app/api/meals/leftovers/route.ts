@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { getActiveLeftovers, createLeftover } from '@/lib/data/meals';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 const DEFAULT_EXPIRY_DAYS = 3;
@@ -78,12 +79,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'LEFTOVER_LOGGED',
-      entity_type: 'LEFTOVER',
-      entity_id: leftover.id,
+      entityType: 'LEFTOVER',
+      entityId: leftover.id,
       result: 'SUCCESS',
       metadata: {
         leftoverId: leftover.id,

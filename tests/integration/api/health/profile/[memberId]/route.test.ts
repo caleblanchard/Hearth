@@ -439,8 +439,9 @@ describe('/api/health/profile/[memberId]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'MEDICAL_PROFILE_UPDATED',
-          entityType: 'MedicalProfile',
+          entityType: 'MEDICAL_PROFILE',
           entityId: 'profile-1',
+          metadata: null,
           result: 'SUCCESS',
         },
       });

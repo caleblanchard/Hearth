@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getProjectTasks, createProjectTask } from '@/lib/data/projects';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 const normalizeTask = (task: any) => ({
@@ -159,12 +160,12 @@ export async function POST(
     });
 
     // Audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'PROJECT_TASK_CREATED',
-      entity_type: 'PROJECT_TASK',
-      entity_id: task.id,
+      entityType: 'PROJECT_TASK',
+      entityId: task.id,
       result: 'SUCCESS',
       metadata: {
         projectId: id,

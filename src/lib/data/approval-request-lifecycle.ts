@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   LifecycleError,
   LifecycleViewerContext,
+  pickKey,
   readDateString,
   readNullableString,
   readNumber,
@@ -98,32 +99,32 @@ async function requireLifecycleContext(
 }
 
 function readChoreDefinition(row: RawApprovalRow): RawApprovalRow {
-  const schedule = readObject(row.choreSchedule ?? row.chore_schedule)
-  return readObject(schedule.choreDefinition ?? schedule.chore_definition)
+  const schedule = readObject(pickKey(row, 'choreSchedule', 'chore_schedule'))
+  return readObject(pickKey(schedule, 'choreDefinition', 'chore_definition'))
 }
 
 function mapChoreApprovalItem(row: RawApprovalRow): ApprovalRequestItem | null {
-  const assignedTo = readObject(row.assignedTo ?? row.assigned_to)
+  const assignedTo = readObject(pickKey(row, 'assignedTo', 'assigned_to'))
   const definition = readChoreDefinition(row)
   const sourceId = readString(row.id)
 
   if (!sourceId) return null
 
-  const photoUrl = readNullableString(row.photo_url ?? row.photoUrl)
+  const photoUrl = readNullableString(pickKey(row, 'photoUrl', 'photo_url'))
 
   return {
     id: createApprovalRequestId('CHORE_COMPLETION', sourceId),
     type: 'CHORE_COMPLETION',
-    familyMemberId: readString(assignedTo.id ?? row.assigned_to_id ?? row.assignedToId),
+    familyMemberId: readString(assignedTo.id ?? pickKey(row, 'assignedToId', 'assigned_to_id')),
     familyMemberName: readString(assignedTo.name),
     familyMemberAvatarUrl: readNullableString(
-      assignedTo.avatar_url ?? assignedTo.avatarUrl
+      pickKey(assignedTo, 'avatarUrl', 'avatar_url')
     ),
     title: readString(definition.name) || 'Chore',
     description: readNullableString(row.notes) ?? '',
-    requestedAt: readDateString(row.completed_at ?? row.completedAt),
+    requestedAt: readDateString(pickKey(row, 'completedAt', 'completed_at')),
     metadata: {
-      credits: readNumber(definition.credit_value ?? definition.creditValue),
+      credits: readNumber(pickKey(definition, 'creditValue', 'credit_value')),
       notes: readNullableString(row.notes),
       photoUrl,
     },
@@ -139,18 +140,18 @@ function mapRewardApprovalItem(row: RawApprovalRow): ApprovalRequestItem | null 
 
   if (!sourceId) return null
 
-  const requestedAt = readDateString(row.requested_at ?? row.requestedAt)
-  const costCredits = readNumber(reward.cost_credits ?? reward.costCredits)
+  const requestedAt = readDateString(pickKey(row, 'requestedAt', 'requested_at'))
+  const costCredits = readNumber(pickKey(reward, 'costCredits', 'cost_credits'))
   const hoursOld =
     (Date.now() - new Date(requestedAt).getTime()) / (1000 * 60 * 60)
 
   return {
     id: createApprovalRequestId('REWARD_REDEMPTION', sourceId),
     type: 'REWARD_REDEMPTION',
-    familyMemberId: readString(member.id ?? row.member_id ?? row.memberId),
+    familyMemberId: readString(member.id ?? pickKey(row, 'memberId', 'member_id')),
     familyMemberName: readString(member.name),
     familyMemberAvatarUrl: readNullableString(
-      member.avatar_url ?? member.avatarUrl
+      pickKey(member, 'avatarUrl', 'avatar_url')
     ),
     title: readString(reward.name) || 'Reward',
     description: readNullableString(row.notes) ?? '',
@@ -164,7 +165,7 @@ function mapRewardApprovalItem(row: RawApprovalRow): ApprovalRequestItem | null 
 }
 
 function mapShoppingApprovalItem(row: RawApprovalRow): ApprovalRequestItem | null {
-  const requestedBy = readObject(row.requestedBy ?? row.requested_by)
+  const requestedBy = readObject(pickKey(row, 'requestedBy', 'requested_by'))
   const sourceId = readString(row.id)
 
   if (!sourceId) return null
@@ -172,14 +173,14 @@ function mapShoppingApprovalItem(row: RawApprovalRow): ApprovalRequestItem | nul
   return {
     id: createApprovalRequestId('SHOPPING_ITEM', sourceId),
     type: 'SHOPPING_ITEM',
-    familyMemberId: readString(requestedBy.id ?? row.requested_by ?? row.requestedById),
+    familyMemberId: readString(requestedBy.id ?? pickKey(row, 'requestedById', 'requested_by')),
     familyMemberName: readString(requestedBy.name),
     familyMemberAvatarUrl: readNullableString(
-      requestedBy.avatar_url ?? requestedBy.avatarUrl
+      pickKey(requestedBy, 'avatarUrl', 'avatar_url')
     ),
     title: readString(row.name) || 'Shopping request',
     description: '',
-    requestedAt: readDateString(row.created_at ?? row.createdAt),
+    requestedAt: readDateString(pickKey(row, 'createdAt', 'created_at')),
     metadata: {},
     priority: 'NORMAL',
     actionable: false,
@@ -308,30 +309,34 @@ async function loadPendingGraceRows(
     return readFamilyId(member) === familyId
   })
 
-  return Promise.all(
-    filtered.map(async (row) => {
-      const memberId = readString(row.member_id ?? row.memberId)
-      const { data: balance } = await supabase
-        .from('screen_time_balances')
-        .select('*')
-        .eq('member_id', memberId)
-        .single()
-
-      const member = readObject(row.member)
-
-      return {
-        id: readString(row.id),
-        memberId,
-        memberName: readString(member.name),
-        minutesGranted: readNumber(row.minutes_granted ?? row.minutesGranted),
-        reason: readNullableString(row.reason),
-        requestedAt: readDateString(row.requested_at ?? row.requestedAt),
-        currentBalance: readNumber(
-          readObject(balance ?? {}).current_balance_minutes
-        ),
-      } satisfies PendingGraceApprovalRecord
-    })
+  const memberIds = filtered.map((row) =>
+    readString(pickKey(row, 'memberId', 'member_id'))
   )
+  const { data: balances } =
+    memberIds.length > 0
+      ? await supabase.from('screen_time_balances').select('*').in('member_id', memberIds)
+      : { data: [] }
+  const balanceByMember = new Map(
+    (balances ?? []).map((balance) => [
+      balance.member_id,
+      readNumber(balance.current_balance_minutes),
+    ])
+  )
+
+  return filtered.map((row) => {
+    const memberId = readString(pickKey(row, 'memberId', 'member_id'))
+    const member = readObject(row.member)
+
+    return {
+      id: readString(row.id),
+      memberId,
+      memberName: readString(member.name),
+      minutesGranted: readNumber(pickKey(row, 'minutesGranted', 'minutes_granted')),
+      reason: readNullableString(row.reason),
+      requestedAt: readDateString(pickKey(row, 'requestedAt', 'requested_at')),
+      currentBalance: balanceByMember.get(memberId) ?? 0,
+    } satisfies PendingGraceApprovalRecord
+  })
 }
 
 function assertFamilyOwnership(
@@ -531,13 +536,13 @@ export async function listPendingRewardRedemptionRequests(
     return {
       id: readString(row.id),
       status: readString(row.status),
-      requestedAt: readDateString(row.requested_at ?? row.requestedAt),
+      requestedAt: readDateString(pickKey(row, 'requestedAt', 'requested_at')),
       notes: readNullableString(row.notes) ?? undefined,
       reward: {
         id: readString(reward.id),
         name: readString(reward.name),
         description: readNullableString(reward.description) ?? undefined,
-        costCredits: readNumber(reward.cost_credits ?? reward.costCredits),
+        costCredits: readNumber(pickKey(reward, 'costCredits', 'cost_credits')),
         category: readString(reward.category),
       },
       member: {

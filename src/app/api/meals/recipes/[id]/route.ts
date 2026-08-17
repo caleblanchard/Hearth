@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { getRecipe, updateRecipe, deleteRecipe } from '@/lib/data/recipes';
 import { getMember } from '@/lib/data/members';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -360,12 +361,12 @@ export async function PATCH(
     }
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'RECIPE_UPDATED',
-      entity_type: 'RECIPE',
-      entity_id: id,
+      entityType: 'RECIPE',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         recipeId: id,
@@ -490,12 +491,12 @@ export async function DELETE(
     await deleteRecipe(id);
 
     // Create audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'RECIPE_DELETED',
-      entity_type: 'RECIPE',
-      entity_id: id,
+      entityType: 'RECIPE',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         recipeId: id,

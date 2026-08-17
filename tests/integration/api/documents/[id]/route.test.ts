@@ -86,7 +86,23 @@ describe('/api/documents/[id]', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.document).toEqual(mockDoc);
+      expect(data.document).toEqual({
+        id: 'doc-1',
+        name: 'Doc',
+        category: '',
+        fileSize: 0,
+        mimeType: '',
+        documentNumber: null,
+        issuedDate: null,
+        expiresAt: null,
+        tags: [],
+        notes: null,
+        createdAt: null,
+        familyId: session.user.familyId,
+        uploadedBy: null,
+        accessList: [],
+        uploader: undefined,
+      });
     });
   });
 

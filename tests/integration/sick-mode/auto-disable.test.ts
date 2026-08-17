@@ -92,8 +92,10 @@ describe('POST /api/cron/sick-mode-auto-disable', () => {
     expect(dbMock.auditLog.create).toHaveBeenCalledWith({
       data: {
         familyId: 'family-1',
-        memberId: expect.any(String),
+        memberId: 'child-1',
         action: 'SICK_MODE_ENDED',
+        entityType: 'SICK_MODE_INSTANCE',
+        entityId: 'sick-1',
         result: 'SUCCESS',
         metadata: {
           reason: 'Auto-disabled after 24 hours',

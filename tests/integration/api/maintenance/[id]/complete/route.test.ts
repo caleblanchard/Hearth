@@ -140,6 +140,8 @@ describe('/api/maintenance/[id]/complete', () => {
         familyId: 'family-test-123',
         memberId: 'parent-test-123',
         action: 'MAINTENANCE_TASK_COMPLETED',
+        entityType: 'MAINTENANCE_ITEM',
+        entityId: 'item-1',
         result: 'SUCCESS',
         metadata: {
           itemId: 'item-1',

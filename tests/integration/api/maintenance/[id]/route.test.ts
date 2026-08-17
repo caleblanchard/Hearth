@@ -206,6 +206,8 @@ describe('/api/maintenance/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'MAINTENANCE_ITEM_UPDATED',
+          entityType: 'MAINTENANCE_ITEM',
+          entityId: 'item-1',
           result: 'SUCCESS',
           metadata: {
             itemId: 'item-1',
@@ -322,6 +324,8 @@ describe('/api/maintenance/[id]', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'MAINTENANCE_ITEM_DELETED',
+          entityType: 'MAINTENANCE_ITEM',
+          entityId: 'item-1',
           result: 'SUCCESS',
           metadata: {
             itemId: 'item-1',

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { getChoreDefinitions } from '@/lib/data/chores';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 import { sanitizeString } from '@/lib/input-sanitization';
 import { getNextDueDates, getNextAssignee, startOfDay, endOfDay } from '@/lib/chore-scheduler';
@@ -365,12 +366,12 @@ export async function POST(request: Request) {
     } : null;
 
     // Audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'CHORE_CREATED',
-      entity_type: 'CHORE',
-      entity_id: definition.id,
+      entityType: 'CHORE',
+      entityId: definition.id,
       result: 'SUCCESS',
       metadata: { name },
     });

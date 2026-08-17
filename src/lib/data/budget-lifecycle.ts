@@ -1,16 +1,20 @@
-import { LifecycleError, requireViewerContext } from '@/lib/data/lifecycle-core'
-import { createClient, isParentInFamily } from '@/lib/supabase/server'
+import {
+  LifecycleError,
+  pickKey,
+  requireViewerContext,
+} from '@/lib/data/lifecycle-core'
+import { createClient } from '@/lib/supabase/server'
 import { createBudget, getBudgets } from '@/lib/data/financial'
 import type { BudgetLifecycleRecord } from '@/types/budget-lifecycle'
 
 function normalizeBudget(budget: Record<string, unknown>): BudgetLifecycleRecord {
   return {
     id: String(budget.id),
-    memberId: String(budget.member_id ?? budget.memberId ?? ''),
+    memberId: String(pickKey(budget, 'memberId', 'member_id') ?? ''),
     category: String(budget.category ?? ''),
-    limitAmount: Number(budget.limit_amount ?? budget.limitAmount ?? 0),
+    limitAmount: Number(pickKey(budget, 'limitAmount', 'limit_amount') ?? 0),
     period: String(budget.period ?? ''),
-    isActive: Boolean(budget.is_active ?? budget.isActive),
+    isActive: Boolean(pickKey(budget, 'isActive', 'is_active')),
     member: budget.member
       ? {
           id: String((budget.member as Record<string, unknown>).id ?? ''),
@@ -22,20 +26,23 @@ function normalizeBudget(budget: Record<string, unknown>): BudgetLifecycleRecord
           const source = period as Record<string, unknown>
           return {
             id: String(source.id),
-            periodKey: String(source.period_key ?? source.periodKey ?? ''),
+            periodKey: String(pickKey(source, 'periodKey', 'period_key') ?? ''),
             periodStart:
-              (source.period_start as string | null | undefined) ??
-              (source.periodStart as string | null | undefined) ??
-              null,
+              (pickKey(source, 'periodStart', 'period_start') as
+                | string
+                | null
+                | undefined) ?? null,
             periodEnd:
-              (source.period_end as string | null | undefined) ??
-              (source.periodEnd as string | null | undefined) ??
-              null,
+              (pickKey(source, 'periodEnd', 'period_end') as
+                | string
+                | null
+                | undefined) ?? null,
             spent: Number(source.spent ?? 0),
             createdAt:
-              (source.created_at as string | null | undefined) ??
-              (source.createdAt as string | null | undefined) ??
-              null,
+              (pickKey(source, 'createdAt', 'created_at') as
+                | string
+                | null
+                | undefined) ?? null,
           }
         })
       : [],
@@ -49,7 +56,7 @@ export async function getBudgetLifecycleBudgets() {
 }
 
 export async function createBudgetLifecycleBudget(body: Record<string, unknown>) {
-  const { familyId, memberId } = await requireViewerContext()
+  const { familyId, memberId, isParent } = await requireViewerContext()
   const targetMemberId =
     typeof body.memberId === 'string' && body.memberId.length > 0 ? body.memberId : memberId
 
@@ -73,11 +80,8 @@ export async function createBudgetLifecycleBudget(body: Record<string, unknown>)
     throw new LifecycleError(400, 'Period must be "weekly" or "monthly"')
   }
 
-  if (targetMemberId !== memberId) {
-    const isParent = await isParentInFamily(familyId)
-    if (!isParent) {
-      throw new LifecycleError(403, 'Parent access required')
-    }
+  if (targetMemberId !== memberId && !isParent) {
+    throw new LifecycleError(403, 'Parent access required')
   }
 
   const supabase = await createClient()
@@ -101,7 +105,7 @@ export async function createBudgetLifecycleBudget(body: Record<string, unknown>)
     return await createBudget(familyId, {
       memberId: targetMemberId,
       category,
-      limitAmount: Number(body.amount ?? body.limitAmount),
+      limitAmount: body.limitAmount,
       period,
       resetDay: typeof body.resetDay === 'number' ? body.resetDay : 0,
       isActive: typeof body.isActive === 'boolean' ? body.isActive : true,
@@ -116,7 +120,7 @@ export async function createBudgetLifecycleBudget(body: Record<string, unknown>)
 }
 
 export async function deleteBudgetLifecycleBudget(budgetId: string) {
-  const { familyId, memberId } = await requireViewerContext()
+  const { familyId, memberId, isParent } = await requireViewerContext()
   const supabase = await createClient()
   const { data: budget } = await supabase
     .from('budgets')
@@ -128,8 +132,7 @@ export async function deleteBudgetLifecycleBudget(budgetId: string) {
     throw new LifecycleError(404, 'Budget not found')
   }
 
-  const canManageOthers = await isParentInFamily(familyId)
-  if ((budget as { member_id?: string }).member_id !== memberId && !canManageOthers) {
+  if ((budget as { member_id?: string }).member_id !== memberId && !isParent) {
     throw new LifecycleError(403, 'Parent access required')
   }
 

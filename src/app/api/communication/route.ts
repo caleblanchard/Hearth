@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { getAuthContext } from '@/lib/supabase/server'
 import { getCommunicationPosts, createCommunicationPost } from '@/lib/data/communication'
+import { writeAuditLog } from '@/lib/data/lifecycle-core'
 import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
@@ -73,7 +73,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
     const authContext = await getAuthContext()
 
     if (!authContext) {
@@ -117,12 +116,12 @@ export async function POST(request: NextRequest) {
       is_pinned: false,
     })
 
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'POST_CREATED',
-      entity_type: 'COMMUNICATION',
-      entity_id: post.id,
+      entityType: 'COMMUNICATION_POST',
+      entityId: post.id,
       result: 'SUCCESS',
       metadata: {
         type: post.type,

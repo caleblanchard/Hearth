@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 
 /**
  * Complete the invitation acceptance process
@@ -114,19 +115,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Audit log - cast since new audit action may not be in types
-    await (adminClient.from('audit_logs') as any).insert({
-      family_id: pendingMember.family_id,
-      member_id: pendingMember.id,
-      action: 'MEMBER_INVITE_ACCEPTED',
-      entity_type: 'MEMBER',
-      entity_id: pendingMember.id,
-      result: 'SUCCESS',
-      metadata: {
-        email: user.email,
-        auth_user_id: user.id,
+    // Audit log
+    await writeAuditLog(
+      {
+        familyId: pendingMember.family_id,
+        memberId: pendingMember.id,
+        action: 'MEMBER_INVITE_ACCEPTED',
+        entityType: 'MEMBER',
+        entityId: pendingMember.id,
+        result: 'SUCCESS',
+        metadata: {
+          email: user.email,
+          auth_user_id: user.id,
+        },
       },
-    });
+      adminClient as any
+    );
 
     return NextResponse.json({
       success: true,

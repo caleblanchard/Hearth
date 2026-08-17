@@ -177,6 +177,50 @@ export async function getScreenTimeLifecycleGraceStatus(
   }
 }
 
+async function borrowGraceMinutes(
+  memberId: string,
+  minutes: number,
+  reason: string | null,
+  actorId: string
+): Promise<{ newBalance: number; transactionId: string }> {
+  const supabase = await createClient()
+  const balance = await ensureBalanceRow(memberId)
+  const newBalance = balance.current_balance_minutes + minutes
+
+  const transactionResult = await supabase
+    .from('screen_time_transactions')
+    .insert({
+      member_id: memberId,
+      created_by_id: actorId,
+      screen_time_type_id: null,
+      amount_minutes: minutes,
+      balance_after: newBalance,
+      type: 'GRACE_BORROWED',
+      reason,
+      was_override: false,
+    } satisfies ScreenTimeTransactionInsert)
+    .select()
+    .single()
+
+  if (transactionResult.error || !transactionResult.data) {
+    throw transactionResult.error ?? new Error('Failed to grant grace period')
+  }
+
+  const balanceUpdate = await supabase
+    .from('screen_time_balances')
+    .update({
+      current_balance_minutes: newBalance,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('member_id', memberId)
+
+  if (balanceUpdate.error) {
+    throw balanceUpdate.error
+  }
+
+  return { newBalance, transactionId: transactionResult.data.id }
+}
+
 export async function requestScreenTimeLifecycleGrace(
   input: RequestScreenTimeLifecycleGraceInput = {}
 ): Promise<ScreenTimeLifecycleGraceRequestResult> {
@@ -226,37 +270,12 @@ export async function requestScreenTimeLifecycleGrace(
     }
   }
 
-  const newBalance = balance.current_balance_minutes + requestedMinutes
-  const transactionResult = await supabase
-    .from('screen_time_transactions')
-    .insert({
-      member_id: context.memberId,
-      created_by_id: context.memberId,
-      screen_time_type_id: null,
-      amount_minutes: requestedMinutes,
-      balance_after: newBalance,
-      type: 'GRACE_BORROWED',
-      reason,
-      was_override: false,
-    } satisfies ScreenTimeTransactionInsert)
-    .select()
-    .single()
-
-  if (transactionResult.error || !transactionResult.data) {
-    throw transactionResult.error ?? new Error('Failed to request grace period')
-  }
-
-  const balanceUpdate = await supabase
-    .from('screen_time_balances')
-    .update({
-      current_balance_minutes: newBalance,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('member_id', context.memberId)
-
-  if (balanceUpdate.error) {
-    throw balanceUpdate.error
-  }
+  const { newBalance, transactionId } = await borrowGraceMinutes(
+    context.memberId,
+    requestedMinutes,
+    reason,
+    context.memberId
+  )
 
   const graceLogResult = await supabase
     .from('grace_period_logs')
@@ -265,7 +284,7 @@ export async function requestScreenTimeLifecycleGrace(
       minutes_granted: requestedMinutes,
       reason,
       approved_by_id: context.memberId,
-      related_transaction_id: transactionResult.data.id,
+      related_transaction_id: transactionId,
       repayment_status: 'PENDING',
     } satisfies GracePeriodLogInsert)
     .select()
@@ -323,44 +342,18 @@ export async function approveScreenTimeLifecycleGrace(
     return normalizeGraceLog(graceLog)
   }
 
-  const balance = await ensureBalanceRow(graceLog.member_id)
-  const newBalance = balance.current_balance_minutes + graceLog.minutes_granted
-  const transactionResult = await supabase
-    .from('screen_time_transactions')
-    .insert({
-      member_id: graceLog.member_id,
-      created_by_id: approvedByMemberId,
-      screen_time_type_id: null,
-      amount_minutes: graceLog.minutes_granted,
-      balance_after: newBalance,
-      type: 'GRACE_BORROWED',
-      reason: graceLog.reason,
-      was_override: false,
-    } satisfies ScreenTimeTransactionInsert)
-    .select()
-    .single()
-
-  if (transactionResult.error || !transactionResult.data) {
-    throw transactionResult.error ?? new Error('Failed to approve grace request')
-  }
-
-  const balanceUpdate = await supabase
-    .from('screen_time_balances')
-    .update({
-      current_balance_minutes: newBalance,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('member_id', graceLog.member_id)
-
-  if (balanceUpdate.error) {
-    throw balanceUpdate.error
-  }
+  const { newBalance, transactionId } = await borrowGraceMinutes(
+    graceLog.member_id,
+    graceLog.minutes_granted,
+    graceLog.reason,
+    approvedByMemberId
+  )
 
   const updateResult = await supabase
     .from('grace_period_logs')
     .update({
       approved_by_id: approvedByMemberId,
-      related_transaction_id: transactionResult.data.id,
+      related_transaction_id: transactionId,
       repayment_status: 'PENDING',
     } satisfies GracePeriodLogUpdate)
     .eq('id', graceLogId)

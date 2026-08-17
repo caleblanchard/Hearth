@@ -23,16 +23,6 @@ import type {
 
 const VALID_MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']
 
-type FamilySettingsRow = {
-  settings?: Record<string, unknown> | null
-}
-
-function toIsoDate(value: Date): string {
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(
-    value.getDate()
-  ).padStart(2, '0')}`
-}
-
 function normalizeDish(dish: Record<string, unknown>): MealPlanLifecycleDishRecord {
   const recipeSource =
     (dish.recipe as Record<string, unknown> | null | undefined) ??
@@ -95,38 +85,6 @@ function normalizeMealPlan(plan: Record<string, unknown>): MealPlanLifecycleReco
     weekStart: String(plan.week_start ?? plan.weekStart ?? ''),
     meals: entries.map((entry) => normalizeEntry(entry as Record<string, unknown>)),
   }
-}
-
-async function getFamilyWeekStartDay(familyId: string) {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('families')
-    .select('settings')
-    .eq('id', familyId)
-    .single<FamilySettingsRow>()
-
-  const settings = data?.settings ?? null
-  return settings?.weekStartDay === 'MONDAY' ? 'MONDAY' : 'SUNDAY'
-}
-
-async function resolveWeekStart(familyId: string, weekParam: string) {
-  const weekDate = new Date(`${weekParam}T00:00:00`)
-  if (Number.isNaN(weekDate.getTime())) {
-    throw new LifecycleError(400, 'Invalid date format')
-  }
-
-  const startDay = await getFamilyWeekStartDay(familyId)
-  const weekStartDate = new Date(weekDate)
-  const dayOfWeek = weekStartDate.getDay()
-
-  if (startDay === 'SUNDAY') {
-    weekStartDate.setDate(weekStartDate.getDate() - dayOfWeek)
-  } else {
-    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    weekStartDate.setDate(weekStartDate.getDate() - diff)
-  }
-
-  return toIsoDate(weekStartDate)
 }
 
 async function readMealEntryOwnership(entryId: string, familyId: string) {

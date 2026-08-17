@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 import { TodoStatus } from '@/lib/enums';
 import { dbMock } from '@/lib/test-utils/db-mock';
@@ -201,12 +202,12 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     // Create audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'TODO_CREATED',
-      entity_type: 'TODO',
-      entity_id: todo.id,
+      entityType: 'TODO',
+      entityId: todo.id,
       result: 'SUCCESS',
       metadata: {
         title: todo.title,

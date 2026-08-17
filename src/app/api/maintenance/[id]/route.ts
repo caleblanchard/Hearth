@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { getMaintenanceItem, updateMaintenanceItem, deleteMaintenanceItem, getMaintenanceCompletions } from '@/lib/data/maintenance';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 import { isParentInFamily } from '@/lib/supabase/server';
 
@@ -120,10 +121,12 @@ export async function PATCH(
     const item = await updateMaintenanceItem(id, body);
 
     // Audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: authContext.activeMemberId,
+    await writeAuditLog({
+      familyId,
+      memberId: authContext.activeMemberId,
       action: 'MAINTENANCE_ITEM_UPDATED',
+      entityType: 'MAINTENANCE_ITEM',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         itemId: item.id,
@@ -197,11 +200,12 @@ export async function DELETE(
     await deleteMaintenanceItem(id);
 
     // Audit log
-    const supabase = await createClient(); // Need to init supabase if not present
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: authContext.activeMemberId,
+    await writeAuditLog({
+      familyId,
+      memberId: authContext.activeMemberId,
       action: 'MAINTENANCE_ITEM_DELETED',
+      entityType: 'MAINTENANCE_ITEM',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         itemId: id,

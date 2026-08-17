@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { markLeftoverUsed, markLeftoverTossed } from '@/lib/data/meals';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
@@ -67,12 +68,12 @@ export async function PATCH(
       updatedLeftover = await markLeftoverUsed(id);
       
       // Create audit log
-      await supabase.from('audit_logs').insert({
-        family_id: familyId,
-        member_id: memberId,
+      await writeAuditLog({
+        familyId,
+        memberId,
         action: 'LEFTOVER_MARKED_USED',
-        entity_type: 'LEFTOVER',
-        entity_id: id,
+        entityType: 'LEFTOVER',
+        entityId: id,
         result: 'SUCCESS',
         metadata: {
           leftoverId: id,
@@ -82,12 +83,12 @@ export async function PATCH(
       updatedLeftover = await markLeftoverTossed(id);
       
       // Create audit log
-      await supabase.from('audit_logs').insert({
-        family_id: familyId,
-        member_id: memberId,
+      await writeAuditLog({
+        familyId,
+        memberId,
         action: 'LEFTOVER_MARKED_TOSSED',
-        entity_type: 'LEFTOVER',
-        entity_id: id,
+        entityType: 'LEFTOVER',
+        entityId: id,
         result: 'SUCCESS',
         metadata: {
           leftoverId: id,

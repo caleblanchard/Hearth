@@ -147,6 +147,8 @@ describe('/api/meals/recipes/[id]/rate', () => {
           familyId: 'family-test-123',
           memberId: 'parent-test-123',
           action: 'RECIPE_RATED',
+          entityType: 'RECIPE',
+          entityId: 'recipe-1',
           result: 'SUCCESS',
           metadata: {
             recipeId: 'recipe-1',

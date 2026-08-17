@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { getHealthEvents, createHealthEvent } from '@/lib/data/health';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 const VALID_EVENT_TYPES = [
@@ -165,12 +166,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'HEALTH_EVENT_CREATED',
-      entity_type: 'HEALTH_EVENT',
-      entity_id: event.id,
+      entityType: 'HEALTH_EVENT',
+      entityId: event.id,
       result: 'SUCCESS',
       metadata: { title, eventType, targetMemberId },
     });

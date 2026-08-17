@@ -123,27 +123,6 @@ async function getOwnedInstanceRow(
   return instance as SickModeInstanceRowLike
 }
 
-async function selectNormalizedInstance(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  instanceId: string
-) {
-  const { data: instance, error } = await supabase
-    .from('sick_mode_instances')
-    .select(`
-      *,
-      member:family_members!sick_mode_instances_member_id_fkey(id, name)
-    `)
-    .eq('id', instanceId)
-    .single()
-
-  if (error || !instance) {
-    logger.error('Error loading saved sick mode lifecycle instance:', error)
-    throw new LifecycleError(500, 'Failed to fetch sick mode status')
-  }
-
-  return normalizeSickModeInstance(instance as SickModeInstanceRowLike)
-}
-
 async function getOrCreateSickModeSettings(
   supabase: Awaited<ReturnType<typeof createClient>>,
   familyId: string
@@ -227,7 +206,7 @@ export async function startSickModeLifecycle(
     throw new LifecycleError(400, 'Member ID is required')
   }
 
-  if (input.memberId !== viewer.memberId && viewer.role !== 'PARENT') {
+  if (input.memberId !== viewer.memberId && !viewer.isParent) {
     throw new LifecycleError(403, 'Children can only start sick mode for themselves')
   }
 

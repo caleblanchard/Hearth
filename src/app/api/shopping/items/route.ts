@@ -5,6 +5,7 @@ import { addShoppingItem, getOrCreateShoppingList } from '@/lib/data/shopping';
 import { logger } from '@/lib/logger';
 import { sanitizeString, sanitizeInteger } from '@/lib/input-sanitization';
 import { parseJsonBody } from '@/lib/request-validation';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,12 +75,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Log audit
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'SHOPPING_ITEM_ADDED',
-      entity_type: 'SHOPPING_ITEM',
-      entity_id: item.id,
+      entityType: 'SHOPPING_ITEM',
+      entityId: item.id,
       result: 'SUCCESS',
       metadata: {
         itemName: name,

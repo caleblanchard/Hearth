@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { completeMaintenanceItem } from '@/lib/data/maintenance';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function POST(
@@ -53,10 +54,12 @@ export async function POST(
     });
 
     // Audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'MAINTENANCE_TASK_COMPLETED',
+      entityType: 'MAINTENANCE_ITEM',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         itemId: id,

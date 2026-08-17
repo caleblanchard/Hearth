@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { recordPetFeeding, getPetFeedings } from '@/lib/data/pets';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -100,12 +101,12 @@ export async function POST(
     const feeding = await recordPetFeeding(id, memberId, foodType || undefined, amount || undefined, notes || undefined);
 
     // Audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'PET_FED',
-      entity_type: 'PET',
-      entity_id: id,
+      entityType: 'PET',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         petId: id,

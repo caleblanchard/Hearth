@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/server';
 import { rateRecipe } from '@/lib/data/recipes';
 import { logger } from '@/lib/logger';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 
 export async function POST(
   request: NextRequest,
@@ -62,20 +63,18 @@ export async function POST(
     });
 
     // Audit log
-    const { error: auditError } = await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'RECIPE_RATED',
+      entityType: 'RECIPE',
+      entityId: id,
       result: 'SUCCESS',
       metadata: {
         recipeId: id,
         rating,
       },
     });
-
-    if (auditError) {
-      logger.error('Error creating audit log:', auditError);
-    }
 
     return NextResponse.json({
       success: true,

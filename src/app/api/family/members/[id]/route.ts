@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import { getAuthContext, isParentInFamily } from '@/lib/supabase/server';
 import { updateFamilyMember, deleteFamilyMember, updateMemberModuleAccess } from '@/lib/data/family';
 import { logger } from '@/lib/logger';
+import { writeAuditLog } from '@/lib/data/lifecycle-core';
 import { BCRYPT_ROUNDS } from '@/lib/constants';
 
 export async function PATCH(
@@ -108,12 +109,12 @@ export async function PATCH(
     }
 
     // Audit log
-    await supabase.from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'MEMBER_UPDATED',
-      entity_type: 'MEMBER',
-      entity_id: id,
+      entityType: 'MEMBER',
+      entityId: id,
       result: 'SUCCESS',
       metadata: body,
     });
@@ -198,15 +199,18 @@ export async function DELETE(
         return NextResponse.json({ error: 'Failed to cancel invitation' }, { status: 500 });
       }
 
-      await (adminClient as any).from('audit_logs').insert({
-        family_id: familyId,
-        member_id: memberId,
-        action: 'MEMBER_DELETED',
-        entity_type: 'MEMBER',
-        entity_id: id,
-        result: 'SUCCESS',
-        metadata: { name: targetMember.name },
-      });
+      await writeAuditLog(
+        {
+          familyId,
+          memberId,
+          action: 'MEMBER_DELETED',
+          entityType: 'MEMBER',
+          entityId: id,
+          result: 'SUCCESS',
+          metadata: { name: targetMember.name },
+        },
+        adminClient as any
+      );
 
       return NextResponse.json({
         success: true,
@@ -217,12 +221,12 @@ export async function DELETE(
     await deleteFamilyMember(id);
 
     // Audit log
-    await (supabase as any).from('audit_logs').insert({
-      family_id: familyId,
-      member_id: memberId,
+    await writeAuditLog({
+      familyId,
+      memberId,
       action: 'MEMBER_DELETED',
-      entity_type: 'MEMBER',
-      entity_id: id,
+      entityType: 'MEMBER',
+      entityId: id,
       result: 'SUCCESS',
       metadata: { name: targetMember.name },
     });
