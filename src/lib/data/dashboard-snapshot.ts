@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getCreditBalance } from '@/lib/data/credits'
 import { calculateRemainingTime } from '@/lib/screentime-utils'
 import { logger } from '@/lib/logger'
+import { pickKey, readBoolean, readDateString, readNullableNumber, readNullableString, readNumber, readObject, readString } from '@/lib/readers'
 import type {
   DashboardSnapshot,
   DashboardSnapshotCard,
@@ -93,6 +94,135 @@ interface ProjectTaskPreview {
   dueDate: string | null
   projectId: string
   projectName: string
+}
+
+export function normalizeAssignedChore(
+  chore: Record<string, unknown>
+): AssignedChore {
+  const schedule = readObject(
+    pickKey(chore, 'choreSchedule', 'chore_schedule')
+  )
+  const definition = readObject(
+    pickKey(schedule, 'choreDefinition', 'chore_definition')
+  )
+
+  return {
+    id: readString(chore.id),
+    name: readString(definition.name),
+    description: readString(definition.description) || undefined,
+    status: readString(chore.status),
+    creditValue: readNumber(
+      pickKey(definition, 'creditValue', 'credit_value')
+    ),
+    difficulty: readString(definition.difficulty),
+    dueDate: readString(pickKey(chore, 'dueDate', 'due_date')),
+    requiresApproval: readBoolean(
+      pickKey(schedule, 'requiresApproval', 'requires_approval')
+    ),
+    notes: readNullableString(chore.notes),
+  }
+}
+
+export function normalizeScreenTimeAllowancePreview(
+  allowance: Record<string, unknown>,
+  remaining: { remainingMinutes: number; usedMinutes: number; rolloverMinutes: number }
+): ScreenTimeAllowancePreview {
+  const type = readObject(
+    pickKey(allowance, 'screenTimeType', 'screen_time_type')
+  )
+
+  return {
+    id: readString(allowance.id),
+    screenTimeTypeId: readString(
+      pickKey(allowance, 'screenTimeTypeId', 'screen_time_type_id')
+    ),
+    screenTimeTypeName: readString(type.name),
+    allowanceMinutes: readNumber(
+      pickKey(allowance, 'allowanceMinutes', 'allowance_minutes')
+    ),
+    period: readString(allowance.period),
+    remainingMinutes: remaining.remainingMinutes,
+    usedMinutes: remaining.usedMinutes,
+    rolloverMinutes: remaining.rolloverMinutes,
+  }
+}
+
+export function normalizeShoppingListItem(
+  item: Record<string, unknown>
+): ShoppingSummary['items'][number] {
+  return {
+    id: readString(item.id),
+    name: readString(item.name),
+    quantity: readNullableNumber(item.quantity) ?? undefined,
+    unit: readNullableString(item.unit) ?? undefined,
+    priority: readString(item.priority),
+  }
+}
+
+export function normalizeShoppingSummary(
+  list: Record<string, unknown>
+): ShoppingSummary {
+  const items = Array.isArray(list.items)
+    ? list.items.map((item) => normalizeShoppingListItem(readObject(item)))
+    : []
+
+  return {
+    id: readString(list.id),
+    name: readString(list.name),
+    itemCount: items.length,
+    urgentCount: items.filter((item) => item.priority === 'URGENT').length,
+    items: items.slice(0, 3),
+  }
+}
+
+export function normalizeTodoPreview(
+  todo: Record<string, unknown>
+): TodoPreview {
+  return {
+    id: readString(todo.id),
+    title: readString(todo.title),
+    priority: readString(todo.priority),
+    dueDate: readNullableString(pickKey(todo, 'dueDate', 'due_date')),
+    status: readString(todo.status),
+  }
+}
+
+export function normalizeCalendarEventPreview(
+  event: Record<string, unknown>
+): CalendarPreview {
+  return {
+    id: readString(event.id),
+    title: readString(event.title),
+    startTime: readDateString(pickKey(event, 'startTime', 'start_time')),
+    endTime: readDateString(pickKey(event, 'endTime', 'end_time')),
+    location: readNullableString(event.location),
+  }
+}
+
+export function normalizeCalendarEventAssignments(
+  event: Record<string, unknown>
+): string[] {
+  if (!Array.isArray(event.assignments)) {
+    return []
+  }
+
+  return event.assignments.map((assignment) =>
+    readString(pickKey(readObject(assignment), 'memberId', 'member_id'))
+  )
+}
+
+export function normalizeProjectTaskPreview(
+  task: Record<string, unknown>
+): ProjectTaskPreview {
+  return {
+    id: readString(task.id),
+    name: readString(task.name),
+    description: readNullableString(task.description),
+    status: readString(task.status),
+    dueDate: readNullableString(pickKey(task, 'dueDate', 'due_date')),
+    projectId: readString(pickKey(task, 'projectId', 'project_id')),
+    projectName: readString(readObject(task.project).name),
+  }
 }
 
 const CARD_DEFINITIONS: Record<
@@ -224,17 +354,9 @@ export async function getAssignedChoresForMember(memberId: string | null): Promi
     throw error
   }
 
-  return (data || []).map((chore: any) => ({
-    id: chore.id,
-    name: chore.chore_schedule.chore_definition.name,
-    description: chore.chore_schedule.chore_definition.description,
-    status: chore.status,
-    creditValue: chore.chore_schedule.chore_definition.credit_value,
-    difficulty: chore.chore_schedule.chore_definition.difficulty,
-    dueDate: chore.due_date,
-    requiresApproval: chore.chore_schedule.requires_approval,
-    notes: chore.notes ?? null,
-  }))
+  return (data || []).map((chore) =>
+    normalizeAssignedChore(chore as unknown as Record<string, unknown>)
+  )
 }
 
 async function getScreenTimeSummary(memberId: string | null): Promise<ScreenTimeSummary | null> {
@@ -270,18 +392,12 @@ async function getScreenTimeSummary(memberId: string | null): Promise<ScreenTime
     .eq('screen_time_type.is_archived', false)
 
   const allowancesWithRemaining = await Promise.all(
-    (allowances || []).map(async (allowance: any) => {
+    (allowances || []).map(async (allowance) => {
       const remaining = await calculateRemainingTime(memberId, allowance.screen_time_type_id)
-      return {
-        id: allowance.id,
-        screenTimeTypeId: allowance.screen_time_type_id,
-        screenTimeTypeName: allowance.screen_time_type.name,
-        allowanceMinutes: allowance.allowance_minutes,
-        period: allowance.period,
-        remainingMinutes: remaining.remainingMinutes,
-        usedMinutes: remaining.usedMinutes,
-        rolloverMinutes: remaining.rolloverMinutes,
-      }
+      return normalizeScreenTimeAllowancePreview(
+        allowance as unknown as Record<string, unknown>,
+        remaining
+      )
     })
   )
 
@@ -336,21 +452,7 @@ async function getShoppingSummary(familyId: string): Promise<ShoppingSummary | n
     return null
   }
 
-  const list = data[0] as any
-  return {
-    id: list.id,
-    name: list.name,
-    itemCount: list.items?.length || 0,
-    urgentCount:
-      list.items?.filter((item: any) => item.priority === 'URGENT').length || 0,
-    items: (list.items || []).slice(0, 3).map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      quantity: item.quantity,
-      unit: item.unit,
-      priority: item.priority,
-    })),
-  }
+  return normalizeShoppingSummary(data[0] as unknown as Record<string, unknown>)
 }
 
 async function getTodoSummary(
@@ -376,13 +478,9 @@ async function getTodoSummary(
     throw error
   }
 
-  return (data || []).map((todo: any) => ({
-    id: todo.id,
-    title: todo.title,
-    priority: todo.priority,
-    dueDate: todo.due_date,
-    status: todo.status,
-  }))
+  return (data || []).map((todo) =>
+    normalizeTodoPreview(todo as unknown as Record<string, unknown>)
+  )
 }
 
 async function getCalendarSummary(
@@ -408,7 +506,7 @@ async function getCalendarSummary(
     throw error
   }
 
-  const filtered = (data || []).filter((event: any) => {
+  const filtered = (data || []).filter((event) => {
     if (role === 'PARENT') {
       return true
     }
@@ -417,16 +515,14 @@ async function getCalendarSummary(
       return false
     }
 
-    return event.assignments?.some((assignment: any) => assignment.member_id === memberId)
+    return normalizeCalendarEventAssignments(
+      event as unknown as Record<string, unknown>
+    ).includes(memberId)
   })
 
-  return filtered.map((event: any) => ({
-    id: event.id,
-    title: event.title,
-    startTime: event.start_time,
-    endTime: event.end_time,
-    location: event.location,
-  }))
+  return filtered.map((event) =>
+    normalizeCalendarEventPreview(event as unknown as Record<string, unknown>)
+  )
 }
 
 async function getProjectTaskSummary(
@@ -459,15 +555,9 @@ async function getProjectTaskSummary(
     throw error
   }
 
-  return (data || []).map((task: any) => ({
-    id: task.id,
-    name: task.name,
-    description: task.description,
-    status: task.status,
-    dueDate: task.due_date,
-    projectId: task.project_id,
-    projectName: task.project.name,
-  }))
+  return (data || []).map((task) =>
+    normalizeProjectTaskPreview(task as unknown as Record<string, unknown>)
+  )
 }
 
 function buildChoresCard(chores: AssignedChore[]): DashboardSnapshotCard {

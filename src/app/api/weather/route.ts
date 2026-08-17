@@ -19,9 +19,7 @@ export async function GET(request: NextRequest) {
     if (!familyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const weather = await getWeatherForFamily(familyId, {
-      useServiceClient: !authContext || authContext.user?.role === 'CHILD',
-    });
+    const weather = await getWeatherForFamily(familyId);
 
     return NextResponse.json(weather);
   } catch (error) {

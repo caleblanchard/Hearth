@@ -11,7 +11,9 @@ import {
   requireParentContext,
   writeAuditLog,
 } from '@/lib/data/lifecycle-core'
+import { readNullableNumber } from '@/lib/readers'
 import { approveChore, rejectChore } from '@/lib/data/chores'
+import { insertFamilyNotification } from '@/lib/data/notifications'
 import {
   approveRedemption,
   getPendingRedemptions,
@@ -33,6 +35,7 @@ import type {
   ApprovalRequestType,
   ApprovedChoreCompletionResult,
   GraceApprovalDecisionResult,
+  PendingChoreCompletionRecord,
   PendingGraceApprovalRecord,
   PendingRewardRedemptionRecord,
   RewardRedemptionDecisionResult,
@@ -225,11 +228,11 @@ async function fetchPendingShoppingRows(
   return (data ?? []) as RawApprovalRow[]
 }
 
-function filterByFamily(
-  rows: RawApprovalRow[],
+function filterByFamily<T extends object>(
+  rows: T[],
   familyId: string,
-  reader: (row: RawApprovalRow) => string
-): RawApprovalRow[] {
+  reader: (row: T) => string
+): T[] {
   return rows.filter((row) => {
     const rowFamilyId = reader(row)
     return !rowFamilyId || rowFamilyId === familyId
@@ -523,36 +526,83 @@ export async function processApprovalRequests(
   }
 }
 
+export function normalizePendingRewardRedemption(
+  row: Record<string, unknown>
+): PendingRewardRedemptionRecord {
+  const reward = readObject(row.reward)
+  const member = readObject(row.member)
+
+  return {
+    id: readString(row.id),
+    status: readString(row.status),
+    requestedAt: readDateString(pickKey(row, 'requestedAt', 'requested_at')),
+    notes: readNullableString(row.notes) ?? undefined,
+    reward: {
+      id: readString(reward.id),
+      name: readString(reward.name),
+      description: readNullableString(reward.description) ?? undefined,
+      costCredits: readNumber(pickKey(reward, 'costCredits', 'cost_credits')),
+      category: readString(reward.category),
+    },
+    member: {
+      id: readString(member.id ?? pickKey(row, 'memberId', 'member_id')),
+      name: readString(member.name),
+      avatarUrl:
+        readNullableString(member.avatar_url ?? member.avatarUrl) ?? undefined,
+    },
+  }
+}
+
+export function normalizePendingChoreCompletion(
+  row: RawApprovalRow
+): PendingChoreCompletionRecord {
+  const assignedTo = readObject(row.assignedTo)
+  const choreSchedule = readObject(row.choreSchedule)
+  const choreDefinition = readObject(choreSchedule.choreDefinition)
+
+  return {
+    id: readString(row.id),
+    status: readString(row.status),
+    assigned_to_id: readString(row.assigned_to_id),
+    chore_schedule_id: readString(row.chore_schedule_id),
+    completed_at: readNullableString(row.completed_at),
+    completed_by_id: readNullableString(row.completed_by_id),
+    approved_by_id: readNullableString(row.approved_by_id),
+    credits_awarded: readNullableNumber(row.credits_awarded),
+    due_date: readString(row.due_date),
+    notes: readNullableString(row.notes),
+    photo_url: readNullableString(row.photo_url),
+    assignedTo:
+      assignedTo && Object.keys(assignedTo).length > 0
+        ? {
+            id: readString(assignedTo.id),
+            name: readNullableString(assignedTo.name),
+            avatar_url: readNullableString(assignedTo.avatar_url),
+          }
+        : null,
+    choreSchedule:
+      choreSchedule && Object.keys(choreSchedule).length > 0
+        ? {
+            choreDefinition:
+              choreDefinition && Object.keys(choreDefinition).length > 0
+                ? {
+                    name: readNullableString(choreDefinition.name),
+                    credit_value: readNullableNumber(choreDefinition.credit_value),
+                    family_id: readString(choreDefinition.family_id),
+                  }
+                : null,
+          }
+        : null,
+  }
+}
+
 export async function listPendingRewardRedemptionRequests(
   options: ApprovalRequestLifecycleOptions = {}
 ): Promise<PendingRewardRedemptionRecord[]> {
   const context = await requireLifecycleContext(options)
   const rows = (await getPendingRedemptions(context.familyId)) as RawApprovalRow[]
 
-  return rows.map((row) => {
-    const reward = readObject(row.reward)
-    const member = readObject(row.member)
-
-    return {
-      id: readString(row.id),
-      status: readString(row.status),
-      requestedAt: readDateString(pickKey(row, 'requestedAt', 'requested_at')),
-      notes: readNullableString(row.notes) ?? undefined,
-      reward: {
-        id: readString(reward.id),
-        name: readString(reward.name),
-        description: readNullableString(reward.description) ?? undefined,
-        costCredits: readNumber(pickKey(reward, 'costCredits', 'cost_credits')),
-        category: readString(reward.category),
-      },
-      member: {
-        id: readString(member.id),
-        name: readString(member.name),
-        avatarUrl:
-          readNullableString(member.avatar_url ?? member.avatarUrl) ?? undefined,
-      },
-    }
-  })
+  return rows.map(normalizePendingRewardRedemption)
 }
 
 export async function approveRewardRedemptionRequest(
@@ -571,9 +621,11 @@ export async function approveRewardRedemptionRequest(
     options.forbiddenMessage ?? 'Forbidden'
   )
 
-  const redemptionRecord = redemption as RawApprovalRow
+  const redemptionRecord = normalizePendingRewardRedemption(
+    redemption as RawApprovalRow
+  )
 
-  if (readString(redemptionRecord.status) !== 'PENDING') {
+  if (redemptionRecord.status !== 'PENDING') {
     throw new LifecycleError(
       400,
       'This redemption has already been processed'
@@ -582,15 +634,15 @@ export async function approveRewardRedemptionRequest(
 
   const approved = await approveRedemption(redemptionId, context.memberId)
 
-  await supabase.from('notifications').insert({
-    user_id: readString(redemptionRecord.memberId ?? redemptionRecord.member_id),
+  await insertFamilyNotification({
+    userId: redemptionRecord.member.id,
     type: 'REWARD_APPROVED',
     title: 'Reward approved!',
-    message: `Your reward "${readString(readObject(redemptionRecord.reward).name)}" has been approved!`,
-    action_url: '/dashboard/rewards/redemptions',
+    message: `Your reward "${redemptionRecord.reward.name}" has been approved!`,
+    actionUrl: '/dashboard/rewards/redemptions',
     metadata: {
       redemptionId,
-      rewardName: readString(readObject(redemptionRecord.reward).name),
+      rewardName: redemptionRecord.reward.name,
       approvedBy: context.memberName,
     },
   })
@@ -603,14 +655,14 @@ export async function approveRewardRedemptionRequest(
     entityId: redemptionId,
     result: 'SUCCESS',
     metadata: {
-      rewardName: readString(readObject(redemptionRecord.reward).name),
-      memberName: readString(readObject(redemptionRecord.member).name),
+      rewardName: redemptionRecord.reward.name,
+      memberName: redemptionRecord.member.name,
     },
   })
 
   return {
     redemption: approved,
-    message: `Approved ${readString(readObject(redemptionRecord.member).name)}'s redemption of "${readString(readObject(redemptionRecord.reward).name)}"`,
+    message: `Approved ${redemptionRecord.member.name}'s redemption of "${redemptionRecord.reward.name}"`,
   }
 }
 
@@ -631,9 +683,11 @@ export async function rejectRewardRedemptionRequest(
     options.forbiddenMessage ?? 'Forbidden'
   )
 
-  const redemptionRecord = redemption as RawApprovalRow
+  const redemptionRecord = normalizePendingRewardRedemption(
+    redemption as RawApprovalRow
+  )
 
-  if (readString(redemptionRecord.status) !== 'PENDING') {
+  if (redemptionRecord.status !== 'PENDING') {
     throw new LifecycleError(
       400,
       'This redemption has already been processed'
@@ -647,19 +701,16 @@ export async function rejectRewardRedemptionRequest(
     rejectionReason
   )
 
-  await supabase.from('notifications').insert({
-    user_id: readString(redemptionRecord.memberId ?? redemptionRecord.member_id),
+  await insertFamilyNotification({
+    userId: redemptionRecord.member.id,
     type: 'REWARD_REJECTED',
     title: 'Reward declined',
-    message: `Your reward "${readString(readObject(redemptionRecord.reward).name)}" was not approved.`,
-    action_url: '/dashboard/rewards',
+    message: `Your reward "${redemptionRecord.reward.name}" was not approved.`,
+    actionUrl: '/dashboard/rewards',
     metadata: {
       redemptionId,
-      rewardName: readString(readObject(redemptionRecord.reward).name),
-      creditsRefunded: readNumber(
-        readObject(redemptionRecord.reward).cost_credits ??
-          readObject(redemptionRecord.reward).costCredits
-      ),
+      rewardName: redemptionRecord.reward.name,
+      creditsRefunded: redemptionRecord.reward.costCredits,
       rejectionReason,
       rejectedBy: context.memberName,
     },
@@ -673,8 +724,8 @@ export async function rejectRewardRedemptionRequest(
     entityId: redemptionId,
     result: 'DENIED',
     metadata: {
-      rewardName: readString(readObject(redemptionRecord.reward).name),
-      memberName: readString(readObject(redemptionRecord.member).name),
+      rewardName: redemptionRecord.reward.name,
+      memberName: redemptionRecord.member.name,
       rejectionReason,
     },
   })
@@ -727,14 +778,14 @@ export async function decideGraceApprovalRequest(
 
 export async function listPendingChoreCompletionRequests(
   options: ApprovalRequestLifecycleOptions = {}
-): Promise<RawApprovalRow[]> {
+): Promise<PendingChoreCompletionRecord[]> {
   const context = await requireLifecycleContext(options)
   const supabase = await createClient()
   const rows = await fetchPendingChoreRows(supabase)
 
   return filterByFamily(rows, context.familyId, (row) =>
     readFamilyId(readChoreDefinition(row))
-  )
+  ).map(normalizePendingChoreCompletion)
 }
 
 export async function listPendingGraceApprovalRequests(

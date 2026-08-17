@@ -81,11 +81,11 @@ export async function updateScreenTimeLifecycleType(
 
   const updates: ScreenTimeTypeUpdate = {}
 
-  if (typeof input.name !== 'undefined') {
+  if (input.name !== undefined) {
     updates.name = normalizeTypeName(input.name)
   }
 
-  if (typeof input.description !== 'undefined') {
+  if (input.description !== undefined) {
     updates.description = sanitizeString(input.description ?? '') || null
   }
 

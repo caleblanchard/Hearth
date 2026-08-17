@@ -4945,6 +4945,16 @@ export type Database = {
         Args: { list_id: string }
         Returns: string
       }
+      get_family_weather_config: {
+        Args: { p_family_id: string }
+        Returns: {
+          id: string
+          name: string
+          location: string | null
+          latitude: number | null
+          longitude: number | null
+        }[]
+      }
       get_member_in_family: {
         Args: { check_family_id: string }
         Returns: string

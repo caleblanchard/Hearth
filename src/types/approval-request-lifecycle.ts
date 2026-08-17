@@ -87,6 +87,32 @@ export interface PendingRewardRedemptionRecord {
   }
 }
 
+export interface PendingChoreCompletionRecord {
+  id: string
+  status: string
+  assigned_to_id: string
+  chore_schedule_id: string
+  completed_at: string | null
+  completed_by_id: string | null
+  approved_by_id: string | null
+  credits_awarded: number | null
+  due_date: string
+  notes: string | null
+  photo_url: string | null
+  assignedTo: {
+    id: string
+    name: string | null
+    avatar_url: string | null
+  } | null
+  choreSchedule: {
+    choreDefinition: {
+      name: string | null
+      credit_value: number | null
+      family_id: string
+    } | null
+  } | null
+}
+
 export interface PendingGraceApprovalRecord {
   id: string
   memberId: string

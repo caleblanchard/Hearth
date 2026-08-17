@@ -914,6 +914,27 @@ export function createSupabaseMockClient() {
       if (fn === 'redeem_reward') {
         return dispatchRedeemReward(params || {})
       }
+      if (fn === 'get_family_weather_config') {
+        const familyId = params?.p_family_id as string
+        const family = await (dbMock as Record<string, any>).family.findUnique({
+          where: { id: familyId },
+        })
+        if (!family) {
+          return { data: [], error: null }
+        }
+        return {
+          data: [
+            {
+              id: family.id,
+              name: family.name,
+              location: family.location,
+              latitude: family.latitude,
+              longitude: family.longitude,
+            },
+          ],
+          error: null,
+        }
+      }
       return { data: null, error: null }
     },
     channel: () => ({

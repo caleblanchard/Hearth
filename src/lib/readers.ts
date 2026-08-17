@@ -63,3 +63,16 @@ export function pickKey(
   const value = row[camelKey]
   return value !== undefined ? value : row[snakeKey]
 }
+
+/**
+ * Build a patch object for a single field, including the key only when the
+ * value is defined. Spread it (or `Object.assign` it) into a DB update payload
+ * so `undefined` inputs never clobber existing rows. The key is the output key
+ * (e.g. snake_case column name), the value is the input's camelCase field.
+ */
+export function pickDefined<K extends string, V>(
+  key: K,
+  value: V | undefined
+): Partial<Record<K, V>> {
+  return value !== undefined ? ({ [key]: value } as Partial<Record<K, V>>) : {}
+}

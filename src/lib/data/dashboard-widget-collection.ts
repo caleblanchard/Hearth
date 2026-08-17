@@ -1,3 +1,12 @@
+import {
+  pickKey,
+  readBoolean,
+  readNullableNumber,
+  readNullableString,
+  readNumber,
+  readObject,
+  readString,
+} from '@/lib/readers'
 import { getLowStockItems } from '@/lib/data/inventory'
 import { getUpcomingMaintenanceItems } from '@/lib/data/maintenance'
 import { getMedications } from '@/lib/data/medications'
@@ -18,7 +27,113 @@ import type {
 export interface DashboardWidgetViewerContext {
   familyId: string
   memberId?: string
-  useServiceClient?: boolean
+}
+
+export function normalizeTransportSchedule(
+  schedule: Record<string, unknown>
+): TransportSchedule {
+  const member = readObject(schedule.member)
+  const location = readObject(schedule.location)
+  const driver = readObject(schedule.driver)
+  const carpool = readObject(schedule.carpool)
+
+  return {
+    id: readString(schedule.id),
+    time: readString(schedule.time),
+    type: readString(schedule.type),
+    member: {
+      id: readString(member.id ?? pickKey(schedule, 'memberId', 'member_id')),
+      name: readString(member.name, 'Unknown member'),
+    },
+    location: {
+      id: readString(
+        location.id ?? pickKey(schedule, 'locationId', 'location_id'),
+        'unknown-location'
+      ),
+      name: readString(location.name, 'Unknown location'),
+      address: readString(location.address),
+    },
+    driver: driver && Object.keys(driver).length > 0
+      ? {
+          id: readString(driver.id),
+          name: readString(driver.name),
+          phone: readString(driver.phone),
+          relationship: readString(driver.relationship),
+        }
+      : null,
+    carpool: carpool && Object.keys(carpool).length > 0
+      ? {
+          id: readString(carpool.id),
+          name: readString(carpool.name),
+        }
+      : null,
+  }
+}
+
+export function normalizeMedicationWidgetItem(
+  medication: Record<string, unknown>
+): MedicationWidgetItem {
+  const member = readObject(medication.member)
+
+  return {
+    id: readString(medication.id),
+    medicationName: readString(
+      pickKey(medication, 'medicationName', 'medication_name'),
+      'Unknown medication'
+    ),
+    activeIngredient: readString(
+      pickKey(medication, 'activeIngredient', 'active_ingredient')
+    ) || null,
+    minIntervalHours: readNumber(
+      pickKey(medication, 'minIntervalHours', 'min_interval_hours')
+    ),
+    maxDosesPerDay: readNullableNumber(
+      pickKey(medication, 'maxDosesPerDay', 'max_doses_per_day')
+    ),
+    lastDoseAt: readNullableString(
+      pickKey(medication, 'lastDoseAt', 'last_dose_at')
+    ),
+    nextDoseAvailableAt: readNullableString(
+      pickKey(medication, 'nextDoseAvailableAt', 'next_dose_available_at')
+    ),
+    notifyWhenReady: readBoolean(
+      pickKey(medication, 'notifyWhenReady', 'notify_when_ready')
+    ),
+    member: {
+      id: readString(member.id ?? pickKey(medication, 'memberId', 'member_id')),
+      name: readString(member.name, 'Unknown member'),
+    },
+    doses: Array.isArray(medication.doses) ? medication.doses : [],
+  }
+}
+
+export function normalizeMaintenanceWidgetItem(
+  item: Record<string, unknown>
+): MaintenanceWidgetItem {
+  return {
+    id: readString(item.id),
+    title: readString(item.name),
+    description: readString(item.description) || null,
+    category: readString(item.category),
+    nextDueAt: readString(item.next_due_at) || null,
+    lastCompletedAt: readString(item.last_completed_at) || null,
+    intervalDays: null,
+    assignedTo: null,
+  }
+}
+
+export function normalizeInventoryWidgetItem(
+  item: Record<string, unknown>
+): InventoryWidgetItem {
+  return {
+    id: readString(item.id),
+    name: readString(item.name),
+    category: readString(item.category),
+    currentQuantity: readNumber(item.current_quantity),
+    lowStockThreshold: readNumber(item.low_stock_threshold),
+    unit: readString(item.unit) || null,
+    location: readString(item.location) || null,
+  }
 }
 
 type DashboardWidgetLoader<K extends DashboardWidgetKind = DashboardWidgetKind> = (
@@ -30,96 +145,37 @@ const WIDGET_LOADERS: {
 } = {
   transport: async (viewer) => {
     const schedules = await getTodaysTransportSchedules(viewer.familyId, viewer.memberId)
-    const mappedSchedules: TransportSchedule[] = schedules.map((schedule: any) => ({
-      id: schedule.id,
-      time: schedule.time,
-      type: schedule.type,
-      member: {
-        id: schedule.member?.id ?? schedule.member_id,
-        name: schedule.member?.name ?? 'Unknown member',
-      },
-      location: {
-        id: schedule.location?.id ?? schedule.location_id ?? 'unknown-location',
-        name: schedule.location?.name ?? 'Unknown location',
-        address: schedule.location?.address ?? '',
-      },
-      driver: schedule.driver
-        ? {
-            id: schedule.driver.id,
-            name: schedule.driver.name,
-            phone: schedule.driver.phone,
-            relationship: schedule.driver.relationship,
-          }
-        : null,
-      carpool: schedule.carpool
-        ? {
-            id: schedule.carpool.id,
-            name: schedule.carpool.name,
-          }
-        : null,
-    }))
+    const mappedSchedules: TransportSchedule[] = schedules.map((schedule) =>
+      normalizeTransportSchedule(schedule as unknown as Record<string, unknown>)
+    )
 
     return { schedules: mappedSchedules }
   },
   medication: async (viewer) => {
     const medications = await getMedications(viewer.familyId, viewer.memberId)
-    const mappedMedications: MedicationWidgetItem[] = medications.map((medication: any) => ({
-      id: medication.id,
-      medicationName:
-        medication.medicationName ?? medication.medication_name ?? 'Unknown medication',
-      activeIngredient:
-        medication.activeIngredient ?? medication.active_ingredient ?? null,
-      minIntervalHours:
-        medication.minIntervalHours ?? medication.min_interval_hours ?? 0,
-      maxDosesPerDay:
-        medication.maxDosesPerDay ?? medication.max_doses_per_day ?? null,
-      lastDoseAt: medication.lastDoseAt ?? medication.last_dose_at ?? null,
-      nextDoseAvailableAt:
-        medication.nextDoseAvailableAt ?? medication.next_dose_available_at ?? null,
-      notifyWhenReady:
-        medication.notifyWhenReady ?? medication.notify_when_ready ?? false,
-      member: {
-        id: medication.member?.id ?? medication.member_id,
-        name: medication.member?.name ?? 'Unknown member',
-      },
-      doses: medication.doses ?? [],
-    }))
+    const mappedMedications: MedicationWidgetItem[] = medications.map((medication) =>
+      normalizeMedicationWidgetItem(medication as unknown as Record<string, unknown>)
+    )
 
     return { medications: mappedMedications }
   },
   maintenance: async (viewer) => {
     const items = await getUpcomingMaintenanceItems(viewer.familyId, 7)
-    const mappedItems: MaintenanceWidgetItem[] = items.map((item: any) => ({
-      id: item.id,
-      title: item.name,
-      description: item.description,
-      category: item.category,
-      nextDueAt: item.next_due_at,
-      lastCompletedAt: item.last_completed_at,
-      intervalDays: null,
-      assignedTo: null,
-    }))
+    const mappedItems: MaintenanceWidgetItem[] = items.map((item) =>
+      normalizeMaintenanceWidgetItem(item as unknown as Record<string, unknown>)
+    )
 
     return { items: mappedItems }
   },
   inventory: async (viewer) => {
     const items = await getLowStockItems(viewer.familyId)
-    const mappedItems: InventoryWidgetItem[] = items.map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      category: item.category,
-      currentQuantity: item.current_quantity,
-      lowStockThreshold: item.low_stock_threshold,
-      unit: item.unit,
-      location: item.location,
-    }))
+    const mappedItems: InventoryWidgetItem[] = items.map((item) =>
+      normalizeInventoryWidgetItem(item as unknown as Record<string, unknown>)
+    )
 
     return { items: mappedItems }
   },
-  weather: async (viewer) =>
-    getWeatherForFamily(viewer.familyId, {
-      useServiceClient: viewer.useServiceClient,
-    }),
+  weather: async (viewer) => getWeatherForFamily(viewer.familyId),
 }
 
 async function safeWidget<K extends DashboardWidgetKind>(

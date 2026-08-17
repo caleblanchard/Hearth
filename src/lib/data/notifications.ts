@@ -1,11 +1,45 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/database.types'
+import type { DatabaseClient } from '@/lib/data/lifecycle-core'
 
 type NotificationPreference = Database['public']['Tables']['notification_preferences']['Row']
 type NotificationPreferenceInsert = Database['public']['Tables']['notification_preferences']['Insert']
 type NotificationPreferenceUpdate = Database['public']['Tables']['notification_preferences']['Update']
 type PushSubscription = Database['public']['Tables']['push_subscriptions']['Row']
 type PushSubscriptionInsert = Database['public']['Tables']['push_subscriptions']['Insert']
+type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
+type NotificationType = Database['public']['Enums']['notification_type']
+
+export interface FamilyNotificationInput {
+  userId: string
+  type: NotificationType
+  title: string
+  message: string
+  actionUrl?: string
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * Insert a notification row for a family member.
+ * The user_id references family_members.id (not auth users).
+ */
+export async function insertFamilyNotification(
+  input: FamilyNotificationInput,
+  client?: DatabaseClient
+) {
+  const supabase = client ?? (await createClient())
+
+  const { error } = await supabase.from('notifications').insert({
+    user_id: input.userId,
+    type: input.type,
+    title: input.title,
+    message: input.message,
+    action_url: input.actionUrl ?? null,
+    metadata: (input.metadata ?? null) as NotificationInsert['metadata'],
+  } satisfies NotificationInsert)
+
+  if (error) throw error
+}
 
 /**
  * ============================================

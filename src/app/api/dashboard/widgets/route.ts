@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
       {
         familyId,
         memberId,
-        useServiceClient: !authContext || authContext.user?.role === 'CHILD',
       },
       widgets
     );

@@ -1,21 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
 import { logger } from '@/lib/logger'
 import type { WeatherWidgetData } from '@/types/dashboard-widget-collection'
+import type { DatabaseClient } from '@/lib/data/lifecycle-core'
 
 export async function getWeatherForFamily(
   familyId: string,
-  options: { useServiceClient?: boolean } = {}
+  options: { client?: DatabaseClient } = {}
 ): Promise<WeatherWidgetData> {
-  const supabase = options.useServiceClient
-    ? createServiceClient()
-    : await createClient()
+  const supabase = options.client ?? (await createClient())
 
-  const { data: family } = await supabase
-    .from('families')
-    .select('id, name, location, latitude, longitude')
-    .eq('id', familyId)
-    .single()
+  const { data } = await supabase.rpc('get_family_weather_config', {
+    p_family_id: familyId,
+  })
+
+  const family = data?.[0]
 
   if (!family || !family.latitude || !family.longitude) {
     throw new Error('Family location not configured')

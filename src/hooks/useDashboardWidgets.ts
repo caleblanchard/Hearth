@@ -33,12 +33,14 @@ export function useDashboardWidgets({
   const [error, setError] = useState<Error | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Stringify widgets array to get a stable identity that survives
-  // new array references from the caller between renders.
-  const widgetsKey = useMemo(() => JSON.stringify(widgets), [widgets]);
+  // Join widgets to get a stable identity that survives new array
+  // references from the caller between renders.
+  const widgetsKey = useMemo(() => widgets.join(','), [widgets]);
 
   const fetchWidgets = useCallback(async () => {
-    const widgetsArray = JSON.parse(widgetsKey) as DashboardWidgetKind[];
+    const widgetsArray = widgetsKey
+      ? (widgetsKey.split(',') as DashboardWidgetKind[])
+      : [];
 
     // Don't fetch if no widgets specified
     if (!widgetsArray || widgetsArray.length === 0) {
@@ -73,7 +75,9 @@ export function useDashboardWidgets({
 
   // Set up auto-refresh interval
   useEffect(() => {
-    const widgetsArray = JSON.parse(widgetsKey) as DashboardWidgetKind[];
+    const widgetsArray = widgetsKey
+      ? (widgetsKey.split(',') as DashboardWidgetKind[])
+      : [];
     if (!widgetsArray || widgetsArray.length === 0 || !refreshInterval) {
       return;
     }

@@ -8,7 +8,7 @@ import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
-function toViewerContext(
+export function toViewerContext(
   request: NextRequest,
   authResult: Awaited<ReturnType<typeof authenticateRequest>>
 ): DashboardViewerContext | null {
@@ -17,14 +17,23 @@ function toViewerContext(
   }
 
   if (authResult.isGuest) {
+    const guest = authResult.guest
+    if (!guest) {
+      return null
+    }
     return {
-      viewerId: authResult.guest!.sessionToken,
+      viewerId: guest.sessionToken,
       memberId: null,
-      familyId: authResult.guest!.familyId,
+      familyId: guest.familyId,
       role: 'GUEST',
       access: 'guest',
-      guestAccessLevel: authResult.guest!.accessLevel,
+      guestAccessLevel: guest.accessLevel,
     }
+  }
+
+  const user = authResult.user
+  if (!user) {
+    return null
   }
 
   const access =
@@ -32,15 +41,13 @@ function toViewerContext(
       ? 'kiosk'
       : 'full'
 
-  const memberId = request.headers.has('X-Kiosk-Device')
-    ? null
-    : authResult.user!.id
+  const memberId = request.headers.has('X-Kiosk-Device') ? null : user.id
 
   return {
-    viewerId: authResult.user!.id,
+    viewerId: user.id,
     memberId,
-    familyId: authResult.user!.familyId,
-    role: (authResult.user!.role as DashboardViewerContext['role']) || 'CHILD',
+    familyId: user.familyId,
+    role: (user.role as DashboardViewerContext['role']) || 'CHILD',
     access,
   }
 }

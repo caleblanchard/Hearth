@@ -9,7 +9,7 @@
     "build": "next build",
     "build:all-ts-errors": "tsc --noEmit --pretty --incremental false",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "npx playwright test",

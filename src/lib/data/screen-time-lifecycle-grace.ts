@@ -62,28 +62,28 @@ export async function updateScreenTimeLifecycleGraceSettings(
   )) as ScreenTimeGraceSettingsRow
   const updates: ScreenTimeGraceSettingsUpdate = {}
 
-  if (typeof input.gracePeriodMinutes !== 'undefined') {
+  if (input.gracePeriodMinutes !== undefined) {
     updates.grace_period_minutes = ensureNonNegativeNumber(
       input.gracePeriodMinutes,
       'Grace period minutes must be non-negative'
     )
   }
 
-  if (typeof input.maxGracePerDay !== 'undefined') {
+  if (input.maxGracePerDay !== undefined) {
     updates.max_grace_per_day = ensureNonNegativeNumber(
       input.maxGracePerDay,
       'Maximum requests per day must be non-negative'
     )
   }
 
-  if (typeof input.maxGracePerWeek !== 'undefined') {
+  if (input.maxGracePerWeek !== undefined) {
     updates.max_grace_per_week = ensureNonNegativeNumber(
       input.maxGracePerWeek,
       'Maximum requests per week must be non-negative'
     )
   }
 
-  if (typeof input.lowBalanceWarningMinutes !== 'undefined') {
+  if (input.lowBalanceWarningMinutes !== undefined) {
     updates.low_balance_warning_minutes = ensureNonNegativeNumber(
       input.lowBalanceWarningMinutes,
       'Low balance warning minutes must be non-negative'

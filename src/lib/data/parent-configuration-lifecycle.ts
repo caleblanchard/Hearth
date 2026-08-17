@@ -9,6 +9,7 @@ import {
   requireParentContext,
   requireViewerContext,
 } from '@/lib/data/lifecycle-core'
+import { pickDefined } from '@/lib/readers'
 import type { LifecycleViewerContext } from '@/lib/data/lifecycle-core'
 import { getFamily, updateFamily } from '@/lib/data/families'
 import {
@@ -253,14 +254,19 @@ export async function updateParentFamilyConfiguration(
   const nextSettings = { ...currentProfile.settings }
   const updateData: Database['public']['Tables']['families']['Update'] = {}
 
-  if (typeof updates.name !== 'undefined') updateData.name = updates.name
-  if (typeof updates.timezone !== 'undefined') updateData.timezone = updates.timezone
-  if (typeof updates.location !== 'undefined') updateData.location = updates.location
-  if (typeof updates.latitude !== 'undefined') updateData.latitude = updates.latitude
-  if (typeof updates.longitude !== 'undefined') updateData.longitude = updates.longitude
-  if (typeof updates.currency !== 'undefined') nextSettings.currency = updates.currency
-  if (typeof updates.weekStartDay !== 'undefined')
-    nextSettings.weekStartDay = updates.weekStartDay
+  Object.assign(
+    updateData,
+    pickDefined('name', updates.name),
+    pickDefined('timezone', updates.timezone),
+    pickDefined('location', updates.location),
+    pickDefined('latitude', updates.latitude),
+    pickDefined('longitude', updates.longitude)
+  )
+  Object.assign(
+    nextSettings,
+    pickDefined('currency', updates.currency),
+    pickDefined('weekStartDay', updates.weekStartDay)
+  )
   if (plannedMealTypes) nextSettings.plannedMealTypes = plannedMealTypes
 
   updateData.settings = nextSettings
@@ -349,21 +355,11 @@ export async function updateParentKioskConfiguration(
   await getOrCreateKioskSettings(managed.familyId)
 
   const settings = await updateKioskSettings(managed.familyId, {
-    ...(typeof updates.isEnabled !== 'undefined'
-      ? { is_enabled: updates.isEnabled }
-      : {}),
-    ...(typeof updates.autoLockMinutes !== 'undefined'
-      ? { auto_lock_minutes: updates.autoLockMinutes }
-      : {}),
-    ...(typeof updates.enabledWidgets !== 'undefined'
-      ? { enabled_widgets: updates.enabledWidgets }
-      : {}),
-    ...(typeof updates.allowGuestView !== 'undefined'
-      ? { allow_guest_view: updates.allowGuestView }
-      : {}),
-    ...(typeof updates.requirePinForSwitch !== 'undefined'
-      ? { require_pin_for_switch: updates.requirePinForSwitch }
-      : {}),
+    ...pickDefined('is_enabled', updates.isEnabled),
+    ...pickDefined('auto_lock_minutes', updates.autoLockMinutes),
+    ...pickDefined('enabled_widgets', updates.enabledWidgets),
+    ...pickDefined('allow_guest_view', updates.allowGuestView),
+    ...pickDefined('require_pin_for_switch', updates.requirePinForSwitch),
   })
 
   await writeAuditLog({
@@ -419,33 +415,15 @@ export async function updateFamilySickModeConfiguration(
 
   const currentSettings = await getSickModeSettings(context.familyId)
   const nextSettings = await updateSickModeSettings(context.familyId, {
-    ...(typeof updates.autoEnableOnTemperature !== 'undefined'
-      ? { auto_enable_on_temperature: updates.autoEnableOnTemperature }
-      : {}),
-    ...(typeof updates.temperatureThreshold !== 'undefined'
-      ? { temperature_threshold: updates.temperatureThreshold }
-      : {}),
-    ...(typeof updates.autoDisableAfter24Hours !== 'undefined'
-      ? { auto_disable_after_24_hours: updates.autoDisableAfter24Hours }
-      : {}),
-    ...(typeof updates.pauseChores !== 'undefined'
-      ? { pause_chores: updates.pauseChores }
-      : {}),
-    ...(typeof updates.pauseScreenTimeTracking !== 'undefined'
-      ? { pause_screen_time_tracking: updates.pauseScreenTimeTracking }
-      : {}),
-    ...(typeof updates.screenTimeBonus !== 'undefined'
-      ? { screen_time_bonus: updates.screenTimeBonus }
-      : {}),
-    ...(typeof updates.skipMorningRoutine !== 'undefined'
-      ? { skip_morning_routine: updates.skipMorningRoutine }
-      : {}),
-    ...(typeof updates.skipBedtimeRoutine !== 'undefined'
-      ? { skip_bedtime_routine: updates.skipBedtimeRoutine }
-      : {}),
-    ...(typeof updates.muteNonEssentialNotifs !== 'undefined'
-      ? { mute_non_essential_notifs: updates.muteNonEssentialNotifs }
-      : {}),
+    ...pickDefined('auto_enable_on_temperature', updates.autoEnableOnTemperature),
+    ...pickDefined('temperature_threshold', updates.temperatureThreshold),
+    ...pickDefined('auto_disable_after_24_hours', updates.autoDisableAfter24Hours),
+    ...pickDefined('pause_chores', updates.pauseChores),
+    ...pickDefined('pause_screen_time_tracking', updates.pauseScreenTimeTracking),
+    ...pickDefined('screen_time_bonus', updates.screenTimeBonus),
+    ...pickDefined('skip_morning_routine', updates.skipMorningRoutine),
+    ...pickDefined('skip_bedtime_routine', updates.skipBedtimeRoutine),
+    ...pickDefined('mute_non_essential_notifs', updates.muteNonEssentialNotifs),
   })
 
   await writeAuditLog({
